@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeHUB - Painel do Empreendedor</title>
+  <title>CodeHUB - Painel Admin</title>
   <style>
     * {
       margin: 0;
@@ -19,7 +19,7 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
     }
 
@@ -39,13 +39,6 @@
       font-size: 28px;
     }
 
-    .empresa-info {
-      background: rgba(255,255,255,0.2);
-      padding: 10px 20px;
-      border-radius: 12px;
-      font-size: 14px;
-    }
-
     .back-btn {
       background: rgba(255,255,255,0.2);
       color: white;
@@ -57,7 +50,7 @@
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 20px;
       margin-bottom: 30px;
     }
@@ -152,7 +145,7 @@
       font-weight: 600;
     }
 
-    .copy-btn, .login-btn, .delete-btn {
+    .copy-btn, .login-btn {
       background: #4CAF50;
       color: white;
       border: none;
@@ -164,18 +157,6 @@
 
     .login-btn {
       background: #2196F3;
-    }
-
-    .delete-btn {
-      background: #f44336;
-    }
-
-    .quota-success {
-      background: #d4edda;
-      border-left: 4px solid #28a745;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 8px;
     }
 
     .quota-warning {
@@ -205,6 +186,13 @@
       font-size: 14px;
     }
 
+    .color-preview {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
     .message {
       position: fixed;
       bottom: 20px;
@@ -225,42 +213,57 @@
       to { transform: translateX(0); opacity: 1; }
     }
 
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      border: 4px solid rgba(0,0,0,0.1);
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
     .cursor-example {
       display: inline-block;
-      padding: 20px 40px;
+      padding: 10px 20px;
       background: #f0f0f0;
       border-radius: 8px;
       margin-top: 10px;
-      text-align: center;
     }
 
-    .code-block {
-      background: #1e1e1e;
-      color: #d4d4d4;
-      padding: 15px;
-      border-radius: 8px;
-      font-family: monospace;
+    .status-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
       font-size: 12px;
-      overflow-x: auto;
+      margin-left: 10px;
     }
 
-    .privacy-note {
-      background: #e3f2fd;
-      border-left: 4px solid #2196F3;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      font-size: 14px;
+    .status-saved {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .status-pending {
+      background: #ff9800;
+      color: white;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div>
-        <h1>🏢 Painel do Empreendedor</h1>
-        <div class="empresa-info" id="empresa-info">Carregando...</div>
-      </div>
+      <h1>👑 Painel Administrador CodeHUB</h1>
       <button class="back-btn" onclick="window.location.href='index.html'">← Voltar ao Editor</button>
     </div>
 
@@ -271,160 +274,134 @@
         <div>Limite: 5/mês</div>
       </div>
       <div class="stat-card">
-        <div>✅ Contas ativas</div>
-        <div class="stat-number" id="activeAccounts">0</div>
-        <div>Geradas por você</div>
+        <div>👥 Total de Usuários</div>
+        <div class="stat-number" id="totalUsers">-</div>
       </div>
       <div class="stat-card">
-        <div>🎟️ Restantes</div>
-        <div class="stat-number" id="remainingAccounts">5</div>
-        <div>para gerar</div>
+        <div>📁 Projetos</div>
+        <div class="stat-number" id="totalProjects">-</div>
       </div>
     </div>
 
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('gerar')">➕ Gerar Contas</button>
-      <button class="tab" onclick="switchTab('contas')">📋 Minhas Contas</button>
-      <button class="tab" onclick="switchTab('banner')">🎨 Banner</button>
-      <button class="tab" onclick="switchTab('mouse')">🖱️ Mouse</button>
-      <button class="tab" onclick="switchTab('codigo')">📜 Embed</button>
+      <button class="tab active" onclick="switchTab('contas')">➕ Gerar Contas</button>
+      <button class="tab" onclick="switchTab('listar')">📋 Contas Geradas</button>
+      <button class="tab" onclick="switchTab('banner')">🎨 Banner Personalizado</button>
+      <button class="tab" onclick="switchTab('mouse')">🖱️ Mouse Personalizado</button>
     </div>
 
-    <!-- PAINEL GERAR CONTAS -->
-    <div id="panel-gerar" class="panel active">
-      <h2>➕ Gerar Nova Conta de Usuário</h2>
-      <div class="privacy-note">
-        🔒 <strong>Política de Privacidade:</strong> Você só pode ver e gerenciar as contas que você mesmo gerou. 
-        Usuários que se cadastram normalmente não aparecem aqui.
+    <!-- Painel Gerar Contas -->
+    <div id="panel-contas" class="panel active">
+      <h2>➕ Gerar Nova Conta</h2>
+      <div id="quota-info" class="quota-warning">
+        Carregando informações...
       </div>
-      <div id="quota-info" class="quota-success">Carregando...</div>
       <button id="generate-btn" class="btn-primary" onclick="gerarNovaConta()">
-        🚀 Gerar Nova Conta
+        🚀 Gerar Nova Conta (até 5/mês)
       </button>
       <div id="last-account" style="margin-top: 20px;"></div>
     </div>
 
-    <!-- PAINEL MINHAS CONTAS GERADAS -->
-    <div id="panel-contas" class="panel">
-      <h2>📋 Contas que você gerou</h2>
-      <div class="privacy-note">
-        🔒 Estas são apenas as contas que você criou através do gerador. 
-        Usuários que se cadastram independentemente não são listados por questões de privacidade.
-      </div>
+    <!-- Painel Listar Contas -->
+    <div id="panel-listar" class="panel">
+      <h2>📋 Contas Geradas pelo Google Script</h2>
       <div class="accounts-table">
         <table>
           <thead>
-            <tr>
-              <th>Email</th>
-              <th>Senha</th>
-              <th>Data</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
+            <tr><th>Email</th><th>Senha</th><th>UID</th><th>Ações</th></tr>
           </thead>
           <tbody id="accounts-list">
-            <tr><td colspan="5" style="text-align: center;">Carregando...</td></tr>
+            <tr><td colspan="4" style="text-align: center;">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- PAINEL BANNER -->
+    <!-- Painel Banner -->
     <div id="panel-banner" class="panel">
-      <h2>🎨 Banner Personalizado</h2>
-      <div class="privacy-note">
-        🎯 <strong>Apenas para suas contas:</strong> O banner só aparecerá para os usuários que você gerou.
-        Usuários normais não verão este banner.
-      </div>
-      
+      <h2>🎨 Configurar Banner Personalizado</h2>
       <form id="banner-form">
         <div class="form-group">
-          <label>Ativar Banner para minhas contas</label>
-          <input type="checkbox" id="banner-active">
+          <label>📍 Status do Banner</label>
+          <div>
+            <label style="display: inline-block; margin-right: 20px;">
+              <input type="radio" name="banner-status" value="active" id="banner-active"> ✅ Ativo
+            </label>
+            <label style="display: inline-block;">
+              <input type="radio" name="banner-status" value="inactive" id="banner-inactive"> ❌ Inativo
+            </label>
+          </div>
         </div>
         <div class="form-group">
-          <label>Texto do Banner</label>
-          <textarea id="banner-text" rows="3" placeholder="Digite o texto do banner..."></textarea>
+          <label>📝 Texto do Banner</label>
+          <textarea id="banner-text" rows="3" placeholder="Digite o texto do banner..." style="width: 100%;"></textarea>
         </div>
         <div class="form-group">
-          <label>Link (opcional)</label>
-          <input type="url" id="banner-link" placeholder="https://...">
+          <label>🔗 Link (opcional - ao clicar no banner)</label>
+          <input type="url" id="banner-link" placeholder="https://exemplo.com" style="width: 100%;">
         </div>
         <div class="form-group">
-          <label>Cor de Fundo</label>
-          <input type="color" id="banner-bgcolor" value="#667eea">
+          <label>🎨 Cor de Fundo</label>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="color" id="banner-bgcolor" value="#667eea">
+            <span id="color-value">#667eea</span>
+          </div>
         </div>
-        <div class="form-group">
-          <label>Cor do Texto</label>
-          <input type="color" id="banner-textcolor" value="#ffffff">
-        </div>
-        <button type="submit" class="btn-primary">💾 Salvar Banner</button>
+        <button type="button" class="btn-primary" onclick="salvarBanner()">💾 Salvar Banner no Firebase</button>
       </form>
-      
-      <div style="margin-top: 30px;">
-        <h3>📱 Prévia:</h3>
+      <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+        <h3>👁️ Prévia do Banner:</h3>
         <div id="banner-preview" style="background: #667eea; color: white; padding: 15px; border-radius: 8px; margin-top: 10px; text-align: center;">
           Exemplo de banner
         </div>
+        <p style="margin-top: 10px; font-size: 12px; color: #666;">O banner aparecerá no topo da página inicial (index.html)</p>
       </div>
     </div>
 
-    <!-- PAINEL MOUSE -->
+    <!-- Painel Mouse -->
     <div id="panel-mouse" class="panel">
-      <h2>🖱️ Mouse Personalizado</h2>
-      <div class="privacy-note">
-        🖱️ <strong>Apenas para suas contas:</strong> O cursor personalizado só aparecerá para os usuários que você gerou.
-      </div>
-      
+      <h2>🖱️ Configurar Mouse Personalizado</h2>
       <form id="mouse-form">
         <div class="form-group">
-          <label>Ativar Mouse Personalizado</label>
-          <input type="checkbox" id="mouse-active">
+          <label>📍 Status do Mouse</label>
+          <div>
+            <label style="display: inline-block; margin-right: 20px;">
+              <input type="radio" name="mouse-status" value="active" id="mouse-active"> ✅ Ativo
+            </label>
+            <label style="display: inline-block;">
+              <input type="radio" name="mouse-status" value="inactive" id="mouse-inactive"> ❌ Inativo
+            </label>
+          </div>
         </div>
         <div class="form-group">
-          <label>Tipo de Cursor</label>
-          <select id="mouse-type">
+          <label>🖱️ Tipo de Cursor</label>
+          <select id="mouse-type" style="width: 100%; padding: 10px;">
             <option value="auto">Padrão</option>
             <option value="pointer">Pointer (mão)</option>
-            <option value="grab">Mão Aberta</option>
-            <option value="progress">Carregando</option>
-            <option value="wait">Espera</option>
-            <option value="crosshair">Mirar</option>
-            <option value="help">Ajuda</option>
-            <option value="text">Texto</option>
-            <option value="custom">Personalizado (URL)</option>
+            <option value="grab">Mão Aberta (grab)</option>
+            <option value="grabbing">Mão Fechada (grabbing)</option>
+            <option value="progress">Carregando (progress)</option>
+            <option value="wait">Espera (wait)</option>
+            <option value="crosshair">Mirar (crosshair)</option>
+            <option value="help">Ajuda (help)</option>
+            <option value="text">Texto (text)</option>
+            <option value="move">Mover (move)</option>
+            <option value="zoom-in">Zoom In</option>
+            <option value="zoom-out">Zoom Out</option>
           </select>
         </div>
         <div class="form-group" id="cursor-url-group" style="display: none;">
-          <label>URL do Cursor Personalizado</label>
-          <input type="url" id="cursor-url" placeholder="https://exemplo.com/cursor.cur">
-          <small>Use arquivos .cur ou .png (32x32 recomendado)</small>
+          <label>🔗 URL do Cursor Personalizado</label>
+          <input type="url" id="cursor-url" placeholder="https://exemplo.com/cursor.png" style="width: 100%;">
+          <small>Use arquivos .cur, .png ou .svg (32x32 recomendado)</small>
         </div>
-        <button type="submit" class="btn-primary">💾 Salvar Mouse</button>
+        <button type="button" class="btn-primary" onclick="salvarMouse()">💾 Salvar Mouse no Firebase</button>
       </form>
-      
-      <div style="margin-top: 30px;">
-        <h3>🖱️ Prévia:</h3>
-        <div id="mouse-preview" class="cursor-example">
-          Passe o mouse aqui para testar
+      <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+        <h3>👁️ Testar Mouse:</h3>
+        <div id="mouse-preview" class="cursor-example" style="padding: 20px; background: #e0e0e0; text-align: center; border-radius: 8px;">
+          🖱️ Passe o mouse aqui para testar o cursor
         </div>
-      </div>
-    </div>
-
-    <!-- PAINEL CÓDIGO EMBED -->
-    <div id="panel-codigo" class="panel">
-      <h2>📜 Código de Embed</h2>
-      <p>Copie o código abaixo para incorporar o editor CodeHUB no seu site.</p>
-      
-      <div class="form-group">
-        <label>Seu ID de Empreendedor</label>
-        <input type="text" id="embed-owner-id" readonly>
-      </div>
-      
-      <div class="form-group">
-        <label>Código de Embed</label>
-        <div class="code-block" id="embed-code">Carregando...</div>
-        <button class="btn-primary" onclick="copiarEmbed()" style="margin-top: 10px;">📋 Copiar Código</button>
       </div>
     </div>
   </div>
@@ -433,8 +410,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, get, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -452,9 +429,7 @@
 
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKCEdhxFayijLW3GafXV5yN2dZ-vUeR4AcZdrpjeGT1eThFDBLlYF_C6wcpYa9Lmyv7w/exec';
 
-    let userAtual = null;
-    let empresaData = null;
-    let minhasContas = [];
+    let contasGeradas = [];
 
     function showMessage(text, type = 'info') {
       const msg = document.getElementById('message');
@@ -464,7 +439,7 @@
       setTimeout(() => { msg.style.display = 'none'; }, 3000);
     }
 
-    // GERAR NOVA CONTA
+    // Gerar nova conta via Google Script
     window.gerarNovaConta = async function() {
       const btn = document.getElementById('generate-btn');
       btn.disabled = true;
@@ -474,39 +449,35 @@
         const response = await fetch(`${SCRIPT_URL}?action=newaccount&_=${Date.now()}`);
         const data = await response.json();
         
-        if (data.email || data.conta?.email) {
+        if (data.email || (data.conta && data.conta.email)) {
           const email = data.email || data.conta?.email;
           const password = data.password || data.conta?.senha;
           const uid = data.uid;
           
-          // Salvar no Firebase (apenas nas contas geradas pelo admin)
-          const contasRef = ref(database, `empresas/${userAtual.uid}/contas_geradas/${Date.now()}`);
+          const contasRef = ref(database, `admin/contas_geradas/${Date.now()}`);
           await set(contasRef, {
             email: email,
             password: password,
             uid: uid,
             createdAt: Date.now(),
-            used: false,
-            lastLogin: null
+            used: false
           });
           
-          // Marcar no usuário que ele foi gerado por este empreendedor
-          await set(ref(database, `users/${uid}/gerado_por`), userAtual.uid);
-          
-          showMessage(`✅ Conta criada! Email: ${email} | Senha: ${password}`, 'success');
+          showMessage(`✅ Conta gerada! Email: ${email} | Senha: ${password}`, 'success');
           
           const lastAccountDiv = document.getElementById('last-account');
           lastAccountDiv.innerHTML = `
             <div style="background: #e8f5e9; padding: 15px; border-radius: 8px;">
-              <strong>✅ Nova conta gerada:</strong><br>
-              📧 <code>${email}</code><br>
-              🔑 <code>${password}</code><br>
-              <button class="copy-btn" onclick="copyToClipboard('${email}')">📧 Copiar Email</button>
-              <button class="copy-btn" onclick="copyToClipboard('${password}')">🔑 Copiar Senha</button>
+              <strong>✅ Última conta gerada:</strong><br>
+              Email: ${email}<br>
+              Senha: ${password}<br>
+              <button class="copy-btn" onclick="copyToClipboard('${email}')">Copiar Email</button>
+              <button class="copy-btn" onclick="copyToClipboard('${password}')">Copiar Senha</button>
+              <button class="login-btn" onclick="loginComConta('${email}', '${password}')">Fazer Login</button>
             </div>
           `;
           
-          carregarMinhasContas();
+          carregarContasGeradas();
           carregarStats();
         } else {
           showMessage(data.error || 'Erro ao gerar conta', 'error');
@@ -516,120 +487,123 @@
       }
       
       btn.disabled = false;
-      btn.innerHTML = '🚀 Gerar Nova Conta';
+      btn.innerHTML = '🚀 Gerar Nova Conta (até 5/mês)';
     };
 
-    // Carregar APENAS as contas que esse empreendedor gerou
-    async function carregarMinhasContas() {
-      if (!userAtual) return;
-      
+    // Carregar contas geradas do Firebase
+    async function carregarContasGeradas() {
       try {
-        const snapshot = await get(ref(database, `empresas/${userAtual.uid}/contas_geradas`));
+        const snapshot = await get(ref(database, 'admin/contas_geradas'));
         const contas = snapshot.val() || {};
-        minhasContas = Object.entries(contas).map(([id, c]) => ({ id, ...c })).sort((a,b) => b.createdAt - a.createdAt);
+        contasGeradas = Object.entries(contas).map(([id, c]) => ({ id, ...c }));
         
         const tbody = document.getElementById('accounts-list');
-        if (minhasContas.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma conta gerada ainda</td></tr>';
+        if (contasGeradas.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhuma conta gerada ainda</td></tr>';
           return;
         }
         
-        tbody.innerHTML = minhasContas.map(c => `
+        tbody.innerHTML = contasGeradas.map(c => `
           <tr>
             <td>${c.email || 'N/A'}</td>
-            <td><code>${c.password || '******'}</code></td>
-            <td>${new Date(c.createdAt).toLocaleDateString()}</td>
-            <td>${c.used ? '✅ Já acessou' : '🆕 Aguardando'}</td>
+            <td>${c.password || '******'}</td>
+            <td>${c.uid ? c.uid.substring(0, 15)+'...' : 'N/A'}</td>
             <td>
               <button class="copy-btn" onclick="copyToClipboard('${c.email}')">📧</button>
               <button class="copy-btn" onclick="copyToClipboard('${c.password}')">🔑</button>
+              <button class="login-btn" onclick="loginComConta('${c.email}', '${c.password}')">🔌</button>
             </td>
           </tr>
         `).join('');
       } catch(e) {
-        console.error('Erro:', e);
+        console.error('Erro ao carregar contas:', e);
       }
     }
+
+    // Login com conta gerada
+    window.loginComConta = async function(email, password) {
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        showMessage(`✅ Login realizado! Bem-vindo ${userCredential.user.email}`, 'success');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1500);
+      } catch(e) {
+        showMessage('Erro no login: ' + e.message, 'error');
+      }
+    };
 
     window.copyToClipboard = function(text) {
       navigator.clipboard.writeText(text);
-      showMessage('✅ Copiado!', 'success');
+      showMessage('Copiado!', 'success');
     };
 
-    // Salvar configuração do banner (SALVA NA EMPRESA, não global)
-    async function salvarBanner() {
+    // Salvar configuração do banner
+    window.salvarBanner = async function() {
+      const isActive = document.getElementById('banner-active').checked;
       const config = {
-        active: document.getElementById('banner-active').checked,
+        active: isActive,
         text: document.getElementById('banner-text').value,
         link: document.getElementById('banner-link').value,
         bgColor: document.getElementById('banner-bgcolor').value,
-        textColor: document.getElementById('banner-textcolor').value,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        updatedBy: auth.currentUser?.email || 'admin'
       };
       
       try {
-        await set(ref(database, `empresas/${userAtual.uid}/config/banner`), config);
-        showMessage('✅ Banner salvo! Só aparecerá para suas contas.', 'success');
+        await set(ref(database, 'admin/banner'), config);
+        showMessage('✅ Banner salvo com sucesso no Firebase!', 'success');
+        
+        // Atualizar prévia
         atualizarPreviewBanner();
+        
+        // Mostrar status salvo
+        const bannerPreview = document.getElementById('banner-preview');
+        if (config.active) {
+          bannerPreview.style.background = config.bgColor;
+          bannerPreview.innerHTML = config.text || 'Banner ativo';
+        } else {
+          bannerPreview.innerHTML = 'Banner inativo (não será exibido)';
+        }
       } catch(e) {
-        showMessage('Erro: ' + e.message, 'error');
+        showMessage('Erro ao salvar banner: ' + e.message, 'error');
       }
-    }
+    };
 
     // Salvar configuração do mouse
-    async function salvarMouse() {
+    window.salvarMouse = async function() {
+      const isActive = document.getElementById('mouse-active').checked;
       const config = {
-        active: document.getElementById('mouse-active').checked,
+        active: isActive,
         type: document.getElementById('mouse-type').value,
         customUrl: document.getElementById('cursor-url').value,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        updatedBy: auth.currentUser?.email || 'admin'
       };
       
       try {
-        await set(ref(database, `empresas/${userAtual.uid}/config/mouse`), config);
-        showMessage('✅ Mouse salvo! Só aparecerá para suas contas.', 'success');
+        await set(ref(database, 'admin/mouse'), config);
+        showMessage('✅ Mouse salvo com sucesso no Firebase!', 'success');
+        
+        // Atualizar prévia
         atualizarPreviewMouse(config);
       } catch(e) {
-        showMessage('Erro: ' + e.message, 'error');
+        showMessage('Erro ao salvar mouse: ' + e.message, 'error');
       }
-    }
-
-    // Carregar configurações da empresa
-    async function carregarConfiguracoes() {
-      if (!userAtual) return;
-      
-      try {
-        const [bannerSnap, mouseSnap] = await Promise.all([
-          get(ref(database, `empresas/${userAtual.uid}/config/banner`)),
-          get(ref(database, `empresas/${userAtual.uid}/config/mouse`))
-        ]);
-        
-        const banner = bannerSnap.val() || {};
-        document.getElementById('banner-active').checked = banner.active || false;
-        document.getElementById('banner-text').value = banner.text || '';
-        document.getElementById('banner-link').value = banner.link || '';
-        document.getElementById('banner-bgcolor').value = banner.bgColor || '#667eea';
-        document.getElementById('banner-textcolor').value = banner.textColor || '#ffffff';
-        atualizarPreviewBanner();
-        
-        const mouse = mouseSnap.val() || {};
-        document.getElementById('mouse-active').checked = mouse.active || false;
-        document.getElementById('mouse-type').value = mouse.type || 'auto';
-        document.getElementById('cursor-url').value = mouse.customUrl || '';
-        atualizarPreviewMouse(mouse);
-        
-        document.getElementById('cursor-url-group').style.display = 
-          document.getElementById('mouse-type').value === 'custom' ? 'block' : 'none';
-      } catch(e) {
-        console.error('Erro:', e);
-      }
-    }
+    };
 
     function atualizarPreviewBanner() {
       const preview = document.getElementById('banner-preview');
-      preview.style.background = document.getElementById('banner-bgcolor').value;
-      preview.style.color = document.getElementById('banner-textcolor').value;
-      preview.innerHTML = document.getElementById('banner-text').value || 'Texto do banner aparecerá aqui';
+      const isActive = document.getElementById('banner-active').checked;
+      const bgColor = document.getElementById('banner-bgcolor').value;
+      const text = document.getElementById('banner-text').value;
+      
+      preview.style.background = bgColor;
+      if (isActive) {
+        preview.innerHTML = text || 'Banner ativo - clique em salvar para aplicar';
+      } else {
+        preview.innerHTML = '⚠️ Banner inativo (marque "Ativo" e clique em salvar)';
+      }
     }
 
     function atualizarPreviewMouse(config) {
@@ -637,86 +611,102 @@
       if (config.active) {
         const cursorStyle = config.type === 'custom' ? `url('${config.customUrl}'), auto` : config.type;
         preview.style.cursor = cursorStyle;
+        preview.title = `Cursor: ${cursorStyle}`;
       } else {
         preview.style.cursor = 'auto';
+        preview.title = 'Mouse personalizado inativo';
       }
     }
 
-    // Carregar estatísticas (APENAS das contas geradas)
-    async function carregarStats() {
-      if (!userAtual) return;
-      
+    // Carregar configurações existentes
+    async function carregarConfiguracoes() {
       try {
-        const snapshot = await get(ref(database, `empresas/${userAtual.uid}/contas_geradas`));
-        const contas = snapshot.val() || {};
+        // Carregar banner
+        const bannerSnap = await get(ref(database, 'admin/banner'));
+        const banner = bannerSnap.val();
+        if (banner) {
+          if (banner.active) {
+            document.getElementById('banner-active').checked = true;
+          } else {
+            document.getElementById('banner-inactive').checked = true;
+          }
+          document.getElementById('banner-text').value = banner.text || '';
+          document.getElementById('banner-link').value = banner.link || '';
+          document.getElementById('banner-bgcolor').value = banner.bgColor || '#667eea';
+          document.getElementById('color-value').textContent = banner.bgColor || '#667eea';
+          
+          // Atualizar prévia
+          const preview = document.getElementById('banner-preview');
+          preview.style.background = banner.bgColor || '#667eea';
+          if (banner.active) {
+            preview.innerHTML = banner.text || 'Banner configurado';
+          } else {
+            preview.innerHTML = 'Banner inativo (marque "Ativo" e salve)';
+          }
+        }
         
+        // Carregar mouse
+        const mouseSnap = await get(ref(database, 'admin/mouse'));
+        const mouse = mouseSnap.val();
+        if (mouse) {
+          if (mouse.active) {
+            document.getElementById('mouse-active').checked = true;
+          } else {
+            document.getElementById('mouse-inactive').checked = true;
+          }
+          document.getElementById('mouse-type').value = mouse.type || 'auto';
+          document.getElementById('cursor-url').value = mouse.customUrl || '';
+          
+          // Mostrar/esconder campo de URL customizada
+          document.getElementById('cursor-url-group').style.display = 
+            mouse.type === 'custom' ? 'block' : 'none';
+          
+          // Atualizar prévia
+          atualizarPreviewMouse(mouse);
+        }
+      } catch(e) {
+        console.error('Erro ao carregar configurações:', e);
+      }
+    }
+
+    // Carregar estatísticas
+    async function carregarStats() {
+      try {
+        const [contasSnap, usersSnap, projectsSnap] = await Promise.all([
+          get(ref(database, 'admin/contas_geradas')),
+          get(ref(database, 'users')),
+          get(ref(database, 'projects'))
+        ]);
+        
+        const contas = contasSnap.val() || {};
         const mesAtual = new Date().getMonth();
         const anoAtual = new Date().getFullYear();
         let contasMes = 0;
-        let ativas = 0;
         
         Object.values(contas).forEach(c => {
-          const data = new Date(c.createdAt);
-          if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) {
-            contasMes++;
+          if (c.createdAt) {
+            const data = new Date(c.createdAt);
+            if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) {
+              contasMes++;
+            }
           }
-          if (c.used) ativas++;
         });
         
         document.getElementById('monthCount').textContent = contasMes;
-        document.getElementById('activeAccounts').textContent = Object.keys(contas).length;
-        document.getElementById('remainingAccounts').textContent = Math.max(0, 5 - contasMes);
+        document.getElementById('totalUsers').textContent = Object.keys(usersSnap.val() || {}).length;
         
-        const quotaDiv = document.getElementById('quota-info');
-        if (contasMes >= 5) {
-          quotaDiv.className = 'quota-warning';
-          quotaDiv.innerHTML = '⚠️ <strong>Limite mensal atingido!</strong> Você já gerou 5 contas este mês.';
-          document.getElementById('generate-btn').disabled = true;
-        } else {
-          quotaDiv.className = 'quota-success';
-          quotaDiv.innerHTML = `✅ <strong>Você pode gerar mais ${5 - contasMes} conta(s) este mês.</strong> Limite: 5/mês.`;
-          document.getElementById('generate-btn').disabled = false;
-        }
+        let totalProjetos = 0;
+        const projects = projectsSnap.val() || {};
+        Object.values(projects).forEach(p => {
+          totalProjetos += Object.keys(p).length;
+        });
+        document.getElementById('totalProjects').textContent = totalProjetos;
       } catch(e) {
-        console.error('Erro:', e);
+        console.error('Erro ao carregar stats:', e);
       }
     }
 
-    // Carregar dados do empreendedor
-    async function carregarDadosEmpreendedor() {
-      if (!userAtual) return;
-      
-      try {
-        const snapshot = await get(ref(database, `users/${userAtual.uid}`));
-        const userInfo = snapshot.val();
-        
-        if (userInfo?.userType === 'entrepreneur') {
-          empresaData = userInfo;
-          document.getElementById('empresa-info').innerHTML = `
-            🏢 ${userInfo.companyName || 'Sua Empresa'} | CNPJ: ${userInfo.formattedCNPJ || userInfo.cnpj || 'N/A'}
-          `;
-          document.getElementById('embed-owner-id').value = userAtual.uid;
-          
-          const embedCode = `<iframe src="https://${window.location.hostname}/embed.html?owner=${userAtual.uid}" width="100%" height="600" frameborder="0"></iframe>`;
-          document.getElementById('embed-code').innerHTML = escapeHtml(embedCode);
-        }
-      } catch(e) {
-        console.error('Erro:', e);
-      }
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    window.copiarEmbed = function() {
-      const code = document.getElementById('embed-code').innerText;
-      navigator.clipboard.writeText(code);
-      showMessage('✅ Código copiado!', 'success');
-    };
-
+    // Switch entre abas
     window.switchTab = function(tab) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -726,47 +716,37 @@
     };
 
     // Event listeners
-    document.getElementById('banner-form')?.addEventListener('submit', (e) => { e.preventDefault(); salvarBanner(); });
-    document.getElementById('mouse-form')?.addEventListener('submit', (e) => { e.preventDefault(); salvarMouse(); });
+    document.getElementById('banner-bgcolor')?.addEventListener('input', (e) => {
+      document.getElementById('color-value').textContent = e.target.value;
+      atualizarPreviewBanner();
+    });
     
     document.getElementById('banner-text')?.addEventListener('input', atualizarPreviewBanner);
-    document.getElementById('banner-bgcolor')?.addEventListener('input', atualizarPreviewBanner);
-    document.getElementById('banner-textcolor')?.addEventListener('input', atualizarPreviewBanner);
+    document.getElementById('banner-active')?.addEventListener('change', atualizarPreviewBanner);
+    document.getElementById('banner-inactive')?.addEventListener('change', atualizarPreviewBanner);
     
     document.getElementById('mouse-type')?.addEventListener('change', (e) => {
       document.getElementById('cursor-url-group').style.display = e.target.value === 'custom' ? 'block' : 'none';
     });
 
-    // VERIFICAÇÃO: Só empreendedor acessa
+    // Inicialização
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.href = 'auth.html';
         return;
       }
       
-      userAtual = user;
-      
-      const userRef = ref(database, `users/${user.uid}`);
-      const snapshot = await get(userRef);
-      const userInfo = snapshot.val();
-      
-      if (userInfo?.userType !== 'entrepreneur') {
-        showMessage('❌ Acesso negado! Apenas EMPREENDEDORES podem acessar.', 'error');
+      // Verificar se é admin
+      const adminEmails = ['alexandre7888@gmail.com', 'admin@codehub.com'];
+      if (!adminEmails.includes(user.email)) {
+        showMessage('Acesso negado. Você não é administrador.', 'error');
         setTimeout(() => { window.location.href = 'index.html'; }, 2000);
         return;
       }
       
-      await carregarDadosEmpreendedor();
       carregarConfiguracoes();
-      carregarMinhasContas();
+      carregarContasGeradas();
       carregarStats();
-      
-      // Monitorar mudanças nas contas geradas
-      const contasRef = ref(database, `empresas/${userAtual.uid}/contas_geradas`);
-      onValue(contasRef, () => {
-        carregarMinhasContas();
-        carregarStats();
-      });
     });
   </script>
 </body>
