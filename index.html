@@ -100,7 +100,7 @@
       --discord-color: #5865F2;
     }
 
-    /* Banner personalizado do admin */
+    /* Banner personalizado do admin - SÓ PARA CONTAS GERADAS */
     .admin-banner {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -180,7 +180,6 @@
       font-size: 1.5rem;
     }
 
-    /* Menu Hamburguer */
     .menu-hamburger {
       background: none;
       border: none;
@@ -200,7 +199,6 @@
       transition: 0.3s;
     }
 
-    /* Sidebar */
     .sidebar {
       position: fixed;
       top: 0;
@@ -739,7 +737,7 @@
   </div>
 
   <div id="app-content">
-    <!-- Banner do Administrador (só aparece se configurado) -->
+    <!-- Banner do Administrador (só para contas geradas pelo admin) -->
     <div id="admin-banner" class="admin-banner" style="display: none;">
       <span id="banner-text"></span>
       <button class="close-banner" onclick="fecharBanner()">✕</button>
@@ -1114,68 +1112,88 @@
     const projectForm = document.getElementById('project-form');
     if (projectForm) projectForm.addEventListener('submit', (e) => { e.preventDefault(); createProject(); });
 
-// ==================== FUNÇÕES DE BANNER E MOUSE PARA TODAS AS CONTAS ====================
+    // ==================== BANNER E MOUSE APENAS PARA CONTAS GERADAS PELO ADMIN ====================
 
-// Carregar configurações do banner - funciona para QUALQUER usuário logado
-async function loadBannerConfig() {
-  try {
-    const snapshot = await get(ref(database, 'admin/banner'));
-    const config = snapshot.val();
-    console.log('Banner carregado:', config);
-    
-    const banner = document.getElementById('admin-banner');
-    const bannerText = document.getElementById('banner-text');
-    
-    // QUALQUER usuário logado vê o banner se ele estiver ativo
-    if (banner && bannerText && config && config.active === true) {
-      bannerText.innerHTML = config.text || 'Bem-vindo ao CodeHUB!';
-      if (config.link && config.link.trim() !== '') {
-        banner.style.cursor = 'pointer';
-        banner.onclick = () => window.open(config.link, '_blank');
-      } else {
-        banner.style.cursor = 'default';
-        banner.onclick = null;
+    // Verificar se o email atual está na lista de contas geradas pelo admin
+    async function isManagedAccount(email) {
+      if (!email) return false;
+      try {
+        const emailKey = email.replace(/\./g, '_').replace(/@/g, '_');
+        const snapshot = await get(ref(database, `admin/emails_autorizados/${emailKey}`));
+        const autorizado = snapshot.val();
+        console.log('Verificando conta:', email, 'Autorizada:', !!autorizado);
+        return !!autorizado;
+      } catch(e) {
+        console.error('Erro ao verificar conta:', e);
+        return false;
       }
-      if (config.bgColor) banner.style.background = config.bgColor;
-      banner.style.display = 'block';
-      console.log('✅ Banner exibido para o usuário:', userData?.email);
-    } else if (banner) {
-      banner.style.display = 'none';
-      console.log('Banner desativado');
     }
-  } catch(e) { console.error('Erro ao carregar banner:', e); }
-}
 
-// Carregar configurações do mouse - funciona para QUALQUER usuário logado
-async function loadMouseConfig() {
-  try {
-    const snapshot = await get(ref(database, 'admin/mouse'));
-    const config = snapshot.val();
-    console.log('Mouse carregado:', config);
-    
-    // QUALQUER usuário logado vê o mouse personalizado se ele estiver ativo
-    if (config && config.active === true) {
-      let cursorStyle = 'auto';
-      if (config.type === 'custom' && config.customUrl) {
-        cursorStyle = `url('${config.customUrl}'), auto`;
-      } else if (config.type && config.type !== 'custom') {
-        cursorStyle = config.type;
-      }
-      document.body.style.cursor = cursorStyle;
-      console.log('✅ Mouse personalizado aplicado para o usuário:', userData?.email, cursorStyle);
-    } else {
-      document.body.style.cursor = 'auto';
-      console.log('Mouse personalizado desativado');
-    }
-  } catch(e) { console.error('Erro ao carregar mouse:', e); }
-}
-
-// Fechar banner
-window.fecharBanner = function() {
-  const banner = document.getElementById('admin-banner');
-  if (banner) banner.style.display = 'none';
-}
+    // Carregar banner (só se for conta administrada)
+    async function loadBannerConfig() {
+      try {
+        const isManaged = await isManagedAccount(userData?.email);
+        
+        if (!isManaged) {
+          console.log('Conta normal - sem banner');
+          const banner = document.getElementById('admin-banner');
+          if (banner) banner.style.display = 'none';
+          return;
+        }
+        
+        console.log('Conta administrada - carregando banner');
+        const snapshot = await get(ref(database, 'admin/banner'));
+        const config = snapshot.val();
+        
+        const banner = document.getElementById('admin-banner');
+        const bannerText = document.getElementById('banner-text');
+        
+        if (banner && bannerText && config && config.active === true) {
+          bannerText.innerHTML = config.text || 'Bem-vindo!';
+          if (config.link && config.link.trim() !== '') {
+            banner.style.cursor = 'pointer';
+            banner.onclick = () => window.open(config.link, '_blank');
+          } else {
+            banner.style.cursor = 'default';
+            banner.onclick = null;
+          }
+          if (config.bgColor) banner.style.background = config.bgColor;
+          banner.style.display = 'block';
+          console.log('✅ Banner exibido para conta administrada');
+        } else if (banner) {
+          banner.style.display = 'none';
+        }
       } catch(e) { console.error('Erro ao carregar banner:', e); }
+    }
+
+    // Carregar mouse (só se for conta administrada)
+    async function loadMouseConfig() {
+      try {
+        const isManaged = await isManagedAccount(userData?.email);
+        
+        if (!isManaged) {
+          console.log('Conta normal - sem mouse personalizado');
+          document.body.style.cursor = 'auto';
+          return;
+        }
+        
+        console.log('Conta administrada - carregando mouse');
+        const snapshot = await get(ref(database, 'admin/mouse'));
+        const config = snapshot.val();
+        
+        if (config && config.active === true) {
+          let cursorStyle = 'auto';
+          if (config.type === 'custom' && config.customUrl) {
+            cursorStyle = `url('${config.customUrl}'), auto`;
+          } else if (config.type && config.type !== 'custom') {
+            cursorStyle = config.type;
+          }
+          document.body.style.cursor = cursorStyle;
+          console.log('✅ Mouse personalizado aplicado para conta administrada:', cursorStyle);
+        } else {
+          document.body.style.cursor = 'auto';
+        }
+      } catch(e) { console.error('Erro ao carregar mouse:', e); }
     }
 
     // Fechar banner
@@ -1184,26 +1202,10 @@ window.fecharBanner = function() {
       if (banner) banner.style.display = 'none';
     }
 
-    // Carregar configurações do mouse
-    async function loadMouseConfig() {
-      try {
-        const snapshot = await get(ref(database, 'admin/mouse'));
-        const config = snapshot.val();
-        console.log('Mouse config carregada:', config);
-        
-        if (config && config.active === true && isAdmin()) {
-          const cursorStyle = config.type === 'custom' ? `url('${config.customUrl}'), auto` : config.type;
-          document.body.style.cursor = cursorStyle;
-          console.log('Mouse personalizado aplicado:', cursorStyle);
-        } else {
-          document.body.style.cursor = 'auto';
-        }
-      } catch(e) { console.error('Erro ao carregar mouse:', e); }
-    }
-
-    // Adicionar link do admin no header se for admin
+    // Adicionar link do admin (apenas para admin real)
     function addAdminLink() {
-      if (isAdmin()) {
+      const adminEmails = ['alexandre7888@gmail.com', 'admin@codehub.com'];
+      if (adminEmails.includes(userData?.email)) {
         const userInfoDiv = document.getElementById('user-info');
         if (userInfoDiv && !document.getElementById('admin-link-btn')) {
           const adminLink = document.createElement('a');
@@ -1212,7 +1214,8 @@ window.fecharBanner = function() {
           adminLink.onclick = (e) => { e.preventDefault(); window.location.href = 'admin.html'; };
           adminLink.innerHTML = '👑 Admin';
           adminLink.className = 'admin-link';
-          // Inserir antes do span do username
+          adminLink.style.cssText = 'background:rgba(255,255,255,0.2); padding:5px 12px; border-radius:20px; font-size:12px; text-decoration:none; color:white; margin-right:10px;';
+          
           const usernameSpan = document.getElementById('username');
           if (usernameSpan) {
             userInfoDiv.insertBefore(adminLink, usernameSpan);
@@ -1232,7 +1235,6 @@ window.fecharBanner = function() {
       const usernameSpan = document.getElementById('username');
       if (usernameSpan) usernameSpan.textContent = userData.displayName;
       
-      // Adicionar link do admin
       addAdminLink();
       
       const deviceNameSpan = document.getElementById('deviceNameDisplay');
@@ -1253,9 +1255,9 @@ window.fecharBanner = function() {
       if(autoSyncEnabled) startAutoSync();
       loadProjects(user.uid);
       
-// Carregar banner e mouse para este usuário (qualquer um)
-await loadBannerConfig();
-await loadMouseConfig();
+      // Carregar banner e mouse (verifica se é conta administrada)
+      await loadBannerConfig();
+      await loadMouseConfig();
       
       setInterval(() => updateDeviceList(), 5000);
       setTimeout(() => updateDeviceList(), 1000);
