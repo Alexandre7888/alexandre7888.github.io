@@ -104,12 +104,14 @@
     .admin-banner {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 15px 20px;
+      padding: 15px 40px 15px 20px;
       text-align: center;
       position: relative;
       cursor: pointer;
       transition: all 0.3s;
       display: none;
+      font-size: 14px;
+      z-index: 100;
     }
     .admin-banner:hover {
       transform: scale(1.01);
@@ -117,7 +119,8 @@
     .admin-banner .close-banner {
       position: absolute;
       right: 10px;
-      top: 10px;
+      top: 50%;
+      transform: translateY(-50%);
       background: rgba(0,0,0,0.3);
       border: none;
       color: white;
@@ -126,13 +129,18 @@
       width: 24px;
       height: 24px;
       font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .admin-banner .close-banner:hover {
+      background: rgba(0,0,0,0.5);
     }
 
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      cursor: inherit;
     }
 
     body {
@@ -366,6 +374,7 @@
       display: flex;
       align-items: center;
       gap: 1rem;
+      flex-wrap: wrap;
     }
 
     .logout-btn {
@@ -380,6 +389,19 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
+    }
+
+    .admin-link {
+      background: rgba(255,255,255,0.2);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      text-decoration: none;
+      color: white;
+      transition: all 0.3s;
+    }
+    .admin-link:hover {
+      background: rgba(255,255,255,0.3);
     }
 
     .container {
@@ -699,15 +721,6 @@
       border: 1px solid white;
     }
 
-    /* Admin link */
-    .admin-link {
-      background: rgba(255,255,255,0.2);
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      margin-left: 10px;
-    }
-
     @media (max-width: 768px) {
       .projects-grid { grid-template-columns: 1fr; }
       .project-actions { flex-direction: column; }
@@ -741,7 +754,7 @@
           <h1>🚀 CodeHUB</h1>
           <button class="discord-mini-btn" onclick="toggleDiscordWidget()">💬 Discord</button>
         </div>
-        <div class="user-info">
+        <div class="user-info" id="user-info">
           <span id="username"></span>
           <button class="logout-btn" onclick="logout()">Sair</button>
         </div>
@@ -971,9 +984,12 @@
           id: currentDeviceId, name: deviceName, ip: deviceIP, ultimaVez: Date.now(), userAgent: navigator.userAgent, online: true
         });
         ultimoHash = hashAtual;
-        document.getElementById('lastSyncDisplay').textContent = new Date().toLocaleTimeString();
-        document.getElementById('storageSizeDisplay').textContent = formatBytes(totalSize);
-        document.getElementById('lastBackupSize').textContent = formatBytes(totalSize);
+        const lastSyncSpan = document.getElementById('lastSyncDisplay');
+        if (lastSyncSpan) lastSyncSpan.textContent = new Date().toLocaleTimeString();
+        const storageSpan = document.getElementById('storageSizeDisplay');
+        if (storageSpan) storageSpan.textContent = formatBytes(totalSize);
+        const backupSpan = document.getElementById('lastBackupSize');
+        if (backupSpan) backupSpan.textContent = formatBytes(totalSize);
         return true;
       } catch(e) { console.error('Erro exportar:', e); return false; }
     }
@@ -1008,8 +1024,10 @@
       try {
         const snapshot = await get(ref(database, `devices/${userData.uid}`));
         const devices = snapshot.val() || {};
-        document.getElementById('deviceCount').textContent = Object.keys(devices).length;
+        const deviceCountSpan = document.getElementById('deviceCount');
+        if (deviceCountSpan) deviceCountSpan.textContent = Object.keys(devices).length;
         const deviceListDiv = document.getElementById('deviceList');
+        if (!deviceListDiv) return;
         deviceListDiv.innerHTML = '';
         for (const [id, device] of Object.entries(devices)) {
           const div = document.createElement('div');
@@ -1025,7 +1043,12 @@
     function startAutoSync() { if(syncInterval) clearInterval(syncInterval); syncInterval = setInterval(() => { if(autoSyncEnabled && userData) cicloCompleto(); }, 2000); }
     function stopAutoSync() { autoSyncEnabled = false; if(syncInterval) { clearInterval(syncInterval); syncInterval = null; } }
 
-    window.toggleSidebar = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); }
+    window.toggleSidebar = function() { 
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      if (sidebar) sidebar.classList.toggle('open');
+      if (overlay) overlay.classList.toggle('active');
+    }
 
     function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
     function isValidProjectName(name) { return name && name.trim().length > 0 && name.length <= 50; }
@@ -1048,15 +1071,27 @@
       });
     }
 
-    window.openNewProjectModal = function() { document.getElementById('new-project-modal').style.display = 'block'; document.getElementById('project-name').focus(); }
-    window.closeNewProjectModal = function() { document.getElementById('new-project-modal').style.display = 'none'; document.getElementById('project-name').value = ''; }
+    window.openNewProjectModal = function() { 
+      const modal = document.getElementById('new-project-modal');
+      if (modal) modal.style.display = 'block'; 
+      const input = document.getElementById('project-name');
+      if (input) input.focus();
+    }
+    window.closeNewProjectModal = function() { 
+      const modal = document.getElementById('new-project-modal');
+      if (modal) modal.style.display = 'none'; 
+      const input = document.getElementById('project-name');
+      if (input) input.value = ''; 
+    }
 
     async function createProject() {
       const projectName = document.getElementById('project-name').value.trim();
       const user = auth.currentUser;
       if(!isValidProjectName(projectName)) { alert('Nome válido (1-50 caracteres)'); return; }
       try {
-        loadingScreen.style.display = 'flex'; loadingScreen.style.opacity = '1'; appContent.style.display = 'none';
+        if (loadingScreen) loadingScreen.style.display = 'flex';
+        if (loadingScreen) loadingScreen.style.opacity = '1';
+        if (appContent) appContent.style.display = 'none';
         const slug = projectName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
         const newProjectRef = push(ref(database, `projects/${user.uid}`));
         const projectId = newProjectRef.key;
@@ -1067,20 +1102,23 @@
         });
         closeNewProjectModal();
         window.location.href = `editor.html?projectId=${projectId}`;
-      } catch(e) { alert('Erro: ' + e.message); showAppContent(); }
+      } catch(e) { alert('Erro: ' + e.message); if (showAppContent) showAppContent(); }
     }
 
     window.deleteProject = function(projectId) { if(confirm('Excluir este projeto?')) { const user = auth.currentUser; remove(ref(database, `projects/${user.uid}/${projectId}`)).then(() => alert('Excluído!')); } }
     window.logout = function() { signOut(auth).then(() => window.location.href = 'auth.html'); }
-    window.toggleDiscordWidget = function() { const w = document.getElementById('discordWidget'); w.style.display = w.style.display === 'none' || w.style.display === '' ? 'block' : 'none'; }
-    document.getElementById('project-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProject(); });
+    window.toggleDiscordWidget = function() { 
+      const w = document.getElementById('discordWidget'); 
+      if (w) w.style.display = w.style.display === 'none' || w.style.display === '' ? 'block' : 'none'; 
+    }
+    const projectForm = document.getElementById('project-form');
+    if (projectForm) projectForm.addEventListener('submit', (e) => { e.preventDefault(); createProject(); });
 
     // ==================== FUNÇÕES DO ADMIN (BANNER E MOUSE) ====================
     
     // Verificar se o usuário é administrador
     function isAdmin() {
       if (!userData) return false;
-      // Defina aqui os emails dos administradores
       const adminEmails = ['alexandre7888@gmail.com', 'admin@codehub.com'];
       return adminEmails.includes(userData.email);
     }
@@ -1090,9 +1128,12 @@
       try {
         const snapshot = await get(ref(database, 'admin/banner'));
         const config = snapshot.val();
-        if (config && config.active && isAdmin()) {
-          const banner = document.getElementById('admin-banner');
-          const bannerText = document.getElementById('banner-text');
+        console.log('Banner config carregada:', config);
+        
+        const banner = document.getElementById('admin-banner');
+        const bannerText = document.getElementById('banner-text');
+        
+        if (banner && bannerText && config && config.active === true) {
           bannerText.innerHTML = config.text || 'Bem-vindo ao CodeHUB!';
           if (config.link) {
             banner.style.cursor = 'pointer';
@@ -1103,15 +1144,17 @@
           }
           if (config.bgColor) banner.style.background = config.bgColor;
           banner.style.display = 'block';
-        } else {
-          document.getElementById('admin-banner').style.display = 'none';
+          console.log('Banner exibido');
+        } else if (banner) {
+          banner.style.display = 'none';
         }
       } catch(e) { console.error('Erro ao carregar banner:', e); }
     }
 
     // Fechar banner
     window.fecharBanner = function() {
-      document.getElementById('admin-banner').style.display = 'none';
+      const banner = document.getElementById('admin-banner');
+      if (banner) banner.style.display = 'none';
     }
 
     // Carregar configurações do mouse
@@ -1119,18 +1162,38 @@
       try {
         const snapshot = await get(ref(database, 'admin/mouse'));
         const config = snapshot.val();
-        if (config && config.active && isAdmin()) {
+        console.log('Mouse config carregada:', config);
+        
+        if (config && config.active === true && isAdmin()) {
           const cursorStyle = config.type === 'custom' ? `url('${config.customUrl}'), auto` : config.type;
           document.body.style.cursor = cursorStyle;
+          console.log('Mouse personalizado aplicado:', cursorStyle);
         } else {
           document.body.style.cursor = 'auto';
         }
       } catch(e) { console.error('Erro ao carregar mouse:', e); }
     }
 
-    // Funções globais
-    window.goToAdmin = function() {
-      window.location.href = 'admin.html';
+    // Adicionar link do admin no header se for admin
+    function addAdminLink() {
+      if (isAdmin()) {
+        const userInfoDiv = document.getElementById('user-info');
+        if (userInfoDiv && !document.getElementById('admin-link-btn')) {
+          const adminLink = document.createElement('a');
+          adminLink.id = 'admin-link-btn';
+          adminLink.href = '#';
+          adminLink.onclick = (e) => { e.preventDefault(); window.location.href = 'admin.html'; };
+          adminLink.innerHTML = '👑 Admin';
+          adminLink.className = 'admin-link';
+          // Inserir antes do span do username
+          const usernameSpan = document.getElementById('username');
+          if (usernameSpan) {
+            userInfoDiv.insertBefore(adminLink, usernameSpan);
+          } else {
+            userInfoDiv.appendChild(adminLink);
+          }
+        }
+      }
     }
 
     // Inicialização do Firebase Auth
@@ -1139,42 +1202,41 @@
       
       userData = { username: user.email?.split('@')[0] || 'usuário', email: user.email || '', uid: user.uid, displayName: user.displayName || user.email?.split('@')[0] || 'usuário' };
       
-      document.getElementById('username').textContent = userData.displayName;
+      const usernameSpan = document.getElementById('username');
+      if (usernameSpan) usernameSpan.textContent = userData.displayName;
       
-      // Adicionar link para admin se for admin
-      if (isAdmin()) {
-        const userInfoDiv = document.querySelector('.user-info');
-        const adminLink = document.createElement('a');
-        adminLink.href = '#';
-        adminLink.onclick = (e) => { e.preventDefault(); window.location.href = 'admin.html'; };
-        adminLink.innerHTML = '👑 Admin';
-        adminLink.style.cssText = 'background:rgba(255,255,255,0.2); padding:5px 12px; border-radius:20px; font-size:12px; text-decoration:none; color:white;';
-        userInfoDiv.insertBefore(adminLink, document.getElementById('username'));
-      }
+      // Adicionar link do admin
+      addAdminLink();
       
-      document.getElementById('deviceNameDisplay').textContent = deviceName;
-      document.getElementById('deviceIdDisplay').textContent = currentDeviceId.substring(0, 20)+'...';
+      const deviceNameSpan = document.getElementById('deviceNameDisplay');
+      if (deviceNameSpan) deviceNameSpan.textContent = deviceName;
+      const deviceIdSpan = document.getElementById('deviceIdDisplay');
+      if (deviceIdSpan) deviceIdSpan.textContent = currentDeviceId.substring(0, 20)+'...';
       
       deviceIP = await getPublicIP();
-      document.getElementById('ipDisplay').textContent = deviceIP;
+      const ipSpan = document.getElementById('ipDisplay');
+      if (ipSpan) ipSpan.textContent = deviceIP;
       
       const savedAutoSync = localStorage.getItem('autoSyncEnabled') !== 'false';
-      document.getElementById('autoSyncToggle').checked = savedAutoSync;
+      const autoSyncToggle = document.getElementById('autoSyncToggle');
+      if (autoSyncToggle) autoSyncToggle.checked = savedAutoSync;
       autoSyncEnabled = savedAutoSync;
       
       await importarDados();
       if(autoSyncEnabled) startAutoSync();
       loadProjects(user.uid);
-      loadBannerConfig();
-      loadMouseConfig();
+      
+      // Carregar banner e mouse
+      await loadBannerConfig();
+      await loadMouseConfig();
       
       setInterval(() => updateDeviceList(), 5000);
       setTimeout(() => updateDeviceList(), 1000);
     });
 
     function checkCookies() { if(localStorage.getItem('cookiesAccepted') === null) document.getElementById('cookie-banner').style.display = 'flex'; }
-    window.acceptCookies = function() { localStorage.setItem('cookiesAccepted','true'); document.getElementById('cookie-banner').style.display='none'; if(typeof gtag!=='undefined') gtag('consent','update',{'analytics_storage':'granted'}); }
-    window.rejectCookies = function() { localStorage.setItem('cookiesAccepted','false'); document.getElementById('cookie-banner').style.display='none'; if(typeof gtag!=='undefined') gtag('consent','update',{'analytics_storage':'denied'}); }
+    window.acceptCookies = function() { localStorage.setItem('cookiesAccepted','true'); const banner = document.getElementById('cookie-banner'); if (banner) banner.style.display='none'; if(typeof gtag!=='undefined') gtag('consent','update',{'analytics_storage':'granted'}); }
+    window.rejectCookies = function() { localStorage.setItem('cookiesAccepted','false'); const banner = document.getElementById('cookie-banner'); if (banner) banner.style.display='none'; if(typeof gtag!=='undefined') gtag('consent','update',{'analytics_storage':'denied'}); }
     checkCookies();
   </script>
 </body>
