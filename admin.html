@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeHUB - Painel Admin</title>
+  <title>CodeHUB - Painel do Empreendedor</title>
   <style>
     * {
       margin: 0;
@@ -37,6 +37,13 @@
 
     .header h1 {
       font-size: 28px;
+    }
+
+    .empresa-info {
+      background: rgba(255,255,255,0.2);
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 14px;
     }
 
     .back-btn {
@@ -124,6 +131,16 @@
       cursor: not-allowed;
     }
 
+    .btn-danger {
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
     .accounts-table {
       width: 100%;
       overflow-x: auto;
@@ -145,7 +162,7 @@
       font-weight: 600;
     }
 
-    .copy-btn, .login-btn {
+    .copy-btn, .login-btn, .delete-btn {
       background: #4CAF50;
       color: white;
       border: none;
@@ -159,9 +176,21 @@
       background: #2196F3;
     }
 
+    .delete-btn {
+      background: #f44336;
+    }
+
     .quota-warning {
       background: #fff3cd;
       border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+
+    .quota-success {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
       padding: 15px;
       margin-bottom: 20px;
       border-radius: 8px;
@@ -235,17 +264,48 @@
 
     .cursor-example {
       display: inline-block;
-      padding: 10px 20px;
+      padding: 20px 40px;
       background: #f0f0f0;
       border-radius: 8px;
       margin-top: 10px;
+      text-align: center;
+    }
+
+    .code-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .user-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 768px) {
+      .tabs { flex-direction: column; }
+      .user-card { flex-direction: column; gap: 10px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>👑 Painel Administrador CodeHUB</h1>
+      <div>
+        <h1>🏢 Painel do Empreendedor</h1>
+        <div class="empresa-info" id="empresa-info">Carregando...</div>
+      </div>
       <button class="back-btn" onclick="window.location.href='index.html'">← Voltar ao Editor</button>
     </div>
 
@@ -256,52 +316,64 @@
         <div>Limite: 5/mês</div>
       </div>
       <div class="stat-card">
-        <div>👥 Total de Usuários</div>
+        <div>👥 Usuários na plataforma</div>
         <div class="stat-number" id="totalUsers">-</div>
       </div>
       <div class="stat-card">
-        <div>📁 Projetos</div>
+        <div>📁 Projetos criados</div>
         <div class="stat-number" id="totalProjects">-</div>
+      </div>
+      <div class="stat-card">
+        <div>🎟️ Contas restantes</div>
+        <div class="stat-number" id="remainingAccounts">-</div>
       </div>
     </div>
 
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('contas')">➕ Gerar Contas</button>
-      <button class="tab" onclick="switchTab('listar')">📋 Contas Geradas</button>
-      <button class="tab" onclick="switchTab('banner')">🎨 Banner Personalizado</button>
-      <button class="tab" onclick="switchTab('mouse')">🖱️ Mouse Personalizado</button>
+      <button class="tab active" onclick="switchTab('gerar')">➕ Gerar Contas</button>
+      <button class="tab" onclick="switchTab('usuarios')">👥 Usuários</button>
+      <button class="tab" onclick="switchTab('banner')">🎨 Banner</button>
+      <button class="tab" onclick="switchTab('mouse')">🖱️ Mouse</button>
+      <button class="tab" onclick="switchTab('codigo')">📜 Código de Embed</button>
     </div>
 
-    <!-- Painel Gerar Contas -->
-    <div id="panel-contas" class="panel active">
-      <h2>➕ Gerar Nova Conta</h2>
+    <!-- PAINEL GERAR CONTAS -->
+    <div id="panel-gerar" class="panel active">
+      <h2>➕ Gerar Nova Conta de Usuário</h2>
       <div id="quota-info" class="quota-warning">
         Carregando informações...
       </div>
       <button id="generate-btn" class="btn-primary" onclick="gerarNovaConta()">
-        🚀 Gerar Nova Conta (até 5/mês)
+        🚀 Gerar Nova Conta
       </button>
       <div id="last-account" style="margin-top: 20px;"></div>
-    </div>
-
-    <!-- Painel Listar Contas -->
-    <div id="panel-listar" class="panel">
-      <h2>📋 Contas Geradas pelo Google Script</h2>
+      
+      <h3 style="margin-top: 30px;">📋 Histórico de Contas Geradas</h3>
       <div class="accounts-table">
         <table>
           <thead>
-            <tr><th>Email</th><th>Senha</th><th>UID</th><th>Ações</th></tr>
+            <tr><th>Email</th><th>Senha</th><th>Data</th><th>Status</th><th>Ações</th></tr>
           </thead>
           <tbody id="accounts-list">
-            <tr><td colspan="4" style="text-align: center;">Carregando...</td></tr>
+            <tr><td colspan="5" style="text-align: center;">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Painel Banner -->
+    <!-- PAINEL USUÁRIOS -->
+    <div id="panel-usuarios" class="panel">
+      <h2>👥 Usuários da Plataforma</h2>
+      <div id="users-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- PAINEL BANNER -->
     <div id="panel-banner" class="panel">
-      <h2>🎨 Configurar Banner Personalizado</h2>
+      <h2>🎨 Banner Personalizado</h2>
+      <p>Configure um banner que aparecerá para TODOS os usuários da plataforma.</p>
+      
       <form id="banner-form">
         <div class="form-group">
           <label>Ativar Banner</label>
@@ -312,26 +384,33 @@
           <textarea id="banner-text" rows="3" placeholder="Digite o texto do banner..."></textarea>
         </div>
         <div class="form-group">
-          <label>Link (opcional)</label>
+          <label>Link (opcional - ao clicar no banner)</label>
           <input type="url" id="banner-link" placeholder="https://...">
         </div>
         <div class="form-group">
           <label>Cor de Fundo</label>
           <input type="color" id="banner-bgcolor" value="#667eea">
         </div>
+        <div class="form-group">
+          <label>Cor do Texto</label>
+          <input type="color" id="banner-textcolor" value="#ffffff">
+        </div>
         <button type="submit" class="btn-primary">💾 Salvar Banner</button>
       </form>
-      <div style="margin-top: 20px;">
-        <h3>Prévia:</h3>
-        <div id="banner-preview" style="background: #667eea; color: white; padding: 15px; border-radius: 8px; margin-top: 10px;">
+      
+      <div style="margin-top: 30px;">
+        <h3>📱 Prévia:</h3>
+        <div id="banner-preview" style="background: #667eea; color: white; padding: 15px; border-radius: 8px; margin-top: 10px; text-align: center;">
           Exemplo de banner
         </div>
       </div>
     </div>
 
-    <!-- Painel Mouse -->
+    <!-- PAINEL MOUSE -->
     <div id="panel-mouse" class="panel">
-      <h2>🖱️ Configurar Mouse Personalizado</h2>
+      <h2>🖱️ Mouse Personalizado</h2>
+      <p>Configure um cursor personalizado que aparecerá para TODOS os usuários.</p>
+      
       <form id="mouse-form">
         <div class="form-group">
           <label>Ativar Mouse Personalizado</label>
@@ -353,15 +432,42 @@
         </div>
         <div class="form-group" id="cursor-url-group" style="display: none;">
           <label>URL do Cursor Personalizado</label>
-          <input type="url" id="cursor-url" placeholder="https://... .cur ou .png">
+          <input type="url" id="cursor-url" placeholder="https://exemplo.com/cursor.cur">
           <small>Use arquivos .cur ou .png (32x32 recomendado)</small>
         </div>
         <button type="submit" class="btn-primary">💾 Salvar Mouse</button>
       </form>
-      <div style="margin-top: 20px;">
-        <h3>Prévia:</h3>
+      
+      <div style="margin-top: 30px;">
+        <h3>🖱️ Prévia:</h3>
         <div id="mouse-preview" class="cursor-example">
-          Passe o mouse aqui para testar
+          Passe o mouse aqui para testar o cursor
+        </div>
+      </div>
+    </div>
+
+    <!-- PAINEL CÓDIGO DE EMBED -->
+    <div id="panel-codigo" class="panel">
+      <h2>📜 Código de Embed</h2>
+      <p>Copie o código abaixo para incorporar o editor CodeHUB no seu site.</p>
+      
+      <div class="form-group">
+        <label>Seu ID de Empreendedor</label>
+        <input type="text" id="embed-owner-id" readonly>
+      </div>
+      
+      <div class="form-group">
+        <label>Código de Embed</label>
+        <div class="code-block" id="embed-code">
+          Carregando...
+        </div>
+        <button class="btn-primary" onclick="copiarEmbed()" style="margin-top: 10px;">📋 Copiar Código</button>
+      </div>
+      
+      <div class="form-group">
+        <label>Exemplo de uso:</label>
+        <div class="code-block">
+          &lt;iframe src="https://seu-site.com/embed.html?owner=SEU_ID" width="100%" height="600" frameborder="0"&gt;&lt;/iframe&gt;
         </div>
       </div>
     </div>
@@ -371,8 +477,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, get, set, push, remove, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -390,6 +496,8 @@
 
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKCEdhxFayijLW3GafXV5yN2dZ-vUeR4AcZdrpjeGT1eThFDBLlYF_C6wcpYa9Lmyv7w/exec';
 
+    let userAtual = null;
+    let empresaData = null;
     let contasGeradas = [];
 
     function showMessage(text, type = 'info') {
@@ -400,9 +508,11 @@
       setTimeout(() => { msg.style.display = 'none'; }, 3000);
     }
 
-    // Gerar nova conta via Google Script
+    // GERAR NOVA CONTA via Google Script
     window.gerarNovaConta = async function() {
       const btn = document.getElementById('generate-btn');
+      const quotaInfo = document.getElementById('quota-info');
+      
       btn.disabled = true;
       btn.innerHTML = '⏳ Gerando...';
       
@@ -410,32 +520,32 @@
         const response = await fetch(`${SCRIPT_URL}?action=newaccount&_=${Date.now()}`);
         const data = await response.json();
         
-        if (data.success || data.email) {
+        if (data.email || data.conta?.email) {
           const email = data.email || data.conta?.email;
           const password = data.password || data.conta?.senha;
           const uid = data.uid;
           
-          // Salvar no Firebase para tracking
+          // Salvar no Firebase
           const contasRef = ref(database, `admin/contas_geradas/${Date.now()}`);
           await set(contasRef, {
             email: email,
             password: password,
             uid: uid,
             createdAt: Date.now(),
+            createdBy: userAtual?.uid,
             used: false
           });
           
-          showMessage(`✅ Conta gerada! Email: ${email} | Senha: ${password}`, 'success');
+          showMessage(`✅ Conta criada! Email: ${email} | Senha: ${password}`, 'success');
           
           const lastAccountDiv = document.getElementById('last-account');
           lastAccountDiv.innerHTML = `
             <div style="background: #e8f5e9; padding: 15px; border-radius: 8px;">
               <strong>✅ Última conta gerada:</strong><br>
-              Email: ${email}<br>
-              Senha: ${password}<br>
-              <button class="copy-btn" onclick="copyToClipboard('${email}')">Copiar Email</button>
-              <button class="copy-btn" onclick="copyToClipboard('${password}')">Copiar Senha</button>
-              <button class="login-btn" onclick="loginComConta('${email}', '${password}')">Fazer Login</button>
+              📧 Email: <code>${email}</code><br>
+              🔑 Senha: <code>${password}</code><br>
+              <button class="copy-btn" onclick="copyToClipboard('${email}')">📧 Copiar Email</button>
+              <button class="copy-btn" onclick="copyToClipboard('${password}')">🔑 Copiar Senha</button>
             </div>
           `;
           
@@ -449,55 +559,72 @@
       }
       
       btn.disabled = false;
-      btn.innerHTML = '🚀 Gerar Nova Conta (até 5/mês)';
+      btn.innerHTML = '🚀 Gerar Nova Conta';
     };
 
-    // Carregar contas geradas do Firebase
+    // Carregar contas geradas
     async function carregarContasGeradas() {
       try {
         const snapshot = await get(ref(database, 'admin/contas_geradas'));
         const contas = snapshot.val() || {};
-        contasGeradas = Object.entries(contas).map(([id, c]) => ({ id, ...c }));
+        contasGeradas = Object.entries(contas).map(([id, c]) => ({ id, ...c })).sort((a,b) => b.createdAt - a.createdAt);
         
         const tbody = document.getElementById('accounts-list');
         if (contasGeradas.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhuma conta gerada ainda</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma conta gerada ainda</td></tr>';
           return;
         }
         
         tbody.innerHTML = contasGeradas.map(c => `
           <tr>
             <td>${c.email || 'N/A'}</td>
-            <td>${c.password || '******'}</td>
-            <td>${c.uid ? c.uid.substring(0, 15)+'...' : 'N/A'}</td>
+            <td><code>${c.password || '******'}</code></td>
+            <td>${new Date(c.createdAt).toLocaleDateString()}</td>
+            <td>${c.used ? '✅ Usada' : '🆕 Disponível'}</td>
             <td>
               <button class="copy-btn" onclick="copyToClipboard('${c.email}')">📧</button>
               <button class="copy-btn" onclick="copyToClipboard('${c.password}')">🔑</button>
-              <button class="login-btn" onclick="loginComConta('${c.email}', '${c.password}')">🔌</button>
             </td>
           </tr>
         `).join('');
       } catch(e) {
-        console.error('Erro ao carregar contas:', e);
+        console.error('Erro:', e);
       }
     }
 
-    // Login com conta gerada
-    window.loginComConta = async function(email, password) {
+    // Carregar usuários da plataforma
+    async function carregarUsuarios() {
       try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        showMessage(`✅ Login realizado! Bem-vindo ${userCredential.user.email}`, 'success');
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 1500);
+        const snapshot = await get(ref(database, 'users'));
+        const users = snapshot.val() || {};
+        
+        const container = document.getElementById('users-list');
+        if (Object.keys(users).length === 0) {
+          container.innerHTML = '<p style="text-align:center; color:#999;">Nenhum usuário encontrado</p>';
+          return;
+        }
+        
+        container.innerHTML = Object.entries(users).map(([uid, user]) => `
+          <div class="user-card">
+            <div>
+              <strong>${user.username || user.email || 'Sem nome'}</strong><br>
+              <small>📧 ${user.email || 'N/A'}</small><br>
+              <small>🏷️ Tipo: ${user.userType === 'entrepreneur' ? '👑 Empreendedor' : '👤 Normal'}</small><br>
+              <small>📅 Criado: ${new Date(user.createdAt).toLocaleDateString()}</small>
+            </div>
+            <div>
+              <small>🆔 ${uid.substring(0, 15)}...</small>
+            </div>
+          </div>
+        `).join('');
       } catch(e) {
-        showMessage('Erro no login: ' + e.message, 'error');
+        console.error('Erro:', e);
       }
-    };
+    }
 
     window.copyToClipboard = function(text) {
       navigator.clipboard.writeText(text);
-      showMessage('Copiado!', 'success');
+      showMessage('✅ Copiado!', 'success');
     };
 
     // Salvar configuração do banner
@@ -507,12 +634,14 @@
         text: document.getElementById('banner-text').value,
         link: document.getElementById('banner-link').value,
         bgColor: document.getElementById('banner-bgcolor').value,
+        textColor: document.getElementById('banner-textcolor').value,
+        updatedBy: userAtual?.uid,
         updatedAt: Date.now()
       };
       
       try {
-        await set(ref(database, 'admin/banner'), config);
-        showMessage('Banner salvo!', 'success');
+        await set(ref(database, 'config/banner'), config);
+        showMessage('✅ Banner salvo com sucesso!', 'success');
         atualizarPreviewBanner();
       } catch(e) {
         showMessage('Erro: ' + e.message, 'error');
@@ -525,12 +654,13 @@
         active: document.getElementById('mouse-active').checked,
         type: document.getElementById('mouse-type').value,
         customUrl: document.getElementById('cursor-url').value,
+        updatedBy: userAtual?.uid,
         updatedAt: Date.now()
       };
       
       try {
-        await set(ref(database, 'admin/mouse'), config);
-        showMessage('Mouse salvo!', 'success');
+        await set(ref(database, 'config/mouse'), config);
+        showMessage('✅ Mouse salvo com sucesso!', 'success');
         atualizarPreviewMouse(config);
       } catch(e) {
         showMessage('Erro: ' + e.message, 'error');
@@ -541,8 +671,8 @@
     async function carregarConfiguracoes() {
       try {
         const [bannerSnap, mouseSnap] = await Promise.all([
-          get(ref(database, 'admin/banner')),
-          get(ref(database, 'admin/mouse'))
+          get(ref(database, 'config/banner')),
+          get(ref(database, 'config/mouse'))
         ]);
         
         const banner = bannerSnap.val() || {};
@@ -550,6 +680,7 @@
         document.getElementById('banner-text').value = banner.text || '';
         document.getElementById('banner-link').value = banner.link || '';
         document.getElementById('banner-bgcolor').value = banner.bgColor || '#667eea';
+        document.getElementById('banner-textcolor').value = banner.textColor || '#ffffff';
         atualizarPreviewBanner();
         
         const mouse = mouseSnap.val() || {};
@@ -558,17 +689,17 @@
         document.getElementById('cursor-url').value = mouse.customUrl || '';
         atualizarPreviewMouse(mouse);
         
-        // Mostrar/esconder campo de URL customizada
         document.getElementById('cursor-url-group').style.display = 
           document.getElementById('mouse-type').value === 'custom' ? 'block' : 'none';
       } catch(e) {
-        console.error('Erro ao carregar configurações:', e);
+        console.error('Erro:', e);
       }
     }
 
     function atualizarPreviewBanner() {
       const preview = document.getElementById('banner-preview');
       preview.style.background = document.getElementById('banner-bgcolor').value;
+      preview.style.color = document.getElementById('banner-textcolor').value;
       preview.innerHTML = document.getElementById('banner-text').value || 'Texto do banner aparecerá aqui';
     }
 
@@ -603,18 +734,70 @@
           }
         });
         
-        document.getElementById('monthCount').textContent = contasMes;
-        document.getElementById('totalUsers').textContent = Object.keys(usersSnap.val() || {}).length;
+        const totalUsers = Object.keys(usersSnap.val() || {}).length;
         
         let totalProjetos = 0;
-        Object.values(projectsSnap.val() || {}).forEach(p => {
+        const projects = projectsSnap.val() || {};
+        Object.values(projects).forEach(p => {
           totalProjetos += Object.keys(p).length;
         });
+        
+        document.getElementById('monthCount').textContent = contasMes;
+        document.getElementById('totalUsers').textContent = totalUsers;
         document.getElementById('totalProjects').textContent = totalProjetos;
+        document.getElementById('remainingAccounts').textContent = Math.max(0, 5 - contasMes);
+        
+        // Atualizar cor da quota
+        const quotaDiv = document.getElementById('quota-info');
+        if (contasMes >= 5) {
+          quotaDiv.className = 'quota-warning';
+          quotaDiv.innerHTML = '⚠️ <strong>Limite mensal atingido!</strong> Você já gerou 5 contas este mês. Aguarde o próximo mês para gerar mais.';
+          document.getElementById('generate-btn').disabled = true;
+        } else {
+          quotaDiv.className = 'quota-success';
+          quotaDiv.innerHTML = `✅ <strong>Você ainda pode gerar ${5 - contasMes} conta(s) este mês.</strong> Limite: 5 contas por mês.`;
+          document.getElementById('generate-btn').disabled = false;
+        }
       } catch(e) {
-        console.error('Erro ao carregar stats:', e);
+        console.error('Erro:', e);
       }
     }
+
+    // Carregar dados do empreendedor
+    async function carregarDadosEmpreendedor() {
+      if (!userAtual) return;
+      
+      try {
+        const snapshot = await get(ref(database, `users/${userAtual.uid}`));
+        const userInfo = snapshot.val();
+        
+        if (userInfo?.userType === 'entrepreneur') {
+          empresaData = userInfo;
+          document.getElementById('empresa-info').innerHTML = `
+            🏢 ${userInfo.companyName || 'Sua Empresa'} | CNPJ: ${userInfo.formattedCNPJ || userInfo.cnpj || 'N/A'}
+          `;
+          document.getElementById('embed-owner-id').value = userAtual.uid;
+          
+          // Gerar código de embed
+          const embedCode = `<iframe src="https://${window.location.hostname}/embed.html?owner=${userAtual.uid}" width="100%" height="600" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+          document.getElementById('embed-code').innerHTML = escapeHtml(embedCode);
+        }
+      } catch(e) {
+        console.error('Erro:', e);
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    window.copiarEmbed = function() {
+      const code = document.getElementById('embed-code').innerText;
+      navigator.clipboard.writeText(code);
+      showMessage('✅ Código copiado!', 'success');
+    };
 
     // Switch entre abas
     window.switchTab = function(tab) {
@@ -631,29 +814,58 @@
     
     document.getElementById('banner-text')?.addEventListener('input', atualizarPreviewBanner);
     document.getElementById('banner-bgcolor')?.addEventListener('input', atualizarPreviewBanner);
+    document.getElementById('banner-textcolor')?.addEventListener('input', atualizarPreviewBanner);
     
     document.getElementById('mouse-type')?.addEventListener('change', (e) => {
       document.getElementById('cursor-url-group').style.display = e.target.value === 'custom' ? 'block' : 'none';
     });
 
-    // Inicialização
+    // Sair
+    window.logout = function() {
+      signOut(auth).then(() => {
+        window.location.href = 'auth.html';
+      });
+    };
+
+    // VERIFICAÇÃO PRINCIPAL: Só EMPREENDEDOR acessa
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.href = 'auth.html';
         return;
       }
       
-      // Verificar se é admin
-      const adminEmails = ['alexandre7888@gmail.com', 'admin@codehub.com'];
-      if (!adminEmails.includes(user.email)) {
-        showMessage('Acesso negado. Você não é administrador.', 'error');
-        setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+      userAtual = user;
+      
+      // Buscar tipo de usuário no Firebase
+      const userRef = ref(database, `users/${user.uid}`);
+      const snapshot = await get(userRef);
+      const userInfo = snapshot.val();
+      
+      // Só empreendedor pode acessar
+      if (userInfo?.userType !== 'entrepreneur') {
+        showMessage('❌ Acesso negado! Apenas usuários EMPREENDEDOR podem acessar o painel administrativo.', 'error');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 2000);
         return;
       }
       
+      // Carregar tudo
+      await carregarDadosEmpreendedor();
       carregarConfiguracoes();
       carregarContasGeradas();
+      carregarUsuarios();
       carregarStats();
+      
+      // Atualizar em tempo real
+      const contasRef = ref(database, 'admin/contas_geradas');
+      onValue(contasRef, () => {
+        carregarContasGeradas();
+        carregarStats();
+      });
+      
+      const usersRef = ref(database, 'users');
+      onValue(usersRef, () => carregarUsuarios());
     });
   </script>
 </body>
