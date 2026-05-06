@@ -100,10 +100,39 @@
       --discord-color: #5865F2;
     }
 
+    /* Banner personalizado do admin */
+    .admin-banner {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: none;
+    }
+    .admin-banner:hover {
+      transform: scale(1.01);
+    }
+    .admin-banner .close-banner {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      background: rgba(0,0,0,0.3);
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+    }
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      cursor: inherit;
     }
 
     body {
@@ -670,6 +699,15 @@
       border: 1px solid white;
     }
 
+    /* Admin link */
+    .admin-link {
+      background: rgba(255,255,255,0.2);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+
     @media (max-width: 768px) {
       .projects-grid { grid-template-columns: 1fr; }
       .project-actions { flex-direction: column; }
@@ -688,6 +726,12 @@
   </div>
 
   <div id="app-content">
+    <!-- Banner do Administrador (só aparece se configurado) -->
+    <div id="admin-banner" class="admin-banner" style="display: none;">
+      <span id="banner-text"></span>
+      <button class="close-banner" onclick="fecharBanner()">✕</button>
+    </div>
+
     <header>
       <div class="header-content">
         <div class="logo-area">
@@ -816,19 +860,11 @@
       setTimeout(() => { loadingScreen.style.display = 'none'; appContent.style.display = 'block'; clearInterval(loaderInterval); }, 500);
     }
 
-    // Obter nome do dispositivo
     function getDeviceName() {
       const nav = navigator;
       let nome = '';
-      
-      if (nav.userAgentData && nav.userAgentData.platform) {
-        nome = nav.userAgentData.platform;
-      }
-      
-      if (nav.platform) {
-        nome = nav.platform;
-      }
-      
+      if (nav.userAgentData && nav.userAgentData.platform) nome = nav.userAgentData.platform;
+      if (nav.platform) nome = nav.platform;
       const userAgent = nav.userAgent;
       if (userAgent.includes('Windows')) nome = 'Windows PC';
       else if (userAgent.includes('Mac')) nome = 'Mac';
@@ -837,17 +873,13 @@
       else if (userAgent.includes('iPad')) nome = 'iPad';
       else if (userAgent.includes('Linux')) nome = 'Linux';
       else nome = 'Computador';
-      
-      // Adicionar navegador
       if (userAgent.includes('Chrome')) nome += ' (Chrome)';
       else if (userAgent.includes('Firefox')) nome += ' (Firefox)';
       else if (userAgent.includes('Safari')) nome += ' (Safari)';
       else if (userAgent.includes('Edge')) nome += ' (Edge)';
-      
       return nome;
     }
 
-    // Obter IP público
     async function getPublicIP() {
       try {
         const response = await fetch('https://api.ipify.org?format=json');
@@ -872,26 +904,21 @@
     currentDeviceId = getDeviceId();
     deviceName = getDeviceName();
 
-    // Coletar TUDO e calcular tamanho
     function coletarTudo() {
       const dados = { ls: {}, ss: {}, ck: {}, ts: Date.now(), deviceName: deviceName, deviceIP: deviceIP };
-      
       let totalSize = 0;
-      
       for(let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         const value = localStorage.getItem(key);
         dados.ls[key] = value;
         totalSize += (key.length + (value?.length || 0)) * 2;
       }
-      
       for(let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i);
         const value = sessionStorage.getItem(key);
         dados.ss[key] = value;
         totalSize += (key.length + (value?.length || 0)) * 2;
       }
-      
       const cookies = document.cookie.split(';');
       for(let i = 0; i < cookies.length; i++) {
         if(cookies[i].trim()) {
@@ -900,7 +927,6 @@
           totalSize += (name.length + (value?.length || 0)) * 2;
         }
       }
-      
       return { dados, totalSize };
     }
 
@@ -929,73 +955,44 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // Exportar dados para o servidor
     async function exportarDados() {
       if(!userData || restaurando) return false;
       try {
         const { dados, totalSize } = coletarTudo();
         const hashAtual = gerarHash(dados);
-        
         const encoded = encode64(dados);
         if(!encoded) return false;
-        
         await set(ref(database, `syncData/${userData.uid}`), { 
-          dados: encoded, 
-          hash: hashAtual, 
-          ultimaAtualizacao: Date.now(), 
-          deviceId: currentDeviceId,
-          deviceName: deviceName,
-          deviceIP: deviceIP,
-          storageSize: totalSize,
-          totalLS: Object.keys(dados.ls).length,
-          totalSS: Object.keys(dados.ss).length
+          dados: encoded, hash: hashAtual, ultimaAtualizacao: Date.now(), deviceId: currentDeviceId,
+          deviceName: deviceName, deviceIP: deviceIP, storageSize: totalSize,
+          totalLS: Object.keys(dados.ls).length, totalSS: Object.keys(dados.ss).length
         });
-        
         await set(ref(database, `devices/${userData.uid}/${currentDeviceId}`), { 
-          id: currentDeviceId,
-          name: deviceName,
-          ip: deviceIP,
-          ultimaVez: Date.now(), 
-          userAgent: navigator.userAgent,
-          online: true
+          id: currentDeviceId, name: deviceName, ip: deviceIP, ultimaVez: Date.now(), userAgent: navigator.userAgent, online: true
         });
-        
         ultimoHash = hashAtual;
         document.getElementById('lastSyncDisplay').textContent = new Date().toLocaleTimeString();
         document.getElementById('storageSizeDisplay').textContent = formatBytes(totalSize);
         document.getElementById('lastBackupSize').textContent = formatBytes(totalSize);
-        
         return true;
       } catch(e) { console.error('Erro exportar:', e); return false; }
     }
 
-    // Importar dados do servidor
     async function importarDados() {
       if(!userData || restaurando) return false;
       try {
         const snapshot = await get(ref(database, `syncData/${userData.uid}`));
         const dadosServidor = snapshot.val();
-        
         if(!dadosServidor || !dadosServidor.dados) return false;
-        
         const dadosRestaurados = decode64(dadosServidor.dados);
         if(!dadosRestaurados) return false;
-        
         const hashServidor = dadosServidor.hash;
         const { dados: dadosLocais } = coletarTudo();
         const hashLocal = gerarHash(dadosLocais);
-        
         if(hashServidor !== hashLocal) {
           restaurando = true;
-          
-          for(const key in dadosRestaurados.ls) {
-            if(key !== '_device_id_') localStorage.setItem(key, dadosRestaurados.ls[key]);
-          }
-          
-          for(const key in dadosRestaurados.ss) {
-            sessionStorage.setItem(key, dadosRestaurados.ss[key]);
-          }
-          
+          for(const key in dadosRestaurados.ls) if(key !== '_device_id_') localStorage.setItem(key, dadosRestaurados.ls[key]);
+          for(const key in dadosRestaurados.ss) sessionStorage.setItem(key, dadosRestaurados.ss[key]);
           restaurando = false;
           if(userData) loadProjects(userData.uid);
           return true;
@@ -1006,53 +1003,29 @@
 
     async function cicloCompleto() { await exportarDados(); await importarDados(); }
 
-    // Atualizar lista de dispositivos
     async function updateDeviceList() {
       if(!userData) return;
       try {
         const snapshot = await get(ref(database, `devices/${userData.uid}`));
         const devices = snapshot.val() || {};
-        const deviceCount = Object.keys(devices).length;
-        document.getElementById('deviceCount').textContent = deviceCount;
-        
+        document.getElementById('deviceCount').textContent = Object.keys(devices).length;
         const deviceListDiv = document.getElementById('deviceList');
         deviceListDiv.innerHTML = '';
-        
         for (const [id, device] of Object.entries(devices)) {
           const div = document.createElement('div');
           div.className = 'device-item';
           const isOnline = device.ultimaVez && (Date.now() - device.ultimaVez < 60000);
-          div.innerHTML = `
-            <span class="status-badge ${isOnline ? 'status-online' : 'status-offline'}" style="${!isOnline ? 'background-color:#999;' : ''}"></span>
-            <strong>${device.name || 'Dispositivo'}</strong><br>
-            <small>IP: ${device.ip || 'unknown'} | ID: ${id.substring(0, 15)}...<br>
-            Última vez: ${device.ultimaVez ? new Date(device.ultimaVez).toLocaleString() : 'Nunca'}</small>
-          `;
+          div.innerHTML = `<span class="status-badge ${isOnline ? 'status-online' : 'status-offline'}" style="${!isOnline ? 'background-color:#999;' : ''}"></span><strong>${device.name || 'Dispositivo'}</strong><br><small>IP: ${device.ip || 'unknown'} | ID: ${id.substring(0, 15)}...<br>Última vez: ${device.ultimaVez ? new Date(device.ultimaVez).toLocaleString() : 'Nunca'}</small>`;
           deviceListDiv.appendChild(div);
         }
-        
-        if (Object.keys(devices).length === 0) {
-          deviceListDiv.innerHTML = '<p style="color:#999; text-align:center;">Nenhum dispositivo conectado</p>';
-        }
+        if (Object.keys(devices).length === 0) deviceListDiv.innerHTML = '<p style="color:#999; text-align:center;">Nenhum dispositivo conectado</p>';
       } catch(e) { console.error('Erro ao listar dispositivos:', e); }
     }
 
-    function startAutoSync() {
-      if(syncInterval) clearInterval(syncInterval);
-      syncInterval = setInterval(() => { if(autoSyncEnabled && userData) cicloCompleto(); }, 2000);
-    }
+    function startAutoSync() { if(syncInterval) clearInterval(syncInterval); syncInterval = setInterval(() => { if(autoSyncEnabled && userData) cicloCompleto(); }, 2000); }
     function stopAutoSync() { autoSyncEnabled = false; if(syncInterval) { clearInterval(syncInterval); syncInterval = null; } }
 
-    window.toggleSidebar = function() {
-      document.getElementById('sidebar').classList.toggle('open');
-      document.getElementById('overlay').classList.toggle('active');
-    }
-    window.toggleAutoSync = function(enabled) {
-      autoSyncEnabled = enabled;
-      localStorage.setItem('autoSyncEnabled', enabled);
-      if(enabled) startAutoSync();
-      else stopAutoSync();
-    }
+    window.toggleSidebar = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); }
 
     function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
     function isValidProjectName(name) { return name && name.trim().length > 0 && name.length <= 50; }
@@ -1078,47 +1051,107 @@
     window.openNewProjectModal = function() { document.getElementById('new-project-modal').style.display = 'block'; document.getElementById('project-name').focus(); }
     window.closeNewProjectModal = function() { document.getElementById('new-project-modal').style.display = 'none'; document.getElementById('project-name').value = ''; }
 
-async function createProject() {
-  const projectName = document.getElementById('project-name').value.trim();
-  const user = auth.currentUser;
-  if(!isValidProjectName(projectName)) { alert('Nome válido (1-50 caracteres)'); return; }
-  try {
-    loadingScreen.style.display = 'flex'; loadingScreen.style.opacity = '1'; appContent.style.display = 'none';
-    const slug = projectName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
-    const newProjectRef = push(ref(database, `projects/${user.uid}`));
-    const projectId = newProjectRef.key;
-    await set(newProjectRef, { 
-      name: projectName, 
-      slug: slug, 
-      owner: userData?.displayName || 'usuário', 
-      ownerId: user.uid, 
-      createdAt: new Date().toISOString(), 
-      updatedAt: new Date().toISOString(), 
-      files: { 
-        // ✅ CORRIGIDO: substituir . por _ nas chaves
-        'index_html': { 
-          name: 'index.html',
-          content: `<!DOCTYPE html><html><head><title>${escapeHtml(projectName)}</title><meta charset="UTF-8"></head><body><h1>${escapeHtml(projectName)}</h1><p>Comece a editar!</p></body></html>`, 
-          language: 'html' 
-        } 
-      } 
-    });
-    closeNewProjectModal();
-    window.location.href = `editor.html?projectId=${projectId}`;
-  } catch(e) { alert('Erro: ' + e.message); showAppContent(); }
-}
+    async function createProject() {
+      const projectName = document.getElementById('project-name').value.trim();
+      const user = auth.currentUser;
+      if(!isValidProjectName(projectName)) { alert('Nome válido (1-50 caracteres)'); return; }
+      try {
+        loadingScreen.style.display = 'flex'; loadingScreen.style.opacity = '1'; appContent.style.display = 'none';
+        const slug = projectName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
+        const newProjectRef = push(ref(database, `projects/${user.uid}`));
+        const projectId = newProjectRef.key;
+        await set(newProjectRef, { 
+          name: projectName, slug: slug, owner: userData?.displayName || 'usuário', ownerId: user.uid,
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+          files: { 'index_html': { name: 'index.html', content: `<!DOCTYPE html><html><head><title>${escapeHtml(projectName)}</title><meta charset="UTF-8"></head><body><h1>${escapeHtml(projectName)}</h1><p>Comece a editar!</p></body></html>`, language: 'html' } }
+        });
+        closeNewProjectModal();
+        window.location.href = `editor.html?projectId=${projectId}`;
+      } catch(e) { alert('Erro: ' + e.message); showAppContent(); }
+    }
 
     window.deleteProject = function(projectId) { if(confirm('Excluir este projeto?')) { const user = auth.currentUser; remove(ref(database, `projects/${user.uid}/${projectId}`)).then(() => alert('Excluído!')); } }
     window.logout = function() { signOut(auth).then(() => window.location.href = 'auth.html'); }
     window.toggleDiscordWidget = function() { const w = document.getElementById('discordWidget'); w.style.display = w.style.display === 'none' || w.style.display === '' ? 'block' : 'none'; }
     document.getElementById('project-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProject(); });
 
+    // ==================== FUNÇÕES DO ADMIN (BANNER E MOUSE) ====================
+    
+    // Verificar se o usuário é administrador
+    function isAdmin() {
+      if (!userData) return false;
+      // Defina aqui os emails dos administradores
+      const adminEmails = ['alexandre7888@gmail.com', 'admin@codehub.com'];
+      return adminEmails.includes(userData.email);
+    }
+
+    // Carregar configurações do banner
+    async function loadBannerConfig() {
+      try {
+        const snapshot = await get(ref(database, 'admin/banner'));
+        const config = snapshot.val();
+        if (config && config.active && isAdmin()) {
+          const banner = document.getElementById('admin-banner');
+          const bannerText = document.getElementById('banner-text');
+          bannerText.innerHTML = config.text || 'Bem-vindo ao CodeHUB!';
+          if (config.link) {
+            banner.style.cursor = 'pointer';
+            banner.onclick = () => window.open(config.link, '_blank');
+          } else {
+            banner.style.cursor = 'default';
+            banner.onclick = null;
+          }
+          if (config.bgColor) banner.style.background = config.bgColor;
+          banner.style.display = 'block';
+        } else {
+          document.getElementById('admin-banner').style.display = 'none';
+        }
+      } catch(e) { console.error('Erro ao carregar banner:', e); }
+    }
+
+    // Fechar banner
+    window.fecharBanner = function() {
+      document.getElementById('admin-banner').style.display = 'none';
+    }
+
+    // Carregar configurações do mouse
+    async function loadMouseConfig() {
+      try {
+        const snapshot = await get(ref(database, 'admin/mouse'));
+        const config = snapshot.val();
+        if (config && config.active && isAdmin()) {
+          const cursorStyle = config.type === 'custom' ? `url('${config.customUrl}'), auto` : config.type;
+          document.body.style.cursor = cursorStyle;
+        } else {
+          document.body.style.cursor = 'auto';
+        }
+      } catch(e) { console.error('Erro ao carregar mouse:', e); }
+    }
+
+    // Funções globais
+    window.goToAdmin = function() {
+      window.location.href = 'admin.html';
+    }
+
+    // Inicialização do Firebase Auth
     onAuthStateChanged(auth, async (user) => {
       if(!user) { window.location.href = 'auth.html'; return; }
       
       userData = { username: user.email?.split('@')[0] || 'usuário', email: user.email || '', uid: user.uid, displayName: user.displayName || user.email?.split('@')[0] || 'usuário' };
       
       document.getElementById('username').textContent = userData.displayName;
+      
+      // Adicionar link para admin se for admin
+      if (isAdmin()) {
+        const userInfoDiv = document.querySelector('.user-info');
+        const adminLink = document.createElement('a');
+        adminLink.href = '#';
+        adminLink.onclick = (e) => { e.preventDefault(); window.location.href = 'admin.html'; };
+        adminLink.innerHTML = '👑 Admin';
+        adminLink.style.cssText = 'background:rgba(255,255,255,0.2); padding:5px 12px; border-radius:20px; font-size:12px; text-decoration:none; color:white;';
+        userInfoDiv.insertBefore(adminLink, document.getElementById('username'));
+      }
+      
       document.getElementById('deviceNameDisplay').textContent = deviceName;
       document.getElementById('deviceIdDisplay').textContent = currentDeviceId.substring(0, 20)+'...';
       
@@ -1132,6 +1165,8 @@ async function createProject() {
       await importarDados();
       if(autoSyncEnabled) startAutoSync();
       loadProjects(user.uid);
+      loadBannerConfig();
+      loadMouseConfig();
       
       setInterval(() => updateDeviceList(), 5000);
       setTimeout(() => updateDeviceList(), 1000);
