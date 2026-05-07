@@ -186,13 +186,6 @@
       font-size: 14px;
     }
 
-    .color-preview {
-      width: 50px;
-      height: 50px;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-
     .message {
       position: fixed;
       bottom: 20px;
@@ -213,50 +206,21 @@
       to { transform: translateX(0); opacity: 1; }
     }
 
-    .loading {
-      text-align: center;
-      padding: 40px;
-    }
-
-    .spinner {
-      border: 4px solid rgba(0,0,0,0.1);
-      border-top: 4px solid #667eea;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
     .cursor-example {
       display: inline-block;
-      padding: 10px 20px;
+      padding: 20px;
       background: #f0f0f0;
       border-radius: 8px;
       margin-top: 10px;
+      text-align: center;
     }
 
-    .status-badge {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 12px;
-      margin-left: 10px;
-    }
-
-    .status-saved {
-      background: #4CAF50;
-      color: white;
-    }
-
-    .status-pending {
-      background: #ff9800;
-      color: white;
+    .banner-preview {
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+      text-align: center;
+      transition: all 0.3s;
     }
   </style>
 </head>
@@ -274,8 +238,9 @@
         <div>Limite: 5/mês</div>
       </div>
       <div class="stat-card">
-        <div>👥 Total de Usuários</div>
-        <div class="stat-number" id="totalUsers">-</div>
+        <div>👥 Contas Geradas</div>
+        <div class="stat-number" id="totalAccounts">0</div>
+        <div>Só elas veem banner/mouse</div>
       </div>
       <div class="stat-card">
         <div>📁 Projetos</div>
@@ -293,8 +258,13 @@
     <!-- Painel Gerar Contas -->
     <div id="panel-contas" class="panel active">
       <h2>➕ Gerar Nova Conta</h2>
-      <div id="quota-info" class="quota-warning">
-        Carregando informações...
+      <div class="quota-warning">
+        <strong>⚠️ IMPORTANTE:</strong> As contas geradas aqui serão marcadas como <strong>"contas administradas"</strong>.
+        <br>✅ <strong>SOMENTE ELAS</strong> verão o banner e mouse personalizado que você configurar!
+        <br>❌ Contas normais (criadas pelo cadastro comum) NÃO verão.
+      </div>
+      <div id="quota-info" style="margin-bottom: 20px; padding: 10px; background: #e3f2fd; border-radius: 8px;">
+        Carregando...
       </div>
       <button id="generate-btn" class="btn-primary" onclick="gerarNovaConta()">
         🚀 Gerar Nova Conta (até 5/mês)
@@ -304,11 +274,12 @@
 
     <!-- Painel Listar Contas -->
     <div id="panel-listar" class="panel">
-      <h2>📋 Contas Geradas pelo Google Script</h2>
+      <h2>📋 Contas Geradas pelo Administrador</h2>
+      <p>✅ <strong>SOMENTE estas contas</strong> verão o banner e mouse personalizado!</p>
       <div class="accounts-table">
         <table>
           <thead>
-            <tr><th>Email</th><th>Senha</th><th>UID</th><th>Ações</th></tr>
+            <tr><th>Email</th><th>Senha</th><th>Criado em</th><th>Ações</th><tr>
           </thead>
           <tbody id="accounts-list">
             <tr><td colspan="4" style="text-align: center;">Carregando...</td></tr>
@@ -320,6 +291,9 @@
     <!-- Painel Banner -->
     <div id="panel-banner" class="panel">
       <h2>🎨 Configurar Banner Personalizado</h2>
+      <div class="quota-warning" style="margin-bottom: 20px;">
+        ⚡ Este banner aparecerá <strong>APENAS para as contas que você gerou</strong> no painel acima!
+      </div>
       <form id="banner-form">
         <div class="form-group">
           <label>📍 Status do Banner</label>
@@ -337,7 +311,7 @@
           <textarea id="banner-text" rows="3" placeholder="Digite o texto do banner..." style="width: 100%;"></textarea>
         </div>
         <div class="form-group">
-          <label>🔗 Link (opcional - ao clicar no banner)</label>
+          <label>🔗 Link (opcional)</label>
           <input type="url" id="banner-link" placeholder="https://exemplo.com" style="width: 100%;">
         </div>
         <div class="form-group">
@@ -347,20 +321,22 @@
             <span id="color-value">#667eea</span>
           </div>
         </div>
-        <button type="button" class="btn-primary" onclick="salvarBanner()">💾 Salvar Banner no Firebase</button>
+        <button type="button" class="btn-primary" onclick="salvarBanner()">💾 Salvar Banner</button>
       </form>
       <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
-        <h3>👁️ Prévia do Banner:</h3>
-        <div id="banner-preview" style="background: #667eea; color: white; padding: 15px; border-radius: 8px; margin-top: 10px; text-align: center;">
-          Exemplo de banner
+        <h3>👁️ Prévia:</h3>
+        <div id="banner-preview" class="banner-preview" style="background: #667eea; color: white;">
+          Exemplo
         </div>
-        <p style="margin-top: 10px; font-size: 12px; color: #666;">O banner aparecerá no topo da página inicial (index.html)</p>
       </div>
     </div>
 
     <!-- Painel Mouse -->
     <div id="panel-mouse" class="panel">
       <h2>🖱️ Configurar Mouse Personalizado</h2>
+      <div class="quota-warning" style="margin-bottom: 20px;">
+        ⚡ Este mouse aparecerá <strong>APENAS para as contas que você gerou</strong> no painel acima!
+      </div>
       <form id="mouse-form">
         <div class="form-group">
           <label>📍 Status do Mouse</label>
@@ -378,30 +354,25 @@
           <select id="mouse-type" style="width: 100%; padding: 10px;">
             <option value="auto">Padrão</option>
             <option value="pointer">Pointer (mão)</option>
-            <option value="grab">Mão Aberta (grab)</option>
-            <option value="grabbing">Mão Fechada (grabbing)</option>
-            <option value="progress">Carregando (progress)</option>
-            <option value="wait">Espera (wait)</option>
-            <option value="crosshair">Mirar (crosshair)</option>
-            <option value="help">Ajuda (help)</option>
-            <option value="text">Texto (text)</option>
-            <option value="move">Mover (move)</option>
-            <option value="zoom-in">Zoom In</option>
-            <option value="zoom-out">Zoom Out</option>
+            <option value="grab">Mão Aberta</option>
+            <option value="grabbing">Mão Fechada</option>
+            <option value="progress">Carregando</option>
+            <option value="wait">Espera</option>
+            <option value="crosshair">Mirar</option>
+            <option value="help">Ajuda</option>
+            <option value="text">Texto</option>
+            <option value="move">Mover</option>
           </select>
         </div>
         <div class="form-group" id="cursor-url-group" style="display: none;">
-          <label>🔗 URL do Cursor Personalizado</label>
-          <input type="url" id="cursor-url" placeholder="https://exemplo.com/cursor.png" style="width: 100%;">
-          <small>Use arquivos .cur, .png ou .svg (32x32 recomendado)</small>
+          <label>🔗 URL do Cursor</label>
+          <input type="url" id="cursor-url" placeholder="https://exemplo.com/cursor.png">
         </div>
-        <button type="button" class="btn-primary" onclick="salvarMouse()">💾 Salvar Mouse no Firebase</button>
+        <button type="button" class="btn-primary" onclick="salvarMouse()">💾 Salvar Mouse</button>
       </form>
       <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
-        <h3>👁️ Testar Mouse:</h3>
-        <div id="mouse-preview" class="cursor-example" style="padding: 20px; background: #e0e0e0; text-align: center; border-radius: 8px;">
-          🖱️ Passe o mouse aqui para testar o cursor
-        </div>
+        <h3>👁️ Teste:</h3>
+        <div id="mouse-preview" class="cursor-example">🖱️ Passe o mouse aqui</div>
       </div>
     </div>
   </div>
@@ -411,7 +382,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, get, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -428,8 +399,6 @@
     const database = getDatabase(app);
 
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKCEdhxFayijLW3GafXV5yN2dZ-vUeR4AcZdrpjeGT1eThFDBLlYF_C6wcpYa9Lmyv7w/exec';
-
-    let contasGeradas = [];
 
     function showMessage(text, type = 'info') {
       const msg = document.getElementById('message');
@@ -452,25 +421,36 @@
         if (data.email || (data.conta && data.conta.email)) {
           const email = data.email || data.conta?.email;
           const password = data.password || data.conta?.senha;
-          const uid = data.uid;
+          const uid = data.uid || 'pending_' + Date.now();
           
-          const contasRef = ref(database, `admin/contas_geradas/${Date.now()}`);
-          await set(contasRef, {
+          // Salvar no Firebase - marcando que é uma conta administrada
+          await set(ref(database, `admin/contas_geradas/${Date.now()}`), {
             email: email,
             password: password,
             uid: uid,
             createdAt: Date.now(),
-            used: false
+            isManagedAccount: true
+          });
+          
+          // Salvar na lista de emails autorizados (só esses verão banner/mouse)
+          const emailKey = email.replace(/\./g, '_');
+          await set(ref(database, `admin/emails_autorizados/${emailKey}`), {
+            email: email,
+            uid: uid,
+            createdAt: Date.now(),
+            hasBannerAccess: true,
+            hasMouseAccess: true
           });
           
           showMessage(`✅ Conta gerada! Email: ${email} | Senha: ${password}`, 'success');
+          showMessage(`🎨 Esta conta verá o banner e mouse que você configurar!`, 'info');
           
-          const lastAccountDiv = document.getElementById('last-account');
-          lastAccountDiv.innerHTML = `
+          document.getElementById('last-account').innerHTML = `
             <div style="background: #e8f5e9; padding: 15px; border-radius: 8px;">
-              <strong>✅ Última conta gerada:</strong><br>
+              <strong>✅ Conta gerada:</strong><br>
               Email: ${email}<br>
               Senha: ${password}<br>
+              <span style="color: #4CAF50;">✅ Esta conta verá banner e mouse personalizado!</span><br><br>
               <button class="copy-btn" onclick="copyToClipboard('${email}')">Copiar Email</button>
               <button class="copy-btn" onclick="copyToClipboard('${password}')">Copiar Senha</button>
               <button class="login-btn" onclick="loginComConta('${email}', '${password}')">Fazer Login</button>
@@ -490,24 +470,23 @@
       btn.innerHTML = '🚀 Gerar Nova Conta (até 5/mês)';
     };
 
-    // Carregar contas geradas do Firebase
     async function carregarContasGeradas() {
       try {
         const snapshot = await get(ref(database, 'admin/contas_geradas'));
         const contas = snapshot.val() || {};
-        contasGeradas = Object.entries(contas).map(([id, c]) => ({ id, ...c }));
+        const contasArray = Object.entries(contas).map(([id, c]) => ({ id, ...c }));
         
         const tbody = document.getElementById('accounts-list');
-        if (contasGeradas.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhuma conta gerada ainda</td></tr>';
+        if (contasArray.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhuma conta gerada</td></tr>';
           return;
         }
         
-        tbody.innerHTML = contasGeradas.map(c => `
+        tbody.innerHTML = contasArray.map(c => `
           <tr>
             <td>${c.email || 'N/A'}</td>
             <td>${c.password || '******'}</td>
-            <td>${c.uid ? c.uid.substring(0, 15)+'...' : 'N/A'}</td>
+            <td>${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'N/A'}</td>
             <td>
               <button class="copy-btn" onclick="copyToClipboard('${c.email}')">📧</button>
               <button class="copy-btn" onclick="copyToClipboard('${c.password}')">🔑</button>
@@ -516,20 +495,17 @@
           </tr>
         `).join('');
       } catch(e) {
-        console.error('Erro ao carregar contas:', e);
+        console.error('Erro:', e);
       }
     }
 
-    // Login com conta gerada
     window.loginComConta = async function(email, password) {
       try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        showMessage(`✅ Login realizado! Bem-vindo ${userCredential.user.email}`, 'success');
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 1500);
+        await signInWithEmailAndPassword(auth, email, password);
+        showMessage(`✅ Login realizado! Esta conta verá banner e mouse configurados.`, 'success');
+        setTimeout(() => { window.location.href = 'index.html'; }, 1500);
       } catch(e) {
-        showMessage('Erro no login: ' + e.message, 'error');
+        showMessage('Erro: ' + e.message, 'error');
       }
     };
 
@@ -538,7 +514,7 @@
       showMessage('Copiado!', 'success');
     };
 
-    // Salvar configuração do banner
+    // Salvar banner
     window.salvarBanner = async function() {
       const isActive = document.getElementById('banner-active').checked;
       const config = {
@@ -546,49 +522,34 @@
         text: document.getElementById('banner-text').value,
         link: document.getElementById('banner-link').value,
         bgColor: document.getElementById('banner-bgcolor').value,
-        updatedAt: Date.now(),
-        updatedBy: auth.currentUser?.email || 'admin'
+        updatedAt: Date.now()
       };
       
       try {
         await set(ref(database, 'admin/banner'), config);
-        showMessage('✅ Banner salvo com sucesso no Firebase!', 'success');
-        
-        // Atualizar prévia
+        showMessage('✅ Banner salvo! As contas geradas verão.', 'success');
         atualizarPreviewBanner();
-        
-        // Mostrar status salvo
-        const bannerPreview = document.getElementById('banner-preview');
-        if (config.active) {
-          bannerPreview.style.background = config.bgColor;
-          bannerPreview.innerHTML = config.text || 'Banner ativo';
-        } else {
-          bannerPreview.innerHTML = 'Banner inativo (não será exibido)';
-        }
       } catch(e) {
-        showMessage('Erro ao salvar banner: ' + e.message, 'error');
+        showMessage('Erro: ' + e.message, 'error');
       }
     };
 
-    // Salvar configuração do mouse
+    // Salvar mouse
     window.salvarMouse = async function() {
       const isActive = document.getElementById('mouse-active').checked;
       const config = {
         active: isActive,
         type: document.getElementById('mouse-type').value,
         customUrl: document.getElementById('cursor-url').value,
-        updatedAt: Date.now(),
-        updatedBy: auth.currentUser?.email || 'admin'
+        updatedAt: Date.now()
       };
       
       try {
         await set(ref(database, 'admin/mouse'), config);
-        showMessage('✅ Mouse salvo com sucesso no Firebase!', 'success');
-        
-        // Atualizar prévia
+        showMessage('✅ Mouse salvo! As contas geradas verão.', 'success');
         atualizarPreviewMouse(config);
       } catch(e) {
-        showMessage('Erro ao salvar mouse: ' + e.message, 'error');
+        showMessage('Erro: ' + e.message, 'error');
       }
     };
 
@@ -597,13 +558,8 @@
       const isActive = document.getElementById('banner-active').checked;
       const bgColor = document.getElementById('banner-bgcolor').value;
       const text = document.getElementById('banner-text').value;
-      
       preview.style.background = bgColor;
-      if (isActive) {
-        preview.innerHTML = text || 'Banner ativo - clique em salvar para aplicar';
-      } else {
-        preview.innerHTML = '⚠️ Banner inativo (marque "Ativo" e clique em salvar)';
-      }
+      preview.innerHTML = isActive ? (text || 'Banner ativo') : '⚠️ Banner inativo';
     }
 
     function atualizarPreviewMouse(config) {
@@ -611,74 +567,45 @@
       if (config.active) {
         const cursorStyle = config.type === 'custom' ? `url('${config.customUrl}'), auto` : config.type;
         preview.style.cursor = cursorStyle;
-        preview.title = `Cursor: ${cursorStyle}`;
       } else {
         preview.style.cursor = 'auto';
-        preview.title = 'Mouse personalizado inativo';
       }
     }
 
-    // Carregar configurações existentes
     async function carregarConfiguracoes() {
       try {
-        // Carregar banner
         const bannerSnap = await get(ref(database, 'admin/banner'));
         const banner = bannerSnap.val();
         if (banner) {
-          if (banner.active) {
-            document.getElementById('banner-active').checked = true;
-          } else {
-            document.getElementById('banner-inactive').checked = true;
-          }
+          if (banner.active) document.getElementById('banner-active').checked = true;
+          else document.getElementById('banner-inactive').checked = true;
           document.getElementById('banner-text').value = banner.text || '';
           document.getElementById('banner-link').value = banner.link || '';
           document.getElementById('banner-bgcolor').value = banner.bgColor || '#667eea';
-          document.getElementById('color-value').textContent = banner.bgColor || '#667eea';
-          
-          // Atualizar prévia
-          const preview = document.getElementById('banner-preview');
-          preview.style.background = banner.bgColor || '#667eea';
-          if (banner.active) {
-            preview.innerHTML = banner.text || 'Banner configurado';
-          } else {
-            preview.innerHTML = 'Banner inativo (marque "Ativo" e salve)';
-          }
+          atualizarPreviewBanner();
         }
         
-        // Carregar mouse
         const mouseSnap = await get(ref(database, 'admin/mouse'));
         const mouse = mouseSnap.val();
         if (mouse) {
-          if (mouse.active) {
-            document.getElementById('mouse-active').checked = true;
-          } else {
-            document.getElementById('mouse-inactive').checked = true;
-          }
+          if (mouse.active) document.getElementById('mouse-active').checked = true;
+          else document.getElementById('mouse-inactive').checked = true;
           document.getElementById('mouse-type').value = mouse.type || 'auto';
           document.getElementById('cursor-url').value = mouse.customUrl || '';
-          
-          // Mostrar/esconder campo de URL customizada
-          document.getElementById('cursor-url-group').style.display = 
-            mouse.type === 'custom' ? 'block' : 'none';
-          
-          // Atualizar prévia
+          document.getElementById('cursor-url-group').style.display = mouse.type === 'custom' ? 'block' : 'none';
           atualizarPreviewMouse(mouse);
         }
       } catch(e) {
-        console.error('Erro ao carregar configurações:', e);
+        console.error('Erro:', e);
       }
     }
 
-    // Carregar estatísticas
     async function carregarStats() {
       try {
-        const [contasSnap, usersSnap, projectsSnap] = await Promise.all([
-          get(ref(database, 'admin/contas_geradas')),
-          get(ref(database, 'users')),
-          get(ref(database, 'projects'))
-        ]);
-        
+        const contasSnap = await get(ref(database, 'admin/contas_geradas'));
         const contas = contasSnap.val() || {};
+        const totalContas = Object.keys(contas).length;
+        
         const mesAtual = new Date().getMonth();
         const anoAtual = new Date().getFullYear();
         let contasMes = 0;
@@ -686,41 +613,41 @@
         Object.values(contas).forEach(c => {
           if (c.createdAt) {
             const data = new Date(c.createdAt);
-            if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) {
-              contasMes++;
-            }
+            if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) contasMes++;
           }
         });
         
         document.getElementById('monthCount').textContent = contasMes;
-        document.getElementById('totalUsers').textContent = Object.keys(usersSnap.val() || {}).length;
+        document.getElementById('totalAccounts').textContent = totalContas;
         
+        const restantes = 5 - contasMes;
+        document.getElementById('quota-info').innerHTML = `
+          <strong>📊 Status:</strong><br>
+          Contas este mês: ${contasMes}/5<br>
+          ${restantes > 0 ? `✅ Pode gerar mais ${restantes}` : '❌ Limite atingido!'}
+        `;
+        
+        const projectsSnap = await get(ref(database, 'projects'));
         let totalProjetos = 0;
         const projects = projectsSnap.val() || {};
-        Object.values(projects).forEach(p => {
-          totalProjetos += Object.keys(p).length;
-        });
+        Object.values(projects).forEach(p => { totalProjetos += Object.keys(p).length; });
         document.getElementById('totalProjects').textContent = totalProjetos;
       } catch(e) {
-        console.error('Erro ao carregar stats:', e);
+        console.error('Erro:', e);
       }
     }
 
-    // Switch entre abas
     window.switchTab = function(tab) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      
       document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
       document.getElementById(`panel-${tab}`).classList.add('active');
     };
 
-    // Event listeners
     document.getElementById('banner-bgcolor')?.addEventListener('input', (e) => {
       document.getElementById('color-value').textContent = e.target.value;
       atualizarPreviewBanner();
     });
-    
     document.getElementById('banner-text')?.addEventListener('input', atualizarPreviewBanner);
     document.getElementById('banner-active')?.addEventListener('change', atualizarPreviewBanner);
     document.getElementById('banner-inactive')?.addEventListener('change', atualizarPreviewBanner);
@@ -729,17 +656,12 @@
       document.getElementById('cursor-url-group').style.display = e.target.value === 'custom' ? 'block' : 'none';
     });
 
-    // Inicialização
     onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.href = 'auth.html';
-        return;
-      }
+      if (!user) { window.location.href = 'auth.html'; return; }
       
-      // Verificar se é admin
       const adminEmails = ['alexandre7888@gmail.com', 'admin@codehub.com'];
       if (!adminEmails.includes(user.email)) {
-        showMessage('Acesso negado. Você não é administrador.', 'error');
+        showMessage('Acesso negado. Apenas administradores.', 'error');
         setTimeout(() => { window.location.href = 'index.html'; }, 2000);
         return;
       }
