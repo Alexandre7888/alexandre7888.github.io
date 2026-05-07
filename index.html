@@ -100,7 +100,7 @@
       --discord-color: #5865F2;
     }
 
-    /* Banner personalizado do admin - SÓ PARA CONTAS GERADAS */
+    /* Banner personalizado - só para contas administradas */
     .admin-banner {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -180,6 +180,7 @@
       font-size: 1.5rem;
     }
 
+    /* Menu Hamburguer */
     .menu-hamburger {
       background: none;
       border: none;
@@ -199,6 +200,7 @@
       transition: 0.3s;
     }
 
+    /* Sidebar */
     .sidebar {
       position: fixed;
       top: 0;
@@ -737,7 +739,7 @@
   </div>
 
   <div id="app-content">
-    <!-- Banner do Administrador (só para contas geradas pelo admin) -->
+    <!-- Banner do Administrador (só aparece para contas geradas pelo admin) -->
     <div id="admin-banner" class="admin-banner" style="display: none;">
       <span id="banner-text"></span>
       <button class="close-banner" onclick="fecharBanner()">✕</button>
@@ -1118,10 +1120,9 @@
     async function isManagedAccount(email) {
       if (!email) return false;
       try {
-        const emailKey = email.replace(/\./g, '_').replace(/@/g, '_');
+        const emailKey = email.replace(/\./g, '_');
         const snapshot = await get(ref(database, `admin/emails_autorizados/${emailKey}`));
         const autorizado = snapshot.val();
-        console.log('Verificando conta:', email, 'Autorizada:', !!autorizado);
         return !!autorizado;
       } catch(e) {
         console.error('Erro ao verificar conta:', e);
@@ -1132,7 +1133,9 @@
     // Carregar banner (só se for conta administrada)
     async function loadBannerConfig() {
       try {
-        const isManaged = await isManagedAccount(userData?.email);
+        if (!userData) return;
+        
+        const isManaged = await isManagedAccount(userData.email);
         
         if (!isManaged) {
           console.log('Conta normal - sem banner');
@@ -1141,9 +1144,9 @@
           return;
         }
         
-        console.log('Conta administrada - carregando banner');
         const snapshot = await get(ref(database, 'admin/banner'));
         const config = snapshot.val();
+        console.log('Banner para conta administrada:', config);
         
         const banner = document.getElementById('admin-banner');
         const bannerText = document.getElementById('banner-text');
@@ -1169,7 +1172,9 @@
     // Carregar mouse (só se for conta administrada)
     async function loadMouseConfig() {
       try {
-        const isManaged = await isManagedAccount(userData?.email);
+        if (!userData) return;
+        
+        const isManaged = await isManagedAccount(userData.email);
         
         if (!isManaged) {
           console.log('Conta normal - sem mouse personalizado');
@@ -1177,9 +1182,9 @@
           return;
         }
         
-        console.log('Conta administrada - carregando mouse');
         const snapshot = await get(ref(database, 'admin/mouse'));
         const config = snapshot.val();
+        console.log('Mouse para conta administrada:', config);
         
         if (config && config.active === true) {
           let cursorStyle = 'auto';
@@ -1189,7 +1194,7 @@
             cursorStyle = config.type;
           }
           document.body.style.cursor = cursorStyle;
-          console.log('✅ Mouse personalizado aplicado para conta administrada:', cursorStyle);
+          console.log('✅ Mouse personalizado aplicado para conta administrada');
         } else {
           document.body.style.cursor = 'auto';
         }
@@ -1202,7 +1207,7 @@
       if (banner) banner.style.display = 'none';
     }
 
-    // Adicionar link do admin (apenas para admin real)
+    // Adicionar link do admin no header se for admin
     function addAdminLink() {
       const adminEmails = ['alexandre7888@gmail.com', 'admin@codehub.com'];
       if (adminEmails.includes(userData?.email)) {
