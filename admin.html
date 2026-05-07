@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeHUB - Painel Admin</title>
+  <title>CodeHUB - Painel Administrador (Empreendedor)</title>
   <style>
     * {
       margin: 0;
@@ -207,211 +207,235 @@
       background-size: cover;
       background-position: center;
     }
+
+    .access-denied {
+      text-align: center;
+      padding: 60px 20px;
+      background: white;
+      border-radius: 16px;
+    }
+    .access-denied h2 { color: #f44336; margin-bottom: 20px; }
+    .access-denied p { margin-bottom: 20px; color: #666; }
+    .access-denied button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>👑 Painel Administrador CodeHUB</h1>
-      <button class="back-btn" onclick="window.location.href='index.html'">← Voltar ao Editor</button>
-    </div>
+  <div id="access-denied" class="access-denied" style="display: none;">
+    <h2>⛔ Acesso Negado</h2>
+    <p>Este painel é exclusivo para <strong>contas EMPREENDEDOR</strong>.</p>
+    <p>Você fez login como usuário normal.</p>
+    <button onclick="window.location.href='index.html'">Voltar para o Editor</button>
+  </div>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div>📊 Contas este mês</div>
-        <div class="stat-number" id="monthCount">0</div>
-        <div>Limite: 5/mês</div>
+  <div id="admin-content" style="display: none;">
+    <div class="container">
+      <div class="header">
+        <h1>👑 Painel do Empreendedor</h1>
+        <button class="back-btn" onclick="window.location.href='index.html'">← Voltar ao Editor</button>
       </div>
-      <div class="stat-card">
-        <div>👥 Contas Geradas</div>
-        <div class="stat-number" id="totalAccounts">0</div>
-        <div>Só elas veem banner/mouse</div>
-      </div>
-      <div class="stat-card">
-        <div>📁 Projetos</div>
-        <div class="stat-number" id="totalProjects">-</div>
-      </div>
-    </div>
 
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('contas')">➕ Gerar Contas</button>
-      <button class="tab" onclick="switchTab('listar')">📋 Contas Geradas</button>
-      <button class="tab" onclick="switchTab('banner')">🎨 Banner Personalizado</button>
-      <button class="tab" onclick="switchTab('mouse')">🖱️ Mouse Personalizado</button>
-    </div>
-
-    <!-- Painel Gerar Contas -->
-    <div id="panel-contas" class="panel active">
-      <h2>➕ Gerar Nova Conta</h2>
-      <div class="quota-warning">
-        <strong>⚠️ IMPORTANTE:</strong> As contas geradas aqui verão o banner e mouse personalizado!
-      </div>
-      <div id="quota-info" style="margin-bottom: 20px; padding: 10px; background: #e3f2fd; border-radius: 8px;">
-        Carregando...
-      </div>
-      <button id="generate-btn" class="btn-primary" onclick="gerarNovaConta()">
-        🚀 Gerar Nova Conta (até 5/mês)
-      </button>
-      <div id="last-account" style="margin-top: 20px;"></div>
-    </div>
-
-    <!-- Painel Listar Contas -->
-    <div id="panel-listar" class="panel">
-      <h2>📋 Contas Geradas</h2>
-      <div class="accounts-table">
-        <table>
-          <thead><tr><th>Email</th><th>Senha</th><th>Criado em</th><th>Ações</th></tr></thead>
-          <tbody id="accounts-list"><tr><td colspan="4" style="text-align: center;">Carregando...</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Painel Banner -->
-    <div id="panel-banner" class="panel">
-      <h2>🎨 Configurar Banner Personalizado</h2>
-      <div class="quota-warning">⚡ Todas as contas geradas verão este banner!</div>
-      
-      <div class="form-group">
-        <label>📍 Status do Banner</label>
-        <div class="radio-group">
-          <label><input type="radio" name="banner-status" value="active" id="banner-active"> ✅ Ativo</label>
-          <label><input type="radio" name="banner-status" value="inactive" id="banner-inactive"> ❌ Inativo</label>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div>📊 Contas este mês</div>
+          <div class="stat-number" id="monthCount">0</div>
+          <div>Limite: 5/mês</div>
+        </div>
+        <div class="stat-card">
+          <div>👥 Contas Geradas</div>
+          <div class="stat-number" id="totalAccounts">0</div>
+          <div>Só elas veem banner/mouse</div>
+        </div>
+        <div class="stat-card">
+          <div>📁 Projetos</div>
+          <div class="stat-number" id="totalProjects">-</div>
         </div>
       </div>
 
-      <div class="form-group">
-        <label>Tipo de Banner</label>
-        <div class="radio-group">
-          <label><input type="radio" name="banner-type" value="text" id="banner-type-text" checked> 📝 Apenas Texto</label>
-          <label><input type="radio" name="banner-type" value="image" id="banner-type-image"> 🖼️ Imagem Personalizada</label>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('contas')">➕ Gerar Contas</button>
+        <button class="tab" onclick="switchTab('listar')">📋 Contas Geradas</button>
+        <button class="tab" onclick="switchTab('banner')">🎨 Banner Personalizado</button>
+        <button class="tab" onclick="switchTab('mouse')">🖱️ Mouse Personalizado</button>
+      </div>
+
+      <!-- Painel Gerar Contas -->
+      <div id="panel-contas" class="panel active">
+        <h2>➕ Gerar Nova Conta</h2>
+        <div class="quota-warning">
+          <strong>⚠️ IMPORTANTE:</strong> As contas geradas aqui verão o banner e mouse personalizado que você configurar!
+        </div>
+        <div id="quota-info" style="margin-bottom: 20px; padding: 10px; background: #e3f2fd; border-radius: 8px;">
+          Carregando...
+        </div>
+        <button id="generate-btn" class="btn-primary" onclick="gerarNovaConta()">
+          🚀 Gerar Nova Conta (até 5/mês)
+        </button>
+        <div id="last-account" style="margin-top: 20px;"></div>
+      </div>
+
+      <!-- Painel Listar Contas -->
+      <div id="panel-listar" class="panel">
+        <h2>📋 Contas Geradas</h2>
+        <div class="accounts-table">
+          <table>
+            <thead><tr><th>Email</th><th>Senha</th><th>Criado em</th><th>Ações</th></tr></thead>
+            <tbody id="accounts-list"><tr><td colspan="4" style="text-align: center;">Carregando...</td></tr></tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Opção de Texto -->
-      <div id="banner-text-section">
+      <!-- Painel Banner -->
+      <div id="panel-banner" class="panel">
+        <h2>🎨 Configurar Banner Personalizado</h2>
+        <div class="quota-warning">⚡ Todas as contas que você gerar verão este banner!</div>
+        
         <div class="form-group">
-          <label>📝 Texto do Banner</label>
-          <textarea id="banner-text" rows="3" placeholder="Digite o texto do banner..." style="width: 100%;"></textarea>
-        </div>
-        <div class="form-group">
-          <label>🎨 Cor de Fundo</label>
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <input type="color" id="banner-bgcolor" value="#667eea">
-            <span id="color-value">#667eea</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Opção de Imagem -->
-      <div id="banner-image-section" style="display: none;">
-        <div class="form-group">
-          <label>📷 Tipo de Imagem</label>
+          <label>📍 Status do Banner</label>
           <div class="radio-group">
-            <label><input type="radio" name="banner-image-type" value="url" id="banner-image-url-type" checked> 🔗 Link da Imagem</label>
-            <label><input type="radio" name="banner-image-type" value="upload" id="banner-image-upload-type"> 📤 Upload (Base64)</label>
-          </div>
-        </div>
-
-        <div id="banner-url-section">
-          <div class="form-group">
-            <label>🔗 URL da Imagem</label>
-            <input type="url" id="banner-image-url" placeholder="https://exemplo.com/imagem.jpg">
-          </div>
-        </div>
-
-        <div id="banner-upload-section" style="display: none;">
-          <div class="form-group">
-            <label>📤 Selecionar Imagem</label>
-            <input type="file" id="banner-image-file" accept="image/*">
+            <label><input type="radio" name="banner-status" value="active" id="banner-active"> ✅ Ativo</label>
+            <label><input type="radio" name="banner-status" value="inactive" id="banner-inactive"> ❌ Inativo</label>
           </div>
         </div>
 
         <div class="form-group">
-          <label>🔗 Link ao clicar (opcional)</label>
-          <input type="url" id="banner-link" placeholder="https://exemplo.com">
-        </div>
-      </div>
-
-      <button class="btn-primary" onclick="salvarBanner()">💾 Salvar Banner</button>
-
-      <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
-        <h3>👁️ Prévia do Banner:</h3>
-        <div id="banner-preview" class="banner-preview" style="background: #667eea; color: white;">
-          Exemplo de banner
-        </div>
-      </div>
-    </div>
-
-    <!-- Painel Mouse -->
-    <div id="panel-mouse" class="panel">
-      <h2>🖱️ Configurar Mouse Personalizado</h2>
-      <div class="quota-warning">⚡ Todas as contas geradas verão este mouse!</div>
-
-      <div class="form-group">
-        <label>📍 Status do Mouse</label>
-        <div class="radio-group">
-          <label><input type="radio" name="mouse-status" value="active" id="mouse-active"> ✅ Ativo</label>
-          <label><input type="radio" name="mouse-status" value="inactive" id="mouse-inactive"> ❌ Inativo</label>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Tipo de Cursor</label>
-        <div class="radio-group">
-          <label><input type="radio" name="mouse-type-main" value="system" id="mouse-type-system" checked> 🖥️ Sistema (padrão)</label>
-          <label><input type="radio" name="mouse-type-main" value="custom" id="mouse-type-custom"> 🎨 Personalizado</label>
-        </div>
-      </div>
-
-      <div id="mouse-system-section">
-        <div class="form-group">
-          <label>🎨 Estilo do Cursor</label>
-          <select id="mouse-type" style="width: 100%; padding: 10px;">
-            <option value="auto">Padrão</option>
-            <option value="pointer">Pointer (mão)</option>
-            <option value="grab">Mão Aberta</option>
-            <option value="grabbing">Mão Fechada</option>
-            <option value="progress">Carregando</option>
-            <option value="wait">Espera</option>
-            <option value="crosshair">Mirar</option>
-            <option value="help">Ajuda</option>
-            <option value="text">Texto</option>
-            <option value="move">Mover</option>
-          </select>
-        </div>
-      </div>
-
-      <div id="mouse-custom-section" style="display: none;">
-        <div class="form-group">
-          <label>📷 Tipo de Imagem</label>
+          <label>Tipo de Banner</label>
           <div class="radio-group">
-            <label><input type="radio" name="mouse-image-type" value="url" id="mouse-image-url-type" checked> 🔗 Link da Imagem</label>
-            <label><input type="radio" name="mouse-image-type" value="upload" id="mouse-image-upload-type"> 📤 Upload (Base64)</label>
+            <label><input type="radio" name="banner-type" value="text" id="banner-type-text" checked> 📝 Apenas Texto</label>
+            <label><input type="radio" name="banner-type" value="image" id="banner-type-image"> 🖼️ Imagem Personalizada</label>
           </div>
         </div>
 
-        <div id="mouse-url-section">
+        <div id="banner-text-section">
           <div class="form-group">
-            <label>🔗 URL da Imagem do Cursor</label>
-            <input type="url" id="cursor-url" placeholder="https://exemplo.com/cursor.png">
-            <small>Use arquivos .cur, .png (32x32 recomendado)</small>
+            <label>📝 Texto do Banner</label>
+            <textarea id="banner-text" rows="3" placeholder="Digite o texto do banner..." style="width: 100%;"></textarea>
+          </div>
+          <div class="form-group">
+            <label>🎨 Cor de Fundo</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="color" id="banner-bgcolor" value="#667eea">
+              <span id="color-value">#667eea</span>
+            </div>
           </div>
         </div>
 
-        <div id="mouse-upload-section" style="display: none;">
+        <div id="banner-image-section" style="display: none;">
           <div class="form-group">
-            <label>📤 Selecionar Imagem do Cursor</label>
-            <input type="file" id="cursor-file" accept="image/*,.cur">
+            <label>📷 Tipo de Imagem</label>
+            <div class="radio-group">
+              <label><input type="radio" name="banner-image-type" value="url" id="banner-image-url-type" checked> 🔗 Link da Imagem</label>
+              <label><input type="radio" name="banner-image-type" value="upload" id="banner-image-upload-type"> 📤 Upload (Base64)</label>
+            </div>
+          </div>
+
+          <div id="banner-url-section">
+            <div class="form-group">
+              <label>🔗 URL da Imagem</label>
+              <input type="url" id="banner-image-url" placeholder="https://exemplo.com/imagem.jpg">
+            </div>
+          </div>
+
+          <div id="banner-upload-section" style="display: none;">
+            <div class="form-group">
+              <label>📤 Selecionar Imagem</label>
+              <input type="file" id="banner-image-file" accept="image/*">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>🔗 Link ao clicar (opcional)</label>
+            <input type="url" id="banner-link" placeholder="https://exemplo.com">
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="salvarBanner()">💾 Salvar Banner</button>
+
+        <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+          <h3>👁️ Prévia do Banner:</h3>
+          <div id="banner-preview" class="banner-preview" style="background: #667eea; color: white;">
+            Exemplo de banner
           </div>
         </div>
       </div>
 
-      <button class="btn-primary" onclick="salvarMouse()">💾 Salvar Mouse</button>
+      <!-- Painel Mouse -->
+      <div id="panel-mouse" class="panel">
+        <h2>🖱️ Configurar Mouse Personalizado</h2>
+        <div class="quota-warning">⚡ Todas as contas que você gerar verão este mouse!</div>
 
-      <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
-        <h3>👁️ Teste do Mouse:</h3>
-        <div id="mouse-preview" class="cursor-example">
-          🖱️ Passe o mouse aqui para testar o cursor
+        <div class="form-group">
+          <label>📍 Status do Mouse</label>
+          <div class="radio-group">
+            <label><input type="radio" name="mouse-status" value="active" id="mouse-active"> ✅ Ativo</label>
+            <label><input type="radio" name="mouse-status" value="inactive" id="mouse-inactive"> ❌ Inativo</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de Cursor</label>
+          <div class="radio-group">
+            <label><input type="radio" name="mouse-type-main" value="system" id="mouse-type-system" checked> 🖥️ Sistema (padrão)</label>
+            <label><input type="radio" name="mouse-type-main" value="custom" id="mouse-type-custom"> 🎨 Personalizado (imagem)</label>
+          </div>
+        </div>
+
+        <div id="mouse-system-section">
+          <div class="form-group">
+            <label>🎨 Estilo do Cursor</label>
+            <select id="mouse-type" style="width: 100%; padding: 10px;">
+              <option value="auto">Padrão</option>
+              <option value="pointer">Pointer (mão)</option>
+              <option value="grab">Mão Aberta</option>
+              <option value="grabbing">Mão Fechada</option>
+              <option value="progress">Carregando</option>
+              <option value="wait">Espera</option>
+              <option value="crosshair">Mirar</option>
+              <option value="help">Ajuda</option>
+              <option value="text">Texto</option>
+              <option value="move">Mover</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="mouse-custom-section" style="display: none;">
+          <div class="form-group">
+            <label>📷 Tipo de Imagem</label>
+            <div class="radio-group">
+              <label><input type="radio" name="mouse-image-type" value="url" id="mouse-image-url-type" checked> 🔗 Link da Imagem</label>
+              <label><input type="radio" name="mouse-image-type" value="upload" id="mouse-image-upload-type"> 📤 Upload (Base64)</label>
+            </div>
+          </div>
+
+          <div id="mouse-url-section">
+            <div class="form-group">
+              <label>🔗 URL da Imagem do Cursor</label>
+              <input type="url" id="cursor-url" placeholder="https://exemplo.com/cursor.png">
+              <small>Use arquivos .cur, .png (32x32 recomendado)</small>
+            </div>
+          </div>
+
+          <div id="mouse-upload-section" style="display: none;">
+            <div class="form-group">
+              <label>📤 Selecionar Imagem do Cursor</label>
+              <input type="file" id="cursor-file" accept="image/*,.cur">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="salvarMouse()">💾 Salvar Mouse</button>
+
+        <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+          <h3>👁️ Teste do Mouse:</h3>
+          <div id="mouse-preview" class="cursor-example">
+            🖱️ Passe o mouse aqui para testar o cursor
+          </div>
         </div>
       </div>
     </div>
@@ -448,7 +472,6 @@
       setTimeout(() => { msg.style.display = 'none'; }, 3000);
     }
 
-    // Converter arquivo para Base64
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -456,6 +479,18 @@
         reader.onload = () => resolve(reader.result);
         reader.onerror = error => reject(error);
       });
+    }
+
+    // Verificar se o usuário é EMPREENDEDOR
+    async function isEmpreendedor(userId) {
+      try {
+        const snapshot = await get(ref(database, `users/${userId}`));
+        const userData = snapshot.val();
+        return userData?.userType === 'entrepreneur';
+      } catch(e) {
+        console.error('Erro ao verificar tipo de usuário:', e);
+        return false;
+      }
     }
 
     // Gerar nova conta
@@ -640,7 +675,7 @@
       } else {
         const imgUrl = config.imageUrl || config.imageBase64;
         if (imgUrl) {
-          preview.innerHTML = config.link ? '<a href="#" style="color:white;">Clique aqui</a>' : '';
+          preview.innerHTML = '';
           preview.style.backgroundImage = `url('${imgUrl}')`;
           preview.style.backgroundSize = 'cover';
           preview.style.backgroundPosition = 'center';
@@ -686,6 +721,7 @@
             document.getElementById('banner-type-image').checked = true;
             document.getElementById('banner-text-section').style.display = 'none';
             document.getElementById('banner-image-section').style.display = 'block';
+            if (banner.imageUrl) document.getElementById('banner-image-url').value = banner.imageUrl;
           } else {
             document.getElementById('banner-type-text').checked = true;
             document.getElementById('banner-text-section').style.display = 'block';
@@ -694,7 +730,6 @@
             document.getElementById('banner-bgcolor').value = banner.bgColor || '#667eea';
           }
           document.getElementById('banner-link').value = banner.link || '';
-          if (banner.imageUrl) document.getElementById('banner-image-url').value = banner.imageUrl;
           atualizarPreviewBanner(banner);
         }
         
@@ -803,15 +838,26 @@
       document.getElementById(`panel-${tab}`).classList.add('active');
     };
 
+    // Verificação de autenticação e tipo de usuário
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { window.location.href = 'auth.html'; return; }
-      
-      const adminEmails = ['alexandre7888@gmail.com', 'admin@codehub.com'];
-      if (!adminEmails.includes(user.email)) {
-        showMessage('Acesso negado. Apenas administradores.', 'error');
-        setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+      if (!user) {
+        window.location.href = 'auth.html';
         return;
       }
+      
+      // Verificar se o usuário é EMPREENDEDOR
+      const empreendedor = await isEmpreendedor(user.uid);
+      
+      if (!empreendedor) {
+        // Acesso negado - mostrar mensagem
+        document.getElementById('access-denied').style.display = 'block';
+        document.getElementById('admin-content').style.display = 'none';
+        return;
+      }
+      
+      // É empreendedor, mostrar o painel
+      document.getElementById('access-denied').style.display = 'none';
+      document.getElementById('admin-content').style.display = 'block';
       
       carregarConfiguracoes();
       carregarContasGeradas();
