@@ -102,7 +102,6 @@
 
     /* Banner personalizado - só para contas administradas */
     .admin-banner {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 15px 40px 15px 20px;
       text-align: center;
@@ -112,6 +111,8 @@
       display: none;
       font-size: 14px;
       z-index: 100;
+      background-size: cover;
+      background-position: center;
     }
     .admin-banner:hover {
       transform: scale(1.01);
@@ -1151,8 +1152,21 @@
         const banner = document.getElementById('admin-banner');
         const bannerText = document.getElementById('banner-text');
         
-        if (banner && bannerText && config && config.active === true) {
-          bannerText.innerHTML = config.text || 'Bem-vindo!';
+        if (banner && config && config.active === true) {
+          if (config.type === 'text') {
+            bannerText.innerHTML = config.text || 'Bem-vindo!';
+            banner.style.background = config.bgColor || '#667eea';
+            banner.style.backgroundImage = 'none';
+          } else {
+            const imgUrl = config.imageUrl || config.imageBase64;
+            if (imgUrl) {
+              bannerText.innerHTML = '';
+              banner.style.backgroundImage = `url('${imgUrl}')`;
+              banner.style.backgroundSize = 'cover';
+              banner.style.backgroundPosition = 'center';
+            }
+          }
+          
           if (config.link && config.link.trim() !== '') {
             banner.style.cursor = 'pointer';
             banner.onclick = () => window.open(config.link, '_blank');
@@ -1160,7 +1174,7 @@
             banner.style.cursor = 'default';
             banner.onclick = null;
           }
-          if (config.bgColor) banner.style.background = config.bgColor;
+          
           banner.style.display = 'block';
           console.log('✅ Banner exibido para conta administrada');
         } else if (banner) {
@@ -1188,10 +1202,13 @@
         
         if (config && config.active === true) {
           let cursorStyle = 'auto';
-          if (config.type === 'custom' && config.customUrl) {
-            cursorStyle = `url('${config.customUrl}'), auto`;
-          } else if (config.type && config.type !== 'custom') {
-            cursorStyle = config.type;
+          if (config.type === 'system') {
+            cursorStyle = config.cursorStyle || 'auto';
+          } else {
+            const cursorUrl = config.cursorUrl || config.cursorBase64;
+            if (cursorUrl) {
+              cursorStyle = `url('${cursorUrl}'), auto`;
+            }
           }
           document.body.style.cursor = cursorStyle;
           console.log('✅ Mouse personalizado aplicado para conta administrada');
