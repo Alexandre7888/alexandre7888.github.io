@@ -14,8 +14,11 @@ module.exports = async (req, res) => {
         method: "POST",
 
         headers: {
-          "Authorization": "Bearer " + process.env.STRIPE_SECRET_KEY,
-          "Content-Type": "application/x-www-form-urlencoded"
+          Authorization:
+            "Bearer " + process.env.STRIPE_SECRET_KEY,
+
+          "Content-Type":
+            "application/x-www-form-urlencoded"
         },
 
         body:
@@ -27,9 +30,7 @@ module.exports = async (req, res) => {
 
     const data = await response.json();
 
-    res.status(200).json({
-      clientSecret: data.client_secret
-    });
+    res.status(200).json(data);
 
   } catch (e) {
 
