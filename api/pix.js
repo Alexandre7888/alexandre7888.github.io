@@ -1,5 +1,24 @@
 module.exports = async (req, res) => {
 
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "*"
+  );
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
+
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({
       erro: "Método não permitido"
@@ -11,11 +30,12 @@ module.exports = async (req, res) => {
     const response = await fetch(
       "https://api.stripe.com/v1/payment_intents",
       {
-        method: "POST",
+        method:"POST",
 
-        headers: {
+        headers:{
           Authorization:
-            "Bearer " + process.env.STRIPE_SECRET_KEY,
+            "Bearer " +
+            process.env.STRIPE_SECRET_KEY,
 
           "Content-Type":
             "application/x-www-form-urlencoded"
@@ -35,7 +55,7 @@ module.exports = async (req, res) => {
   } catch (e) {
 
     res.status(500).json({
-      erro: e.message
+      erro:e.message
     });
 
   }
