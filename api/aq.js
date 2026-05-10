@@ -2,40 +2,42 @@
 
 export default async function handler(req, res) {
 
-  const code = req.query.code;
+  const { code } = req.query;
 
   if (!code) {
     return res.status(400).json({
-      error: "Código OAuth não encontrado"
+      error: "code não encontrado"
     });
   }
 
   try {
 
-    const github = await fetch(
+    const response = await fetch(
       "https://github.com/login/oauth/access_token",
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           client_id: process.env.GITHUB_CLIENT_ID,
           client_secret: process.env.GITHUB_CLIENT_SECRET,
-          code
+          code: code
         })
       }
     );
 
-    const data = await github.json();
+    const data = await response.json();
+
+    console.log(data);
 
     if (data.error) {
       return res.status(400).json(data);
     }
 
     return res.status(200).json({
-      access_token: data.access_token
+      token: data.access_token
     });
 
   } catch (err) {
