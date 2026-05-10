@@ -1,5 +1,12 @@
 export default async function handler(req, res) {
-  // Garantir que o método é GET (já que o code vem na URL)
+  // Habilitar CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Método não permitido" });
   }
@@ -7,15 +14,7 @@ export default async function handler(req, res) {
   const { code } = req.query;
 
   if (!code) {
-    return res.status(400).json({ error: "code não encontrado na URL" });
-  }
-
-  // Verifica se o código parece ter o formato correto
-  if (code.length < 10 || code.includes(" ")) {
-    return res.status(400).json({ 
-      error: "Formato de código suspeito",
-      code_recebido: code.substring(0, 5) + "..." 
-    });
+    return res.status(400).json({ error: "code não encontrado" });
   }
 
   try {
@@ -23,9 +22,10 @@ export default async function handler(req, res) {
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      throw new Error("Credenciais do GitHub não configuradas no ambiente");
+      throw new Error("Credenciais não configuradas");
     }
 
+    // 1. Trocar código por token
     const tokenResponse = await fetch(
       "https://github.com/login/oauth/access_token",
       {
@@ -37,32 +37,39 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           client_id: clientId,
           client_secret: clientSecret,
-          code: code.trim(), // Remove espaços extras
+          code: code,
         }),
       }
     );
 
-    const data = await tokenResponse.json();
+    const tokenData = await tokenResponse.json();
 
-    // Log detalhado do que o GitHub retornou
-    console.log("Resposta completa do GitHub:", {
-      status: tokenResponse.status,
-      headers: Object.fromEntries(tokenResponse.headers),
-      body: data,
-    });
-
-    if (data.error) {
+    if (tokenData.error) {
       return res.status(400).json({
-        erro_github: data.error,
-        descricao: data.error_description,
-        sugestao: "Gere um novo código e tente IMEDIATAMENTE",
+        erro: tokenData.error,
+        descricao: tokenData.error_description,
       });
     }
 
-    return res.status(200).json({ token: data.access_token });
+    const accessToken = tokenData.access_token;
+
+    // 2. Consultar dados do usuário
+    const userResponse = await fetch("https://api.github.com/user", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "Vercel-App",
+      },
+    });
+
+    const userData = await userResponse.json();
+
+    // Retornar tudo
+    return res.status(200).json({
+      token: accessToken,
+      usuario: userData,
+    });
 
   } catch (err) {
-    console.error("Erro no servidor:", err);
     return res.status(500).json({ error: err.message });
   }
 }
