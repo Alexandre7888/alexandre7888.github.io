@@ -746,21 +746,21 @@
       <button class="close-banner" onclick="fecharBanner()">✕</button>
     </div>
 
-    <header>
-      <div class="header-content">
-        <div class="logo-area">
-          <button class="menu-hamburger" onclick="toggleSidebar()">
-            <span></span><span></span><span></span>
-          </button>
-          <h1>🚀 CodeHUB</h1>
-          <button class="discord-mini-btn" onclick="toggleDiscordWidget()">💬 Discord</button>
-        </div>
-        <div class="user-info" id="user-info">
-          <span id="username"></span>
-          <button class="logout-btn" onclick="logout()">Sair</button>
-        </div>
-      </div>
-    </header>
+<header>
+  <div class="header-content">
+    <div class="logo-area">
+      <h1>🚀 CodeHUB</h1>
+    </div>
+    <div class="user-info" id="user-info">
+      <!-- Botão GitHub SEMPRE visível -->
+      <button id="github-login-btn" class="github-btn" onclick="loginWithGitHub()">
+        🔗 Conectar GitHub
+      </button>
+      <span id="username"></span>
+      <button class="logout-btn" onclick="logout()">Sair</button>
+    </div>
+  </div>
+</header>
 
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     <div class="sidebar" id="sidebar">
