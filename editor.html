@@ -2,814 +2,776 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>CodeHUB Pro - Editor de Código Avançado</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="keywords" content="CodeHUB, editor de código online, IDE online, programar no navegador, editor HTML, editor CSS, editor JavaScript, desenvolvimento web online, criar sites online, editor de código grátis, IDE para iniciantes, editor responsivo, ferramenta programação, codar no navegador, editor com terminal, escrever código online, depuração online, editor de código rápido, desenvolvimento colaborativo, criar projetos web, editor frontend, plataforma de codar online, editor de programação, IDE web, editor de scripts, editor JS, editor CSS3, editor HTML5, criar páginas web, prototipagem online, editor web interativo, IDE colaborativa, editor de código com login, projetos online, editor de apps web, editor multiplataforma, editor com versionamento, editor de projetos HTML CSS JS, editor de código para estudantes, IDE para web developers, editor de código com templates, editor de projetos compartilháveis, editor para iniciantes em web, editor rápido e leve, editor de código com terminal integrado, editor de desenvolvimento web, editor de protótipos web, plataforma de aprendizado de programação, editor de sites responsivos, editor de HTML CSS JS online, criar sites responsivos online, editor de front-end, editor com Firebase, editor para projetos pessoais, IDE web gratuita, editor para codar online, editor de código interativo, editor de projetos colaborativos, editor de sites e aplicações, editor para estudantes de programação, editor de código com suporte a frameworks, editor de desenvolvimento ágil, IDE de aprendizado online, editor de projetos rápidos, editor de código para educação, editor de páginas web, editor de apps HTML CSS JS">
+  <meta name="author" content="CodeHUB - Alexandre Braatz Junior, fundador da plataforma">
+  <meta name="google-site-verification" content="d5deNmIStRgPPphEkAypCTSv-E_1gi9ba16et47RSmA" />
+  <title>CodeHUB - Editor de Código Online</title>
   <link rel="icon" type="image/png" href="https://alexandre7888.github.io/CodeHUB/InShot_20250807_112151490.jpg">
-  
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-  
-  <!-- Puter.js -->
-  <script src="https://js.puter.com/v2/"></script>
-  
-  <link rel="stylesheet" href="editor.css">
-  
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-X4VF1LWB0F');
+    gtag('config', 'G-XQE93JQ3RB');
+    gtag('config', 'G-7RYPMEN60E');
+  </script>
+
+  <script src="https://alexandre7888.github.io/CodeHUB/protecao.js"></script>
+  <script src="https://alexandre7888.github.io/CodeHUB/Botao/floating-menu.js"></script>
+  <script type="module" src="https://code.codehub.ct.ws/client.js"></script>
+  <script src="https://assistente-ia--socialkoala6579904.on.websim.com/embed.js"></script>
+
   <style>
     :root {
-      --zoom-level: 1;
-      --bg-primary: #0a0e14;
-      --bg-secondary: #111820;
-      --bg-tertiary: #182230;
-      --bg-elevated: #1e293b;
-      --border-color: #1e3040;
-      --border-glow: #2a4a6b;
-      --text-primary: #e2e8f0;
-      --text-secondary: #8899aa;
-      --text-muted: #556677;
-      --accent-blue: #5b9bd5;
-      --accent-cyan: #3dd6c8;
-      --accent-green: #4ade80;
-      --accent-orange: #f59e0b;
-      --accent-red: #ef4444;
-      --accent-purple: #a78bfa;
-      --accent-pink: #f472b6;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
-      --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
-      --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 16px;
-      --radius-xl: 24px;
-      --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-      --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      --primary-color: #4361ee;
+      --secondary-color: #3f37c9;
+      --accent-color: #4895ef;
+      --danger-color: #f72585;
+      --success-color: #4cc9f0;
+      --light-color: #f8f9fa;
+      --dark-color: #212529;
+      --gray-color: #6c757d;
+      --discord-color: #5865F2;
+      --github-color: #24292e;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      font-family: var(--font-sans);
-      background: var(--bg-primary);
-      color: var(--text-primary);
-    }
-
-    body { 
-      height: 100vh; 
-      display: flex; 
-      flex-direction: column; 
-      overflow: hidden;
-      zoom: var(--zoom-level);
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      color: #333;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Loading Screen */
-    #loading-screen { 
-      position: fixed; 
-      top: 0; left: 0; 
-      width: 100vw; height: 100vh; 
-      background: linear-gradient(180deg, #0a0e14 0%, #111820 50%, #0d1520 100%);
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      flex-direction: column; 
-      z-index: 99999; 
-      transition: opacity 0.6s, visibility 0.6s;
-    }
-
-    #loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-
-    .loader-ring {
-      position: relative;
-      width: 80px; height: 80px;
-    }
-
-    .loader-ring .ring {
-      position: absolute;
-      width: 100%; height: 100%;
-      border-radius: 50%;
-      border: 3px solid transparent;
-    }
-
-    .loader-ring .ring:nth-child(1) { 
-      border-top-color: #3dd6c8; 
-      animation: spin 1.2s linear infinite; 
-    }
-
-    .loader-ring .ring:nth-child(2) { 
-      width: 60px; height: 60px; top: 10px; left: 10px; 
-      border-right-color: #a78bfa; 
-      animation: spin 1.8s linear infinite reverse; 
-    }
-
-    .loader-ring .ring:nth-child(3) { 
-      width: 40px; height: 40px; top: 20px; left: 20px; 
-      border-bottom-color: #5b9bd5; 
-      animation: spin 1.4s linear infinite; 
-    }
-
-    @keyframes spin { 
-      0% { transform: rotate(0deg); } 
-      100% { transform: rotate(360deg); } 
-    }
-
-    #loading-screen h2 { 
-      color: #3dd6c8; 
-      font-size: 1.2em; 
-      font-weight: 600; 
-      margin-top: 20px; 
-    }
-
-    /* Top Bar */
-    #top-bar { 
-      display: flex; 
-      padding: 8px 14px; 
-      background: var(--bg-secondary); 
-      align-items: center; 
-      border-bottom: 1px solid var(--border-color); 
-      flex-wrap: wrap; 
-      gap: 6px; 
-      z-index: 100; 
-      min-height: 44px;
-    }
-
-    #project-name { 
-      background: var(--bg-primary); 
-      color: var(--text-primary); 
-      border: 1px solid var(--border-color); 
-      border-radius: var(--radius-md); 
-      padding: 7px 14px; 
-      width: 200px; 
-      font-size: 12px;
-      font-family: var(--font-sans);
-    }
-
-    #project-name:focus { border-color: var(--accent-blue); outline: none; }
-
-    button { 
-      background: var(--bg-tertiary); 
-      border: 1px solid var(--border-color); 
-      color: var(--text-primary); 
-      padding: 6px 12px; 
-      cursor: pointer; 
-      border-radius: var(--radius-md); 
-      font-size: 12px; 
-      font-weight: 500; 
-      transition: all var(--transition-fast); 
-      white-space: nowrap;
-      display: inline-flex; 
-      align-items: center; 
-      gap: 5px;
-      font-family: var(--font-sans);
-    }
-
-    button:hover { 
-      background: var(--bg-elevated); 
-      border-color: var(--border-glow); 
-      transform: translateY(-1px);
-    }
-
-    button:active { transform: scale(0.97); }
-
-    #saveFileBtn { 
-      background: linear-gradient(135deg, #3dd6c8, #2aa89b); 
-      border-color: transparent; 
-      color: #000; 
-      font-weight: 600; 
-      box-shadow: 0 2px 8px rgba(61,214,200,0.3);
-    }
-
-    #previewBtn { 
-      background: linear-gradient(135deg, #5b9bd5, #4a8bc5); 
-      border-color: transparent; 
-    }
-
-    #sitePublishBtn { 
-      background: linear-gradient(135deg, #4ade80, #3ab868); 
-      border-color: transparent; 
-      color: #000; 
-      font-weight: 600; 
-    }
-
-    #siteDeleteBtn { 
-      background: linear-gradient(135deg, #ef4444, #d63030); 
-      border-color: transparent; 
-      display: none; 
-    }
-
-    #backToProjects { background: var(--bg-tertiary); }
-    #newFileBtn { background: rgba(74,222,128,0.2); border-color: var(--accent-green); }
-    #closeFileBtn { background: rgba(239,68,68,0.2); border-color: var(--accent-red); }
-
-    .url-panel-top { 
-      display: flex; align-items: center; gap: 5px; 
-      background: var(--bg-primary); padding: 4px 8px; 
-      border-radius: var(--radius-xl); border: 1px solid var(--border-color);
-    }
-
-    .url-panel-top input { 
-      background: transparent; border: none; 
-      color: var(--accent-cyan); padding: 4px 8px; 
-      font-family: var(--font-mono); font-size: 10px; width: 200px;
-    }
-
-    .zoom-controls {
-      display: flex; align-items: center; gap: 2px; 
-      background: var(--bg-primary); padding: 3px 6px; 
-      border-radius: var(--radius-xl); border: 1px solid var(--border-color);
-    }
-
-    .zoom-controls button { 
-      padding: 2px 6px; font-size: 11px; 
-      border: none; background: transparent; 
-    }
-
-    .zoom-controls span { 
-      font-size: 10px; min-width: 36px; text-align: center; 
-      color: var(--accent-cyan); font-weight: 700; 
-      font-family: var(--font-mono); 
-    }
-
-    #user-info { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-
-    #user-name { 
-      font-size: 12px; font-weight: 600; color: var(--accent-cyan); 
-    }
-
-    .logout-btn { 
-      background: linear-gradient(135deg, #ef4444, #c53030); 
-      border-color: transparent; 
-    }
-
-    #auto-save-status {
-      display: flex; align-items: center; gap: 5px; 
-      background: var(--bg-primary); padding: 4px 10px; 
-      border-radius: var(--radius-xl); border: 1px solid var(--border-color);
-      font-size: 10px; color: var(--text-secondary); white-space: nowrap;
-    }
-
-    #auto-save-indicator { 
-      width: 6px; height: 6px; border-radius: 50%; 
-      background: var(--text-muted); display: inline-block; 
-    }
-
-    #auto-save-time { 
-      font-family: var(--font-mono); color: var(--accent-cyan); 
-      font-weight: 600; font-size: 10px; 
-    }
-
-    /* Main Container */
-    .main-container { display: flex; flex: 1; overflow: hidden; }
-
-    /* Workers Panel */
-    #workers-panel {
-      width: 250px; background: var(--bg-secondary); 
-      border-right: 1px solid var(--border-color);
-      display: flex; flex-direction: column; overflow: hidden; 
-      min-width: 180px; max-width: 380px; position: relative;
-    }
-
-    .workers-resize-handle {
-      position: absolute; right: -2px; top: 0; 
-      width: 5px; height: 100%; cursor: col-resize; z-index: 100;
-    }
-
-    .workers-resize-handle:hover { background: var(--accent-blue); }
-
-    .workers-header {
-      padding: 12px 14px; background: var(--bg-tertiary); 
-      display: flex; justify-content: space-between; align-items: center; 
-      border-bottom: 1px solid var(--border-color);
-      font-weight: 700; font-size: 12px; text-transform: uppercase; 
-      color: var(--accent-cyan);
-    }
-
-    .workers-count {
-      font-size: 10px; color: var(--accent-green); 
-      background: rgba(74,222,128,0.15); padding: 2px 8px; border-radius: 12px;
-    }
-
-    .workers-list { 
-      flex: 1; overflow-y: auto; padding: 8px; 
-      display: flex; flex-direction: column; gap: 6px; 
-    }
-
-    .workers-list::-webkit-scrollbar { width: 4px; }
-    .workers-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-
-    .worker-item {
-      background: var(--bg-primary); border: 1px solid var(--border-color);
-      border-radius: var(--radius-md); padding: 10px 12px; 
-      cursor: pointer; font-size: 11px;
-    }
-
-    .worker-item:hover { border-color: var(--accent-blue); }
-
-    .worker-item.active { 
-      border-color: var(--accent-cyan); 
-      background: rgba(61,214,200,0.08); 
-    }
-
-    .worker-item .worker-name { 
-      font-weight: 700; color: var(--accent-cyan); font-size: 12px; 
-      display: flex; align-items: center; gap: 6px;
-    }
-
-    .worker-item .worker-name .dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--accent-green);
-    }
-
-    .worker-item .worker-route { 
-      color: var(--text-secondary); font-size: 10px; 
-      margin-top: 4px; font-family: var(--font-mono); 
-    }
-
-    .worker-item .worker-url {
-      color: var(--accent-green); font-size: 9px; 
-      margin-top: 3px; word-break: break-all;
-      font-family: var(--font-mono); opacity: 0.8;
-    }
-
-    .worker-actions {
-      display: flex; gap: 4px; margin-top: 8px;
-    }
-
-    .worker-actions button {
-      font-size: 9px; padding: 3px 7px;
-    }
-
-    .workers-footer { 
-      padding: 10px; border-top: 1px solid var(--border-color); 
-      background: var(--bg-tertiary); 
-    }
-
-    .workers-footer button { 
-      width: 100%; 
-      background: linear-gradient(135deg, #4ade80, #3ab868); 
-      border-color: transparent; color: #000; 
-      font-weight: 600; justify-content: center; 
-    }
-
-    /* Editor Container */
-    #editor-container { 
-      flex: 2; display: flex; flex-direction: column; 
-      overflow: hidden; background: var(--bg-primary); 
-    }
-
-    #tabs { 
-      display: flex; background: var(--bg-secondary); 
-      align-items: center; gap: 2px; overflow-x: auto; 
-      min-height: 34px; padding: 4px 8px 0;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    #tabs::-webkit-scrollbar { height: 2px; }
-    #tabs::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
-
-    .tab-btn { 
-      background: var(--bg-primary); padding: 7px 30px 7px 14px; 
-      position: relative; border-radius: var(--radius-md) var(--radius-md) 0 0; 
-      font-size: 11px; font-weight: 500;
-      border: 1px solid var(--border-color); border-bottom: none; 
-      cursor: pointer; white-space: nowrap;
-    }
-
-    .tab-btn:hover { background: var(--bg-tertiary); }
-
-    .tab-btn.active { 
-      background: var(--bg-elevated); 
-      border-bottom: 2px solid var(--accent-cyan); 
-      font-weight: 600; color: var(--accent-cyan); 
-    }
-
-    .close-tab-btn { 
-      position: absolute; right: 8px; top: 50%; 
-      transform: translateY(-50%); background: transparent; 
-      border: none; color: var(--text-muted); cursor: pointer; 
-      font-size: 12px; width: 18px; height: 18px; 
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 50%;
-    }
-
-    .close-tab-btn:hover { 
-      color: var(--accent-red); 
-      background: rgba(239,68,68,0.15); 
-    }
-
-    #container { 
-      flex: 1; overflow: hidden; position: relative; 
-      background: var(--bg-primary); 
-    }
-
-    #simple-editor { 
-      width: 100%; height: 100%; background: transparent; 
-      color: #c9d1d9; font-family: var(--font-mono); 
-      font-size: 13px; padding: 16px 20px; 
-      border: none; resize: none; outline: none; 
-      line-height: 1.8; tab-size: 2;
-    }
-
-    /* AI Sidebar */
-    #ai-sidebar { 
-      width: 400px; background: var(--bg-secondary); 
-      border-left: 1px solid var(--border-color); 
-      display: flex; flex-direction: column; position: relative; 
-      min-width: 260px; max-width: 560px;
-    }
-
-    .resize-handle { 
-      position: absolute; left: -3px; top: 0; 
-      width: 6px; height: 100%; cursor: col-resize; z-index: 100; 
-    }
-
-    .resize-handle:hover { background: var(--accent-purple); }
-
-    .sidebar-header { 
-      padding: 12px 14px; background: var(--bg-tertiary); 
-      display: flex; justify-content: space-between; 
-      align-items: center; border-bottom: 1px solid var(--border-color); 
-      font-weight: 700; font-size: 13px;
-    }
-
-    .ai-status-dot { 
-      width: 8px; height: 8px; border-radius: 50%; 
-      background: var(--accent-green); display: inline-block; 
-      margin-right: 4px; 
-    }
-
-    .ai-status-dot.streaming { 
-      background: var(--accent-cyan); 
-      animation: pulse 0.5s infinite; 
-    }
-
-    @keyframes pulse { 
-      0%,100% { opacity: 1; } 
-      50% { opacity: 0.5; } 
-    }
-
-    .chat-messages { 
-      flex: 1; overflow-y: auto; padding: 12px; 
-      display: flex; flex-direction: column; gap: 8px; 
-    }
-
-    .chat-messages::-webkit-scrollbar { width: 4px; }
-    .chat-messages::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-
-    .message { 
-      padding: 10px 14px; border-radius: var(--radius-md); 
-      max-width: 92%; word-wrap: break-word; 
-      font-size: 12px; line-height: 1.6; 
-      animation: fadeIn 0.25s ease;
-    }
-
-    @keyframes fadeIn { 
-      from { opacity: 0; transform: translateY(6px); } 
-      to { opacity: 1; transform: translateY(0); } 
-    }
-
-    .message.user { 
-      background: linear-gradient(135deg, #3b5998, #4a6fc4); 
-      align-self: flex-end; 
-    }
-
-    .message.ai { 
-      background: var(--bg-tertiary); align-self: flex-start; 
-      white-space: pre-wrap; border: 1px solid var(--border-color); 
-    }
-
-    .message.system { 
-      background: rgba(150,150,170,0.08); align-self: center; 
-      font-size: 10px; border-radius: var(--radius-xl); 
-      border: 1px solid var(--border-color); color: var(--text-secondary); 
-      text-align: center;
-    }
-
-    .message.success { 
-      background: rgba(74,222,128,0.1); align-self: center; 
-      font-size: 10px; border-radius: var(--radius-xl); 
-      border: 1px solid rgba(74,222,128,0.3); color: var(--accent-green); 
-      text-align: center;
-    }
-
-    .message.error { 
-      background: rgba(239,68,68,0.1); align-self: center; 
-      font-size: 10px; border-radius: var(--radius-xl); 
-      border: 1px solid rgba(239,68,68,0.3); color: var(--accent-red); 
-      text-align: center;
-    }
-
-    .chat-controls { 
-      padding: 10px; border-top: 1px solid var(--border-color); 
-      background: var(--bg-tertiary); 
-    }
-
-    .chat-input-wrapper { display: flex; gap: 6px; }
-
-    .chat-input-wrapper textarea { 
-      flex: 1; background: var(--bg-primary); 
-      border: 1px solid var(--border-color); 
-      color: var(--text-primary); padding: 10px 12px; 
-      border-radius: var(--radius-md); resize: none; 
-      font-family: var(--font-sans); font-size: 12px; line-height: 1.5;
-    }
-
-    .chat-input-wrapper textarea:focus { 
-      border-color: var(--accent-purple); outline: none; 
-    }
-
-    .chat-input-wrapper button { 
-      background: linear-gradient(135deg, #a78bfa, #8b6fe0); 
-      border-color: transparent; font-weight: 600; padding: 8px 16px; 
-    }
-
-    .quick-actions { 
-      display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; 
-    }
-
-    .quick-actions button { 
-      font-size: 9px; padding: 3px 8px; 
-      border-radius: var(--radius-xl); 
-    }
-
-    .quick-actions button:hover { 
-      border-color: var(--accent-purple); 
-      background: rgba(167,139,250,0.1); 
-    }
-
-    #stopStreamBtn { 
-      background: linear-gradient(135deg, #ef4444, #d63030); 
-      border-color: transparent; color: #fff; display: none; 
-    }
-
-    /* Notifications */
-    .notification { 
-      position: fixed; bottom: 20px; right: 20px; 
-      padding: 12px 18px; border-radius: var(--radius-md); 
-      color: white; z-index: 10000; font-size: 12px; 
-      font-weight: 600; box-shadow: var(--shadow-lg);
-      animation: slideIn 0.35s ease;
-    }
-
-    @keyframes slideIn { 
-      from { transform: translateX(120%); opacity: 0; } 
-      to { transform: translateX(0); opacity: 1; } 
-    }
-
-    .notification.success { background: rgba(35,134,54,0.95); }
-    .notification.error { background: rgba(218,54,51,0.95); }
-    .notification.info { background: rgba(31,111,235,0.95); }
-
-    /* Modals */
-    .modal-overlay { 
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: rgba(0,0,0,0.75); display: none; 
-      justify-content: center; align-items: center; z-index: 10001;
-    }
-
-    .modal-box { 
-      background: var(--bg-elevated); border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg); padding: 24px; 
-      max-width: 460px; width: 90%; text-align: center; 
-      box-shadow: var(--shadow-lg); animation: scaleIn 0.3s ease;
-    }
-
-    @keyframes scaleIn {
-      from { transform: scale(0.9); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-
-    .modal-box h3 { 
-      color: var(--text-primary); margin-bottom: 12px; 
-      font-size: 16px; font-weight: 700; 
-    }
-
-    .modal-box p { 
-      color: var(--text-secondary); margin-bottom: 18px; font-size: 13px; 
-    }
-
-    .modal-buttons { display: flex; gap: 10px; justify-content: center; }
-
-    .modal-buttons button { 
-      padding: 8px 22px; font-size: 13px; 
-      font-weight: 600; border-radius: var(--radius-md); 
-    }
-
-    #previewModal .modal-box { 
-      max-width: 95vw; max-height: 92vh; width: 95vw; height: 92vh; 
-      padding: 6px; display: flex; flex-direction: column; text-align: left; 
-    }
-
-    #previewIframe { 
-      flex: 1; width: 100%; border: none; background: #fff; 
-      border-radius: var(--radius-md); 
-    }
-
-    .preview-header {
+    #loading-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, #1e293b, #0f172a);
+      display: flex; justify-content: center; align-items: center; flex-direction: column;
+      color: white; font-family: Arial, sans-serif; z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    #loading-screen h1 {
+      margin-top: 20px; font-size: 1.8em; color: #ff9500;
+      text-shadow: 0 0 10px #ff9500, 0 0 20px #ff7300;
+      animation: glowText 2s infinite alternate;
+    }
+    .loader {
+      width: 280px; height: 280px; border-radius: 50%;
+      animation: spinScale 4s ease-in-out infinite, glow 2s ease-in-out infinite alternate;
+      box-shadow: 0 0 20px rgba(255,149,0,0.5);
+    }
+    @keyframes glowText {
+      0% { text-shadow: 0 0 5px #ff9500, 0 0 15px #ff7300; }
+      100% { text-shadow: 0 0 15px #ff9500, 0 0 30px #ff7300; }
+    }
+    @keyframes spinScale {
+      0% { transform: rotate(0deg) scale(1); }
+      25% { transform: rotate(90deg) scale(1.1); }
+      50% { transform: rotate(180deg) scale(0.9); }
+      75% { transform: rotate(270deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    @keyframes glow {
+      0% { box-shadow: 0 0 20px rgba(255,149,0,0.5), 0 0 40px rgba(255,149,0,0.3); }
+      100% { box-shadow: 0 0 40px rgba(255,149,0,0.8), 0 0 80px rgba(255,149,0,0.5); }
+    }
+
+    #app-content { display: none; }
+
+    /* Header */
+    header {
+      background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+      color: white; padding: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .header-content {
+      max-width: 1200px; margin: 0 auto;
       display: flex; justify-content: space-between; align-items: center;
-      padding: 8px 12px; background: var(--bg-primary); 
-      border-radius: var(--radius-md); margin-bottom: 6px;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .logo-area { display: flex; align-items: center; gap: 1rem; }
+    .logo-area h1 { font-size: 1.5rem; }
+
+    .user-info { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+    /* GitHub Button */
+    .github-btn {
+      background: var(--github-color); color: white; border: none;
+      padding: 8px 14px; border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 600; font-size: 13px; transition: all 0.3s;
+      white-space: nowrap;
+    }
+    .github-btn:hover { background: #1b1f23; transform: scale(1.03); }
+    .github-btn.connected { background: #2ea44f; }
+    .github-btn.connected:hover { background: #2c974b; }
+
+    .logout-btn {
+      background-color: var(--danger-color); color: white; border: none;
+      padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;
+      font-weight: 600; transition: all 0.3s;
+      display: flex; align-items: center; gap: 0.5rem;
     }
 
-    .preview-header span { 
-      font-size: 12px; color: var(--accent-cyan); font-weight: 600; 
+    /* Container e Cards */
+    .container { flex: 1; max-width: 1200px; margin: 1rem auto; padding: 0 1rem; width: 100%; }
+    .projects-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+    }
+    .new-project-btn {
+      background-color: var(--success-color); color: white; border: none;
+      padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;
+      font-weight: 600; display: flex; align-items: center; gap: 0.5rem;
+      transition: all 0.3s; white-space: nowrap;
+    }
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem; margin-bottom: 2rem;
+    }
+    .project-card {
+      background-color: white; border-radius: 10px; padding: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.3s ease;
+      border: 1px solid #eaeaea; display: flex; flex-direction: column;
+    }
+    .project-card:hover {
+      transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .project-name {
+      font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;
+      color: var(--dark-color);
+    }
+    .project-domain {
+      font-size: 0.9rem; color: var(--gray-color); margin-bottom: 0.5rem;
+    }
+    .project-repo {
+      font-size: 0.8rem; color: var(--accent-color); margin-bottom: 0.5rem;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .project-repo.github-linked {
+      color: #2ea44f; font-weight: 600;
+    }
+    .project-actions {
+      display: flex; gap: 0.5rem; margin-top: auto; flex-wrap: wrap;
+    }
+    .action-btn {
+      padding: 0.5rem 0.8rem; border: none; border-radius: 6px; cursor: pointer;
+      font-weight: 600; font-size: 0.85rem; display: flex; align-items: center;
+      gap: 0.4rem; transition: all 0.2s; flex: 1; justify-content: center;
+      white-space: nowrap;
+    }
+    .edit-btn { background-color: var(--accent-color); color: white; }
+    .delete-btn { background-color: var(--danger-color); color: white; }
+    .sync-btn { background-color: #2ea44f; color: white; }
+    .sync-btn:hover { background-color: #2c974b; }
+
+    /* GitHub Repo Badge */
+    .github-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #f0f7ff; color: #0366d6; padding: 2px 8px;
+      border-radius: 12px; font-size: 0.75rem; font-weight: 600;
+      border: 1px solid #c8e1ff; margin-bottom: 0.5rem;
     }
 
-    /* Responsive */
+    /* Modal */
+    .modal {
+      display: none; position: fixed; z-index: 1100; left: 0; top: 0;
+      width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
+      backdrop-filter: blur(3px); overflow-y: auto;
+    }
+    .modal-content {
+      background-color: white; margin: 5% auto; padding: 2rem;
+      border-radius: 10px; width: 90%; max-width: 600px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2); position: relative;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .modal-header h3 { font-size: 1.5rem; color: var(--dark-color); }
+    .close-btn {
+      background: none; border: none; font-size: 1.5rem;
+      cursor: pointer; color: var(--gray-color); padding: 0 0.5rem;
+    }
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label {
+      display: block; margin-bottom: 0.5rem; font-weight: 600;
+      color: var(--dark-color);
+    }
+    .form-group input, .form-group select {
+      width: 100%; padding: 0.75rem; border: 1px solid #ddd;
+      border-radius: 6px; font-size: 1rem;
+    }
+    .form-actions {
+      display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;
+    }
+    .cancel-btn {
+      background-color: var(--gray-color); color: white; border: none;
+      padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600;
+    }
+    .confirm-btn {
+      background-color: var(--primary-color); color: white; border: none;
+      padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600;
+    }
+
+    /* Repo List no Modal */
+    .repo-list {
+      max-height: 250px; overflow-y: auto; border: 1px solid #ddd;
+      border-radius: 6px; margin-top: 0.5rem;
+    }
+    .repo-item {
+      padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee;
+      display: flex; align-items: center; gap: 10px; transition: background 0.2s;
+    }
+    .repo-item:hover { background: #f0f7ff; }
+    .repo-item.selected { background: #e3f2fd; border-left: 3px solid var(--accent-color); }
+    .repo-item .repo-name { font-weight: 600; }
+    .repo-item .repo-desc { font-size: 0.8rem; color: var(--gray-color); }
+
+    /* Cookie Banner */
+    .cookie-banner {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.9); color: white; padding: 1rem;
+      display: flex; flex-wrap: wrap; justify-content: space-between;
+      align-items: center; z-index: 1100;
+    }
+    .cookie-banner p { margin: 0.5rem 0; flex: 1; min-width: 250px; }
+    .cookie-banner-buttons { display: flex; gap: 1rem; }
+    .cookie-btn {
+      padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;
+      font-weight: 600; white-space: nowrap;
+    }
+    .cookie-accept { background-color: var(--success-color); color: white; border: none; }
+    .cookie-reject { background-color: transparent; color: white; border: 1px solid white; }
+
+    /* Status message */
+    .status-msg {
+      padding: 8px 12px; border-radius: 4px; margin: 10px 0;
+      font-size: 0.9rem; display: none;
+    }
+    .status-msg.success { background: #d4edda; color: #155724; display: block; }
+    .status-msg.error { background: #f8d7da; color: #721c24; display: block; }
+
     @media (max-width: 768px) {
-      #workers-panel { display: none; }
-      #ai-sidebar { 
-        width: 100% !important; min-width: 100% !important; 
-        max-width: 100% !important; 
-      }
-      #top-bar { gap: 4px; padding: 6px 8px; }
-      #project-name { width: 120px; }
+      .projects-grid { grid-template-columns: 1fr; }
+      .project-actions { flex-direction: column; }
+      .modal-content { margin: 10% auto; }
+      .cookie-banner { flex-direction: column; text-align: center; }
+      .cookie-banner-buttons { width: 100%; justify-content: center; margin-top: 1rem; }
     }
   </style>
 </head>
 <body>
-  <!-- Loading Screen -->
   <div id="loading-screen">
-    <div class="loader-ring">
-      <div class="ring"></div>
-      <div class="ring"></div>
-      <div class="ring"></div>
-    </div>
-    <h2>CodeHUB Pro</h2>
+    <img id="codefox" src="https://alexandre7888.github.io/CodeHUB/CodeFOX/foto1.jpg" class="loader" alt="CodeFOX girando">
+    <h1>Carregando...</h1>
   </div>
 
-  <!-- App Content -->
-  <div id="app-content" style="display:none;flex:1;flex-direction:column;">
-    <!-- Top Bar -->
-    <div id="top-bar">
-      <button id="backToProjects" onclick="window.location.href='index.html'">🏠</button>
-      <input type="text" id="project-name" placeholder="Nome do Projeto">
-      <button id="saveFileBtn">💾 Salvar</button>
-      <button id="previewBtn">👁️ Preview</button>
-      <button id="sitePublishBtn">🚀 Publicar</button>
-      <button id="siteDeleteBtn">🗑️ Deletar</button>
-      <div id="auto-save-status">
-        <span id="auto-save-indicator"></span>
-        <span id="auto-save-text">Pronto</span>
-        <span id="auto-save-time"></span>
+  <div id="app-content">
+    <header>
+      <div class="header-content">
+        <div class="logo-area">
+          <h1>🚀 CodeHUB</h1>
+        </div>
+        <div class="user-info" id="user-info">
+          <!-- Botão GitHub Login -->
+          <button id="github-login-btn" class="github-btn" onclick="loginWithGitHub()">
+            🔗 Conectar GitHub
+          </button>
+          <span id="username"></span>
+          <button class="logout-btn" onclick="logout()">Sair</button>
+        </div>
       </div>
-      <button onclick="showVersionHistory()" title="Ctrl+H">🕒</button>
-      <button id="newFileBtn" onclick="newFile()" title="Ctrl+N">📄</button>
-      <button id="closeFileBtn" onclick="closeCurrentFile()" title="Ctrl+W">✕</button>
-      <div class="url-panel-top" id="urlPanelTop" style="display:none;">
-        <input type="text" id="fileUrlTop" readonly onclick="this.select()">
-        <button onclick="window.open(document.getElementById('fileUrlTop').value,'_blank')" style="padding:3px 6px;font-size:10px;">🔗</button>
-        <button onclick="copyUrl()" style="padding:3px 6px;font-size:10px;">📋</button>
+    </header>
+
+    <div class="container">
+      <div class="projects-header">
+        <h2>📁 Seus Projetos</h2>
+        <button class="new-project-btn" onclick="openNewProjectModal()">+ Novo Projeto</button>
       </div>
-      <div class="zoom-controls">
-        <button onclick="changeZoom(-0.1)">➖</button>
-        <span id="zoomLevel">100%</span>
-        <button onclick="changeZoom(0.1)">➕</button>
-        <button onclick="resetZoom()">↺</button>
-      </div>
-      <div id="user-info">
-        <span id="user-name"></span>
-        <button class="logout-btn" onclick="logout()">Sair</button>
-      </div>
+      <div id="projects-container" class="projects-grid"></div>
     </div>
 
-    <!-- Main Container -->
-    <div class="main-container">
-      <!-- Workers Panel -->
-      <div id="workers-panel">
-        <div class="workers-resize-handle" id="workersResizeHandle"></div>
-        <div class="workers-header">
-          <span>⚡ Workers</span>
-          <span class="workers-count" id="workersCount">0</span>
+    <!-- Modal Criar/Editar Projeto -->
+    <div id="project-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">✨ Criar Novo Projeto</h3>
+          <button class="close-btn" onclick="closeProjectModal()">&times;</button>
         </div>
-        <div class="workers-list" id="workersList">
-          <div style="color:var(--text-muted);font-size:11px;text-align:center;padding:30px;">📭 Nenhum worker</div>
-        </div>
-        <div class="workers-footer">
-          <button onclick="createNewWorker()">➕ Novo Worker</button>
-        </div>
-      </div>
-
-      <!-- Editor -->
-      <div id="editor-container">
-        <div id="tabs"></div>
-        <div id="container">
-          <textarea id="simple-editor" placeholder="// Comece a codar aqui..."></textarea>
-        </div>
-      </div>
-
-      <!-- AI Sidebar -->
-      <div id="ai-sidebar">
-        <div class="resize-handle" id="resizeHandle"></div>
-        <div class="sidebar-header">
-          <span>🤖 IA Assistente</span>
-          <span style="font-size:10px;display:flex;align-items:center;gap:4px;">
-            <span class="ai-status-dot" id="aiStatusDot"></span>
-            <span id="aiStatusText">Online</span>
-          </span>
-        </div>
-        <div class="chat-messages" id="chatMessages">
-          <div class="message system">✨ IA pronta! Use Ctrl+Enter para enviar mensagem.</div>
-        </div>
-        <div class="chat-controls">
-          <div class="chat-input-wrapper">
-            <textarea id="chatInput" placeholder="Descreva o que deseja..." rows="2"></textarea>
-            <button onclick="sendToAI()">Enviar</button>
-            <button id="stopStreamBtn" onclick="stopStream()">⏹ Parar</button>
+        <form id="project-form">
+          <div class="form-group">
+            <label>Nome do Projeto</label>
+            <input type="text" id="project-name" required maxlength="50" placeholder="Meu Projeto">
           </div>
-          <div class="quick-actions">
-            <button onclick="quickAI('create_html')">📄 HTML</button>
-            <button onclick="quickAI('create_css')">🎨 CSS</button>
-            <button onclick="quickAI('create_js')">⚡ JS</button>
-            <button onclick="quickAI('create_worker')">🔧 Worker</button>
-            <button onclick="quickAI('analyze')">🔍 Analisar</button>
+          
+          <!-- GitHub Repo Selection -->
+          <div class="form-group" id="github-repo-section">
+            <label>🔗 Vincular Repositório do GitHub (opcional)</label>
+            <div id="github-status" class="status-msg"></div>
+            <select id="github-repo-select" onchange="onRepoSelected()">
+              <option value="">Nenhum (projeto local)</option>
+            </select>
+            <button type="button" class="github-btn" onclick="loadGitHubRepos()" style="margin-top:8px; width:100%;">
+              🔄 Carregar Repositórios
+            </button>
+            <div class="repo-list" id="repo-list-preview" style="display:none;"></div>
           </div>
-        </div>
+
+          <div class="form-actions">
+            <button type="button" class="cancel-btn" onclick="closeProjectModal()">Cancelar</button>
+            <button type="submit" class="confirm-btn">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="cookie-banner" class="cookie-banner" style="display: none;">
+      <p>🍪 Nós usamos cookies para melhorar sua experiência.</p>
+      <div class="cookie-banner-buttons">
+        <button class="cookie-btn cookie-accept" onclick="acceptCookies()">Aceitar</button>
+        <button class="cookie-btn cookie-reject" onclick="rejectCookies()">Recusar</button>
       </div>
     </div>
   </div>
 
-  <!-- Confirm Modal -->
-  <div class="modal-overlay" id="confirmModal">
-    <div class="modal-box">
-      <h3 id="modalTitle">Confirmar</h3>
-      <p id="modalMessage"></p>
-      <div class="modal-buttons">
-        <button onclick="modalConfirm()" style="background:#238636;">✅ Confirmar</button>
-        <button onclick="modalCancel()" style="background:#da3633;">❌ Cancelar</button>
-      </div>
-    </div>
-  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, push, set, onValue, remove, get, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  <!-- Preview Modal -->
-  <div class="modal-overlay" id="previewModal">
-    <div class="modal-box">
-      <div class="preview-header">
-        <span>👁️ Preview ao Vivo</span>
-        <div style="display:flex;gap:6px;">
-          <button onclick="refreshPreview()" style="font-size:11px;padding:4px 10px;">🔄</button>
-          <button onclick="openPreviewExterno()" style="font-size:11px;padding:4px 10px;">🔗</button>
-          <button onclick="closePreviewModal()" style="font-size:11px;padding:4px 10px;background:#da3633;border-color:transparent;">✕</button>
-        </div>
-      </div>
-      <iframe id="previewIframe" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
-    </div>
-  </div>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.appspot.com",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
+    };
 
-  <!-- New File Modal -->
-  <div class="modal-overlay" id="newFileModal">
-    <div class="modal-box" style="text-align:left;">
-      <h3>📄 Novo Arquivo</h3>
-      <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
-        <label style="font-size:11px;color:var(--text-secondary);font-weight:600;">Nome:</label>
-        <input type="text" id="newFileName" placeholder="ex: style.css" style="background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);padding:8px 12px;border-radius:var(--radius-md);font-size:12px;">
-        <label style="font-size:11px;color:var(--text-secondary);font-weight:600;">Tipo:</label>
-        <select id="newFileType" style="background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);padding:8px 12px;border-radius:var(--radius-md);font-size:12px;">
-          <option value="html">HTML</option>
-          <option value="css">CSS</option>
-          <option value="js">JavaScript</option>
-        </select>
-      </div>
-      <div class="modal-buttons">
-        <button onclick="confirmNewFile()" style="background:#238636;">✅ Criar</button>
-        <button onclick="closeNewFileModal()" style="background:#da3633;">Cancelar</button>
-      </div>
-    </div>
-  </div>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
 
-  <!-- New Worker Modal -->
-  <div class="modal-overlay" id="newWorkerModal">
-    <div class="modal-box" style="text-align:left;">
-      <h3>➕ Novo Worker</h3>
-      <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0;">
-        <label style="font-size:11px;color:var(--text-secondary);font-weight:600;">Nome:</label>
-        <input type="text" id="newWorkerName" placeholder="meu-worker" style="background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);padding:8px 12px;border-radius:var(--radius-md);font-size:12px;">
-        <label style="font-size:11px;color:var(--text-secondary);font-weight:600;">Rota:</label>
-        <input type="text" id="newWorkerRoute" placeholder="/api/hello" style="background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);padding:8px 12px;border-radius:var(--radius-md);font-size:12px;">
-      </div>
-      <div class="modal-buttons">
-        <button onclick="confirmNewWorker()" style="background:#238636;">✅ Criar</button>
-        <button onclick="closeNewWorkerModal()" style="background:#da3633;">Cancelar</button>
-      </div>
-    </div>
-  </div>
+    // ============ VARIÁVEIS GLOBAIS ============
+    let userData = null;
+    let githubToken = null;
+    let githubRepos = [];
+    let selectedRepo = null;
+    let editingProjectId = null;
 
-  <!-- Version History Modal -->
-  <div class="modal-overlay" id="versionHistoryModal">
-    <div class="modal-box" style="max-width:600px;max-height:70vh;overflow-y:auto;text-align:left;">
-      <h3>🕒 Histórico de Versões</h3>
-      <p style="font-size:11px;color:var(--text-muted);">Arquivo: <span id="versionFileName"></span></p>
-      <div id="versionList" style="color:var(--text-secondary);font-size:11px;max-height:45vh;overflow-y:auto;"></div>
-      <div class="modal-buttons" style="margin-top:16px;">
-        <button onclick="closeVersionHistoryModal()" style="background:#da3633;">Fechar</button>
-      </div>
-    </div>
-  </div>
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzsQ6AY3MK1ZjC95O_LgXrGOmE_Z0eSEINhmFYucdaQ-iajC3QEU8vJ6jVS1l-YsrIu/exec";
 
-  <script src="editor.js"></script>
+    // ============ LOADING SCREEN ============
+    const loadingScreen = document.getElementById('loading-screen');
+    const appContent = document.getElementById('app-content');
+    const codefoxImage = document.getElementById('codefox');
+    const imagens = [
+      "https://alexandre7888.github.io/CodeHUB/CodeFOX/foto1.jpg",
+      "https://alexandre7888.github.io/CodeHUB/CodeFOX/foto2.jpg",
+      "https://alexandre7888.github.io/CodeHUB/CodeFOX/foto3.jpg"
+    ];
+    let imgIndex = 0;
+    const loaderInterval = setInterval(() => {
+      imgIndex = (imgIndex + 1) % imagens.length;
+      if (codefoxImage) codefoxImage.src = imagens[imgIndex];
+    }, 2000);
+
+    function showAppContent() {
+      loadingScreen.style.opacity = '0';
+      setTimeout(() => {
+        loadingScreen.style.display = 'none';
+        appContent.style.display = 'block';
+        clearInterval(loaderInterval);
+      }, 500);
+    }
+
+    // ============ GITHUB FUNCTIONS ============
+    window.loginWithGitHub = function() {
+      const clientId = "Ov23liuEuOxeSy0cgbYQ"; // Substitua pelo seu Client ID
+      const redirectUri = encodeURIComponent("https://code-hub-eta.vercel.app/callback.html");
+      window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo,user`;
+    };
+
+    function checkGitHubToken() {
+      githubToken = localStorage.getItem("github_token");
+      updateGitHubButton();
+      if (githubToken) {
+        loadGitHubRepos();
+      }
+    }
+
+    function updateGitHubButton() {
+      const btn = document.getElementById('github-login-btn');
+      if (!btn) return;
+      if (githubToken) {
+        btn.textContent = '✅ GitHub Conectado';
+        btn.className = 'github-btn connected';
+        btn.onclick = disconnectGitHub;
+      } else {
+        btn.textContent = '🔗 Conectar GitHub';
+        btn.className = 'github-btn';
+        btn.onclick = loginWithGitHub;
+      }
+    }
+
+    window.disconnectGitHub = function() {
+      if (confirm('Desconectar GitHub? O token será removido.')) {
+        localStorage.removeItem("github_token");
+        githubToken = null;
+        githubRepos = [];
+        updateGitHubButton();
+        document.getElementById('github-status').className = 'status-msg';
+        document.getElementById('github-status').style.display = 'none';
+        loadGitHubReposIntoSelect();
+      }
+    };
+
+    // JSONP para Google Script
+    function chamarScript(token, acao, extra = {}) {
+      return new Promise((resolve, reject) => {
+        const cb = "_cb" + Date.now() + Math.random().toString(36).substr(2, 5);
+        window[cb] = (data) => {
+          delete window[cb];
+          if (data.erro) reject(new Error(data.erro));
+          else resolve(data);
+        };
+        let url = `${GOOGLE_SCRIPT_URL}?callback=${cb}&token=${token}&acao=${acao}`;
+        for (let k in extra) {
+          url += "&" + k + "=" + encodeURIComponent(extra[k]);
+        }
+        const script = document.createElement("script");
+        script.src = url;
+        script.onerror = () => reject(new Error("Erro ao carregar script"));
+        document.body.appendChild(script);
+      });
+    }
+
+    window.loadGitHubRepos = async function() {
+      if (!githubToken) {
+        document.getElementById('github-status').textContent = '⚠️ Conecte sua conta GitHub primeiro!';
+        document.getElementById('github-status').className = 'status-msg error';
+        return;
+      }
+      const statusEl = document.getElementById('github-status');
+      statusEl.textContent = '⏳ Carregando repositórios...';
+      statusEl.className = 'status-msg';
+      statusEl.style.display = 'block';
+      try {
+        githubRepos = await chamarScript(githubToken, "listar");
+        loadGitHubReposIntoSelect();
+        statusEl.textContent = `✅ ${githubRepos.length} repositórios carregados!`;
+        statusEl.className = 'status-msg success';
+      } catch (err) {
+        statusEl.textContent = '❌ Erro: ' + err.message;
+        statusEl.className = 'status-msg error';
+      }
+    };
+
+    function loadGitHubReposIntoSelect() {
+      const select = document.getElementById('github-repo-select');
+      if (!select) return;
+      select.innerHTML = '<option value="">Nenhum (projeto local)</option>';
+      if (githubRepos && githubRepos.length > 0) {
+        githubRepos.forEach(repo => {
+          const opt = document.createElement('option');
+          opt.value = repo.nome;
+          opt.textContent = repo.nome + (repo.descricao ? ' - ' + repo.descricao : '');
+          if (selectedRepo && selectedRepo.nome === repo.nome) {
+            opt.selected = true;
+          }
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    window.onRepoSelected = function() {
+      const val = document.getElementById('github-repo-select').value;
+      if (val && githubRepos) {
+        selectedRepo = githubRepos.find(r => r.nome === val) || null;
+      } else {
+        selectedRepo = null;
+      }
+    };
+
+    // ============ PROJETOS ============
+    function loadProjects(userId) {
+      const projectsRef = ref(database, `projects/${userId}`);
+      onValue(projectsRef, (snapshot) => {
+        const container = document.getElementById('projects-container');
+        if (!container) return;
+        container.innerHTML = '';
+        const projects = snapshot.val() || {};
+        if (Object.keys(projects).length === 0) {
+          container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#999;">Nenhum projeto. Clique em "Novo Projeto" para começar!</div>';
+        }
+        for (const [projectId, project] of Object.entries(projects)) {
+          const card = document.createElement('div');
+          card.className = 'project-card';
+          
+          let repoBadge = '';
+          if (project.githubRepo) {
+            repoBadge = `<div class="github-badge">🔗 ${escapeHtml(project.githubRepo)}</div>`;
+          }
+          
+          card.innerHTML = `
+            ${repoBadge}
+            <div class="project-name">📄 ${escapeHtml(project.name || 'Sem nome')}</div>
+            <div class="project-domain">👤 ${escapeHtml(project.owner || userData?.displayName || 'usuário')}</div>
+            <div class="project-actions">
+              <button class="action-btn edit-btn" onclick="openEditor('${projectId}')">✏️ Abrir</button>
+              ${project.githubRepo ? `<button class="action-btn sync-btn" onclick="syncProjectWithGitHub('${projectId}', '${escapeHtml(project.githubRepo)}')">🔄 Sincronizar</button>` : ''}
+              <button class="action-btn" style="background:#6c757d;color:white;" onclick="editProject('${projectId}')">⚙️ Editar</button>
+              <button class="action-btn delete-btn" onclick="deleteProject('${projectId}')">🗑️ Excluir</button>
+            </div>`;
+          container.appendChild(card);
+        }
+        showAppContent();
+      });
+    }
+
+    // ============ MODAL ============
+    window.openNewProjectModal = function() {
+      editingProjectId = null;
+      selectedRepo = null;
+      document.getElementById('modal-title').textContent = '✨ Criar Novo Projeto';
+      document.getElementById('project-name').value = '';
+      document.getElementById('github-repo-select').value = '';
+      document.getElementById('github-status').className = 'status-msg';
+      document.getElementById('github-status').style.display = 'none';
+      document.getElementById('project-modal').style.display = 'block';
+      loadGitHubReposIntoSelect();
+    };
+
+    window.editProject = async function(projectId) {
+      try {
+        const snapshot = await get(ref(database, `projects/${userData.uid}/${projectId}`));
+        const project = snapshot.val();
+        if (!project) return alert('Projeto não encontrado!');
+        
+        editingProjectId = projectId;
+        selectedRepo = project.githubRepo ? { nome: project.githubRepo } : null;
+        document.getElementById('modal-title').textContent = '⚙️ Editar Projeto';
+        document.getElementById('project-name').value = project.name || '';
+        document.getElementById('github-repo-select').value = project.githubRepo || '';
+        document.getElementById('github-status').className = 'status-msg';
+        document.getElementById('github-status').style.display = 'none';
+        document.getElementById('project-modal').style.display = 'block';
+        loadGitHubReposIntoSelect();
+      } catch (e) {
+        alert('Erro ao carregar projeto: ' + e.message);
+      }
+    };
+
+    window.closeProjectModal = function() {
+      document.getElementById('project-modal').style.display = 'none';
+      editingProjectId = null;
+      selectedRepo = null;
+    };
+
+    async function saveProject(e) {
+      e.preventDefault();
+      const name = document.getElementById('project-name').value.trim();
+      if (!name || name.length > 50) return alert('Nome inválido (1-50 caracteres).');
+      if (!userData) return alert('Usuário não autenticado.');
+
+      try {
+        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
+        
+        if (editingProjectId) {
+          // Editar projeto existente
+          const updates = {
+            name: name,
+            slug: slug,
+            updatedAt: new Date().toISOString()
+          };
+          if (selectedRepo) {
+            updates.githubRepo = selectedRepo.nome;
+          } else {
+            updates.githubRepo = null;
+          }
+          await update(ref(database, `projects/${userData.uid}/${editingProjectId}`), updates);
+        } else {
+          // Criar novo projeto
+          const newProjectRef = push(ref(database, `projects/${userData.uid}`));
+          const projectData = {
+            name: name,
+            slug: slug,
+            owner: userData.displayName,
+            ownerId: userData.uid,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            files: {
+              'index_html': {
+                name: 'index.html',
+                content: `<!DOCTYPE html><html><head><title>${escapeHtml(name)}</title><meta charset="UTF-8"></head><body><h1>${escapeHtml(name)}</h1><p>Comece a editar!</p></body></html>`,
+                language: 'html'
+              }
+            }
+          };
+          if (selectedRepo) {
+            projectData.githubRepo = selectedRepo.nome;
+          }
+          await set(newProjectRef, projectData);
+          editingProjectId = newProjectRef.key;
+        }
+
+        closeProjectModal();
+
+        // Se tiver repositório vinculado, sincronizar
+        if (selectedRepo && editingProjectId) {
+          await syncRepoToProject(selectedRepo.nome, editingProjectId);
+        }
+
+        if (!editingProjectId) {
+          window.location.href = `editor.html?projectId=${editingProjectId}`;
+        }
+      } catch (e) {
+        alert('Erro: ' + e.message);
+      }
+    }
+
+    // ============ SINCRONIZAÇÃO GITHUB ============
+    async function syncRepoToProject(repoName, projectId) {
+      if (!githubToken) return alert('Conecte o GitHub primeiro!');
+      try {
+        const user = await chamarScript(githubToken, "user");
+        const owner = user.login;
+        
+        // Buscar arquivos do repositório
+        const repoInfo = await chamarScript(githubToken, "info", { repo: repoName });
+        
+        // Buscar árvore de arquivos
+        const treeUrl = `https://api.github.com/repos/${owner}/${repoName}/git/trees/main?recursive=1`;
+        const treeRes = await fetch(treeUrl, {
+          headers: { Authorization: `Bearer ${githubToken}`, "User-Agent": "CodeHUB" }
+        });
+        const treeData = await treeRes.json();
+        
+        if (treeData.tree) {
+          const files = {};
+          for (const item of treeData.tree) {
+            if (item.type === 'blob' && (item.path.endsWith('.html') || item.path.endsWith('.css') || item.path.endsWith('.js'))) {
+              const contentUrl = item.url;
+              const contentRes = await fetch(contentUrl, {
+                headers: { Authorization: `Bearer ${githubToken}`, "User-Agent": "CodeHUB" }
+              });
+              const contentData = await contentRes.json();
+              const decoded = atob(contentData.content || '');
+              
+              const ext = item.path.split('.').pop();
+              const langMap = { html: 'html', css: 'css', js: 'javascript' };
+              
+              files[item.path.replace(/[.\/]/g, '_')] = {
+                name: item.path,
+                content: decoded,
+                language: langMap[ext] || ext
+              };
+            }
+          }
+          
+          if (Object.keys(files).length > 0) {
+            await update(ref(database, `projects/${userData.uid}/${projectId}`), {
+              files: files,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+        alert('✅ Projeto sincronizado com ' + repoName + '!');
+      } catch (e) {
+        console.error('Erro na sincronização:', e);
+        alert('❌ Erro ao sincronizar: ' + e.message);
+      }
+    }
+
+    window.syncProjectWithGitHub = async function(projectId, repoName) {
+      if (!githubToken) return alert('Conecte o GitHub primeiro!');
+      if (!confirm(`Sincronizar projeto com o repositório "${repoName}"?`)) return;
+      await syncRepoToProject(repoName, projectId);
+    };
+
+    window.openEditor = function(projectId) {
+      window.location.href = `editor.html?projectId=${projectId}`;
+    };
+
+    window.deleteProject = function(projectId) {
+      if (confirm('Excluir este projeto permanentemente?')) {
+        remove(ref(database, `projects/${auth.currentUser.uid}/${projectId}`))
+          .then(() => { /* removido automaticamente via onValue */ });
+      }
+    };
+
+    window.logout = function() {
+      signOut(auth).then(() => window.location.href = 'auth.html');
+    };
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    // ============ EVENT LISTENERS ============
+    document.getElementById('project-form').addEventListener('submit', saveProject);
+
+    // ============ COOKIES ============
+    function checkCookies() {
+      if (localStorage.getItem('cookiesAccepted') === null) {
+        document.getElementById('cookie-banner').style.display = 'flex';
+      }
+    }
+    window.acceptCookies = function() {
+      localStorage.setItem('cookiesAccepted', 'true');
+      document.getElementById('cookie-banner').style.display = 'none';
+    };
+    window.rejectCookies = function() {
+      localStorage.setItem('cookiesAccepted', 'false');
+      document.getElementById('cookie-banner').style.display = 'none';
+    };
+    checkCookies();
+
+    // ============ AUTH STATE ============
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'auth.html';
+        return;
+      }
+      userData = {
+        username: user.email?.split('@')[0] || 'usuário',
+        email: user.email || '',
+        uid: user.uid,
+        displayName: user.displayName || user.email?.split('@')[0] || 'usuário'
+      };
+      document.getElementById('username').textContent = '👤 ' + userData.displayName;
+      
+      checkGitHubToken();
+      loadProjects(user.uid);
+
+      // Verificar se voltou do callback do GitHub
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get('github_token');
+      if (tokenFromUrl) {
+        localStorage.setItem('github_token', tokenFromUrl);
+        githubToken = tokenFromUrl;
+        updateGitHubButton();
+        loadGitHubRepos();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    });
+
+    // ============ EXPORTAR PARA WINDOW ============
+    window._chamarScript = chamarScript;
+    window._githubToken = () => githubToken;
+    window._userData = () => userData;
+  </script>
 </body>
 </html>
