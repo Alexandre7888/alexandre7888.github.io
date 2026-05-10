@@ -18,26 +18,21 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
-// ============ PUTER.JS - INTEGRAÇÃO ADICIONAL ============
+// ============ PUTER.JS - INTEGRAÇÃO ============
 let puterReady = false;
 let puterUser = null;
 
-// Inicializar Puter (não bloqueante)
 async function initPuter() {
   try {
     if (typeof puter !== 'undefined') {
       puterReady = true;
       console.log('✅ Puter.js disponível');
-      
-      // Tentar restaurar sessão
       try {
         puterUser = await puter.auth.getUser();
         console.log('✅ Puter autenticado:', puterUser.username);
       } catch(e) {
         console.log('Puter não autenticado ainda');
       }
-    } else {
-      console.log('⚠️ Puter.js não carregado');
     }
   } catch(e) {
     console.log('Puter init error:', e);
@@ -62,6 +57,8 @@ let isSaving = false;
 let previewBlobUrl = null;
 let streamAbortController = null;
 let appInitialized = false;
+let deployInProgress = false;
+let deployLogs = [];
 
 // Garantir projectId na URL
 if (!new URLSearchParams(window.location.search).get('projectId')) {
@@ -70,14 +67,11 @@ if (!new URLSearchParams(window.location.search).get('projectId')) {
   window.history.replaceState({}, '', url);
 }
 
-// ============ INICIALIZAÇÃO DIRETA (SEM LOOP) ============
+// ============ INICIALIZAÇÃO ============
 function initAppDirect() {
   currentUser = { uid: 'user_' + Date.now(), displayName: 'Dev' };
-  
-  // Inicializar Puter em paralelo
   initPuter();
-  
-  // Auth anônimo Firebase sem bloquear
+
   auth.signInAnonymously().then(result => {
     if (result.user) {
       currentUser = result.user;
@@ -87,7 +81,6 @@ function initAppDirect() {
     document.getElementById('user-name').textContent = 'Dev (offline)';
   });
 
-  // Listener de auth configurado apenas UMA vez
   auth.onAuthStateChanged(user => {
     if (user && (!currentUser || user.uid !== currentUser.uid)) {
       currentUser = user;
@@ -96,7 +89,6 @@ function initAppDirect() {
     }
   });
 
-  // Iniciar imediatamente
   loadProjectFromFirebase();
 }
 
@@ -105,11 +97,11 @@ async function loadProjectFromFirebase() {
   try {
     const snap = await db.ref(`projects/${currentUser.uid}/${currentProjectId}`).once('value');
     const d = snap.val();
-    
+
     if (d) {
       document.getElementById('project-name').value = d.name || '';
       files = d.files || {};
-      
+
       if (d.hosting?.url) {
         hostingUrl = d.hosting.url;
         hostingSubdomain = d.hosting.subdomain;
@@ -124,7 +116,6 @@ async function loadProjectFromFirebase() {
       createDefaultProject();
     }
   } catch(e) {
-    console.log('Offline, criando projeto local');
     createDefaultProject();
   }
 
@@ -152,9 +143,9 @@ function createDefaultProject() {
       createdAt: new Date().toISOString() 
     }
   };
-  
+
   document.getElementById('project-name').value = 'Novo Projeto';
-  
+
   try {
     db.ref(`projects/${currentUser.uid}/${currentProjectId}`).set({
       name: 'Novo Projeto', files: files, createdAt: new Date().toISOString()
@@ -293,17 +284,17 @@ async function saveCurrentFile() {
   try {
     const content = document.getElementById('simple-editor').value;
     if (lastSavedContent === content) { isSaving = false; return; }
-    
+
     document.getElementById('auto-save-text').textContent = 'Salvando...';
     document.getElementById('auto-save-indicator').style.background = 'var(--accent-orange)';
-    
+
     files[currentFile].content = content;
     files[currentFile].updatedAt = new Date().toISOString();
     lastSavedContent = content;
-    
+
     await saveToFirebase();
-    await saveToPuter(); // Também salvar no Puter
-    
+    await saveToPuter();
+
     document.getElementById('auto-save-text').textContent = 'Salvo ✔';
     document.getElementById('auto-save-indicator').style.background = 'var(--accent-green)';
     document.getElementById('auto-save-time').textContent = new Date().toLocaleTimeString();
@@ -328,32 +319,23 @@ async function saveToFirebase() {
   }
 }
 
-// ✅ NOVO: Salvar também no Puter
 async function saveToPuter() {
   if (!puterReady) return;
   try {
-    // Salvar no armazenamento do Puter via arquivo
+    const projectDir = `/projects/${currentProjectId}`;
+    try { await puter.fs.mkdir(projectDir, { recursive: true }); } catch(e) {}
+
+    for (const [key, file] of Object.entries(files)) {
+      const filePath = `${projectDir}/${file.name || key}`;
+      await puter.fs.write(filePath, file.content || '');
+    }
+
     const projectData = {
       name: document.getElementById('project-name').value,
       files: files,
       updatedAt: new Date().toISOString()
     };
-    
-    // Criar diretório do projeto se não existir
-    const projectDir = `/projects/${currentProjectId}`;
-    try {
-      await puter.fs.mkdir(projectDir, { recursive: true });
-    } catch(e) {}
-    
-    // Salvar cada arquivo
-    for (const [key, file] of Object.entries(files)) {
-      const filePath = `${projectDir}/${file.name || key}`;
-      await puter.fs.write(filePath, file.content || '');
-    }
-    
-    // Salvar metadados
     await puter.fs.write(`${projectDir}/project.json`, JSON.stringify(projectData));
-    
     console.log('✅ Salvo no Puter');
   } catch(e) {
     console.log('Puter save error:', e);
@@ -388,32 +370,21 @@ function closeNewFileModal() {
 function confirmNewFile() {
   let name = document.getElementById('newFileName').value.trim();
   const type = document.getElementById('newFileType').value;
-  
   if (!name) { 
     const map = { html:'index.html', css:'style.css', js:'script.js' }; 
     name = map[type] || 'file.txt'; 
   }
   if (!name.includes('.')) name += '.' + type;
-  
   const key = sanitizeFirebaseKey(name);
-  
-  if (files[key]) { 
-    showNotification('Arquivo já existe!', 'error'); 
-    return; 
-  }
-  
+  if (files[key]) { showNotification('Arquivo já existe!', 'error'); return; }
+
   const templates = {
     html: '<!DOCTYPE html>\n<html lang="pt-br">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Document</title>\n</head>\n<body>\n  <h1>Olá!</h1>\n</body>\n</html>',
     css: '/* Estilos */\nbody {\n  margin: 0;\n  font-family: sans-serif;\n}\n',
     js: '// JavaScript\nconsole.log("Hello!");\n'
   };
-  
-  files[key] = { 
-    name: name, originalName: name, 
-    content: templates[type] || '', 
-    createdAt: new Date().toISOString() 
-  };
-  
+
+  files[key] = { name: name, originalName: name, content: templates[type] || '', createdAt: new Date().toISOString() };
   closeNewFileModal();
   openFile(key);
   saveCurrentFile();
@@ -421,33 +392,28 @@ function confirmNewFile() {
   showNotification('Arquivo criado!', 'success');
 }
 
-// ============ PUBLICAÇÃO (FIREBASE + PUTER) ============
+// ============ PUBLICAÇÃO ============
 async function publishSite() {
   const hasIndex = Object.values(files).find(f => (f.name||f.originalName)==='index.html');
-  if (!hasIndex) { 
-    showNotification('Crie index.html primeiro!', 'error'); 
-    return; 
-  }
+  if (!hasIndex) { showNotification('Crie index.html primeiro!', 'error'); return; }
   await saveCurrentFile();
-  
+
   if (siteCreated) {
     showModal('🔄 Atualizar?', 'Atualizar site?', async () => {
       await saveToFirebase();
-      await deployToPuter(); // ✅ Também atualizar no Puter
+      await deployToPuter();
       showNotification('✅ Atualizado!', 'success');
     });
   } else {
     showModal('🚀 Publicar?', 'Hospedar no Puter?', async () => {
-      await deployToPuter(); // ✅ Publicar no Puter
+      await deployToPuter();
       showNotification('✅ Publicado!', 'success');
     });
   }
 }
 
-// ✅ NOVO: Deploy no Puter
 async function deployToPuter() {
   if (!puterReady) {
-    // Fallback para Firebase
     hostingUrl = `https://${currentProjectId}.web.app`;
     siteCreated = true;
     try {
@@ -458,29 +424,21 @@ async function deployToPuter() {
     updateUIAfterPublish();
     return;
   }
-  
+
   try {
-    // Autenticar no Puter se necessário
-    try {
-      await puter.auth.getUser();
-    } catch(e) {
-      await puter.auth.signIn();
-    }
-    
-    // Criar diretório para o site
+    try { await puter.auth.getUser(); } catch(e) { await puter.auth.signIn(); }
+
     if (!hostingDirectory) {
       hostingDirectory = puter.randName();
     }
-    
+
     await puter.fs.mkdir(hostingDirectory, { recursive: true });
-    
-    // Salvar todos os arquivos
+
     for (const [key, file] of Object.entries(files)) {
       const fileName = file.name || file.originalName || key;
       await puter.fs.write(`${hostingDirectory}/${fileName}`, file.content || '');
     }
-    
-    // Criar/atualizar hospedagem
+
     if (!hostingSubdomain) {
       const site = await puter.hosting.create(puter.randName(), hostingDirectory);
       hostingSubdomain = site.subdomain;
@@ -489,33 +447,25 @@ async function deployToPuter() {
       try {
         await puter.hosting.update(hostingSubdomain, hostingDirectory);
       } catch(e) {
-        // Recriar se update falhar
         const site = await puter.hosting.create(puter.randName(), hostingDirectory);
         hostingSubdomain = site.subdomain;
         hostingUrl = `https://${site.subdomain}.puter.site`;
       }
     }
-    
+
     siteCreated = true;
-    
-    // Salvar no Firebase também
+
     try {
       await db.ref(`projects/${currentUser.uid}/${currentProjectId}/hosting`).set({ 
-        url: hostingUrl, 
-        subdomain: hostingSubdomain,
-        directory: hostingDirectory,
-        publishedAt: new Date().toISOString() 
+        url: hostingUrl, subdomain: hostingSubdomain, directory: hostingDirectory, publishedAt: new Date().toISOString() 
       });
     } catch(e) {}
-    
+
     updateUIAfterPublish();
-    
+    addDeployLog(`✅ Deploy concluído: ${hostingUrl}`, 'success');
   } catch(e) {
     console.error('Puter deploy error:', e);
-    showNotification('Erro no Puter, salvando no Firebase', 'info');
-    hostingUrl = `https://${currentProjectId}.web.app`;
-    siteCreated = true;
-    updateUIAfterPublish();
+    addDeployLog('❌ Erro no deploy: ' + e.message, 'error');
   }
 }
 
@@ -529,30 +479,96 @@ function updateUIAfterPublish() {
 async function deleteSite() {
   if (!siteCreated) return;
   showModal('🗑️ Deletar?', 'Deletar site?', async () => {
-    // Deletar do Puter
     if (puterReady && hostingSubdomain) {
-      try {
-        await puter.hosting.delete(hostingSubdomain);
-      } catch(e) {
-        console.log('Puter delete error:', e);
-      }
+      try { await puter.hosting.delete(hostingSubdomain); } catch(e) {}
     }
-    
-    hostingUrl = null; 
-    hostingSubdomain = null;
-    hostingDirectory = null;
+    hostingUrl = null; hostingSubdomain = null; hostingDirectory = null;
     siteCreated = false;
-    
     document.getElementById('urlPanelTop').style.display = 'none';
     document.getElementById('siteDeleteBtn').style.display = 'none';
     document.getElementById('sitePublishBtn').textContent = '🚀 Publicar';
-    
-    try {
-      await db.ref(`projects/${currentUser.uid}/${currentProjectId}/hosting`).remove();
-    } catch(e) {}
-    
+    try { await db.ref(`projects/${currentUser.uid}/${currentProjectId}/hosting`).remove(); } catch(e) {}
     showNotification('✅ Deletado!', 'success');
   });
+}
+
+// ============ DEPLOYMENTS ============
+function showDeployments() {
+  document.getElementById('deploymentsModal').style.display = 'flex';
+  refreshDeployments();
+}
+
+function closeDeploymentsModal() {
+  document.getElementById('deploymentsModal').style.display = 'none';
+}
+
+function addDeployLog(msg, type = 'info') {
+  deployLogs.push({ msg, type, time: new Date().toLocaleTimeString() });
+  const logContainer = document.getElementById('deployLog');
+  if (logContainer) {
+    const line = document.createElement('div');
+    line.className = `log-line ${type}`;
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    logContainer.appendChild(line);
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
+}
+
+async function startDeploy() {
+  if (deployInProgress) return;
+  deployInProgress = true;
+
+  const statusDot = document.getElementById('deployStatusDot');
+  const statusText = document.getElementById('deployStatusText');
+  const deployLog = document.getElementById('deployLog');
+
+  statusDot.classList.add('active');
+  statusText.textContent = 'Deploy em andamento...';
+  deployLog.innerHTML = '';
+
+  addDeployLog('🚀 Iniciando deploy...', 'info');
+  addDeployLog('⏳ Salvando arquivos...', 'info');
+
+  await saveCurrentFile();
+  addDeployLog('✅ Arquivos salvos', 'success');
+
+  addDeployLog('📤 Enviando para hospedagem...', 'info');
+  await deployToPuter();
+
+  if (siteCreated) {
+    addDeployLog('🌐 Site publicado: ' + hostingUrl, 'success');
+  }
+
+  statusDot.classList.remove('active');
+  statusText.textContent = siteCreated ? '✅ Online' : '❌ Falhou';
+  deployInProgress = false;
+
+  // Atualizar histórico
+  const historyDiv = document.getElementById('deployHistory');
+  if (historyDiv) {
+    const entry = document.createElement('div');
+    entry.style.cssText = 'padding:6px 0;border-bottom:1px solid var(--border-color);';
+    entry.innerHTML = `<span style="color:var(--accent-green)">🚀</span> ${new Date().toLocaleString()} - ${siteCreated ? 'Sucesso' : 'Falha'}`;
+    historyDiv.prepend(entry);
+  }
+}
+
+function refreshDeployments() {
+  const statusText = document.getElementById('deployStatusText');
+  const statusDot = document.getElementById('deployStatusDot');
+  const historyDiv = document.getElementById('deployHistory');
+
+  if (siteCreated) {
+    statusText.textContent = '✅ Online: ' + hostingUrl;
+    statusDot.style.background = 'var(--accent-green)';
+  } else {
+    statusText.textContent = 'Nenhum deploy realizado';
+    statusDot.style.background = 'var(--text-muted)';
+  }
+
+  if (historyDiv && !historyDiv.innerHTML) {
+    historyDiv.innerHTML = '<div style="color:var(--text-muted);padding:8px;">Nenhum histórico de deploy</div>';
+  }
 }
 
 // ============ PREVIEW ============
@@ -562,7 +578,7 @@ function previewProject() {
     saveCurrentFile();
     if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
     let html = idx.content;
-    
+
     for (const f of Object.values(files)) {
       const fn = f.name || f.originalName;
       if (fn === 'index.html') continue;
@@ -573,7 +589,7 @@ function previewProject() {
         html = html.replace('</body>', `<script>${f.content}<\/script></body>`);
       }
     }
-    
+
     previewBlobUrl = URL.createObjectURL(new Blob([html], {type:'text/html'}));
     document.getElementById('previewIframe').src = previewBlobUrl;
     document.getElementById('previewModal').style.display = 'flex';
@@ -586,22 +602,31 @@ function closePreviewModal() {
   document.getElementById('previewModal').style.display = 'none'; 
 }
 
+function refreshPreview() {
+  const iframe = document.getElementById('previewIframe');
+  if (iframe) iframe.src = iframe.src;
+}
+
+function openPreviewExterno() {
+  const iframe = document.getElementById('previewIframe');
+  if (iframe?.src) window.open(iframe.src, '_blank');
+}
+
 // ============ IA COM STREAMING (PUTER AI) ============
 async function sendToAI() {
   const chatInput = document.getElementById('chatInput');
   const msg = chatInput.value.trim();
   if (!msg) return;
-  
+
   log('🧑 ' + msg, 'user');
   chatInput.value = '';
-  
+
   streamAbortController = new AbortController();
   document.getElementById('stopStreamBtn').style.display = 'inline-flex';
   document.getElementById('aiStatusDot').classList.add('streaming');
   document.getElementById('aiStatusText').textContent = 'Streaming...';
-  
+
   try {
-    // ✅ Usar Puter AI se disponível
     if (puterReady) {
       await sendToAIWithPuter(msg);
     } else {
@@ -611,8 +636,6 @@ async function sendToAI() {
     if (e.name === 'AbortError') return;
     finalizeStream();
     log('Erro IA: ' + e.message, 'error');
-    
-    // Fallback: tentar API direta
     try {
       await sendToAIWithAPI(msg);
     } catch(e2) {
@@ -621,34 +644,28 @@ async function sendToAI() {
   }
 }
 
-// ✅ NOVO: IA via Puter
 async function sendToAIWithPuter(msg) {
-  const ctx = `Você é um assistente no CodeHUB Pro. Use [CARQUIVO:nome.ext]conteúdo[/CARQUIVO] para criar arquivos, [EDITAR:nome.ext]conteúdo[/EDITAR] para editar. Projeto: ${currentProjectId}. Arquivos: ${Object.values(files).map(f=>f.name||'?').join(', ')}.`;
-  
+  const ctx = `Você é um assistente no CodeHUB Pro. Use [CARQUIVO:nome.ext]conteúdo[/CARQUIVO] para criar arquivos, [EDITAR:nome.ext]conteúdo[/EDITAR] para editar. Projeto: ${currentProjectId}.`;
+
   const response = await puter.ai.chat(`${ctx}\n\nUsuário: ${msg}`, {
     model: 'gpt-4o-mini',
     stream: true,
     signal: streamAbortController.signal
   });
-  
+
   let fullText = '';
-  
   for await (const chunk of response) {
     const text = chunk?.message?.content || chunk?.toString() || '';
-    if (text) {
-      fullText += text;
-      logStream(text);
-    }
+    if (text) { fullText += text; logStream(text); }
   }
-  
+
   finalizeStream();
   await processAICommands(fullText);
 }
 
-// ✅ NOVO: IA via API direta
 async function sendToAIWithAPI(msg) {
-  const ctx = `Você é um assistente no CodeHUB Pro. Use [CARQUIVO:nome.ext]conteúdo[/CARQUIVO] para criar arquivos, [EDITAR:nome.ext]conteúdo[/EDITAR] para editar. Projeto: ${currentProjectId}. Arquivos: ${Object.values(files).map(f=>f.name||'?').join(', ')}.`;
-  
+  const ctx = `Você é um assistente no CodeHUB Pro. Use [CARQUIVO:nome.ext]conteúdo[/CARQUIVO] para criar arquivos, [EDITAR:nome.ext]conteúdo[/EDITAR] para editar.`;
+
   const response = await fetch('https://api.puter.com/ai/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -666,10 +683,8 @@ async function sendToAIWithAPI(msg) {
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    
     const chunk = decoder.decode(value, { stream: true });
     const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
-    
     for (const line of lines) {
       const data = line.slice(6);
       if (data === '[DONE]') break;
@@ -680,7 +695,7 @@ async function sendToAIWithAPI(msg) {
       } catch(e) {}
     }
   }
-  
+
   finalizeStream();
   await processAICommands(fullText);
 }
@@ -695,12 +710,11 @@ async function processAICommands(text) {
     openFile(key); saveCurrentFile(); saveToFirebase();
     log(`✅ ${fn} criado`, 'success');
   }
-  
+
   const editRe = /\[EDITAR:\s*([^\]]+)\]\s*([\s\S]*?)\s*\[\/EDITAR\]/g;
   while ((match = editRe.exec(text)) !== null) {
     const fn = match[1].trim(), content = match[2];
     const key = sanitizeFirebaseKey(fn);
-    
     if (files[key]) {
       files[key].content = content;
       if (currentFile === key) document.getElementById('simple-editor').value = content;
@@ -731,7 +745,7 @@ function quickAI(type) {
   sendToAI();
 }
 
-// ============ WORKERS (COM PUTER) ============
+// ============ WORKERS ============
 function createNewWorker() {
   document.getElementById('newWorkerModal').style.display = 'flex';
 }
@@ -744,28 +758,24 @@ async function confirmNewWorker() {
   const name = document.getElementById('newWorkerName').value.trim();
   const route = document.getElementById('newWorkerRoute').value.trim();
   if (!name) { showNotification('Nome obrigatório', 'error'); return; }
-  
+
   const id = sanitizeFirebaseKey(name) + '_' + Date.now().toString(36);
   const workerCode = `router.get('${route || '/api/hello'}', async ({ request }) => {\n  return { message: "Hello from ${name}!" };\n});`;
-  
-  // ✅ Publicar worker no Puter se disponível
+
   let url = null;
   if (puterReady) {
     try {
       await puter.auth.getUser().catch(() => puter.auth.signIn());
-      
       const fileName = `worker_${id}.js`;
       await puter.fs.write(fileName, workerCode);
-      
       const worker = await puter.workers.create(name.replace(/[^a-zA-Z0-9]/g, ''), fileName);
       url = `https://${worker.name}.${worker.username || 'puter'}.workers.dev${route || ''}`;
       showNotification('Worker publicado no Puter!', 'success');
     } catch(e) {
-      console.log('Puter worker error:', e);
       showNotification('Worker criado localmente', 'info');
     }
   }
-  
+
   workersList.push({ id, name, route: route || '/api', url, code: workerCode });
   renderWorkersList();
   closeNewWorkerModal();
@@ -776,7 +786,7 @@ function renderWorkersList() {
   const count = document.getElementById('workersCount');
   if (count) count.textContent = workersList.length;
   if (!list) return;
-  
+
   if (!workersList.length) {
     list.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:30px;">📭 Nenhum worker</div>';
     return;
@@ -794,7 +804,7 @@ function renderWorkersList() {
 function showVersionHistory() {
   if (!currentFile) { showNotification('Abra um arquivo primeiro', 'info'); return; }
   document.getElementById('versionFileName').textContent = files[currentFile]?.name || currentFile;
-  document.getElementById('versionList').innerHTML = `<p style="color:var(--text-muted);">Versão atual salva em: ${new Date(files[currentFile]?.updatedAt || Date.now()).toLocaleString()}</p>`;
+  document.getElementById('versionList').innerHTML = `<p style="color:var(--text-muted);">Versão atual: ${new Date(files[currentFile]?.updatedAt || Date.now()).toLocaleString()}</p>`;
   document.getElementById('versionHistoryModal').style.display = 'flex';
 }
 
@@ -814,48 +824,22 @@ function logout() {
   window.location.href = 'index.html'; 
 }
 
-// ============ ATALHOS DE TECLADO ============
+// ============ ATALHOS ============
 function initKeyboard() {
   document.addEventListener('keydown', e => {
     const ctrl = e.ctrlKey || e.metaKey;
-    
     if (ctrl && e.key === 's') { e.preventDefault(); saveCurrentFile(); }
     else if (ctrl && e.key === 'n') { e.preventDefault(); newFile(); }
     else if (ctrl && e.key === 'w') { e.preventDefault(); closeCurrentFile(); }
     else if (ctrl && e.key === 'p') { e.preventDefault(); previewProject(); }
     else if (ctrl && e.key === 'h') { e.preventDefault(); showVersionHistory(); }
     else if (ctrl && e.key === 'b') { e.preventDefault(); publishSite(); }
+    else if (ctrl && e.key === 'd') { e.preventDefault(); showDeployments(); }
     else if (ctrl && e.key === '=') { e.preventDefault(); changeZoom(0.1); }
     else if (ctrl && e.key === '-') { e.preventDefault(); changeZoom(-0.1); }
     else if (ctrl && e.key === '0') { e.preventDefault(); resetZoom(); }
     else if (ctrl && e.key === 'Enter') { e.preventDefault(); sendToAI(); }
-    else if (ctrl && e.key === 'd') { e.preventDefault(); duplicateLine(); }
-    else if (ctrl && e.key === '/') { e.preventDefault(); toggleComment(); }
   });
-}
-
-function duplicateLine() {
-  const editor = document.getElementById('simple-editor');
-  const pos = editor.selectionStart;
-  const text = editor.value;
-  const ls = text.lastIndexOf('\n', pos - 1) + 1;
-  const le = text.indexOf('\n', pos);
-  const ae = le === -1 ? text.length : le;
-  editor.value = text.substring(0, ae) + '\n' + text.substring(ls, ae) + text.substring(ae);
-  saveCurrentFile();
-}
-
-function toggleComment() {
-  const editor = document.getElementById('simple-editor');
-  const pos = editor.selectionStart;
-  const text = editor.value;
-  const ls = text.lastIndexOf('\n', pos - 1) + 1;
-  const le = text.indexOf('\n', pos);
-  const ae = le === -1 ? text.length : le;
-  const line = text.substring(ls, ae);
-  let nl = line.startsWith('// ') ? line.substring(3) : line.startsWith('//') ? line.substring(2) : '// ' + line;
-  editor.value = text.substring(0, ls) + nl + text.substring(ae);
-  saveCurrentFile();
 }
 
 function setupAutoSave() {
@@ -872,48 +856,31 @@ function setupAutoSave() {
 
 // ============ INICIALIZAÇÃO ============
 document.addEventListener('DOMContentLoaded', () => {
-  // Event Listeners
   document.getElementById('saveFileBtn')?.addEventListener('click', saveCurrentFile);
   document.getElementById('previewBtn')?.addEventListener('click', previewProject);
   document.getElementById('sitePublishBtn')?.addEventListener('click', publishSite);
   document.getElementById('siteDeleteBtn')?.addEventListener('click', deleteSite);
-  
+
   document.getElementById('project-name')?.addEventListener('blur', function() { 
     if (this.value.trim() && currentUser) {
       db.ref(`projects/${currentUser.uid}/${currentProjectId}/name`).set(this.value.trim()).catch(()=>{});
     }
   });
 
-  // Resize Workers Panel
+  // Resize Workers
   let resizingW = false;
-  document.getElementById('workersResizeHandle')?.addEventListener('mousedown', e => { 
-    resizingW = true; e.preventDefault(); 
-  });
-  document.addEventListener('mousemove', e => { 
-    if (!resizingW) return; 
-    const w = e.clientX; 
-    if (w >= 180 && w <= 380) {
-      document.getElementById('workers-panel').style.width = w + 'px'; 
-    }
-  });
+  document.getElementById('workersResizeHandle')?.addEventListener('mousedown', e => { resizingW = true; e.preventDefault(); });
+  document.addEventListener('mousemove', e => { if (!resizingW) return; const w = e.clientX; if (w >= 180 && w <= 380) document.getElementById('workers-panel').style.width = w + 'px'; });
   document.addEventListener('mouseup', () => { resizingW = false; });
 
   // Resize AI Sidebar
   let resizing = false;
-  document.getElementById('resizeHandle')?.addEventListener('mousedown', e => { 
-    resizing = true; e.preventDefault(); 
-  });
-  document.addEventListener('mousemove', e => { 
-    if (!resizing) return; 
-    const w = innerWidth - e.clientX; 
-    if (w >= 260 && w <= 560) {
-      document.getElementById('ai-sidebar').style.width = w + 'px'; 
-    }
-  });
+  document.getElementById('resizeHandle')?.addEventListener('mousedown', e => { resizing = true; e.preventDefault(); });
+  document.addEventListener('mousemove', e => { if (!resizing) return; const w = innerWidth - e.clientX; if (w >= 260 && w <= 560) document.getElementById('ai-sidebar').style.width = w + 'px'; });
   document.addEventListener('mouseup', () => { resizing = false; });
 
   // Modal backdrops
-  ['confirmModal','previewModal','newFileModal','newWorkerModal','versionHistoryModal'].forEach(id => {
+  ['confirmModal','previewModal','newFileModal','newWorkerModal','versionHistoryModal','deploymentsModal'].forEach(id => {
     document.getElementById(id)?.addEventListener('click', function(e) {
       if (e.target === this) {
         if (id === 'confirmModal') modalCancel();
@@ -921,16 +888,17 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (id === 'newFileModal') closeNewFileModal();
         else if (id === 'newWorkerModal') closeNewWorkerModal();
         else if (id === 'versionHistoryModal') closeVersionHistoryModal();
+        else if (id === 'deploymentsModal') closeDeploymentsModal();
       }
     });
   });
 
   initKeyboard();
   setupAutoSave();
-  initAppDirect(); // ✅ INICIAR SEM LOOP
+  initAppDirect();
 });
 
-// Expor funções globalmente
+// Exportar funções globalmente
 window.changeZoom = changeZoom;
 window.resetZoom = resetZoom;
 window.saveCurrentFile = saveCurrentFile;
@@ -938,6 +906,8 @@ window.publishSite = publishSite;
 window.deleteSite = deleteSite;
 window.previewProject = previewProject;
 window.closePreviewModal = closePreviewModal;
+window.refreshPreview = refreshPreview;
+window.openPreviewExterno = openPreviewExterno;
 window.createNewWorker = createNewWorker;
 window.closeNewWorkerModal = closeNewWorkerModal;
 window.confirmNewWorker = confirmNewWorker;
@@ -953,5 +923,9 @@ window.sendToAI = sendToAI;
 window.quickAI = quickAI;
 window.showVersionHistory = showVersionHistory;
 window.closeVersionHistoryModal = closeVersionHistoryModal;
+window.showDeployments = showDeployments;
+window.closeDeploymentsModal = closeDeploymentsModal;
+window.startDeploy = startDeploy;
+window.refreshDeployments = refreshDeployments;
 window.modalConfirm = modalConfirm;
 window.modalCancel = modalCancel;
