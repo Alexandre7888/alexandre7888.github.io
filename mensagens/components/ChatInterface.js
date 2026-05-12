@@ -22,6 +22,112 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // Sistema de expiração de mídia (1 semana)
     const MEDIA_EXPIRATION_DAYS = 7;
     
+    // ==================== ÁUDIOS PERSONALIZADOS ====================
+    const [callAudio] = React.useState(new Audio());
+    const [ringtoneAudio] = React.useState(new Audio());
+    
+    // URLs dos áudios personalizados (configure aqui suas URLs)
+    const CALLING_SOUND_URL = "https://seuservidor.com/sounds/calling.mp3"; // Som ao ligar
+    const RINGTONE_SOUND_URL = "https://seuservidor.com/sounds/ringtone.mp3"; // Som ao receber chamada
+    
+    // Carregar áudios
+    React.useEffect(() => {
+        callAudio.src = CALLING_SOUND_URL;
+        ringtoneAudio.src = RINGTONE_SOUND_URL;
+        callAudio.loop = true;
+        ringtoneAudio.loop = true;
+    }, []);
+    
+    // ==================== SISTEMA DE CALL ID (PARA MULTI-DISPOSITIVO) ====================
+    const [activeCallId, setActiveCallId] = React.useState(null);
+    
+    // Gerar ou recuperar Call ID da URL
+    React.useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const callIdFromUrl = urlParams.get('callid');
+        
+        if (callIdFromUrl) {
+            setActiveCallId(callIdFromUrl);
+            // Verificar se já existe uma chamada ativa com este ID
+            const callRef = db.ref(`calls/${callIdFromUrl}`);
+            callRef.on('value', (snapshot) => {
+                const callData = snapshot.val();
+                if (callData && callData.active && callData.deviceId !== user.id) {
+                    // Outro dispositivo com mesma conta está na chamada
+                    showToastMessage("Você já está em uma chamada em outro dispositivo! Encerrando esta...", "warning");
+                    if (callStatus === 'connected') {
+                        endCall(true);
+                    }
+                }
+            });
+            return () => callRef.off();
+        }
+    }, []);
+    
+    // Criar Call ID ao iniciar chamada
+    const createCallId = async () => {
+        const newCallId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
+        const callRef = db.ref(`calls/${newCallId}`);
+        await callRef.set({
+            id: newCallId,
+            startedAt: Date.now(),
+            participants: { [user.id]: true },
+            active: true,
+            deviceId: user.id
+        });
+        // Atualizar URL
+        const newUrl = `${window.location.pathname}?callid=${newCallId}`;
+        window.history.pushState({}, '', newUrl);
+        return newCallId;
+    };
+    
+    // Encerrar Call ID
+    const endCallId = async (callId) => {
+        if (callId) {
+            const callRef = db.ref(`calls/${callId}`);
+            await callRef.update({
+                active: false,
+                endedAt: Date.now()
+            });
+            // Remover da URL
+            window.history.pushState({}, '', window.location.pathname);
+        }
+    };
+    
+    // ==================== CSS ESTILO WHATSAPP PARA CHAMADAS ====================
+    const callStyles = `
+        .call-container {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+        }
+        .call-avatar {
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.1);
+        }
+        .call-button {
+            transition: all 0.2s ease;
+        }
+        .call-button:hover {
+            transform: scale(1.05);
+        }
+        .call-button:active {
+            transform: scale(0.95);
+        }
+        .incoming-call {
+            animation: pulse-ring 1.5s infinite;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(0,168,132,0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(0,168,132,0); }
+            100% { box-shadow: 0 0 0 0 rgba(0,168,132,0); }
+        }
+        .wave-animation {
+            animation: wave 1s ease-in-out infinite;
+        }
+        @keyframes wave {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
+    `;
+    
     // ==================== FUNÇÃO DE UPLOAD DE ARQUIVO ====================
     const uploadFileToServer = async (file, chatId, senderId) => {
         return new Promise((resolve, reject) => {
@@ -30,7 +136,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 const base64 = e.target.result;
                 const fileId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 
-                // Salvar no servidor temporário (simulado - substituir por API real)
                 const fileData = {
                     id: fileId,
                     data: base64,
@@ -45,11 +150,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     totalViewers: 0
                 };
                 
-                // Armazenar no Firebase apenas a referência (não o base64 inteiro)
                 const fileRef = db.ref(`temp_files/${fileId}`);
                 await fileRef.set(fileData);
                 
-                // Agendar expiração
                 setTimeout(async () => {
                     const views = await fileRef.child('viewers').once('value');
                     const viewers = views.val() || {};
@@ -59,10 +162,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     
                     if (Object.keys(viewers).length >= totalMembers) {
                         await fileRef.remove();
-                        console.log(`Arquivo ${fileId} removido após todos visualizarem`);
                     } else {
                         await fileRef.remove();
-                        console.log(`Arquivo ${fileId} removido após ${MEDIA_EXPIRATION_DAYS} dias`);
                     }
                 }, MEDIA_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
                 
@@ -73,7 +174,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         });
     };
     
-    // Função para marcar visualização de mídia
     const markMediaAsViewed = async (fileId, userId) => {
         const fileRef = db.ref(`temp_files/${fileId}/viewers/${userId}`);
         await fileRef.set(Date.now());
@@ -175,7 +275,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         showToastMessage("Mensagem editada!", "success");
     };
     
-    // ==================== APAGAR MENSAGEM (APENAS ADMIN OU DONO) ====================
+    // ==================== APAGAR MENSAGEM ====================
     const canDeleteMessage = (message) => {
         if (message.senderId === user.id) return true;
         if (activeChat?.type === 'group' && isCurrentUserAdmin) return true;
@@ -324,6 +424,33 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const backgroundAudioRef = React.useRef(null);
     const db = window.firebaseDB;
 
+    // Override NotificationSystem para usar áudios personalizados
+    React.useEffect(() => {
+        if (window.NotificationSystem) {
+            const originalPlayRingtone = window.NotificationSystem.playRingtone;
+            window.NotificationSystem.playRingtone = () => {
+                if (callStatus === 'calling') {
+                    callAudio.play().catch(e => console.log("Áudio não pode ser reproduzido"));
+                } else if (incomingCall) {
+                    ringtoneAudio.play().catch(e => console.log("Áudio não pode ser reproduzido"));
+                } else if (originalPlayRingtone) {
+                    originalPlayRingtone();
+                }
+            };
+            
+            const originalStopRingtone = window.NotificationSystem.stopRingtone;
+            window.NotificationSystem.stopRingtone = () => {
+                callAudio.pause();
+                callAudio.currentTime = 0;
+                ringtoneAudio.pause();
+                ringtoneAudio.currentTime = 0;
+                if (originalStopRingtone) {
+                    originalStopRingtone();
+                }
+            };
+        }
+    }, [callStatus, incomingCall]);
+
     const isCurrentUserAdmin = React.useMemo(() => {
         if (!activeChat || activeChat.type !== 'group') return false;
         return activeChat.members?.[user.id] === 'admin';
@@ -333,29 +460,23 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const sendMediaFile = async (file, type) => {
         if (!activeChat) return;
         
-        // Verificar tamanho (máximo 5MB)
         if (file.size > 5 * 1024 * 1024) {
             showToastMessage("Arquivo muito grande! Máximo 5MB", "error");
             return;
         }
         
-        // Verificar inatividade
         const isActive = await checkInactivity(user.id);
         if (!isActive) return;
         
-        // Rate limiting
         if (!checkRateLimit(user.id, activeChat.id)) return;
         
-        // Mostrar progresso
         setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
         
         try {
-            // Upload para servidor temporário
             const uploadResult = await uploadFileToServer(file, activeChat.id, user.id);
             
             setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
             
-            // Criar mensagem com link do arquivo
             const mediaMessage = {
                 fileId: uploadResult.fileId,
                 fileName: uploadResult.name,
@@ -367,7 +488,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 senderName: user.name
             };
             
-            // Enviar mensagem
             const msgData = {
                 senderId: user.id,
                 senderName: user.name,
@@ -398,13 +518,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
     
-    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA NA MENSAGEM ====================
+    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA ====================
     const renderMediaContent = (msg) => {
         try {
             const mediaData = typeof msg.text === 'string' ? JSON.parse(msg.text) : msg.text;
             
             if (mediaData.fileType && mediaData.fileType.startsWith('image/')) {
-                // Buscar imagem do servidor temporário
                 const [imageData, setImageData] = React.useState(null);
                 
                 React.useEffect(() => {
@@ -414,7 +533,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         const data = snapshot.val();
                         if (data && data.data) {
                             setImageData(data.data);
-                            // Marcar como visualizado
                             await markMediaAsViewed(mediaData.fileId, user.id);
                         }
                     };
@@ -493,7 +611,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 );
             }
             
-            // Outros arquivos (PDF, DOC, etc)
             const [fileUrl, setFileUrl] = React.useState(null);
             
             React.useEffect(() => {
@@ -913,7 +1030,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         } catch (error) { console.error("Erro ao ativar PiP:", error); }
     };
 
-    const answerCall = () => {
+    const answerCall = async () => {
         window.NotificationSystem.stopRingtone();
         if (!incomingCall || !incomingCall.callObj) return;
         const isVideo = incomingCall.isVideo;
@@ -922,6 +1039,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setCallStatus('connected');
         setIsMicMuted(false);
         setIsCamMuted(false);
+        
+        // Criar Call ID para a chamada
+        const newCallId = await createCallId();
+        setActiveCallId(newCallId);
+        
         navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo }).then((stream) => {
             localStreamRef.current = stream;
             if (isVideo && localVideoRef.current) localVideoRef.current.srcObject = stream;
@@ -936,10 +1058,16 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const startCall = async (video = false) => {
         if (!activeChat) return;
         if (activeChat.type === 'group') { startGroupCall(video); return; }
+        
         setCallStatus('calling');
         setIsVideoCall(video);
         setIsMicMuted(false);
         setIsCamMuted(false);
+        
+        // Criar Call ID para a chamada
+        const newCallId = await createCallId();
+        setActiveCallId(newCallId);
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
@@ -958,20 +1086,28 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (video && !groupPermissions.sendVideo) return;
             if (!video && !groupPermissions.sendAudio) return;
         }
+        
         const groupRef = db.ref(`groups/${activeChat.id}/members`);
         const snapshot = await groupRef.once('value');
         const members = snapshot.val();
         if (!members) return;
         const memberIds = Object.keys(members).filter(id => id !== user.id);
         if (memberIds.length === 0) return;
+        
         setCallStatus('connected');
         setIsVideoCall(video);
         setIsMicMuted(false);
         setIsCamMuted(false);
         setActiveGroupCall(true);
         setOngoingGroupCall(null);
-        db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'active', startedBy: user.id, timestamp: Date.now() });
+        
+        // Criar Call ID para a chamada em grupo
+        const newCallId = await createCallId();
+        setActiveCallId(newCallId);
+        
+        db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'active', startedBy: user.id, timestamp: Date.now(), callId: newCallId });
         handleSendMessage(`📞 Iniciou uma chamada de ${video ? 'vídeo' : 'voz'} em grupo.`, 'system');
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
@@ -994,6 +1130,20 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsCamMuted(false);
         setActiveGroupCall(true);
         setOngoingGroupCall(null);
+        
+        // Usar o Call ID existente ou criar novo
+        if (ongoingGroupCall.callId) {
+            setActiveCallId(ongoingGroupCall.callId);
+            // Verificar se outro dispositivo já está na chamada
+            const callRef = db.ref(`calls/${ongoingGroupCall.callId}`);
+            callRef.once('value', (snapshot) => {
+                const callData = snapshot.val();
+                if (callData && callData.deviceId !== user.id && callData.active) {
+                    showToastMessage("Você já está em uma chamada em outro dispositivo!", "warning");
+                }
+            });
+        }
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
@@ -1039,6 +1189,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         stopRecordingCall();
         stopScreenShare();
         setShowProfessionalPanel(false);
+        
+        // Encerrar Call ID
+        if (activeCallId) {
+            endCallId(activeCallId);
+            setActiveCallId(null);
+        }
+        
         if (callStatus === 'connected' && activeChat) {
             const durationStr = formatDuration(callDuration);
             const type = isVideoCall ? 'video' : 'audio';
@@ -1267,6 +1424,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             white-space: pre-wrap;
             word-break: break-all;
         }
+        ${callStyles}
     `;
 
     return (
@@ -1309,32 +1467,133 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
             {showGroupInfo && activeChat?.type === 'group' && (<GroupInfo activeChat={activeChat} user={user} onClose={() => setShowGroupInfo(false)} />)}
 
-            {/* Call Modal - versão simplificada para não estourar limite */}
+            {/* Call Modal - Estilo WhatsApp */}
             {(incomingCall || callStatus) && (
-                <div className={`fixed z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden ${isCallMinimized ? 'bottom-4 right-4 w-48 h-64 rounded-xl border-2 border-white' : 'inset-0 bg-black/95 flex flex-col items-center justify-center'}`}>
-                    <div className={`relative z-10 flex ${isCallMinimized ? 'w-full h-full opacity-0 hover:opacity-100 bg-black/60 items-center justify-center gap-2' : 'flex-col items-center mt-auto mb-12'}`}>
-                        {!isCallMinimized && !incomingCall && (
-                            <div className="absolute top-8 left-8 flex gap-4 z-20">
-                                <button onClick={() => setIsCallMinimized(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-minimize-2 text-xl"></div></button>
-                                {isVideoCall && <button onClick={togglePiP} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-monitor-play text-xl"></div></button>}
-                                <button onClick={() => { const id = prompt("Digite o ID:"); if(id) handleAddParticipantToCall(id); }} className="p-3 bg-[#00a884] rounded-full hover:bg-[#008f6f] text-white shadow-lg"><div className="icon-user-plus text-xl"></div></button>
-                                <button onClick={() => setShowAddContact(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-book-user text-xl"></div></button>
+                <div className={`fixed z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden call-container
+                    ${isCallMinimized 
+                        ? 'bottom-4 right-4 w-64 h-80 rounded-2xl border-2 border-white/20' 
+                        : 'inset-0 flex flex-col items-center justify-center'
+                    }`}>
+                    <style>{`
+                        @keyframes wave {
+                            0%, 100% { transform: scale(1); opacity: 0.6; }
+                            50% { transform: scale(1.3); opacity: 1; }
+                        }
+                        .wave-animation {
+                            animation: wave 1.5s ease-in-out infinite;
+                        }
+                        .avatar-pulse {
+                            box-shadow: 0 0 0 0 rgba(0, 168, 132, 0.5);
+                            animation: pulse 1.5s infinite;
+                        }
+                        @keyframes pulse {
+                            0% { box-shadow: 0 0 0 0 rgba(0, 168, 132, 0.5); }
+                            70% { box-shadow: 0 0 0 20px rgba(0, 168, 132, 0); }
+                            100% { box-shadow: 0 0 0 0 rgba(0, 168, 132, 0); }
+                        }
+                    `}</style>
+                    
+                    {!isCallMinimized && (
+                        <>
+                            {/* Avatar e Nome */}
+                            <div className="flex flex-col items-center mb-8">
+                                <img 
+                                    src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall?.callerId || activeChat?.id}`}
+                                    className="w-32 h-32 rounded-full mb-4 avatar-pulse"
+                                    alt="Contact"
+                                />
+                                <h2 className="text-2xl font-semibold text-white mb-1">
+                                    {incomingCall ? incomingCall.callerId?.split('_')[0] : activeChat?.name}
+                                </h2>
+                                <p className="text-gray-400 text-sm">
+                                    {incomingCall ? 'Chamando...' : 'Em chamada'}
+                                </p>
+                                {callStatus === 'connected' && (
+                                    <p className="text-green-400 text-sm mt-1">{formatDuration(callDuration)}</p>
+                                )}
                             </div>
-                        )}
-                        {isCallMinimized && <button onClick={() => setIsCallMinimized(false)} className="absolute top-2 right-2 text-white p-1"><div className="icon-maximize-2 text-sm"></div></button>}
-                        <div className="flex items-center gap-6">
-                            {!incomingCall && !isCallMinimized && (
-                                <>
-                                    <button onClick={toggleMic} className={`p-3 rounded-full shadow-lg ${isMicMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className={isMicMuted ? "icon-mic-off text-xl" : "icon-mic text-xl"}></div></button>
-                                    {isVideoCall && <button onClick={toggleCam} className={`p-3 rounded-full shadow-lg ${isCamMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className={isCamMuted ? "icon-video-off text-xl" : "icon-video text-xl"}></div></button>}
-                                    <button onClick={() => setShowSoundBoard(!showSoundBoard)} className={`p-3 rounded-full shadow-lg ${showSoundBoard ? 'bg-purple-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className="icon-music text-xl"></div></button>
-                                    {professionalPanel && isCurrentUserAdmin && activeGroupCall && <button onClick={() => setShowProfessionalPanel(!showProfessionalPanel)} className={`p-3 rounded-full shadow-lg ${showProfessionalPanel ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className="icon-settings text-xl"></div></button>}
-                                </>
+                            
+                            {/* Botões de Controle */}
+                            <div className="flex justify-center gap-8 mt-4">
+                                {incomingCall ? (
+                                    <>
+                                        <button onClick={() => setIncomingCall(null)} className="call-button w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 shadow-lg">
+                                            <div className="icon-phone-off text-3xl text-white"></div>
+                                        </button>
+                                        <button onClick={answerCall} className="call-button w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600 shadow-lg">
+                                            <div className="icon-phone text-3xl text-white"></div>
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button onClick={toggleMic} className={`call-button w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                            <div className={isMicMuted ? "icon-mic-off text-2xl text-white" : "icon-mic text-2xl text-white"}></div>
+                                        </button>
+                                        
+                                        {isVideoCall && (
+                                            <button onClick={toggleCam} className={`call-button w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                                <div className={isCamMuted ? "icon-video-off text-2xl text-white" : "icon-video text-2xl text-white"}></div>
+                                            </button>
+                                        )}
+                                        
+                                        <button onClick={() => setShowSoundBoard(!showSoundBoard)} className="call-button w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600 shadow-lg">
+                                            <div className="icon-music text-2xl text-white"></div>
+                                        </button>
+                                        
+                                        <button onClick={() => endCall(false)} className="call-button w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 shadow-lg">
+                                            <div className="icon-phone-off text-3xl text-white"></div>
+                                        </button>
+                                        
+                                        {isVideoCall && (
+                                            <button onClick={togglePiP} className="call-button w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600 shadow-lg">
+                                                <div className="icon-minimize-2 text-2xl text-white"></div>
+                                            </button>
+                                        )}
+                                        
+                                        <button onClick={() => setIsCallMinimized(true)} className="call-button w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600 shadow-lg">
+                                            <div className="icon-arrow-down text-2xl text-white"></div>
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                            
+                            {/* Vídeo Local (se for video call) */}
+                            {isVideoCall && (
+                                <div className="absolute bottom-4 right-4 w-32 h-48 bg-black rounded-xl overflow-hidden shadow-lg border-2 border-gray-600">
+                                    <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                                </div>
                             )}
-                            {!incomingCall && !isCallMinimized && <button onClick={isRecordingCall ? stopRecordingCall : startRecordingCall} className={`p-3 rounded-full shadow-lg flex items-center justify-center gap-2 ${isRecordingCall ? 'bg-white text-red-500' : 'bg-gray-600 text-white'}`}><div className={`icon-circle-stop ${isRecordingCall ? '' : 'hidden'}`}></div><div className={`icon-circle-play ${!isRecordingCall ? '' : 'hidden'}`}></div>{isRecordingCall && <span className="text-xs font-mono">{formatDuration(callDuration)}</span>}</button>}
-                            {incomingCall ? (!isCallMinimized && (<><button onClick={() => setIncomingCall(null)} className="p-4 bg-red-600 rounded-full hover:bg-red-700 shadow-lg"><div className="icon-phone-off text-3xl"></div></button><button onClick={answerCall} className="p-4 bg-green-500 rounded-full hover:bg-green-600 shadow-lg"><div className="icon-phone text-3xl"></div></button></>)) : (<div className="flex items-center gap-4"><button onClick={() => endCall(false)} className="p-5 bg-red-600 rounded-full hover:bg-red-700 shadow-lg"><div className="icon-phone-off text-3xl"></div></button></div>)}
+                            
+                            {/* Vídeo Remoto */}
+                            {isVideoCall && remoteVideoRef.current?.srcObject && (
+                                <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover -z-10" />
+                            )}
+                        </>
+                    )}
+                    
+                    {/* Modo Minimizado */}
+                    {isCallMinimized && (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-black rounded-2xl">
+                            <img 
+                                src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat?.id}`}
+                                className="w-12 h-12 rounded-full mb-2"
+                                alt="Contact"
+                            />
+                            <p className="text-white text-xs font-medium truncate max-w-[90%]">{activeChat?.name}</p>
+                            <p className="text-green-400 text-xs">{formatDuration(callDuration)}</p>
+                            <div className="flex gap-3 mt-3">
+                                <button onClick={() => setIsCallMinimized(false)} className="p-2 bg-gray-700 rounded-full">
+                                    <div className="icon-maximize-2 text-white text-sm"></div>
+                                </button>
+                                <button onClick={() => endCall(false)} className="p-2 bg-red-600 rounded-full">
+                                    <div className="icon-phone-off text-white text-sm"></div>
+                                </button>
+                            </div>
+                            {isVideoCall && remoteVideoRef.current?.srcObject && (
+                                <video ref={remoteVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover -z-10 rounded-2xl" />
+                            )}
                         </div>
-                    </div>
+                    )}
                 </div>
             )}
 
@@ -1381,7 +1640,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 const isSystem = msg.type === 'system';
                                 const messageId = msg.key || idx;
                                 
-                                // Detectar se é mensagem de mídia
                                 const isMediaMessage = msg.text && (msg.text.includes('"fileId"') || msg.type === 'image' || msg.type === 'video' || msg.type === 'file');
                                 
                                 if (isSystem) {
@@ -1443,21 +1701,18 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </div>
                     )}
 
-                    {/* Input Area com botões de mídia */}
+                    {/* Input Area */}
                     <div className="bg-[#f0f2f5] p-3 px-4 flex items-center gap-2">
                         {!showAudioRecorder ? (
                             <>
                                 <div className="icon-smile text-2xl text-gray-500 cursor-pointer"></div>
                                 
-                                {/* Botão para imagem */}
                                 <div className="icon-image text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} title="Enviar Imagem (máx 5MB)"></div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'image'); e.target.value = ''; }} />
                                 
-                                {/* Botão para vídeo */}
                                 <div className="icon-video text-2xl text-gray-500 cursor-pointer" onClick={() => videoInputRef.current ? videoInputRef.current.click() : fileInputRef2.current?.click()} title="Enviar Vídeo (máx 5MB)"></div>
                                 <input type="file" ref={videoInputRef || fileInputRef2} className="hidden" accept="video/*" onChange={async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'video'); e.target.value = ''; }} />
                                 
-                                {/* Botão para arquivo */}
                                 <div className="icon-file text-2xl text-gray-500 cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'file'); }; input.click(); }} title="Enviar Arquivo (máx 5MB)"></div>
                                 
                                 <div className="flex-1 bg-white rounded-lg px-4 py-2 flex items-center">
@@ -1482,7 +1737,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         )}
                     </div>
                     
-                    {/* Upload Progress Indicator */}
                     {Object.keys(uploadProgress).length > 0 && (
                         <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
                             {Object.entries(uploadProgress).map(([name, progress]) => (
