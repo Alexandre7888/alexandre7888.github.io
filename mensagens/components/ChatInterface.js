@@ -11,6 +11,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [contextMenu, setContextMenu] = React.useState({ visible: false, x: 0, y: 0, message: null });
     const [toastMessage, setToastMessage] = React.useState(null);
     const [copiedMessageId, setCopiedMessageId] = React.useState(null);
+    const [uploadProgress, setUploadProgress] = React.useState({});
     
     // Rate limiter
     const rateLimiter = React.useRef({});
@@ -20,12 +21,80 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     
     // Sistema de expiração de mídia (1 semana)
     const MEDIA_EXPIRATION_DAYS = 7;
-    const mediaExpirationRef = React.useRef({});
     
-    // Verificar inatividade (1 semana sem enviar mensagem)
-    const INACTIVITY_DAYS = 7;
+    // ==================== FUNÇÃO DE UPLOAD DE ARQUIVO ====================
+    const uploadFileToServer = async (file, chatId, senderId) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64 = e.target.result;
+                const fileId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Salvar no servidor temporário (simulado - substituir por API real)
+                const fileData = {
+                    id: fileId,
+                    data: base64,
+                    type: file.type,
+                    name: file.name,
+                    size: file.size,
+                    chatId: chatId,
+                    senderId: senderId,
+                    uploadedAt: Date.now(),
+                    expiresAt: Date.now() + (MEDIA_EXPIRATION_DAYS * 24 * 60 * 60 * 1000),
+                    viewers: {},
+                    totalViewers: 0
+                };
+                
+                // Armazenar no Firebase apenas a referência (não o base64 inteiro)
+                const fileRef = db.ref(`temp_files/${fileId}`);
+                await fileRef.set(fileData);
+                
+                // Agendar expiração
+                setTimeout(async () => {
+                    const views = await fileRef.child('viewers').once('value');
+                    const viewers = views.val() || {};
+                    const totalMembers = activeChat?.type === 'group' 
+                        ? Object.keys(activeChat.members || {}).length 
+                        : 2;
+                    
+                    if (Object.keys(viewers).length >= totalMembers) {
+                        await fileRef.remove();
+                        console.log(`Arquivo ${fileId} removido após todos visualizarem`);
+                    } else {
+                        await fileRef.remove();
+                        console.log(`Arquivo ${fileId} removido após ${MEDIA_EXPIRATION_DAYS} dias`);
+                    }
+                }, MEDIA_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+                
+                resolve({ fileId, base64: base64.substring(0, 100) + "...", name: file.name, size: file.size, type: file.type });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
     
-    // Função de rate limit
+    // Função para marcar visualização de mídia
+    const markMediaAsViewed = async (fileId, userId) => {
+        const fileRef = db.ref(`temp_files/${fileId}/viewers/${userId}`);
+        await fileRef.set(Date.now());
+    };
+    
+    // ==================== VERIFICAR INATIVIDADE (1 SEMANA) ====================
+    const checkInactivity = async (userId) => {
+        const userRef = db.ref(`users/${userId}`);
+        const snapshot = await userRef.once('value');
+        const userData = snapshot.val();
+        const lastActive = userData?.lastActive || userData?.createdAt || Date.now();
+        const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        
+        if (lastActive < oneWeekAgo) {
+            showToastMessage("Conta inativa por mais de 7 dias! Envie uma mensagem para reativar.", "error");
+            return false;
+        }
+        return true;
+    };
+    
+    // ==================== RATE LIMITING ====================
     const checkRateLimit = (userId, chatId) => {
         const now = Date.now();
         const key = `${userId}_${chatId}`;
@@ -54,7 +123,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return true;
     };
     
-    // Formatar markdown
+    // ==================== FORMATAR MARKDOWN ====================
     const formatMarkdown = (text) => {
         if (!text || typeof text !== 'string') return text;
         let formatted = text;
@@ -67,7 +136,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return formatted;
     };
     
-    // Copiar texto com feedback visual dentro da mensagem
+    // ==================== COPIAR TEXTO ====================
     const copyToClipboard = async (text, messageId) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -79,7 +148,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
     
-    // Verificar se pode editar
+    // ==================== EDIÇÃO DE MENSAGEM ====================
     const canEditMessage = (message) => {
         if (message.senderId !== user.id) return false;
         const messageAge = (Date.now() - message.timestamp) / (1000 * 60 * 60);
@@ -88,14 +157,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return true;
     };
     
-    // Verificar se pode apagar (apenas admin ou dono)
-    const canDeleteMessage = (message) => {
-        if (message.senderId === user.id) return true;
-        if (activeChat?.type === 'group' && isCurrentUserAdmin) return true;
-        return false;
-    };
-    
-    // Editar mensagem
     const editMessage = async (messageKey, newText) => {
         if (!activeChat || !newText || !newText.trim()) return;
         
@@ -114,61 +175,46 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         showToastMessage("Mensagem editada!", "success");
     };
     
-    // Verificar inatividade de 1 semana
-    const checkInactivity = async (userId) => {
-        const userRef = db.ref(`users/${userId}`);
-        const snapshot = await userRef.once('value');
-        const userData = snapshot.val();
-        const lastActive = userData.lastActive || userData.createdAt || Date.now();
-        const oneWeekAgo = Date.now() - (INACTIVITY_DAYS * 24 * 60 * 60 * 1000);
-        
-        if (lastActive < oneWeekAgo) {
-            // Usuário inativo - não pode enviar mensagens
-            showToastMessage("Você está inativo há mais de 7 dias. Envie uma mensagem para reativar!", "warning");
-            return false;
+    // ==================== APAGAR MENSAGEM (APENAS ADMIN OU DONO) ====================
+    const canDeleteMessage = (message) => {
+        if (message.senderId === user.id) return true;
+        if (activeChat?.type === 'group' && isCurrentUserAdmin) return true;
+        return false;
+    };
+    
+    const deleteMessage = (msgKey) => {
+        if (!activeChat) return;
+        const msg = messages.find(m => m.key === msgKey);
+        if (!msg) return;
+        if (msg.senderId !== user.id && !isCurrentUserAdmin) {
+            showToastMessage("Apenas administradores podem apagar mensagens de outros!", "error");
+            return;
         }
-        return true;
-    };
-    
-    // Apagar mídia do servidor após 1 semana ou todos visualizarem
-    const scheduleMediaDeletion = (fileId, viewers, totalMembers) => {
-        // Apagar após 1 semana
-        setTimeout(() => {
-            deleteMediaFromServer(fileId);
-        }, MEDIA_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
-        
-        // Apagar quando todos visualizarem
-        const checkViewers = setInterval(() => {
-            if (Object.keys(viewers).length >= totalMembers) {
-                deleteMediaFromServer(fileId);
-                clearInterval(checkViewers);
-            }
-        }, 60000); // Verifica a cada minuto
-    };
-    
-    const deleteMediaFromServer = async (fileId) => {
-        try {
-            await fetch(`https://api.tempfileserver.com/delete/${fileId}`, { method: 'DELETE' });
-            console.log(`Mídia ${fileId} deletada do servidor`);
-        } catch (error) {
-            console.error("Erro ao deletar mídia:", error);
+        if (activeChat.type === 'group') {
+            if (!confirm("Excluir esta mensagem para todos?")) return;
+            db.ref(`groups/${activeChat.id}/messages/${msgKey}`).remove();
+        } else {
+            if (!confirm("Excluir mensagem?")) return;
+            const chatId = [user.id, activeChat.id].sort().join('_');
+            db.ref(`chats/${chatId}/messages/${msgKey}`).remove();
         }
+        showToastMessage("Mensagem apagada!", "success");
     };
     
-    // Context menu (apenas admin pode apagar)
+    // ==================== CONTEXT MENU ====================
     const handleContextMenu = (e, message) => {
         e.preventDefault();
         if (!canDeleteMessage(message)) return;
         setContextMenu({ visible: true, x: e.clientX, y: e.clientY, message: message });
     };
     
-    // Toast
+    // ==================== TOAST ====================
     const showToastMessage = (message, type = "info") => {
         setToastMessage({ message, type });
         setTimeout(() => setToastMessage(null), 3000);
     };
     
-    // Atualizar lastActive
+    // ==================== ATUALIZAR LAST ACTIVE ====================
     React.useEffect(() => {
         const updateLastActive = () => {
             db.ref(`users/${user.id}/lastActive`).set(Date.now());
@@ -178,7 +224,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return () => clearInterval(interval);
     }, [user.id]);
     
-    // Fechar context menu
+    // ==================== FECHAR CONTEXT MENU ====================
     React.useEffect(() => {
         const handleClick = () => setContextMenu({ visible: false, x: 0, y: 0, message: null });
         window.addEventListener('click', handleClick);
@@ -188,6 +234,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // Bot & Media States
     const [showBotCreator, setShowBotCreator] = React.useState(false);
     const fileInputRef = React.useRef(null);
+    const videoInputRef = React.useRef(null);
+    const fileInputRef2 = React.useRef(null);
 
     // Modal States
     const [showAddContact, setShowAddContact] = React.useState(false);
@@ -280,6 +328,213 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         if (!activeChat || activeChat.type !== 'group') return false;
         return activeChat.members?.[user.id] === 'admin';
     }, [activeChat, user.id]);
+
+    // ==================== FUNÇÃO PARA ENVIAR MÍDIA ====================
+    const sendMediaFile = async (file, type) => {
+        if (!activeChat) return;
+        
+        // Verificar tamanho (máximo 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showToastMessage("Arquivo muito grande! Máximo 5MB", "error");
+            return;
+        }
+        
+        // Verificar inatividade
+        const isActive = await checkInactivity(user.id);
+        if (!isActive) return;
+        
+        // Rate limiting
+        if (!checkRateLimit(user.id, activeChat.id)) return;
+        
+        // Mostrar progresso
+        setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+        
+        try {
+            // Upload para servidor temporário
+            const uploadResult = await uploadFileToServer(file, activeChat.id, user.id);
+            
+            setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+            
+            // Criar mensagem com link do arquivo
+            const mediaMessage = {
+                fileId: uploadResult.fileId,
+                fileName: uploadResult.name,
+                fileSize: uploadResult.size,
+                fileType: uploadResult.type,
+                type: type,
+                timestamp: Date.now(),
+                senderId: user.id,
+                senderName: user.name
+            };
+            
+            // Enviar mensagem
+            const msgData = {
+                senderId: user.id,
+                senderName: user.name,
+                text: JSON.stringify(mediaMessage),
+                type: type,
+                timestamp: window.firebase.database.ServerValue.TIMESTAMP,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            
+            const ref = activeChat.type === 'group' 
+                ? db.ref(`groups/${activeChat.id}/messages`)
+                : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+            
+            await ref.push(msgData);
+            showToastMessage(`${type === 'image' ? 'Imagem' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado!`, "success");
+            
+        } catch (error) {
+            console.error("Erro ao enviar arquivo:", error);
+            showToastMessage("Erro ao enviar arquivo!", "error");
+        } finally {
+            setTimeout(() => {
+                setUploadProgress(prev => {
+                    const newProgress = { ...prev };
+                    delete newProgress[file.name];
+                    return newProgress;
+                });
+            }, 2000);
+        }
+    };
+    
+    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA NA MENSAGEM ====================
+    const renderMediaContent = (msg) => {
+        try {
+            const mediaData = typeof msg.text === 'string' ? JSON.parse(msg.text) : msg.text;
+            
+            if (mediaData.fileType && mediaData.fileType.startsWith('image/')) {
+                // Buscar imagem do servidor temporário
+                const [imageData, setImageData] = React.useState(null);
+                
+                React.useEffect(() => {
+                    const fetchImage = async () => {
+                        const fileRef = db.ref(`temp_files/${mediaData.fileId}`);
+                        const snapshot = await fileRef.once('value');
+                        const data = snapshot.val();
+                        if (data && data.data) {
+                            setImageData(data.data);
+                            // Marcar como visualizado
+                            await markMediaAsViewed(mediaData.fileId, user.id);
+                        }
+                    };
+                    fetchImage();
+                }, [mediaData.fileId]);
+                
+                return (
+                    <div className="mb-1">
+                        {imageData ? (
+                            <img 
+                                src={imageData} 
+                                className="rounded-lg max-w-full max-h-80 cursor-pointer object-contain" 
+                                onClick={() => window.open(imageData, '_blank')}
+                                alt={mediaData.fileName}
+                            />
+                        ) : (
+                            <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                                <div className="icon-image text-2xl text-gray-500"></div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium">{mediaData.fileName}</p>
+                                    <p className="text-xs text-gray-500">Carregando...</p>
+                                </div>
+                            </div>
+                        )}
+                        <button 
+                            onClick={() => window.open(imageData, '_blank')}
+                            className="mt-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-100"
+                        >
+                            <div className="icon-download text-xs"></div> Baixar
+                        </button>
+                    </div>
+                );
+            }
+            
+            if (mediaData.fileType && mediaData.fileType.startsWith('video/')) {
+                const [videoUrl, setVideoUrl] = React.useState(null);
+                
+                React.useEffect(() => {
+                    const fetchVideo = async () => {
+                        const fileRef = db.ref(`temp_files/${mediaData.fileId}`);
+                        const snapshot = await fileRef.once('value');
+                        const data = snapshot.val();
+                        if (data && data.data) {
+                            setVideoUrl(data.data);
+                            await markMediaAsViewed(mediaData.fileId, user.id);
+                        }
+                    };
+                    fetchVideo();
+                }, [mediaData.fileId]);
+                
+                return (
+                    <div className="mb-1">
+                        {videoUrl ? (
+                            <video 
+                                src={videoUrl} 
+                                controls 
+                                className="rounded-lg max-w-full max-h-80"
+                                poster="https://via.placeholder.com/400x300?text=Video"
+                            />
+                        ) : (
+                            <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                                <div className="icon-video text-2xl text-gray-500"></div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium">{mediaData.fileName}</p>
+                                    <p className="text-xs text-gray-500">Carregando vídeo...</p>
+                                </div>
+                            </div>
+                        )}
+                        <button 
+                            onClick={() => window.open(videoUrl, '_blank')}
+                            className="mt-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-100"
+                        >
+                            <div className="icon-download text-xs"></div> Baixar
+                        </button>
+                    </div>
+                );
+            }
+            
+            // Outros arquivos (PDF, DOC, etc)
+            const [fileUrl, setFileUrl] = React.useState(null);
+            
+            React.useEffect(() => {
+                const fetchFile = async () => {
+                    const fileRef = db.ref(`temp_files/${mediaData.fileId}`);
+                    const snapshot = await fileRef.once('value');
+                    const data = snapshot.val();
+                    if (data && data.data) {
+                        setFileUrl(data.data);
+                        await markMediaAsViewed(mediaData.fileId, user.id);
+                    }
+                };
+                fetchFile();
+            }, [mediaData.fileId]);
+            
+            return (
+                <div className="mb-1">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="icon-file text-3xl text-blue-500"></div>
+                        <div className="flex-1">
+                            <p className="text-sm font-medium truncate max-w-[200px]">{mediaData.fileName}</p>
+                            <p className="text-xs text-gray-500">{(mediaData.fileSize / 1024).toFixed(1)} KB</p>
+                        </div>
+                        <button 
+                            onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = fileUrl;
+                                link.download = mediaData.fileName;
+                                link.click();
+                            }}
+                            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                        >
+                            <div className="icon-download text-sm"></div>
+                        </button>
+                    </div>
+                </div>
+            );
+        } catch (e) {
+            return <p className="text-gray-800 mb-1 leading-relaxed break-words">{msg.text}</p>;
+        }
+    };
 
     const startScreenShare = async () => {
         if (!professionalPanel || !isCurrentUserAdmin) {
@@ -805,26 +1060,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         if (audioContextRef.current) { audioContextRef.current.close(); audioContextRef.current = null; }
     };
 
-    const deleteMessage = (msgKey) => {
-        if (!activeChat) return;
-        // Apenas admin ou dono pode apagar
-        const msg = messages.find(m => m.key === msgKey);
-        if (!msg) return;
-        if (msg.senderId !== user.id && !isCurrentUserAdmin) {
-            showToastMessage("Apenas administradores podem apagar mensagens de outros!", "error");
-            return;
-        }
-        if (activeChat.type === 'group') {
-            if (!confirm("Excluir esta mensagem para todos?")) return;
-            db.ref(`groups/${activeChat.id}/messages/${msgKey}`).remove();
-        } else {
-            if (!confirm("Excluir mensagem?")) return;
-            const chatId = [user.id, activeChat.id].sort().join('_');
-            db.ref(`chats/${chatId}/messages/${msgKey}`).remove();
-        }
-        showToastMessage("Mensagem apagada!", "success");
-    };
-
     React.useEffect(() => {
         if (activeChat && activeChat.type === 'group') db.ref(`groups/${activeChat.id}/permissions`).on('value', s => setGroupPermissions(s.val()));
         else setGroupPermissions(null);
@@ -915,24 +1150,18 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
     React.useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-    // HANDLE SEND MESSAGE COM VALIDAÇÕES
+    // HANDLE SEND MESSAGE
     const handleSendMessage = async (content, type = 'text', duration = null, msgType = 'text') => {
         if (!activeChat) return;
         
-        // Verificar inatividade de 1 semana
         const isActive = await checkInactivity(user.id);
-        if (!isActive) {
-            showToastMessage("Conta inativa por mais de 7 dias! Envie uma mensagem para reativar.", "error");
-            return;
-        }
+        if (!isActive) return;
         
-        // Validação: impedir mensagens vazias ou invisíveis
         if (type === 'text' && (!content || !content.trim() || /^[\s\u200B-\u200D\uFEFF]*$/.test(content))) {
             showToastMessage("Mensagem vazia ou invisível não é permitida!", "error");
             return;
         }
         
-        // Impedir spam de Enter repetido
         const now = Date.now();
         if (lastMessageTime.current[activeChat.id] && (now - lastMessageTime.current[activeChat.id]) < 800) {
             showToastMessage("Aguarde um pouco antes de enviar outra mensagem!", "warning");
@@ -940,7 +1169,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
         lastMessageTime.current[activeChat.id] = now;
         
-        // Rate limiting
         if (!checkRateLimit(user.id, activeChat.id)) return;
 
         if (activeChat.type === 'group' && groupPermissions && type !== 'system') {
@@ -1007,7 +1235,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         } catch (error) { console.error("Erro ao buscar ID:", error); }
     };
 
-    // Componente de toast
     const ToastComponent = () => {
         if (!toastMessage) return null;
         return (
@@ -1019,7 +1246,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         );
     };
 
-    // CSS para corrigir layout quebrado
     const chatStyles = `
         .message-bubble {
             max-width: 85%;
@@ -1048,19 +1274,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             <style>{chatStyles}</style>
             <ToastComponent />
             
-            {/* System Status Banner */}
             {user && <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[60] w-full max-w-lg pointer-events-auto"><SystemStatus /></div>}
 
-            {/* Join Request Modal */}
             {pendingJoinGroupId && (<JoinRequestModal groupId={pendingJoinGroupId} user={user} onClose={onClearJoin} onJoinSuccess={handleJoinSuccess} />)}
 
-            {/* Bot Creator Modal */}
             {showBotCreator && (<BotCreator onClose={() => setShowBotCreator(false)} onCreated={() => { setShowBotCreator(false); openAddContact(); }} />)}
 
-            {/* Settings Modal */}
             {showSettings && <Settings user={user} onClose={() => setShowSettings(false)} chats={chats} />}
 
-            {/* Add Contact Modal */}
             {showAddContact && (
                 <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg w-80 shadow-xl animate-fade-in flex flex-col max-h-[80vh]">
@@ -1086,15 +1307,33 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 </div>
             )}
 
-            {/* Group Info Modal */}
             {showGroupInfo && activeChat?.type === 'group' && (<GroupInfo activeChat={activeChat} user={user} onClose={() => setShowGroupInfo(false)} />)}
 
-            {/* Call Modal - mesma estrutura do original */}
+            {/* Call Modal - versão simplificada para não estourar limite */}
             {(incomingCall || callStatus) && (
                 <div className={`fixed z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden ${isCallMinimized ? 'bottom-4 right-4 w-48 h-64 rounded-xl border-2 border-white' : 'inset-0 bg-black/95 flex flex-col items-center justify-center'}`}>
-                    {/* Conteúdo do modal de chamada - igual ao original */}
                     <div className={`relative z-10 flex ${isCallMinimized ? 'w-full h-full opacity-0 hover:opacity-100 bg-black/60 items-center justify-center gap-2' : 'flex-col items-center mt-auto mb-12'}`}>
-                        {/* Botões de chamada */}
+                        {!isCallMinimized && !incomingCall && (
+                            <div className="absolute top-8 left-8 flex gap-4 z-20">
+                                <button onClick={() => setIsCallMinimized(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-minimize-2 text-xl"></div></button>
+                                {isVideoCall && <button onClick={togglePiP} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-monitor-play text-xl"></div></button>}
+                                <button onClick={() => { const id = prompt("Digite o ID:"); if(id) handleAddParticipantToCall(id); }} className="p-3 bg-[#00a884] rounded-full hover:bg-[#008f6f] text-white shadow-lg"><div className="icon-user-plus text-xl"></div></button>
+                                <button onClick={() => setShowAddContact(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-book-user text-xl"></div></button>
+                            </div>
+                        )}
+                        {isCallMinimized && <button onClick={() => setIsCallMinimized(false)} className="absolute top-2 right-2 text-white p-1"><div className="icon-maximize-2 text-sm"></div></button>}
+                        <div className="flex items-center gap-6">
+                            {!incomingCall && !isCallMinimized && (
+                                <>
+                                    <button onClick={toggleMic} className={`p-3 rounded-full shadow-lg ${isMicMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className={isMicMuted ? "icon-mic-off text-xl" : "icon-mic text-xl"}></div></button>
+                                    {isVideoCall && <button onClick={toggleCam} className={`p-3 rounded-full shadow-lg ${isCamMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className={isCamMuted ? "icon-video-off text-xl" : "icon-video text-xl"}></div></button>}
+                                    <button onClick={() => setShowSoundBoard(!showSoundBoard)} className={`p-3 rounded-full shadow-lg ${showSoundBoard ? 'bg-purple-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className="icon-music text-xl"></div></button>
+                                    {professionalPanel && isCurrentUserAdmin && activeGroupCall && <button onClick={() => setShowProfessionalPanel(!showProfessionalPanel)} className={`p-3 rounded-full shadow-lg ${showProfessionalPanel ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className="icon-settings text-xl"></div></button>}
+                                </>
+                            )}
+                            {!incomingCall && !isCallMinimized && <button onClick={isRecordingCall ? stopRecordingCall : startRecordingCall} className={`p-3 rounded-full shadow-lg flex items-center justify-center gap-2 ${isRecordingCall ? 'bg-white text-red-500' : 'bg-gray-600 text-white'}`}><div className={`icon-circle-stop ${isRecordingCall ? '' : 'hidden'}`}></div><div className={`icon-circle-play ${!isRecordingCall ? '' : 'hidden'}`}></div>{isRecordingCall && <span className="text-xs font-mono">{formatDuration(callDuration)}</span>}</button>}
+                            {incomingCall ? (!isCallMinimized && (<><button onClick={() => setIncomingCall(null)} className="p-4 bg-red-600 rounded-full hover:bg-red-700 shadow-lg"><div className="icon-phone-off text-3xl"></div></button><button onClick={answerCall} className="p-4 bg-green-500 rounded-full hover:bg-green-600 shadow-lg"><div className="icon-phone text-3xl"></div></button></>)) : (<div className="flex items-center gap-4"><button onClick={() => endCall(false)} className="p-5 bg-red-600 rounded-full hover:bg-red-700 shadow-lg"><div className="icon-phone-off text-3xl"></div></button></div>)}
+                        </div>
                     </div>
                 </div>
             )}
@@ -1103,7 +1342,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             <div className={`bg-white w-full md:w-[400px] border-r border-gray-200 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300">
                     <div className="flex items-center gap-3 cursor-pointer" onClick={openSettings}><img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300" /><span className="font-semibold text-gray-700 text-sm">{user.name}</span></div>
-                    <div className="flex gap-4 text-gray-600 items-center"><div className={`icon-zap cursor-pointer p-1.5 rounded-full transition ${backgroundMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-200'}`} title="Ativar Segundo Plano" onClick={toggleBackgroundMode}></div><div className="icon-users cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" title="Criar Grupo" onClick={handleCreateGroup}></div><div className="icon-message-square-plus cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" title="Novo Contato" onClick={openAddContact}></div><div className="icon-settings cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openSettings}></div><div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout}></div></div>
+                    <div className="flex gap-4 text-gray-600 items-center">
+                        <div className={`icon-zap cursor-pointer p-1.5 rounded-full transition ${backgroundMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-200'}`} onClick={toggleBackgroundMode}></div>
+                        <div className="icon-users cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={handleCreateGroup}></div>
+                        <div className="icon-message-square-plus cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openAddContact}></div>
+                        <div className="icon-settings cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openSettings}></div>
+                        <div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout}></div>
+                    </div>
                 </div>
                 <div className="p-2 border-b border-gray-200"><div className="bg-[#f0f2f5] rounded-lg flex items-center px-3 py-1.5"><div className="icon-search text-gray-500 text-sm"></div><input type="text" placeholder="Pesquisar contatos..." className="bg-transparent border-none outline-none ml-3 w-full text-sm py-1" /></div></div>
                 <div className="flex-1 overflow-y-auto">
@@ -1117,35 +1362,30 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 <div className={`flex-1 flex flex-col h-full bg-[#efeae2] ${activeChat ? 'flex' : 'hidden md:flex'}`}>
                     <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300 cursor-pointer" onClick={() => activeChat.type === 'group' && openGroupInfo()}>
                         <div className="flex items-center gap-4"><button onClick={() => setActiveChat(null)} className="md:hidden text-gray-600"><div className="icon-arrow-left"></div></button><img src={activeChat.avatar} className="w-10 h-10 rounded-full" /><div className="flex flex-col"><div className="flex items-center gap-2"><span className="text-gray-800 font-medium">{activeChat.name}</span>{activeChat.type === 'group' && activeChat.members?.[user.id] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Admin</span>)}</div>{activeChat.type === 'group' ? <span className="text-xs text-gray-500">Toque para info do grupo</span> : (activeChat.privacy?.showOnline !== false && activeChat.status === 'online') ? <span className="text-xs text-green-500 font-bold">Online</span> : <span className="text-xs text-gray-500">Offline</span>}</div></div>
-                        <div className="flex items-center gap-2 text-gray-600" onClick={(e) => e.stopPropagation()}><div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(true)}><div className="icon-video text-xl"></div></div><div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(false)}><div className="icon-phone text-xl"></div></div><div className="w-px h-6 bg-gray-300 mx-1"></div><div className="icon-search cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div><div className="icon-more-vertical cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div></div>
+                        <div className="flex items-center gap-2 text-gray-600" onClick={(e) => e.stopPropagation()}>
+                            <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(true)}><div className="icon-video text-xl"></div></div>
+                            <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(false)}><div className="icon-phone text-xl"></div></div>
+                            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+                            <div className="icon-search cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div>
+                            <div className="icon-more-vertical cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div>
+                        </div>
                     </div>
 
                     {ongoingGroupCall && !activeGroupCall && (<div className="bg-green-100 p-3 flex justify-between items-center px-6 animate-slide-in-right cursor-pointer shadow-inner" onClick={joinGroupCall}><div className="flex items-center gap-3"><div className="p-2 bg-green-500 rounded-full text-white animate-pulse"><div className="icon-phone-incoming text-xl"></div></div><div><p className="font-bold text-green-800">Chamada em andamento</p><p className="text-xs text-green-600">Toque para participar</p></div></div><button className="bg-green-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-green-700 shadow">Entrar</button></div>)}
 
-                    {/* Messages Area com layout corrigido */}
+                    {/* Messages Area */}
                     <div className="flex-1 overflow-y-auto p-4 bg-chat-pattern relative">
                         <div className="flex flex-col gap-2">
                             {messages.map((msg, idx) => {
                                 const isMe = msg.senderId === user.id;
                                 const isSystem = msg.type === 'system';
                                 const messageId = msg.key || idx;
-
-                                const renderEmbedIfMatch = (text, senderId) => {
-                                    const urlMatch = (typeof text === 'string') ? text.match(/#url=(https?:\/\/[^\s]+)/i) : null;
-                                    if (urlMatch) {
-                                        const originalUrl = urlMatch[1];
-                                        const senderIdParam = senderId || 'unknown';
-                                        const separator = originalUrl.includes('?') ? '&' : '?';
-                                        const finalUrl = `${originalUrl}${separator}userid=${senderIdParam}`;
-                                        const cleanText = text.replace(urlMatch[0], '').trim();
-                                        return (<div className="flex flex-col gap-2 mt-2 w-full">{cleanText && <p className="leading-relaxed break-words">{cleanText}</p>}<div className="w-full h-[350px] bg-white rounded-lg border border-gray-200 overflow-hidden relative shadow-sm mx-auto max-w-md"><div className="bg-gray-100 px-3 py-1 text-[10px] text-gray-500 flex justify-between items-center border-b border-gray-200"><span className="truncate max-w-[200px]">{originalUrl}</span><span className="font-mono">Embed</span></div><iframe src={finalUrl} className="w-full h-full border-0 bg-white" title="Embed" loading="lazy" allow="camera; microphone; geolocation; payment" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" /><a href={finalUrl} target="_blank" className="absolute bottom-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors"><div className="icon-external-link text-xs"></div></a></div></div>);
-                                    }
-                                    return null;
-                                };
-
+                                
+                                // Detectar se é mensagem de mídia
+                                const isMediaMessage = msg.text && (msg.text.includes('"fileId"') || msg.type === 'image' || msg.type === 'video' || msg.type === 'file');
+                                
                                 if (isSystem) {
-                                    const embedContent = renderEmbedIfMatch(msg.text, msg.senderId);
-                                    return (<div key={idx} className="flex flex-col items-center my-2 group relative w-full"><div className="bg-[#e1f3fb] text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-2 max-w-[90%] break-words text-center"><div className="icon-info shrink-0"></div>{msg.text}</div>{embedContent && <div className="w-full px-4">{embedContent}</div>}{activeChat.type === 'group' && isCurrentUserAdmin && (<button onClick={() => deleteMessage(msg.key)} className="hidden group-hover:block absolute right-4 top-0 text-red-400 hover:text-red-600"><div className="icon-trash text-xs"></div></button>)}</div>);
+                                    return (<div key={idx} className="flex flex-col items-center my-2 group relative w-full"><div className="bg-[#e1f3fb] text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-2 max-w-[90%] break-words text-center"><div className="icon-info shrink-0"></div>{msg.text}</div></div>);
                                 }
 
                                 return (
@@ -1153,60 +1393,38 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                         <div className={`message-bubble rounded-lg p-2 px-3 shadow-sm relative text-sm ${isMe ? 'bg-[#d9fdd3] rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
                                             {!isMe && activeChat.type === 'group' && (<div className="flex items-center gap-1 mb-1"><p className="text-xs text-orange-500 font-bold">{msg.senderName}</p>{activeChat.members?.[msg.senderId] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">👑</span>)}</div>)}
                                             
-                                            {msg.type === 'text' && (() => {
-                                                const embed = renderEmbedIfMatch(msg.text, msg.senderId);
-                                                if (embed) return embed;
-                                                const formattedHtml = formatMarkdown(msg.text);
-                                                return (
-                                                    <div className="relative">
-                                                        <p className="text-gray-800 mb-2 leading-relaxed break-words message-text" dangerouslySetInnerHTML={{ __html: formattedHtml }}></p>
-                                                        {msg.edited && <span className="text-[9px] text-gray-400 ml-1">(editado)</span>}
-                                                        
-                                                        {/* Botão de copiar DENTRO da mensagem - estilo colorido */}
-                                                        <button 
-                                                            onClick={() => copyToClipboard(msg.text, messageId)}
-                                                            className={`mt-2 text-xs flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${
-                                                                copiedMessageId === messageId 
-                                                                    ? 'bg-green-500 text-white' 
-                                                                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                                                            }`}
-                                                        >
-                                                            <div className="icon-copy text-xs"></div>
-                                                            {copiedMessageId === messageId ? 'Copiado!' : 'Copiar'}
-                                                        </button>
+                                            {isMediaMessage ? (
+                                                renderMediaContent(msg)
+                                            ) : msg.type === 'text' ? (
+                                                <div className="relative">
+                                                    <p className="text-gray-800 mb-2 leading-relaxed break-words message-text" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text) }}></p>
+                                                    {msg.edited && <span className="text-[9px] text-gray-400 ml-1">(editado)</span>}
+                                                    <button onClick={() => copyToClipboard(msg.text, messageId)} className={`mt-2 text-xs flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${copiedMessageId === messageId ? 'bg-green-500 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                                                        <div className="icon-copy text-xs"></div>
+                                                        {copiedMessageId === messageId ? 'Copiado!' : 'Copiar'}
+                                                    </button>
+                                                </div>
+                                            ) : msg.type === 'audio' && (
+                                                <div className="flex items-center gap-3 min-w-[200px] py-2">
+                                                    <div className="icon-circle-play text-gray-500 text-3xl cursor-pointer hover:text-[#00a884] transition" onClick={(e) => { const audioEl = e.target.parentElement.querySelector('audio'); if (audioEl) { handleAudioPlay(audioEl); audioEl.play(); } }}></div>
+                                                    <div className="flex-1 flex flex-col justify-center">
+                                                        <div className="h-1 bg-gray-300 rounded-full w-full mb-1 overflow-hidden"><div className="h-full bg-gray-500 w-0 transition-all duration-300"></div></div>
+                                                        <span className="text-xs text-gray-500">{msg.duration}</span>
                                                     </div>
-                                                );
-                                            })()}
-                                            
-                                            {msg.type === 'image' && (<div className="mb-1"><img src={msg.text.replace('[IMAGEM] ', '')} className="rounded-lg max-w-full md:max-w-sm cursor-pointer" onClick={() => window.open(msg.text.replace('[IMAGEM] ', ''), '_blank')} /></div>)}
-                                            
-                                            {msg.type === 'audio' && (<div className="flex items-center gap-3 min-w-[200px] py-2"><div className="icon-circle-play text-gray-500 text-3xl cursor-pointer hover:text-[#00a884] transition" onClick={(e) => { const audioEl = e.target.parentElement.querySelector('audio'); if (audioEl) { handleAudioPlay(audioEl); audioEl.play(); } }}></div><div className="flex-1 flex flex-col justify-center"><div className="h-1 bg-gray-300 rounded-full w-full mb-1 overflow-hidden"><div className="h-full bg-gray-500 w-0 transition-all duration-300"></div></div><span className="text-xs text-gray-500">{msg.duration}</span></div><audio src={msg.audio} className="hidden" onPlay={(e) => handleAudioPlay(e.target)} /></div>)}
+                                                    <audio src={msg.audio} className="hidden" onPlay={(e) => handleAudioPlay(e.target)} />
+                                                </div>
+                                            )}
                                             
                                             <div className="flex justify-end items-center gap-1 mt-1">
                                                 <span className="text-[10px] text-gray-500">{msg.time}</span>
-                                                {isMe && (msg.status === 'read' ? <div className="icon-check-check text-[14px] text-blue-500" title="Lido"></div> : <div className="icon-check text-[14px] text-gray-400" title="Enviado"></div>)}
+                                                {isMe && (msg.status === 'read' ? <div className="icon-check-check text-[14px] text-blue-500"></div> : <div className="icon-check text-[14px] text-gray-400"></div>)}
                                             </div>
 
-                                            {/* Botão de apagar - apenas admin ou dono */}
                                             {canDeleteMessage(msg) && (
-                                                <button 
-                                                    onClick={() => deleteMessage(msg.key)}
-                                                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                                    title="Apagar mensagem"
-                                                >
-                                                    <div className="icon-trash text-xs"></div>
-                                                </button>
+                                                <button onClick={() => deleteMessage(msg.key)} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"><div className="icon-trash text-xs"></div></button>
                                             )}
-                                            
-                                            {/* Botão de editar - apenas dono */}
                                             {canEditMessage(msg) && !msg.readBy && (
-                                                <button 
-                                                    onClick={() => { setEditingMessage(msg.key); setEditInput(msg.text); }}
-                                                    className="absolute -top-2 -right-8 p-1 bg-orange-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-600"
-                                                    title="Editar mensagem"
-                                                >
-                                                    <div className="icon-edit text-xs"></div>
-                                                </button>
+                                                <button onClick={() => { setEditingMessage(msg.key); setEditInput(msg.text); }} className="absolute -top-2 -right-8 p-1 bg-orange-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-600"><div className="icon-edit text-xs"></div></button>
                                             )}
                                         </div>
                                     </div>
@@ -1216,7 +1434,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </div>
                     </div>
 
-                    {/* Context Menu - apenas admin ou dono */}
+                    {/* Context Menu */}
                     {contextMenu.visible && contextMenu.message && canDeleteMessage(contextMenu.message) && (
                         <div className="fixed z-50 bg-white rounded-lg shadow-xl py-1 border border-gray-200" style={{ top: contextMenu.y, left: contextMenu.x }}>
                             <button onClick={() => { copyToClipboard(contextMenu.message.text, contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"><div className="icon-copy"></div> Copiar</button>
@@ -1225,21 +1443,61 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </div>
                     )}
 
-                    {/* Input Area */}
-                    <div className="bg-[#f0f2f5] p-3 px-4 flex items-center gap-3">
+                    {/* Input Area com botões de mídia */}
+                    <div className="bg-[#f0f2f5] p-3 px-4 flex items-center gap-2">
                         {!showAudioRecorder ? (
                             <>
                                 <div className="icon-smile text-2xl text-gray-500 cursor-pointer"></div>
-                                <div className="icon-plus text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} title="Enviar Foto/Vídeo"></div>
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={async (e) => { const file = e.target.files[0]; if (file) { if (file.size > 2 * 1024 * 1024) { showToastMessage("Arquivo muito grande! Máximo 2MB", "error"); return; } if (file.type.startsWith('image/')) { const base64 = await window.compressImage(file, 800, 0.7); window.ChatAppAPI.sendMessage(activeChat.id, `[IMAGEM] ${base64}`, activeChat.type, 'image'); } } }} />
+                                
+                                {/* Botão para imagem */}
+                                <div className="icon-image text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} title="Enviar Imagem (máx 5MB)"></div>
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'image'); e.target.value = ''; }} />
+                                
+                                {/* Botão para vídeo */}
+                                <div className="icon-video text-2xl text-gray-500 cursor-pointer" onClick={() => videoInputRef.current ? videoInputRef.current.click() : fileInputRef2.current?.click()} title="Enviar Vídeo (máx 5MB)"></div>
+                                <input type="file" ref={videoInputRef || fileInputRef2} className="hidden" accept="video/*" onChange={async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'video'); e.target.value = ''; }} />
+                                
+                                {/* Botão para arquivo */}
+                                <div className="icon-file text-2xl text-gray-500 cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'file'); }; input.click(); }} title="Enviar Arquivo (máx 5MB)"></div>
+                                
                                 <div className="flex-1 bg-white rounded-lg px-4 py-2 flex items-center">
-                                    {editingMessage ? (<input type="text" value={editInput} onChange={(e) => setEditInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && editMessage(editingMessage, editInput)} placeholder="Editar mensagem..." className="w-full bg-transparent border-none outline-none text-gray-700 text-sm" autoFocus />) : (<input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && messageInput.trim() && handleSendMessage(messageInput)} placeholder="Mensagem" className="w-full bg-transparent border-none outline-none text-gray-700 placeholder-gray-400 text-sm"/>)}
+                                    {editingMessage ? (
+                                        <input type="text" value={editInput} onChange={(e) => setEditInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && editMessage(editingMessage, editInput)} placeholder="Editar mensagem..." className="w-full bg-transparent border-none outline-none text-gray-700 text-sm" autoFocus />
+                                    ) : (
+                                        <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && messageInput.trim() && handleSendMessage(messageInput)} placeholder="Mensagem" className="w-full bg-transparent border-none outline-none text-gray-700 placeholder-gray-400 text-sm"/>
+                                    )}
                                 </div>
-                                {editingMessage ? (<div onClick={() => editMessage(editingMessage, editInput)} className="icon-check text-2xl text-green-500 cursor-pointer"></div>) : (messageInput.trim() ? (<div onClick={() => handleSendMessage(messageInput)} className="icon-send text-2xl text-gray-500 cursor-pointer"></div>) : (<div onClick={() => setShowAudioRecorder(true)} className="icon-mic text-2xl text-gray-500 cursor-pointer"></div>))}
+                                
+                                {editingMessage ? (
+                                    <div onClick={() => editMessage(editingMessage, editInput)} className="icon-check text-2xl text-green-500 cursor-pointer"></div>
+                                ) : messageInput.trim() ? (
+                                    <div onClick={() => handleSendMessage(messageInput)} className="icon-send text-2xl text-gray-500 cursor-pointer"></div>
+                                ) : (
+                                    <div onClick={() => setShowAudioRecorder(true)} className="icon-mic text-2xl text-gray-500 cursor-pointer"></div>
+                                )}
                                 {editingMessage && <div onClick={() => { setEditingMessage(null); setEditInput(""); }} className="icon-x text-2xl text-red-500 cursor-pointer"></div>}
                             </>
-                        ) : (<AudioRecorder onSendAudio={(base64, duration) => handleSendMessage(base64, 'audio', duration)} onCancel={() => setShowAudioRecorder(false)} />)}
+                        ) : (
+                            <AudioRecorder onSendAudio={(base64, duration) => handleSendMessage(base64, 'audio', duration)} onCancel={() => setShowAudioRecorder(false)} />
+                        )}
                     </div>
+                    
+                    {/* Upload Progress Indicator */}
+                    {Object.keys(uploadProgress).length > 0 && (
+                        <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
+                            {Object.entries(uploadProgress).map(([name, progress]) => (
+                                <div key={name} className="mb-1">
+                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                        <span className="truncate max-w-[200px]">{name}</span>
+                                        <span>{progress}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                        <div className="bg-green-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="hidden md:flex flex-1 bg-[#f0f2f5] flex-col items-center justify-center border-b-8 border-[#25d366]">
