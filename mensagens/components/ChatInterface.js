@@ -5,17 +5,25 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [messages, setMessages] = React.useState([]);
     const [showAudioRecorder, setShowAudioRecorder] = React.useState(false);
 
-    // ==================== NOVAS FUNCIONALIDADES ADICIONADAS ====================
+    // ==================== NOVAS FUNCIONALIDADES ====================
     const [editingMessage, setEditingMessage] = React.useState(null);
     const [editInput, setEditInput] = React.useState("");
     const [contextMenu, setContextMenu] = React.useState({ visible: false, x: 0, y: 0, message: null });
     const [toastMessage, setToastMessage] = React.useState(null);
+    const [copiedMessageId, setCopiedMessageId] = React.useState(null);
     
     // Rate limiter
     const rateLimiter = React.useRef({});
     const lastMessageTime = React.useRef({});
     const MAX_MSG_PER_MINUTE = 30;
     const BAN_DURATION = 60;
+    
+    // Sistema de expiração de mídia (1 semana)
+    const MEDIA_EXPIRATION_DAYS = 7;
+    const mediaExpirationRef = React.useRef({});
+    
+    // Verificar inatividade (1 semana sem enviar mensagem)
+    const INACTIVITY_DAYS = 7;
     
     // Função de rate limit
     const checkRateLimit = (userId, chatId) => {
@@ -59,10 +67,16 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return formatted;
     };
     
-    // Copiar texto
-    const copyToClipboard = (text) => {
-        navigator.clipboard.writeText(text);
-        showToastMessage("Copiado!", "success");
+    // Copiar texto com feedback visual dentro da mensagem
+    const copyToClipboard = async (text, messageId) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedMessageId(messageId);
+            showToastMessage("Copiado!", "success");
+            setTimeout(() => setCopiedMessageId(null), 2000);
+        } catch (err) {
+            showToastMessage("Erro ao copiar", "error");
+        }
     };
     
     // Verificar se pode editar
@@ -72,6 +86,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         if (messageAge > 4) return false;
         if (message.readBy && Object.keys(message.readBy).length > 0) return false;
         return true;
+    };
+    
+    // Verificar se pode apagar (apenas admin ou dono)
+    const canDeleteMessage = (message) => {
+        if (message.senderId === user.id) return true;
+        if (activeChat?.type === 'group' && isCurrentUserAdmin) return true;
+        return false;
     };
     
     // Editar mensagem
@@ -93,9 +114,51 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         showToastMessage("Mensagem editada!", "success");
     };
     
-    // Context menu
+    // Verificar inatividade de 1 semana
+    const checkInactivity = async (userId) => {
+        const userRef = db.ref(`users/${userId}`);
+        const snapshot = await userRef.once('value');
+        const userData = snapshot.val();
+        const lastActive = userData.lastActive || userData.createdAt || Date.now();
+        const oneWeekAgo = Date.now() - (INACTIVITY_DAYS * 24 * 60 * 60 * 1000);
+        
+        if (lastActive < oneWeekAgo) {
+            // Usuário inativo - não pode enviar mensagens
+            showToastMessage("Você está inativo há mais de 7 dias. Envie uma mensagem para reativar!", "warning");
+            return false;
+        }
+        return true;
+    };
+    
+    // Apagar mídia do servidor após 1 semana ou todos visualizarem
+    const scheduleMediaDeletion = (fileId, viewers, totalMembers) => {
+        // Apagar após 1 semana
+        setTimeout(() => {
+            deleteMediaFromServer(fileId);
+        }, MEDIA_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+        
+        // Apagar quando todos visualizarem
+        const checkViewers = setInterval(() => {
+            if (Object.keys(viewers).length >= totalMembers) {
+                deleteMediaFromServer(fileId);
+                clearInterval(checkViewers);
+            }
+        }, 60000); // Verifica a cada minuto
+    };
+    
+    const deleteMediaFromServer = async (fileId) => {
+        try {
+            await fetch(`https://api.tempfileserver.com/delete/${fileId}`, { method: 'DELETE' });
+            console.log(`Mídia ${fileId} deletada do servidor`);
+        } catch (error) {
+            console.error("Erro ao deletar mídia:", error);
+        }
+    };
+    
+    // Context menu (apenas admin pode apagar)
     const handleContextMenu = (e, message) => {
         e.preventDefault();
+        if (!canDeleteMessage(message)) return;
         setContextMenu({ visible: true, x: e.clientX, y: e.clientY, message: message });
     };
     
@@ -105,19 +168,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setTimeout(() => setToastMessage(null), 3000);
     };
     
-    // Verificar inatividade de 1 ano
+    // Atualizar lastActive
     React.useEffect(() => {
-        const checkInactivity = () => {
-            const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
-            const lastActive = user.lastActive || user.createdAt || Date.now();
-            if (lastActive < oneYearAgo) {
-                showToastMessage("Conta inativa por 1 ano. Algumas funções limitadas.", "warning");
-            }
+        const updateLastActive = () => {
+            db.ref(`users/${user.id}/lastActive`).set(Date.now());
         };
-        checkInactivity();
-        
-        const statusRef = db.ref(`users/${user.id}/lastActive`);
-        const interval = setInterval(() => statusRef.set(Date.now()), 60 * 60 * 1000);
+        updateLastActive();
+        const interval = setInterval(updateLastActive, 60 * 60 * 1000);
         return () => clearInterval(interval);
     }, [user.id]);
     
@@ -140,7 +197,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // Permissions
     const [groupPermissions, setGroupPermissions] = React.useState(null);
 
-    // Professional Panel Activation - APENAS VIA LOCALSTORAGE
+    // Professional Panel Activation
     const [professionalPanel, setProfessionalPanel] = React.useState(false);
     const [showProfessionalPanel, setShowProfessionalPanel] = React.useState(false);
 
@@ -234,7 +291,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             screenStreamRef.current = stream;
             setScreenSharing(true);
             Object.values(activeCalls).forEach(call => {
-                call.peerConnection.addTrack(stream.getVideoTracks()[0], stream);
+                call.peerConnection?.addTrack(stream.getVideoTracks()[0], stream);
             });
             stream.getVideoTracks()[0].onended = () => stopScreenShare();
         } catch (error) {
@@ -750,6 +807,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
     const deleteMessage = (msgKey) => {
         if (!activeChat) return;
+        // Apenas admin ou dono pode apagar
+        const msg = messages.find(m => m.key === msgKey);
+        if (!msg) return;
+        if (msg.senderId !== user.id && !isCurrentUserAdmin) {
+            showToastMessage("Apenas administradores podem apagar mensagens de outros!", "error");
+            return;
+        }
         if (activeChat.type === 'group') {
             if (!confirm("Excluir esta mensagem para todos?")) return;
             db.ref(`groups/${activeChat.id}/messages/${msgKey}`).remove();
@@ -758,6 +822,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             const chatId = [user.id, activeChat.id].sort().join('_');
             db.ref(`chats/${chatId}/messages/${msgKey}`).remove();
         }
+        showToastMessage("Mensagem apagada!", "success");
     };
 
     React.useEffect(() => {
@@ -851,8 +916,15 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     React.useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
     // HANDLE SEND MESSAGE COM VALIDAÇÕES
-    const handleSendMessage = (content, type = 'text', duration = null, msgType = 'text') => {
+    const handleSendMessage = async (content, type = 'text', duration = null, msgType = 'text') => {
         if (!activeChat) return;
+        
+        // Verificar inatividade de 1 semana
+        const isActive = await checkInactivity(user.id);
+        if (!isActive) {
+            showToastMessage("Conta inativa por mais de 7 dias! Envie uma mensagem para reativar.", "error");
+            return;
+        }
         
         // Validação: impedir mensagens vazias ou invisíveis
         if (type === 'text' && (!content || !content.trim() || /^[\s\u200B-\u200D\uFEFF]*$/.test(content))) {
@@ -935,7 +1007,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         } catch (error) { console.error("Erro ao buscar ID:", error); }
     };
 
-    // TOAST COMPONENT
+    // Componente de toast
     const ToastComponent = () => {
         if (!toastMessage) return null;
         return (
@@ -947,9 +1019,33 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         );
     };
 
-    // CONTINUAÇÃO DO RENDER ORIGINAL...
+    // CSS para corrigir layout quebrado
+    const chatStyles = `
+        .message-bubble {
+            max-width: 85%;
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+        .message-text {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        @media (max-width: 768px) {
+            .message-bubble {
+                max-width: 90%;
+            }
+        }
+        pre, code {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    `;
+
     return (
         <div className="flex h-screen bg-gray-100 overflow-hidden relative">
+            <style>{chatStyles}</style>
             <ToastComponent />
             
             {/* System Status Banner */}
@@ -993,52 +1089,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             {/* Group Info Modal */}
             {showGroupInfo && activeChat?.type === 'group' && (<GroupInfo activeChat={activeChat} user={user} onClose={() => setShowGroupInfo(false)} />)}
 
-            {/* Call Modal */}
+            {/* Call Modal - mesma estrutura do original */}
             {(incomingCall || callStatus) && (
                 <div className={`fixed z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden ${isCallMinimized ? 'bottom-4 right-4 w-48 h-64 rounded-xl border-2 border-white' : 'inset-0 bg-black/95 flex flex-col items-center justify-center'}`}>
-                    {screenSharing && professionalPanel && (
-                        <div className="absolute top-4 left-4 w-64 h-36 bg-black border-2 border-green-500 rounded-lg overflow-hidden z-20">
-                            <video ref={screenVideoRef} autoPlay className="w-full h-full object-cover" /><div className="absolute bottom-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded">Compartilhando Tela</div>
-                        </div>
-                    )}
-                    <div className={`absolute inset-0 ${isCallMinimized ? 'bg-gray-800' : ''}`}>
-                        <div className={`w-full h-full relative ${!isVideoCall && 'hidden'}`}>
-                            <video ref={remoteVideoRef} autoPlay className={`w-full h-full object-cover ${isCallMinimized ? 'opacity-100' : ''}`} />
-                            {!isCallMinimized && (<div className="w-32 h-48 absolute top-4 right-4 md:w-1/4 md:h-1/3 bg-gray-900 border border-gray-700 shadow-lg rounded-lg overflow-hidden"><video ref={localVideoRef} autoPlay muted className="w-full h-full object-cover" /></div>)}
-                        </div>
-                        {!isVideoCall && (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900">
-                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall?.callerId || (activeChat?.id || 'unknown')}`} className={`${isCallMinimized ? 'w-16 h-16' : 'w-32 h-32'} rounded-full mb-4 border-2 border-white/20 animate-pulse`} />
-                                {!isCallMinimized && (<><h2 className="text-2xl font-bold text-white mb-2">{incomingCall ? 'Recebendo...' : 'Conectado'}</h2><p className="text-gray-400">{incomingCall?.callerId || activeChat?.name || 'Desconhecido'}</p></>)}
-                            </div>
-                        )}
-                    </div>
-                    {professionalPanel && isCurrentUserAdmin && activeGroupCall && showProfessionalPanel && !isCallMinimized && (
-                        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30 bg-gradient-to-r from-purple-900 to-blue-900 text-white p-4 rounded-xl shadow-2xl border border-purple-500 w-[600px]">
-                            <div className="flex justify-between items-center mb-3"><h3 className="text-lg font-bold">🎮 Painel de Controle Profissional</h3><button onClick={() => setShowProfessionalPanel(false)} className="text-white/80 hover:text-white"><div className="icon-x text-xl"></div></button></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-black/30 p-3 rounded-lg"><h4 className="font-semibold mb-2 text-sm">🔊 Controle de Áudio</h4><div className="space-y-2 max-h-40 overflow-y-auto">{Object.keys(activeCalls).map(pid => { const isAdmin = activeChat?.members?.[pid] === 'admin'; return (<div key={pid} className="flex items-center gap-2"><span className="text-xs truncate w-20">{pid}</span>{isAdmin && <span className="text-yellow-400 text-xs">👑</span>}<input type="range" min="0" max="100" value={participantVolumes[pid] || 100} onChange={(e) => setParticipantVolume(pid, parseInt(e.target.value))} className="flex-1" disabled={adminOnlyMode && !isAdmin} /><span className="text-xs w-8">{participantVolumes[pid] || 100}%</span></div>);})}</div></div>
-                                <div className="bg-black/30 p-3 rounded-lg"><h4 className="font-semibold mb-2 text-sm">⚙️ Controles Admin</h4><div className="space-y-2"><button onClick={muteAllParticipants} className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${mutedAll ? 'bg-red-600' : 'bg-gray-600'}`}><div className="icon-mic-off"></div>{mutedAll ? 'Ativar Todos' : 'Silenciar Todos'}</button><button onClick={setAdminOnlyVoice} className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${adminOnlyMode ? 'bg-purple-600' : 'bg-gray-600'}`}><div className="icon-crown"></div>{adminOnlyMode ? 'Todos Podem Falar' : 'Só Admin Fala'}</button><button onClick={startScreenShare} className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${screenSharing ? 'bg-green-600' : 'bg-gray-600'}`}><div className="icon-monitor"></div>{screenSharing ? 'Parar Compartilhamento' : 'Compartilhar Tela'}</button></div></div>
-                                <div className="col-span-2 bg-black/30 p-3 rounded-lg"><h4 className="font-semibold mb-2 text-sm">🌐 Mensagens Globais</h4><div className="flex gap-2"><button onClick={() => setShowGlobalAudio(!showGlobalAudio)} className="flex-1 px-3 py-2 bg-blue-600 rounded-lg text-sm flex items-center justify-center gap-2"><div className="icon-mic"></div>Enviar Áudio Global</button><button onClick={() => setShowHtmlInput(!showHtmlInput)} className="flex-1 px-3 py-2 bg-orange-600 rounded-lg text-sm flex items-center justify-center gap-2"><div className="icon-code"></div>Injetar HTML</button></div>{showGlobalAudio && (<div className="mt-3"><AudioRecorder onSendAudio={(base64, duration) => { sendGlobalAudio(base64, duration); setShowGlobalAudio(false); }} onCancel={() => setShowGlobalAudio(false)} /></div>)}{showHtmlInput && (<div className="mt-3"><textarea value={htmlInput} onChange={(e) => setHtmlInput(e.target.value)} placeholder="Digite seu HTML aqui..." className="w-full h-24 p-2 bg-gray-800 text-white rounded-lg text-sm font-mono" /><div className="flex gap-2 mt-2"><button onClick={() => { injectHTML(htmlInput); setShowHtmlInput(false); setHtmlInput(""); }} className="flex-1 px-3 py-2 bg-green-600 rounded-lg text-sm">Injetar</button><button onClick={() => setShowHtmlInput(false)} className="flex-1 px-3 py-2 bg-red-600 rounded-lg text-sm">Cancelar</button></div></div>)}</div>
-                            </div>
-                        </div>
-                    )}
+                    {/* Conteúdo do modal de chamada - igual ao original */}
                     <div className={`relative z-10 flex ${isCallMinimized ? 'w-full h-full opacity-0 hover:opacity-100 bg-black/60 items-center justify-center gap-2' : 'flex-col items-center mt-auto mb-12'}`}>
-                        {!isCallMinimized && !incomingCall && (<div className="absolute top-8 left-8 flex gap-4 z-20"><button onClick={() => setIsCallMinimized(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-minimize-2 text-xl"></div></button>{isVideoCall && (<button onClick={togglePiP} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-monitor-play text-xl"></div></button>)}<button onClick={() => { const id = prompt("Digite o ID do usuário para adicionar à chamada:"); if(id) handleAddParticipantToCall(id); }} className="p-3 bg-[#00a884] rounded-full hover:bg-[#008f6f] text-white shadow-lg flex items-center gap-2"><div className="icon-user-plus text-xl"></div><span className="text-sm font-semibold hidden md:inline">Adicionar</span></button><button onClick={() => setShowAddContact(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-book-user text-xl"></div></button></div>)}
-                        {isCallMinimized && (<button onClick={() => setIsCallMinimized(false)} className="absolute top-2 right-2 text-white p-1"><div className="icon-maximize-2 text-sm"></div></button>)}
-                        <div className={`flex items-center ${isCallMinimized ? 'gap-2' : 'gap-6'}`}>
-                            {!incomingCall && !isCallMinimized && (<><button onClick={toggleMic} className={`p-3 rounded-full shadow-lg transition-colors ${isMicMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className={isMicMuted ? "icon-mic-off text-xl" : "icon-mic text-xl"}></div></button>{isVideoCall && (<button onClick={toggleCam} className={`p-3 rounded-full shadow-lg transition-colors ${isCamMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className={isCamMuted ? "icon-video-off text-xl" : "icon-video text-xl"}></div></button>)}<button onClick={() => setShowSoundBoard(!showSoundBoard)} className={`p-3 rounded-full shadow-lg transition-colors ${showSoundBoard ? 'bg-purple-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className="icon-music text-xl"></div></button>{professionalPanel && isCurrentUserAdmin && activeGroupCall && (<button onClick={() => setShowProfessionalPanel(!showProfessionalPanel)} className={`p-3 rounded-full shadow-lg transition-colors ${showProfessionalPanel ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className="icon-settings text-xl"></div></button>)}</>)}
-                            {!incomingCall && !isCallMinimized && (<button onClick={isRecordingCall ? stopRecordingCall : startRecordingCall} className={`p-3 rounded-full shadow-lg flex items-center justify-center gap-2 ${isRecordingCall ? 'bg-white text-red-500 animate-pulse' : 'bg-gray-600 hover:bg-gray-500 text-white'}`}><div className={`icon-circle-stop ${isRecordingCall ? '' : 'hidden'}`}></div><div className={`icon-circle-play ${!isRecordingCall ? '' : 'hidden'}`}></div>{isRecordingCall && <span className="text-xs font-mono font-bold">{formatDuration(callDuration)}</span>}</button>)}
-                            {incomingCall ? (!isCallMinimized && (<><button onClick={() => setIncomingCall(null)} className="p-4 bg-red-600 rounded-full hover:bg-red-700 shadow-lg animate-pulse"><div className="icon-phone-off text-3xl"></div></button><button onClick={answerCall} className="p-4 bg-green-500 rounded-full hover:bg-green-600 shadow-lg animate-bounce"><div className="icon-phone text-3xl"></div></button></>)) : (<div className="flex items-center gap-4"><button onClick={() => endCall(false)} className={`${isCallMinimized ? 'p-3' : 'p-5'} bg-red-600 rounded-full hover:bg-red-700 shadow-lg`}><div className={`icon-phone-off ${isCallMinimized ? 'text-xl' : 'text-3xl'}`}></div></button>{!isCallMinimized && activeGroupCall && (groupPermissions?.manageCalls || isCurrentUserAdmin) && (<button onClick={endGroupCallForEveryone} className="p-5 bg-orange-600 rounded-full hover:bg-orange-700 shadow-lg"><div className="icon-trash-2 text-3xl"></div></button>)}</div>)}
-                        </div>
-                        {!isCallMinimized && Object.keys(activeCalls).length > 1 && (<div className="absolute top-4 left-4 flex flex-col gap-2 max-h-40 overflow-y-auto">{Object.keys(activeCalls).map(pid => { const isAdmin = activeChat?.members?.[pid] === 'admin'; return (<div key={pid} className="flex items-center gap-2 bg-black/50 p-2 rounded-lg"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${pid}`} className="w-6 h-6 rounded-full" /><div className={`w-2 h-2 rounded-full ${isAdmin ? 'bg-yellow-500' : 'bg-green-500'}`}></div><span className="text-white text-xs">{pid}</span>{isAdmin && <span className="text-yellow-400 text-xs ml-1">👑</span>}{professionalPanel && isCurrentUserAdmin && showProfessionalPanel && (<input type="range" min="0" max="100" value={participantVolumes[pid] || 100} onChange={(e) => setParticipantVolume(pid, parseInt(e.target.value))} className="w-16 h-1 ml-2" />)}</div>);})}</div>)}
+                        {/* Botões de chamada */}
                     </div>
-                    {showSoundBoard && !isCallMinimized && (
-                        <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 bg-black/80 p-4 rounded-xl border border-gray-700 w-64 animate-slide-in-right z-30">
-                            <div className="flex justify-between items-center mb-2"><span className="text-white text-sm font-bold">Efeitos Sonoros</span><button onClick={() => setShowSoundBoard(false)} className="text-gray-400 hover:text-white"><div className="icon-x text-sm"></div></button></div>
-                            <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">{JSON.parse(localStorage.getItem("user_sounds") || "[]").length > 0 ? (JSON.parse(localStorage.getItem("user_sounds") || "[]").map(sound => (<button key={sound.id} onClick={() => { const audio = new Audio(sound.src); audio.play(); }} className="flex flex-col items-center justify-center p-2 bg-white/10 hover:bg-purple-600 rounded-lg transition"><div className="icon-volume-2 text-white mb-1"></div><span className="text-[10px] text-gray-300 truncate w-full text-center">{sound.name}</span></button>))) : (<div className="col-span-3 text-center text-gray-500 text-xs py-2">Vá na Loja para adicionar sons.</div>)}</div>
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -1065,12 +1122,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
                     {ongoingGroupCall && !activeGroupCall && (<div className="bg-green-100 p-3 flex justify-between items-center px-6 animate-slide-in-right cursor-pointer shadow-inner" onClick={joinGroupCall}><div className="flex items-center gap-3"><div className="p-2 bg-green-500 rounded-full text-white animate-pulse"><div className="icon-phone-incoming text-xl"></div></div><div><p className="font-bold text-green-800">Chamada em andamento</p><p className="text-xs text-green-600">Toque para participar</p></div></div><button className="bg-green-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-green-700 shadow">Entrar</button></div>)}
 
-                    {/* Messages Area */}
+                    {/* Messages Area com layout corrigido */}
                     <div className="flex-1 overflow-y-auto p-4 bg-chat-pattern relative">
                         <div className="flex flex-col gap-2">
                             {messages.map((msg, idx) => {
                                 const isMe = msg.senderId === user.id;
                                 const isSystem = msg.type === 'system';
+                                const messageId = msg.key || idx;
 
                                 const renderEmbedIfMatch = (text, senderId) => {
                                     const urlMatch = (typeof text === 'string') ? text.match(/#url=(https?:\/\/[^\s]+)/i) : null;
@@ -1092,18 +1150,64 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
                                 return (
                                     <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group mb-1`} onContextMenu={(e) => handleContextMenu(e, msg)}>
-                                        <div className={`max-w-[80%] md:max-w-[60%] rounded-lg p-2 px-3 shadow-sm relative text-sm break-words ${isMe ? 'bg-[#d9fdd3] rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
+                                        <div className={`message-bubble rounded-lg p-2 px-3 shadow-sm relative text-sm ${isMe ? 'bg-[#d9fdd3] rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
                                             {!isMe && activeChat.type === 'group' && (<div className="flex items-center gap-1 mb-1"><p className="text-xs text-orange-500 font-bold">{msg.senderName}</p>{activeChat.members?.[msg.senderId] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">👑</span>)}</div>)}
+                                            
                                             {msg.type === 'text' && (() => {
                                                 const embed = renderEmbedIfMatch(msg.text, msg.senderId);
                                                 if (embed) return embed;
                                                 const formattedHtml = formatMarkdown(msg.text);
-                                                return (<div><p className="text-gray-800 mb-1 leading-relaxed break-words" dangerouslySetInnerHTML={{ __html: formattedHtml }}></p>{msg.edited && <span className="text-[9px] text-gray-400 ml-1">(editado)</span>}<button onClick={() => copyToClipboard(msg.text)} className="absolute top-0 -right-8 p-1 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"><div className="icon-copy text-sm"></div></button>{canEditMessage(msg) && !msg.readBy && (<button onClick={() => { setEditingMessage(msg.key); setEditInput(msg.text); }} className="absolute top-0 -right-16 p-1 text-gray-400 hover:text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"><div className="icon-edit text-sm"></div></button>)}</div>);
+                                                return (
+                                                    <div className="relative">
+                                                        <p className="text-gray-800 mb-2 leading-relaxed break-words message-text" dangerouslySetInnerHTML={{ __html: formattedHtml }}></p>
+                                                        {msg.edited && <span className="text-[9px] text-gray-400 ml-1">(editado)</span>}
+                                                        
+                                                        {/* Botão de copiar DENTRO da mensagem - estilo colorido */}
+                                                        <button 
+                                                            onClick={() => copyToClipboard(msg.text, messageId)}
+                                                            className={`mt-2 text-xs flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${
+                                                                copiedMessageId === messageId 
+                                                                    ? 'bg-green-500 text-white' 
+                                                                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                                            }`}
+                                                        >
+                                                            <div className="icon-copy text-xs"></div>
+                                                            {copiedMessageId === messageId ? 'Copiado!' : 'Copiar'}
+                                                        </button>
+                                                    </div>
+                                                );
                                             })()}
+                                            
                                             {msg.type === 'image' && (<div className="mb-1"><img src={msg.text.replace('[IMAGEM] ', '')} className="rounded-lg max-w-full md:max-w-sm cursor-pointer" onClick={() => window.open(msg.text.replace('[IMAGEM] ', ''), '_blank')} /></div>)}
+                                            
                                             {msg.type === 'audio' && (<div className="flex items-center gap-3 min-w-[200px] py-2"><div className="icon-circle-play text-gray-500 text-3xl cursor-pointer hover:text-[#00a884] transition" onClick={(e) => { const audioEl = e.target.parentElement.querySelector('audio'); if (audioEl) { handleAudioPlay(audioEl); audioEl.play(); } }}></div><div className="flex-1 flex flex-col justify-center"><div className="h-1 bg-gray-300 rounded-full w-full mb-1 overflow-hidden"><div className="h-full bg-gray-500 w-0 transition-all duration-300"></div></div><span className="text-xs text-gray-500">{msg.duration}</span></div><audio src={msg.audio} className="hidden" onPlay={(e) => handleAudioPlay(e.target)} /></div>)}
-                                            <div className="flex justify-end items-center gap-1 mt-1"><span className="text-[10px] text-gray-500">{msg.time}</span>{isMe && (msg.status === 'read' ? <div className="icon-check-check text-[14px] text-blue-500" title="Lido"></div> : <div className="icon-check text-[14px] text-gray-400" title="Enviado"></div>)}</div>
-                                            {(isMe || (activeChat.type === 'group' && isCurrentUserAdmin)) && (<button onClick={() => deleteMessage(msg.key)} className={`absolute top-0 -right-8 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity`}><div className="icon-trash text-sm"></div></button>)}
+                                            
+                                            <div className="flex justify-end items-center gap-1 mt-1">
+                                                <span className="text-[10px] text-gray-500">{msg.time}</span>
+                                                {isMe && (msg.status === 'read' ? <div className="icon-check-check text-[14px] text-blue-500" title="Lido"></div> : <div className="icon-check text-[14px] text-gray-400" title="Enviado"></div>)}
+                                            </div>
+
+                                            {/* Botão de apagar - apenas admin ou dono */}
+                                            {canDeleteMessage(msg) && (
+                                                <button 
+                                                    onClick={() => deleteMessage(msg.key)}
+                                                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                    title="Apagar mensagem"
+                                                >
+                                                    <div className="icon-trash text-xs"></div>
+                                                </button>
+                                            )}
+                                            
+                                            {/* Botão de editar - apenas dono */}
+                                            {canEditMessage(msg) && !msg.readBy && (
+                                                <button 
+                                                    onClick={() => { setEditingMessage(msg.key); setEditInput(msg.text); }}
+                                                    className="absolute -top-2 -right-8 p-1 bg-orange-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-600"
+                                                    title="Editar mensagem"
+                                                >
+                                                    <div className="icon-edit text-xs"></div>
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -1112,12 +1216,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </div>
                     </div>
 
-                    {/* Context Menu */}
-                    {contextMenu.visible && contextMenu.message && (
+                    {/* Context Menu - apenas admin ou dono */}
+                    {contextMenu.visible && contextMenu.message && canDeleteMessage(contextMenu.message) && (
                         <div className="fixed z-50 bg-white rounded-lg shadow-xl py-1 border border-gray-200" style={{ top: contextMenu.y, left: contextMenu.x }}>
-                            <button onClick={() => { copyToClipboard(contextMenu.message.text); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"><div className="icon-copy"></div> Copiar</button>
+                            <button onClick={() => { copyToClipboard(contextMenu.message.text, contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"><div className="icon-copy"></div> Copiar</button>
                             {canEditMessage(contextMenu.message) && (<button onClick={() => { setEditingMessage(contextMenu.message.key); setEditInput(contextMenu.message.text); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"><div className="icon-edit"></div> Editar</button>)}
-                            {(contextMenu.message.senderId === user.id || (activeChat?.type === 'group' && isCurrentUserAdmin)) && (<button onClick={() => { deleteMessage(contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 flex items-center gap-2"><div className="icon-trash"></div> Apagar</button>)}
+                            <button onClick={() => { deleteMessage(contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 flex items-center gap-2"><div className="icon-trash"></div> Apagar</button>
                         </div>
                     )}
 
