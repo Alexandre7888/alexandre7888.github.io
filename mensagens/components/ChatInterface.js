@@ -5,6 +5,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [messages, setMessages] = React.useState([]);
     const [showAudioRecorder, setShowAudioRecorder] = React.useState(false);
 
+    // ==================== NOVOS STATES ====================
+    const [editingMessage, setEditingMessage] = React.useState(null);
+    const [editInput, setEditInput] = React.useState("");
+    const [contextMenu, setContextMenu] = React.useState({ visible: false, x: 0, y: 0, message: null });
+    const [bannedUsers, setBannedUsers] = React.useState({});
+    const [inactiveUsers, setInactiveUsers] = React.useState({});
+    const [pendingDownloads, setPendingDownloads] = React.useState({});
+
     // Bot & Media States
     const [showBotCreator, setShowBotCreator] = React.useState(false);
     const fileInputRef = React.useRef(null);
@@ -17,10 +25,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // Permissions
     const [groupPermissions, setGroupPermissions] = React.useState(null);
 
-    // Professional Panel Activation - APENAS VIA LOCALSTORAGE
+    // Professional Panel Activation
     const [professionalPanel, setProfessionalPanel] = React.useState(false);
-    
-    // Controlar visibilidade do painel profissional durante a chamada
     const [showProfessionalPanel, setShowProfessionalPanel] = React.useState(false);
 
     // Verificar localStorage para ativação do painel
@@ -29,6 +35,156 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setProfessionalPanel(panelActive);
     }, []);
 
+    // ==================== SISTEMA DE RATE LIMITING ====================
+    const checkRateLimit = (userId, chatId) => {
+        const now = Date.now();
+        const key = `${userId}_${chatId}`;
+        const userRate = rateLimiter[key] || { count: 0, firstMessageTime: now, bannedUntil: 0 };
+        
+        if (userRate.bannedUntil > now) {
+            return { allowed: false, reason: `Banido até ${new Date(userRate.bannedUntil).toLocaleTimeString()}` };
+        }
+        
+        if (userRate.count >= MAX_MESSAGES_PER_MINUTE && (now - userRate.firstMessageTime) < 60000) {
+            userRate.bannedUntil = now + (BAN_DURATION * 1000);
+            rateLimiter[key] = userRate;
+            return { allowed: false, reason: `Limite excedido! Banido por ${BAN_DURATION} segundos` };
+        }
+        
+        if ((now - userRate.firstMessageTime) > 60000) {
+            userRate.count = 1;
+            userRate.firstMessageTime = now;
+        } else {
+            userRate.count++;
+        }
+        
+        rateLimiter[key] = userRate;
+        return { allowed: true };
+    };
+    
+    // ==================== FORMATAÇÃO DE TEXTO (MARKDOWN) ====================
+    const formatMarkdown = (text) => {
+        let formatted = text;
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        formatted = formatted.replace(/__(.*?)__/g, '<u>$1</u>');
+        formatted = formatted(/~~(.*?)~~/g, '<del>$1</del>');
+        formatted = formatted.replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 rounded text-sm">$1</code>');
+        formatted = formatted.replace(/```(.*?)```/gs, '<pre class="bg-gray-800 text-white p-2 rounded-lg overflow-x-auto"><code>$1</code></pre>');
+        return formatted;
+    };
+    
+    // ==================== BOTÃO DE COPIAR ====================
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        showToast("Copiado!", "success");
+    };
+    
+    // ==================== EDIÇÃO DE MENSAGEM ====================
+    const canEditMessage = (message) => {
+        if (message.senderId !== user.id) return false;
+        const messageAge = (Date.now() - message.timestamp) / (1000 * 60 * 60);
+        if (messageAge > 4) return false;
+        if (message.readBy && Object.keys(message.readBy).length > 0) return false;
+        return true;
+    };
+    
+    const editMessage = async (messageKey, newText) => {
+        if (!activeChat || !newText.trim()) return;
+        
+        const msgRef = activeChat.type === 'group' 
+            ? db.ref(`groups/${activeChat.id}/messages/${messageKey}`)
+            : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${messageKey}`);
+        
+        await msgRef.update({
+            text: newText,
+            edited: true,
+            editedAt: Date.now()
+        });
+        
+        setEditingMessage(null);
+        setEditInput("");
+    };
+    
+    // ==================== CONTEXT MENU (CLIQUE DIREITO) ====================
+    const handleContextMenu = (e, message) => {
+        e.preventDefault();
+        setContextMenu({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            message: message
+        });
+    };
+    
+    React.useEffect(() => {
+        const handleClick = () => setContextMenu({ visible: false, x: 0, y: 0, message: null });
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, []);
+    
+    // ==================== SISTEMA DE INATIVIDADE (1 ANO) ====================
+    React.useEffect(() => {
+        const checkInactivity = async () => {
+            const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
+            const lastActive = user.lastActive || user.createdAt || Date.now();
+            
+            if (lastActive < oneYearAgo) {
+                setInactiveUsers(prev => ({ ...prev, [user.id]: true }));
+            }
+        };
+        checkInactivity();
+        
+        const userStatusRef = db.ref(`users/${user.id}/lastActive`);
+        const interval = setInterval(() => {
+            userStatusRef.set(Date.now());
+        }, 60 * 60 * 1000);
+        
+        return () => clearInterval(interval);
+    }, [user.id]);
+    
+    // ==================== SISTEMA P2P PARA MÍDIAS ====================
+    const requestMediaViaP2P = (mediaId, senderId) => {
+        const peerId = senderId.replace(/[^a-zA-Z0-9]/g, '');
+        const dataConnection = peer.connect(peerId);
+        
+        dataConnection.on('open', () => {
+            dataConnection.send({ type: 'request_media', mediaId: mediaId });
+        });
+        
+        dataConnection.on('data', (data) => {
+            if (data.type === 'media_data') {
+                setPendingDownloads(prev => ({
+                    ...prev,
+                    [mediaId]: { data: data.mediaData, type: data.mediaType }
+                }));
+            }
+        });
+    };
+    
+    // ==================== UPLOAD TEMPORÁRIO DE ARQUIVOS ====================
+    const uploadTempFile = async (file, viewers = []) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('viewers', JSON.stringify(viewers));
+        
+        const response = await fetch('https://api.tempfileserver.com/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        return data.fileId;
+    };
+    
+    const markAsViewed = (fileId, userId) => {
+        fetch(`https://api.tempfileserver.com/view/${fileId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId })
+        });
+    };
+    
     // Navigation History
     React.useEffect(() => {
         const handlePopState = (event) => {
@@ -98,6 +254,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const currentAudioRef = React.useRef(null);
     const backgroundAudioRef = React.useRef(null);
     const db = window.firebaseDB;
+    
+    // Rate limiter storage
+    const rateLimiter = React.useRef({});
+    const MAX_MESSAGES_PER_MINUTE = 30;
+    const BAN_DURATION = 60;
 
     // Check if current user is admin
     const isCurrentUserAdmin = React.useMemo(() => {
@@ -401,6 +562,18 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             });
             window.NotificationSystem.playRingtone();
             window.NotificationSystem.show("Chamada Recebida", `Chamada de ${call.peer}`);
+        });
+        
+        // P2P para mídias
+        newPeer.on('connection', (conn) => {
+            conn.on('data', (data) => {
+                if (data.type === 'request_media') {
+                    const mediaData = pendingDownloads[data.mediaId];
+                    if (mediaData) {
+                        conn.send({ type: 'media_data', mediaData: mediaData.data, mediaType: mediaData.type });
+                    }
+                }
+            });
         });
 
         newPeer.on('error', (err) => {
@@ -861,7 +1034,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         stopRecordingCall();
         stopScreenShare();
         
-        // Fechar painel profissional quando a chamada terminar
         setShowProfessionalPanel(false);
 
         if (callStatus === 'connected' && activeChat) {
@@ -1050,8 +1222,30 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    // ==================== HANDLE SEND MESSAGE COM VALIDAÇÃO ====================
     const handleSendMessage = (content, type = 'text', duration = null, msgType = 'text') => {
         if (!activeChat) return;
+        
+        // VALIDAÇÃO: impedir mensagens vazias ou invisíveis
+        if (type === 'text' && (!content || !content.trim() || /^[\s\u200B-\u200D\uFEFF]*$/.test(content))) {
+            showToast("Mensagem vazia ou invisível não é permitida!", "error");
+            return;
+        }
+        
+        // VALIDAÇÃO: impedir spam de Enter repetido
+        const now = Date.now();
+        if (lastMessageTime[activeChat.id] && (now - lastMessageTime[activeChat.id]) < 800) {
+            showToast("Aguarde um pouco antes de enviar outra mensagem!", "warning");
+            return;
+        }
+        lastMessageTime[activeChat.id] = now;
+        
+        // RATE LIMITING
+        const rateCheck = checkRateLimit(user.id, activeChat.id);
+        if (!rateCheck.allowed) {
+            showToast(rateCheck.reason, "error");
+            return;
+        }
 
         if (activeChat.type === 'group' && groupPermissions && type !== 'system') {
             if (type === 'text' && !groupPermissions.sendText) { return; }
@@ -1079,6 +1273,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setMessageInput("");
         setShowAudioRecorder(false);
     };
+    
+    // Para tracking do último envio
+    const lastMessageTime = React.useRef({});
 
     const handleCreateGroup = () => {
         const groupName = prompt("Nome do Grupo:");
@@ -1136,6 +1333,17 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         } catch (error) {
             console.error("Erro ao buscar ID:", error);
         }
+    };
+    
+    // Toast notification
+    const showToast = (message, type = 'info') => {
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg text-white text-sm ${
+            type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-gray-800'
+        } animate-fade-in-up`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
     };
 
     return (
@@ -1275,21 +1483,17 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                          )}
                     </div>
 
-                    {/* Professional Panel - Só aparece se: em chamada de grupo, admin, painel ativo, e botão ativado */}
+                    {/* Professional Panel */}
                     {professionalPanel && isCurrentUserAdmin && activeGroupCall && showProfessionalPanel && !isCallMinimized && (
                         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30 bg-gradient-to-r from-purple-900 to-blue-900 text-white p-4 rounded-xl shadow-2xl border border-purple-500 w-[600px]">
                             <div className="flex justify-between items-center mb-3">
                                 <h3 className="text-lg font-bold">🎮 Painel de Controle Profissional</h3>
-                                <button 
-                                    onClick={() => setShowProfessionalPanel(false)}
-                                    className="text-white/80 hover:text-white"
-                                >
+                                <button onClick={() => setShowProfessionalPanel(false)} className="text-white/80 hover:text-white">
                                     <div className="icon-x text-xl"></div>
                                 </button>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4">
-                                {/* Volume Controls */}
                                 <div className="bg-black/30 p-3 rounded-lg">
                                     <h4 className="font-semibold mb-2 text-sm">🔊 Controle de Áudio</h4>
                                     <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1299,15 +1503,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                                 <div key={pid} className="flex items-center gap-2">
                                                     <span className="text-xs truncate w-20">{pid}</span>
                                                     {isAdmin && <span className="text-yellow-400 text-xs">👑</span>}
-                                                    <input 
-                                                        type="range" 
-                                                        min="0" 
-                                                        max="100" 
-                                                        value={participantVolumes[pid] || 100}
+                                                    <input type="range" min="0" max="100" value={participantVolumes[pid] || 100}
                                                         onChange={(e) => setParticipantVolume(pid, parseInt(e.target.value))}
-                                                        className="flex-1"
-                                                        disabled={adminOnlyMode && !isAdmin}
-                                                    />
+                                                        className="flex-1" disabled={adminOnlyMode && !isAdmin} />
                                                     <span className="text-xs w-8">{participantVolumes[pid] || 100}%</span>
                                                 </div>
                                             );
@@ -1315,93 +1513,45 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                     </div>
                                 </div>
 
-                                {/* Admin Controls */}
                                 <div className="bg-black/30 p-3 rounded-lg">
                                     <h4 className="font-semibold mb-2 text-sm">⚙️ Controles Admin</h4>
                                     <div className="space-y-2">
-                                        <button 
-                                            onClick={muteAllParticipants}
-                                            className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${mutedAll ? 'bg-red-600' : 'bg-gray-600'}`}
-                                        >
+                                        <button onClick={muteAllParticipants} className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${mutedAll ? 'bg-red-600' : 'bg-gray-600'}`}>
                                             <div className="icon-mic-off"></div>
                                             {mutedAll ? 'Ativar Todos' : 'Silenciar Todos'}
                                         </button>
-                                        
-                                        <button 
-                                            onClick={setAdminOnlyVoice}
-                                            className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${adminOnlyMode ? 'bg-purple-600' : 'bg-gray-600'}`}
-                                        >
+                                        <button onClick={setAdminOnlyVoice} className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${adminOnlyMode ? 'bg-purple-600' : 'bg-gray-600'}`}>
                                             <div className="icon-crown"></div>
                                             {adminOnlyMode ? 'Todos Podem Falar' : 'Só Admin Fala'}
                                         </button>
-
-                                        <button 
-                                            onClick={startScreenShare}
-                                            className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${screenSharing ? 'bg-green-600' : 'bg-gray-600'}`}
-                                        >
+                                        <button onClick={startScreenShare} className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 ${screenSharing ? 'bg-green-600' : 'bg-gray-600'}`}>
                                             <div className="icon-monitor"></div>
                                             {screenSharing ? 'Parar Compartilhamento' : 'Compartilhar Tela'}
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Global Audio & HTML */}
                                 <div className="col-span-2 bg-black/30 p-3 rounded-lg">
                                     <h4 className="font-semibold mb-2 text-sm">🌐 Mensagens Globais</h4>
                                     <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => setShowGlobalAudio(!showGlobalAudio)}
-                                            className="flex-1 px-3 py-2 bg-blue-600 rounded-lg text-sm flex items-center justify-center gap-2"
-                                        >
-                                            <div className="icon-mic"></div>
-                                            Enviar Áudio Global
+                                        <button onClick={() => setShowGlobalAudio(!showGlobalAudio)} className="flex-1 px-3 py-2 bg-blue-600 rounded-lg text-sm flex items-center justify-center gap-2">
+                                            <div className="icon-mic"></div> Enviar Áudio Global
                                         </button>
-                                        <button 
-                                            onClick={() => setShowHtmlInput(!showHtmlInput)}
-                                            className="flex-1 px-3 py-2 bg-orange-600 rounded-lg text-sm flex items-center justify-center gap-2"
-                                        >
-                                            <div className="icon-code"></div>
-                                            Injetar HTML
+                                        <button onClick={() => setShowHtmlInput(!showHtmlInput)} className="flex-1 px-3 py-2 bg-orange-600 rounded-lg text-sm flex items-center justify-center gap-2">
+                                            <div className="icon-code"></div> Injetar HTML
                                         </button>
                                     </div>
-
                                     {showGlobalAudio && (
                                         <div className="mt-3">
-                                            <AudioRecorder 
-                                                onSendAudio={(base64, duration) => {
-                                                    sendGlobalAudio(base64, duration);
-                                                    setShowGlobalAudio(false);
-                                                }} 
-                                                onCancel={() => setShowGlobalAudio(false)} 
-                                            />
+                                            <AudioRecorder onSendAudio={(base64, duration) => { sendGlobalAudio(base64, duration); setShowGlobalAudio(false); }} onCancel={() => setShowGlobalAudio(false)} />
                                         </div>
                                     )}
-
                                     {showHtmlInput && (
                                         <div className="mt-3">
-                                            <textarea
-                                                value={htmlInput}
-                                                onChange={(e) => setHtmlInput(e.target.value)}
-                                                placeholder="Digite seu HTML aqui..."
-                                                className="w-full h-24 p-2 bg-gray-800 text-white rounded-lg text-sm font-mono"
-                                            />
+                                            <textarea value={htmlInput} onChange={(e) => setHtmlInput(e.target.value)} placeholder="Digite seu HTML aqui..." className="w-full h-24 p-2 bg-gray-800 text-white rounded-lg text-sm font-mono" />
                                             <div className="flex gap-2 mt-2">
-                                                <button 
-                                                    onClick={() => {
-                                                        injectHTML(htmlInput);
-                                                        setShowHtmlInput(false);
-                                                        setHtmlInput("");
-                                                    }}
-                                                    className="flex-1 px-3 py-2 bg-green-600 rounded-lg text-sm"
-                                                >
-                                                    Injetar
-                                                </button>
-                                                <button 
-                                                    onClick={() => setShowHtmlInput(false)}
-                                                    className="flex-1 px-3 py-2 bg-red-600 rounded-lg text-sm"
-                                                >
-                                                    Cancelar
-                                                </button>
+                                                <button onClick={() => { injectHTML(htmlInput); setShowHtmlInput(false); setHtmlInput(""); }} className="flex-1 px-3 py-2 bg-green-600 rounded-lg text-sm">Injetar</button>
+                                                <button onClick={() => setShowHtmlInput(false)} className="flex-1 px-3 py-2 bg-red-600 rounded-lg text-sm">Cancelar</button>
                                             </div>
                                         </div>
                                     )}
@@ -1412,184 +1562,35 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
                     {/* Controls Overlay */}
                     <div className={`relative z-10 flex ${isCallMinimized ? 'w-full h-full opacity-0 hover:opacity-100 bg-black/60 items-center justify-center gap-2' : 'flex-col items-center mt-auto mb-12'}`}>
-
-                         {/* Header Controls */}
                          {!isCallMinimized && !incomingCall && (
                              <div className="absolute top-8 left-8 flex gap-4 z-20">
-                                <button onClick={() => setIsCallMinimized(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white" title="Minimizar">
-                                    <div className="icon-minimize-2 text-xl"></div>
-                                </button>
-                                {isVideoCall && (
-                                    <button onClick={togglePiP} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white" title="Picture-in-Picture">
-                                        <div className="icon-monitor-play text-xl"></div>
-                                    </button>
-                                )}
-                                <button onClick={() => {
-                                    const id = prompt("Digite o ID do usuário para adicionar à chamada:");
-                                    if(id) handleAddParticipantToCall(id);
-                                }} className="p-3 bg-[#00a884] rounded-full hover:bg-[#008f6f] text-white shadow-lg flex items-center gap-2" title="Adicionar Pessoa">
-                                    <div className="icon-user-plus text-xl"></div>
-                                    <span className="text-sm font-semibold hidden md:inline">Adicionar</span>
-                                </button>
-                                <button onClick={() => setShowAddContact(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white" title="Escolher dos Contatos">
-                                    <div className="icon-book-user text-xl"></div>
-                                </button>
+                                <button onClick={() => setIsCallMinimized(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-minimize-2 text-xl"></div></button>
+                                {isVideoCall && <button onClick={togglePiP} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-monitor-play text-xl"></div></button>}
+                                <button onClick={() => { const id = prompt("Digite o ID:"); if(id) handleAddParticipantToCall(id); }} className="p-3 bg-[#00a884] rounded-full hover:bg-[#008f6f] text-white shadow-lg flex items-center gap-2"><div className="icon-user-plus text-xl"></div><span className="text-sm font-semibold hidden md:inline">Adicionar</span></button>
+                                <button onClick={() => setShowAddContact(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><div className="icon-book-user text-xl"></div></button>
                              </div>
                          )}
-
-                         {/* Restore Button */}
-                         {isCallMinimized && (
-                             <button onClick={() => setIsCallMinimized(false)} className="absolute top-2 right-2 text-white p-1">
-                                 <div className="icon-maximize-2 text-sm"></div>
-                             </button>
-                         )}
-
-                         {/* Main Action Buttons */}
+                         {isCallMinimized && <button onClick={() => setIsCallMinimized(false)} className="absolute top-2 right-2 text-white p-1"><div className="icon-maximize-2 text-sm"></div></button>}
                          <div className={`flex items-center ${isCallMinimized ? 'gap-2' : 'gap-6'}`}>
-
-                             {/* Mic/Cam Controls */}
                              {!incomingCall && !isCallMinimized && (
                                  <>
-                                     <button 
-                                        onClick={toggleMic}
-                                        className={`p-3 rounded-full shadow-lg transition-colors ${isMicMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                                        title={isMicMuted ? "Ativar Microfone" : "Silenciar"}
-                                     >
-                                         <div className={isMicMuted ? "icon-mic-off text-xl" : "icon-mic text-xl"}></div>
-                                     </button>
-
-                                     {isVideoCall && (
-                                         <button 
-                                            onClick={toggleCam}
-                                            className={`p-3 rounded-full shadow-lg transition-colors ${isCamMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                                            title={isCamMuted ? "Ativar Câmera" : "Desativar Câmera"}
-                                         >
-                                             <div className={isCamMuted ? "icon-video-off text-xl" : "icon-video text-xl"}></div>
-                                         </button>
-                                     )}
-
-                                    <button 
-                                        onClick={() => setShowSoundBoard(!showSoundBoard)}
-                                        className={`p-3 rounded-full shadow-lg transition-colors ${showSoundBoard ? 'bg-purple-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                                        title="Efeitos Sonoros"
-                                    >
-                                        <div className="icon-music text-xl"></div>
-                                    </button>
-
-                                    {/* Botão do Painel Profissional - Só aparece em chamada de grupo e se for admin e painel ativo */}
-                                    {professionalPanel && isCurrentUserAdmin && activeGroupCall && (
-                                        <button 
-                                            onClick={() => setShowProfessionalPanel(!showProfessionalPanel)}
-                                            className={`p-3 rounded-full shadow-lg transition-colors ${showProfessionalPanel ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                                            title="Painel Profissional"
-                                        >
-                                            <div className="icon-settings text-xl"></div>
-                                        </button>
-                                    )}
+                                     <button onClick={toggleMic} className={`p-3 rounded-full shadow-lg ${isMicMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className={isMicMuted ? "icon-mic-off text-xl" : "icon-mic text-xl"}></div></button>
+                                     {isVideoCall && <button onClick={toggleCam} className={`p-3 rounded-full shadow-lg ${isCamMuted ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className={isCamMuted ? "icon-video-off text-xl" : "icon-video text-xl"}></div></button>}
+                                    <button onClick={() => setShowSoundBoard(!showSoundBoard)} className={`p-3 rounded-full shadow-lg ${showSoundBoard ? 'bg-purple-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className="icon-music text-xl"></div></button>
+                                    {professionalPanel && isCurrentUserAdmin && activeGroupCall && <button onClick={() => setShowProfessionalPanel(!showProfessionalPanel)} className={`p-3 rounded-full shadow-lg ${showProfessionalPanel ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><div className="icon-settings text-xl"></div></button>}
                                  </>
                              )}
-
-                             {/* Recording Button */}
-                             {!incomingCall && !isCallMinimized && (
-                                 <button 
-                                    onClick={isRecordingCall ? stopRecordingCall : startRecordingCall}
-                                    className={`p-3 rounded-full shadow-lg flex items-center justify-center gap-2 ${isRecordingCall ? 'bg-white text-red-500 animate-pulse' : 'bg-gray-600 hover:bg-gray-500 text-white'}`}
-                                    title={isRecordingCall ? "Parar Gravação" : "Gravar Chamada"}
-                                 >
-                                     <div className={`icon-circle-stop ${isRecordingCall ? '' : 'hidden'}`}></div>
-                                     <div className={`icon-circle-play ${!isRecordingCall ? '' : 'hidden'}`}></div>
-                                     {isRecordingCall && <span className="text-xs font-mono font-bold">{formatDuration(callDuration)}</span>}
-                                 </button>
-                             )}
-
-                             {incomingCall ? (
-                                 !isCallMinimized && (
-                                     <>
-                                        <button onClick={() => setIncomingCall(null)} className="p-4 bg-red-600 rounded-full hover:bg-red-700 shadow-lg animate-pulse">
-                                            <div className="icon-phone-off text-3xl"></div>
-                                        </button>
-                                        <button onClick={answerCall} className="p-4 bg-green-500 rounded-full hover:bg-green-600 shadow-lg animate-bounce">
-                                            <div className="icon-phone text-3xl"></div>
-                                        </button>
-                                     </>
-                                 )
-                             ) : (
-                                <div className="flex items-center gap-4">
-                                     <button onClick={() => endCall(false)} className={`${isCallMinimized ? 'p-3' : 'p-5'} bg-red-600 rounded-full hover:bg-red-700 shadow-lg`} title="Sair da Chamada">
-                                        <div className={`icon-phone-off ${isCallMinimized ? 'text-xl' : 'text-3xl'}`}></div>
-                                     </button>
-
-                                     {/* Force End Button for Admins */}
-                                     {!isCallMinimized && activeGroupCall && (groupPermissions?.manageCalls || isCurrentUserAdmin) && (
-                                        <button onClick={endGroupCallForEveryone} className="p-5 bg-orange-600 rounded-full hover:bg-orange-700 shadow-lg" title="Encerrar para Todos">
-                                            <div className="icon-trash-2 text-3xl"></div>
-                                        </button>
-                                     )}
-                                </div>
-                             )}
+                             {!incomingCall && !isCallMinimized && <button onClick={isRecordingCall ? stopRecordingCall : startRecordingCall} className={`p-3 rounded-full shadow-lg flex items-center justify-center gap-2 ${isRecordingCall ? 'bg-white text-red-500 animate-pulse' : 'bg-gray-600 hover:bg-gray-500 text-white'}`}><div className={`icon-circle-stop ${isRecordingCall ? '' : 'hidden'}`}></div><div className={`icon-circle-play ${!isRecordingCall ? '' : 'hidden'}`}></div>{isRecordingCall && <span className="text-xs font-mono font-bold">{formatDuration(callDuration)}</span>}</button>}
+                             {incomingCall ? (!isCallMinimized && (<><button onClick={() => setIncomingCall(null)} className="p-4 bg-red-600 rounded-full hover:bg-red-700 shadow-lg animate-pulse"><div className="icon-phone-off text-3xl"></div></button><button onClick={answerCall} className="p-4 bg-green-500 rounded-full hover:bg-green-600 shadow-lg animate-bounce"><div className="icon-phone text-3xl"></div></button></>)) : (<div className="flex items-center gap-4"><button onClick={() => endCall(false)} className={`${isCallMinimized ? 'p-3' : 'p-5'} bg-red-600 rounded-full hover:bg-red-700 shadow-lg`}><div className={`icon-phone-off ${isCallMinimized ? 'text-xl' : 'text-3xl'}`}></div></button>{!isCallMinimized && activeGroupCall && (groupPermissions?.manageCalls || isCurrentUserAdmin) && <button onClick={endGroupCallForEveryone} className="p-5 bg-orange-600 rounded-full hover:bg-orange-700 shadow-lg"><div className="icon-trash-2 text-3xl"></div></button>}</div>)}
                          </div>
-
-                         {/* Participant List with Admin Indicators */}
-                         {!isCallMinimized && Object.keys(activeCalls).length > 1 && (
-                            <div className="absolute top-4 left-4 flex flex-col gap-2 max-h-40 overflow-y-auto">
-                                {Object.keys(activeCalls).map(pid => {
-                                    const isAdmin = activeChat?.members?.[pid] === 'admin';
-                                    return (
-                                        <div key={pid} className="flex items-center gap-2 bg-black/50 p-2 rounded-lg">
-                                            <img 
-                                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${pid}`}
-                                                className="w-6 h-6 rounded-full"
-                                            />
-                                            <div className={`w-2 h-2 rounded-full ${isAdmin ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                                            <span className="text-white text-xs">{pid}</span>
-                                            {isAdmin && (
-                                                <span className="text-yellow-400 text-xs ml-1" title="Administrador">👑</span>
-                                            )}
-                                            {professionalPanel && isCurrentUserAdmin && showProfessionalPanel && (
-                                                <input 
-                                                    type="range" 
-                                                    min="0" 
-                                                    max="100" 
-                                                    value={participantVolumes[pid] || 100}
-                                                    onChange={(e) => setParticipantVolume(pid, parseInt(e.target.value))}
-                                                    className="w-16 h-1 ml-2"
-                                                />
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                         )}
+                         {!isCallMinimized && Object.keys(activeCalls).length > 1 && <div className="absolute top-4 left-4 flex flex-col gap-2 max-h-40 overflow-y-auto">{Object.keys(activeCalls).map(pid => { const isAdmin = activeChat?.members?.[pid] === 'admin'; return (<div key={pid} className="flex items-center gap-2 bg-black/50 p-2 rounded-lg"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${pid}`} className="w-6 h-6 rounded-full"/><div className={`w-2 h-2 rounded-full ${isAdmin ? 'bg-yellow-500' : 'bg-green-500'}`}></div><span className="text-white text-xs">{pid}</span>{isAdmin && <span className="text-yellow-400 text-xs ml-1">👑</span>}{professionalPanel && isCurrentUserAdmin && showProfessionalPanel && <input type="range" min="0" max="100" value={participantVolumes[pid] || 100} onChange={(e) => setParticipantVolume(pid, parseInt(e.target.value))} className="w-16 h-1 ml-2"/>}</div>);})}</div>}
                     </div>
 
-                    {/* SoundBoard Overlay */}
                     {showSoundBoard && !isCallMinimized && (
                         <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 bg-black/80 p-4 rounded-xl border border-gray-700 w-64 animate-slide-in-right z-30">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-white text-sm font-bold">Efeitos Sonoros</span>
-                                <button onClick={() => setShowSoundBoard(false)} className="text-gray-400 hover:text-white"><div className="icon-x text-sm"></div></button>
-                            </div>
+                            <div className="flex justify-between items-center mb-2"><span className="text-white text-sm font-bold">Efeitos Sonoros</span><button onClick={() => setShowSoundBoard(false)} className="text-gray-400 hover:text-white"><div className="icon-x text-sm"></div></button></div>
                             <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
-                                {JSON.parse(localStorage.getItem("user_sounds") || "[]").length > 0 ? (
-                                    JSON.parse(localStorage.getItem("user_sounds") || "[]").map(sound => (
-                                        <button 
-                                            key={sound.id}
-                                            onClick={() => {
-                                                const audio = new Audio(sound.src);
-                                                audio.play();
-                                            }}
-                                            className="flex flex-col items-center justify-center p-2 bg-white/10 hover:bg-purple-600 rounded-lg transition"
-                                            title={sound.name}
-                                        >
-                                            <div className="icon-volume-2 text-white mb-1"></div>
-                                            <span className="text-[10px] text-gray-300 truncate w-full text-center">{sound.name}</span>
-                                        </button>
-                                    ))
-                                ) : (
-                                    <div className="col-span-3 text-center text-gray-500 text-xs py-2">
-                                        Vá na Loja para adicionar sons.
-                                    </div>
-                                )}
+                                {JSON.parse(localStorage.getItem("user_sounds") || "[]").length > 0 ? (JSON.parse(localStorage.getItem("user_sounds") || "[]").map(sound => (<button key={sound.id} onClick={() => { const audio = new Audio(sound.src); audio.play(); }} className="flex flex-col items-center justify-center p-2 bg-white/10 hover:bg-purple-600 rounded-lg transition"><div className="icon-volume-2 text-white mb-1"></div><span className="text-[10px] text-gray-300 truncate w-full text-center">{sound.name}</span></button>))) : (<div className="col-span-3 text-center text-gray-500 text-xs py-2">Vá na Loja para adicionar sons.</div>)}
                             </div>
                         </div>
                     )}
@@ -1598,321 +1599,118 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
             {/* Sidebar */}
             <div className={`bg-white w-full md:w-[400px] border-r border-gray-200 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
-                {/* Header Sidebar */}
                 <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={openSettings}>
-                        <img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300" />
-                        <span className="font-semibold text-gray-700 text-sm">{user.name}</span>
-                    </div>
-                    <div className="flex gap-4 text-gray-600 items-center">
-                        <div 
-                            className={`icon-zap cursor-pointer p-1.5 rounded-full transition ${backgroundMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-200'}`} 
-                            title="Ativar Segundo Plano" 
-                            onClick={toggleBackgroundMode}
-                        ></div>
-                        <div className="icon-users cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" title="Criar Grupo" onClick={handleCreateGroup}></div>
-                        <div className="icon-message-square-plus cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" title="Novo Contato" onClick={openAddContact}></div>
-                        <div className="icon-settings cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openSettings}></div>
-                        <div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout}></div>
-                    </div>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={openSettings}><img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300"/><span className="font-semibold text-gray-700 text-sm">{user.name}</span></div>
+                    <div className="flex gap-4 text-gray-600 items-center"><div className={`icon-zap cursor-pointer p-1.5 rounded-full transition ${backgroundMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-200'}`} onClick={toggleBackgroundMode}></div><div className="icon-users cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={handleCreateGroup}></div><div className="icon-message-square-plus cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openAddContact}></div><div className="icon-settings cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openSettings}></div><div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout}></div></div>
                 </div>
-
-                {/* Search */}
-                <div className="p-2 border-b border-gray-200">
-                    <div className="bg-[#f0f2f5] rounded-lg flex items-center px-3 py-1.5">
-                        <div className="icon-search text-gray-500 text-sm"></div>
-                        <input type="text" placeholder="Pesquisar contatos..." className="bg-transparent border-none outline-none ml-3 w-full text-sm py-1" />
-                    </div>
-                </div>
-
-                {/* Chat List */}
+                <div className="p-2 border-b border-gray-200"><div className="bg-[#f0f2f5] rounded-lg flex items-center px-3 py-1.5"><div className="icon-search text-gray-500 text-sm"></div><input type="text" placeholder="Pesquisar contatos..." className="bg-transparent border-none outline-none ml-3 w-full text-sm py-1" /></div></div>
                 <div className="flex-1 overflow-y-auto">
-                    {chats.map(chat => (
-                        <div key={chat.id} onClick={() => openChat(chat)} className={`flex items-center p-3 cursor-pointer hover:bg-[#f5f6f6] ${activeChat?.id === chat.id ? 'bg-[#f0f2f5]' : ''}`}>
-                            <img src={chat.avatar} className="w-12 h-12 rounded-full mr-3" />
-                            <div className="flex-1 border-b border-gray-100 pb-3 h-full flex flex-col justify-center">
-                                <div className="flex justify-between items-baseline">
-                                    <span className="text-gray-900 font-medium">{chat.name}</span>
-                                    {chat.type === 'group' && chat.members?.[user.id] === 'admin' && (
-                                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full ml-2">Admin</span>
-                                    )}
-                                </div>
-                                <div className="text-sm text-gray-500 truncate w-48">
-                                    {chat.type === 'group' ? 'Grupo' : 'Privado'}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    {chats.length === 0 && (
-                        <div className="p-8 text-center text-gray-400 text-sm mt-4 flex flex-col items-center">
-                            <div className="icon-book-user text-4xl mb-2 opacity-30"></div>
-                            Sua lista de contatos está vazia.<br/>
-                            Adicione um ID ou crie um grupo!
-                        </div>
-                    )}
+                    {chats.map(chat => (<div key={chat.id} onClick={() => openChat(chat)} className={`flex items-center p-3 cursor-pointer hover:bg-[#f5f6f6] ${activeChat?.id === chat.id ? 'bg-[#f0f2f5]' : ''}`}><img src={chat.avatar} className="w-12 h-12 rounded-full mr-3"/><div className="flex-1 border-b border-gray-100 pb-3 h-full flex flex-col justify-center"><div className="flex justify-between items-baseline"><span className="text-gray-900 font-medium">{chat.name}</span>{chat.type === 'group' && chat.members?.[user.id] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full ml-2">Admin</span>)}</div><div className="text-sm text-gray-500 truncate w-48">{chat.type === 'group' ? 'Grupo' : 'Privado'}</div></div></div>))}
+                    {chats.length === 0 && (<div className="p-8 text-center text-gray-400 text-sm mt-4 flex flex-col items-center"><div className="icon-book-user text-4xl mb-2 opacity-30"></div>Sua lista de contatos está vazia.<br/>Adicione um ID ou crie um grupo!</div>)}
                 </div>
             </div>
 
             {/* Main Chat Area */}
             {activeChat ? (
                 <div className={`flex-1 flex flex-col h-full bg-[#efeae2] ${activeChat ? 'flex' : 'hidden md:flex'}`}>
-
-                    {/* Chat Header */}
-                    <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300 cursor-pointer" 
-                         onClick={() => activeChat.type === 'group' && openGroupInfo()}>
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => setActiveChat(null)} className="md:hidden text-gray-600"><div className="icon-arrow-left"></div></button>
-                            <img src={activeChat.avatar} className="w-10 h-10 rounded-full" />
-                            <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-gray-800 font-medium">{activeChat.name}</span>
-                                    {activeChat.type === 'group' && activeChat.members?.[user.id] === 'admin' && (
-                                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Admin</span>
-                                    )}
-                                </div>
-                                {activeChat.type === 'group' 
-                                    ? <span className="text-xs text-gray-500">Toque para info do grupo</span>
-                                    : (activeChat.privacy?.showOnline !== false && activeChat.status === 'online') 
-                                        ? <span className="text-xs text-green-500 font-bold">Online</span>
-                                        : <span className="text-xs text-gray-500">Offline</span>
-                                }
-                            </div>
-                        </div>
+                    <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300 cursor-pointer" onClick={() => activeChat.type === 'group' && openGroupInfo()}>
+                        <div className="flex items-center gap-4"><button onClick={() => setActiveChat(null)} className="md:hidden text-gray-600"><div className="icon-arrow-left"></div></button><img src={activeChat.avatar} className="w-10 h-10 rounded-full"/><div className="flex flex-col"><div className="flex items-center gap-2"><span className="text-gray-800 font-medium">{activeChat.name}</span>{activeChat.type === 'group' && activeChat.members?.[user.id] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Admin</span>)}</div>{activeChat.type === 'group' ? <span className="text-xs text-gray-500">Toque para info do grupo</span> : (activeChat.privacy?.showOnline !== false && activeChat.status === 'online') ? <span className="text-xs text-green-500 font-bold">Online</span> : <span className="text-xs text-gray-500">Offline</span>}</div></div>
                         <div className="flex items-center gap-2 text-gray-600" onClick={(e) => e.stopPropagation()}>
-                            <div 
-                                className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`}
-                                onClick={() => startCall(true)} 
-                                title={activeChat.type === 'group' ? "Iniciar Vídeo Chamada em Grupo" : "Vídeo Chamada"}
-                            >
-                                <div className="icon-video text-xl"></div>
-                            </div>
-
-                            <div 
-                                className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`}
-                                onClick={() => startCall(false)} 
-                                title={activeChat.type === 'group' ? "Iniciar Chamada de Voz em Grupo" : "Chamada de Voz"}
-                            >
-                                <div className="icon-phone text-xl"></div>
-                            </div>
-
-                            <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                            <div className="icon-search cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div>
-                            <div className="icon-more-vertical cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div>
+                            <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(true)}><div className="icon-video text-xl"></div></div>
+                            <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(false)}><div className="icon-phone text-xl"></div></div>
+                            <div className="w-px h-6 bg-gray-300 mx-1"></div><div className="icon-search cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div><div className="icon-more-vertical cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div>
                         </div>
                     </div>
 
-                    {/* Ongoing Call Banner */}
-                    {ongoingGroupCall && !activeGroupCall && (
-                        <div className="bg-green-100 p-3 flex justify-between items-center px-6 animate-slide-in-right cursor-pointer shadow-inner" onClick={joinGroupCall}>
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-500 rounded-full text-white animate-pulse">
-                                    <div className="icon-phone-incoming text-xl"></div>
-                                </div>
-                                <div>
-                                    <p className="font-bold text-green-800">Chamada em andamento</p>
-                                    <p className="text-xs text-green-600">Toque para participar</p>
-                                </div>
-                            </div>
-                            <button className="bg-green-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-green-700 shadow">
-                                Entrar
-                            </button>
-                        </div>
-                    )}
+                    {ongoingGroupCall && !activeGroupCall && (<div className="bg-green-100 p-3 flex justify-between items-center px-6 animate-slide-in-right cursor-pointer shadow-inner" onClick={joinGroupCall}><div className="flex items-center gap-3"><div className="p-2 bg-green-500 rounded-full text-white animate-pulse"><div className="icon-phone-incoming text-xl"></div></div><div><p className="font-bold text-green-800">Chamada em andamento</p><p className="text-xs text-green-600">Toque para participar</p></div></div><button className="bg-green-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-green-700 shadow">Entrar</button></div>)}
 
-                    {/* Messages Area */}
+                    {/* Messages Area com layout corrigido */}
                     <div className="flex-1 overflow-y-auto p-4 bg-chat-pattern relative">
                         <div className="flex flex-col gap-2">
                             {messages.map((msg, idx) => {
                                 const isMe = msg.senderId === user.id;
                                 const isSystem = msg.type === 'system';
+                                const canEdit = canEditMessage(msg);
 
                                 const renderEmbedIfMatch = (text, senderId) => {
-                                    const urlMatch = (typeof text === 'string') 
-                                        ? text.match(/#url=(https?:\/\/[^\s]+)/i) 
-                                        : null;
-
+                                    const urlMatch = (typeof text === 'string') ? text.match(/#url=(https?:\/\/[^\s]+)/i) : null;
                                     if (urlMatch) {
                                         const originalUrl = urlMatch[1];
                                         const senderIdParam = senderId || 'unknown';
                                         const separator = originalUrl.includes('?') ? '&' : '?';
                                         const finalUrl = `${originalUrl}${separator}userid=${senderIdParam}`;
                                         const cleanText = text.replace(urlMatch[0], '').trim();
-
-                                        return (
-                                            <div className="flex flex-col gap-2 mt-2 w-full">
-                                                {cleanText && <p className="leading-relaxed break-words">{cleanText}</p>}
-                                                <div className="w-full h-[350px] bg-white rounded-lg border border-gray-200 overflow-hidden relative shadow-sm mx-auto max-w-md">
-                                                    <div className="bg-gray-100 px-3 py-1 text-[10px] text-gray-500 flex justify-between items-center border-b border-gray-200">
-                                                        <span className="truncate max-w-[200px]">{originalUrl}</span>
-                                                        <span className="font-mono">Embed</span>
-                                                    </div>
-                                                    <iframe 
-                                                        src={finalUrl} 
-                                                        className="w-full h-full border-0 bg-white" 
-                                                        title="Embed"
-                                                        loading="lazy"
-                                                        allow="camera; microphone; geolocation; payment"
-                                                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-                                                    />
-                                                    <a href={finalUrl} target="_blank" className="absolute bottom-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors" title="Abrir em nova aba">
-                                                        <div className="icon-external-link text-xs"></div>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        );
+                                        return (<div className="flex flex-col gap-2 mt-2 w-full">{cleanText && <p className="leading-relaxed break-words">{cleanText}</p>}<div className="w-full h-[350px] bg-white rounded-lg border border-gray-200 overflow-hidden relative shadow-sm mx-auto max-w-md"><div className="bg-gray-100 px-3 py-1 text-[10px] text-gray-500 flex justify-between items-center border-b border-gray-200"><span className="truncate max-w-[200px]">{originalUrl}</span><span className="font-mono">Embed</span></div><iframe src={finalUrl} className="w-full h-full border-0 bg-white" title="Embed" loading="lazy" allow="camera; microphone; geolocation; payment" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"/><a href={finalUrl} target="_blank" className="absolute bottom-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors"><div className="icon-external-link text-xs"></div></a></div></div>);
                                     }
                                     return null;
                                 };
 
                                 if (isSystem) {
                                     const embedContent = renderEmbedIfMatch(msg.text, msg.senderId);
-                                    return (
-                                        <div key={idx} className="flex flex-col items-center my-2 group relative w-full">
-                                            <div className="bg-[#e1f3fb] text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-2 max-w-[90%] break-words text-center">
-                                                <div className="icon-info shrink-0"></div>
-                                                {msg.text}
-                                            </div>
-                                            {embedContent && <div className="w-full px-4">{embedContent}</div>}
-
-                                            {activeChat.type === 'group' && isCurrentUserAdmin && (
-                                                <button 
-                                                    onClick={() => deleteMessage(msg.key)}
-                                                    className="hidden group-hover:block absolute right-4 top-0 text-red-400 hover:text-red-600"
-                                                    title="Apagar Log"
-                                                >
-                                                    <div className="icon-trash text-xs"></div>
-                                                </button>
-                                            )}
-                                        </div>
-                                    );
+                                    return (<div key={idx} className="flex flex-col items-center my-2 group relative w-full"><div className="bg-[#e1f3fb] text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-2 max-w-[90%] break-words text-center"><div className="icon-info shrink-0"></div>{msg.text}</div>{embedContent && <div className="w-full px-4">{embedContent}</div>}{activeChat.type === 'group' && isCurrentUserAdmin && (<button onClick={() => deleteMessage(msg.key)} className="hidden group-hover:block absolute right-4 top-0 text-red-400 hover:text-red-600"><div className="icon-trash text-xs"></div></button>)}</div>);
                                 }
 
-                                return (
-                                    <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group mb-1`}>
-                                        <div className={`max-w-[80%] md:max-w-[60%] rounded-lg p-2 px-3 shadow-sm relative text-sm ${isMe ? 'bg-[#d9fdd3] rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
-                                            {!isMe && activeChat.type === 'group' && (
-                                                <div className="flex items-center gap-1 mb-1">
-                                                    <p className="text-xs text-orange-500 font-bold">{msg.senderName}</p>
-                                                    {activeChat.members?.[msg.senderId] === 'admin' && (
-                                                        <span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">👑</span>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {msg.type === 'text' && (() => {
-                                                const embed = renderEmbedIfMatch(msg.text, msg.senderId);
-                                                if (embed) return embed;
-                                                return <p className="text-gray-800 mb-1 leading-relaxed break-words">{msg.text}</p>;
-                                            })()}
-                                            {msg.type === 'image' && (
-                                                <div className="mb-1">
-                                                    <img src={msg.text.replace('[IMAGEM] ', '')} className="rounded-lg max-w-full md:max-w-sm cursor-pointer" onClick={() => window.open(msg.text.replace('[IMAGEM] ', ''), '_blank')} />
-                                                </div>
-                                            )}
-                                            {msg.type === 'audio' && (
-                                                <div className="flex items-center gap-3 min-w-[200px] py-2">
-                                                    <div className="icon-circle-play text-gray-500 text-3xl cursor-pointer hover:text-[#00a884] transition" 
-                                                        onClick={(e) => { 
-                                                            const audioEl = e.target.parentElement.querySelector('audio');
-                                                            if (audioEl) {
-                                                                handleAudioPlay(audioEl);
-                                                                audioEl.play();
-                                                            }
-                                                        }}
-                                                    ></div>
-                                                    <div className="flex-1 flex flex-col justify-center">
-                                                        <div className="h-1 bg-gray-300 rounded-full w-full mb-1 overflow-hidden">
-                                                            <div className="h-full bg-gray-500 w-0 transition-all duration-300" style={{width: '0%'}}></div> 
-                                                        </div>
-                                                        <span className="text-xs text-gray-500">{msg.duration}</span>
-                                                    </div>
-                                                    <audio 
-                                                        src={msg.audio} 
-                                                        className="hidden" 
-                                                        onPlay={(e) => handleAudioPlay(e.target)}
-                                                    /> 
-                                                </div>
-                                            )}
-
-                                            <div className="flex justify-end items-center gap-1 mt-1">
-                                                <span className="text-[10px] text-gray-500">{msg.time}</span>
-                                                {isMe && (
-                                                    msg.status === 'read' 
-                                                    ? <div className="icon-check-check text-[14px] text-blue-500" title="Lido"></div>
-                                                    : <div className="icon-check text-[14px] text-gray-400" title="Enviado"></div>
-                                                )}
-                                            </div>
-
-                                            {(isMe || (activeChat.type === 'group' && isCurrentUserAdmin)) && (
-                                                <button 
-                                                    onClick={() => deleteMessage(msg.key)}
-                                                    className={`absolute top-0 -right-8 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity`}
-                                                    title="Apagar mensagem"
-                                                >
-                                                    <div className="icon-trash text-sm"></div>
-                                                </button>
-                                            )}
-                                        </div>
+                                return (<div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group mb-1`} onContextMenu={(e) => handleContextMenu(e, msg)}>
+                                    <div className={`max-w-[80%] md:max-w-[60%] rounded-lg p-2 px-3 shadow-sm relative text-sm break-words ${isMe ? 'bg-[#d9fdd3] rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
+                                        {!isMe && activeChat.type === 'group' && (<div className="flex items-center gap-1 mb-1"><p className="text-xs text-orange-500 font-bold">{msg.senderName}</p>{activeChat.members?.[msg.senderId] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">👑</span>)}</div>)}
+                                        
+                                        {msg.type === 'text' && (() => {
+                                            const embed = renderEmbedIfMatch(msg.text, msg.senderId);
+                                            if (embed) return embed;
+                                            const formattedHtml = formatMarkdown(msg.text);
+                                            return (<div><p className="text-gray-800 mb-1 leading-relaxed break-words" dangerouslySetInnerHTML={{ __html: formattedHtml }}></p>
+                                                {msg.edited && <span className="text-[9px] text-gray-400 ml-1">(editado)</span>}
+                                                <button onClick={() => copyToClipboard(msg.text)} className="absolute top-0 -right-8 p-1 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"><div className="icon-copy text-sm"></div></button>
+                                                {canEdit && !msg.readBy && (<button onClick={() => { setEditingMessage(msg.key); setEditInput(msg.text); }} className="absolute top-0 -right-16 p-1 text-gray-400 hover:text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"><div className="icon-edit text-sm"></div></button>)}
+                                            </div>);
+                                        })()}
+                                        
+                                        {msg.type === 'image' && (<div className="mb-1"><img src={msg.text.replace('[IMAGEM] ', '')} className="rounded-lg max-w-full md:max-w-sm cursor-pointer" onClick={() => window.open(msg.text.replace('[IMAGEM] ', ''), '_blank')}/></div>)}
+                                        {msg.type === 'audio' && (<div className="flex items-center gap-3 min-w-[200px] py-2"><div className="icon-circle-play text-gray-500 text-3xl cursor-pointer hover:text-[#00a884] transition" onClick={(e) => { const audioEl = e.target.parentElement.querySelector('audio'); if (audioEl) { handleAudioPlay(audioEl); audioEl.play(); } }}></div><div className="flex-1 flex flex-col justify-center"><div className="h-1 bg-gray-300 rounded-full w-full mb-1 overflow-hidden"><div className="h-full bg-gray-500 w-0 transition-all duration-300" style={{width: '0%'}}></div></div><span className="text-xs text-gray-500">{msg.duration}</span></div><audio src={msg.audio} className="hidden" onPlay={(e) => handleAudioPlay(e.target)}/></div>)}
+                                        
+                                        <div className="flex justify-end items-center gap-1 mt-1"><span className="text-[10px] text-gray-500">{msg.time}</span>{isMe && (msg.status === 'read' ? <div className="icon-check-check text-[14px] text-blue-500"></div> : <div className="icon-check text-[14px] text-gray-400"></div>)}</div>
+                                        {(isMe || (activeChat.type === 'group' && isCurrentUserAdmin)) && (<button onClick={() => deleteMessage(msg.key)} className={`absolute top-0 -right-8 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity`}><div className="icon-trash text-sm"></div></button>)}
                                     </div>
-                                )
+                                </div>);
                             })}
                             <div ref={messagesEndRef} />
                         </div>
                     </div>
+
+                    {/* Context Menu */}
+                    {contextMenu.visible && contextMenu.message && (
+                        <div className="fixed z-50 bg-white rounded-lg shadow-xl py-1 border border-gray-200" style={{ top: contextMenu.y, left: contextMenu.x }}>
+                            <button onClick={() => { copyToClipboard(contextMenu.message.text); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"><div className="icon-copy"></div> Copiar</button>
+                            {canEditMessage(contextMenu.message) && (<button onClick={() => { setEditingMessage(contextMenu.message.key); setEditInput(contextMenu.message.text); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"><div className="icon-edit"></div> Editar</button>)}
+                            {(contextMenu.message.senderId === user.id || (activeChat?.type === 'group' && isCurrentUserAdmin)) && (<button onClick={() => { deleteMessage(contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 flex items-center gap-2"><div className="icon-trash"></div> Apagar</button>)}
+                        </div>
+                    )}
 
                     {/* Input Area */}
                     <div className="bg-[#f0f2f5] p-3 px-4 flex items-center gap-3">
                         {!showAudioRecorder ? (
                             <>
                                 <div className="icon-smile text-2xl text-gray-500 cursor-pointer"></div>
-                                <div 
-                                    className="icon-plus text-2xl text-gray-500 cursor-pointer"
-                                    onClick={() => fileInputRef.current.click()}
-                                    title="Enviar Foto/Vídeo"
-                                ></div>
-                                <input 
-                                    type="file" 
-                                    ref={fileInputRef} 
-                                    className="hidden" 
-                                    accept="image/*,video/*"
-                                    onChange={async (e) => {
-                                        const file = e.target.files[0];
-                                        if (file) {
-                                            if (file.size > 2 * 1024 * 1024) return;
-
-                                            if (file.type.startsWith('image/')) {
-                                                const base64 = await window.compressImage(file, 800, 0.7);
-                                                window.ChatAppAPI.sendMessage(activeChat.id, `[IMAGEM] ${base64}`, activeChat.type, 'image');
-                                            } 
-                                            else if (file.type.startsWith('video/')) {
-                                                // experimental
-                                            }
-                                        }
-                                    }}
-                                />
+                                <div className="icon-plus text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()}></div>
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={async (e) => { const file = e.target.files[0]; if (file) { if (file.size > 2 * 1024 * 1024) return showToast("Arquivo muito grande! Máximo 2MB", "error"); if (file.type.startsWith('image/')) { const base64 = await window.compressImage(file, 800, 0.7); handleSendMessage(`[IMAGEM] ${base64}`, 'text', null, 'image'); } } }} />
                                 <div className="flex-1 bg-white rounded-lg px-4 py-2 flex items-center">
-                                    <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(messageInput)} placeholder="Mensagem" className="w-full bg-transparent border-none outline-none text-gray-700 placeholder-gray-400 text-sm"/>
+                                    {editingMessage ? (
+                                        <input type="text" value={editInput} onChange={(e) => setEditInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && editMessage(editingMessage, editInput)} placeholder="Editar mensagem..." className="w-full bg-transparent border-none outline-none text-gray-700 text-sm" autoFocus/>
+                                    ) : (
+                                        <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && messageInput.trim() && handleSendMessage(messageInput)} placeholder="Mensagem" className="w-full bg-transparent border-none outline-none text-gray-700 placeholder-gray-400 text-sm"/>
+                                    )}
                                 </div>
-                                {messageInput.trim() ? (
-                                    <div onClick={() => handleSendMessage(messageInput)} className="icon-send text-2xl text-gray-500 cursor-pointer"></div>
-                                ) : (
-                                    <div onClick={() => setShowAudioRecorder(true)} className="icon-mic text-2xl text-gray-500 cursor-pointer"></div>
-                                )}
+                                {editingMessage ? (<div onClick={() => editMessage(editingMessage, editInput)} className="icon-check text-2xl text-green-500 cursor-pointer"></div>) : (messageInput.trim() ? (<div onClick={() => handleSendMessage(messageInput)} className="icon-send text-2xl text-gray-500 cursor-pointer"></div>) : (<div onClick={() => setShowAudioRecorder(true)} className="icon-mic text-2xl text-gray-500 cursor-pointer"></div>))}
+                                {editingMessage && <div onClick={() => { setEditingMessage(null); setEditInput(""); }} className="icon-x text-2xl text-red-500 cursor-pointer"></div>}
                             </>
-                        ) : (
-                            <AudioRecorder onSendAudio={(base64, duration) => handleSendMessage(base64, 'audio', duration)} onCancel={() => setShowAudioRecorder(false)} />
-                        )}
+                        ) : (<AudioRecorder onSendAudio={(base64, duration) => handleSendMessage(base64, 'audio', duration)} onCancel={() => setShowAudioRecorder(false)} />)}
                     </div>
                 </div>
             ) : (
                 <div className="hidden md:flex flex-1 bg-[#f0f2f5] flex-col items-center justify-center border-b-8 border-[#25d366]">
-                    <div className="w-64 h-64 mb-8 text-gray-300 flex items-center justify-center">
-                         <div className="icon-lock text-9xl text-gray-200"></div>
-                    </div>
+                    <div className="w-64 h-64 mb-8 text-gray-300 flex items-center justify-center"><div className="icon-lock text-9xl text-gray-200"></div></div>
                     <h1 className="text-3xl font-light text-gray-600 mb-4">Privacidade & Segurança</h1>
-                    <p className="text-gray-500 text-sm text-center max-w-md">
-                        Agora suas mensagens são privadas.<br/>
-                        Adicione contatos pelo ID para começar a conversar.
-                    </p>
+                    <p className="text-gray-500 text-sm text-center max-w-md">Agora suas mensagens são privadas.<br/>Adicione contatos pelo ID para começar a conversar.</p>
                 </div>
             )}
         </div>
