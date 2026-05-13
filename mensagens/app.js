@@ -46,7 +46,7 @@ function App() {
     if (storedUser) {
         setUser(JSON.parse(storedUser));
     }
-    
+
     // Check URL for join link
     const params = new URLSearchParams(window.location.search);
     const joinId = params.get('join');
@@ -76,22 +76,17 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen bg-[#d1d7db]" data-name="app" data-file="app.js">
-        {/* Green header background strip like WhatsApp Web */}
-        <div className="absolute top-0 left-0 w-full h-32 bg-[#00a884] z-0"></div>
-        
-        <div className="relative z-10 h-screen w-full md:w-[1400px] md:h-[95vh] md:m-auto md:top-[2.5vh] shadow-lg overflow-hidden bg-white">
-            {user ? (
-                <ChatInterface 
-                    user={user} 
-                    onLogout={handleLogout} 
-                    pendingJoinGroupId={joinGroupId}
-                    onClearJoin={() => setJoinGroupId(null)}
-                />
-            ) : (
-                <Login onLogin={handleLogin} />
-            )}
-        </div>
+    <div className="w-full h-screen overflow-hidden">
+        {user ? (
+            <ChatInterface 
+                user={user} 
+                onLogout={handleLogout} 
+                pendingJoinGroupId={joinGroupId}
+                onClearJoin={() => setJoinGroupId(null)}
+            />
+        ) : (
+            <Login onLogin={handleLogin} />
+        )}
     </div>
   );
 }
