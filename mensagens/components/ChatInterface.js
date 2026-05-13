@@ -119,11 +119,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     viewers: {}
                 };
                 await db.ref(`temp_files/${fileId}`).set(fileData);
-                
+
                 setTimeout(async () => {
                     await db.ref(`temp_files/${fileId}`).remove();
                 }, MEDIA_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
-                
+
                 resolve({ fileId, name: file.name, size: file.size, type: file.type, data: base64 });
             };
             reader.onerror = reject;
@@ -133,7 +133,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
     const markMediaAsViewed = async (fileId, userId) => {
         await db.ref(`temp_files/${fileId}/viewers/${userId}`).set(Date.now());
-        
+
         const snapshot = await db.ref(`temp_files/${fileId}`).once('value');
         const data = snapshot.val();
         if (data && data.viewers) {
@@ -364,7 +364,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     }, [activeChat, user.id]);
 
     // ==================== FUNÇÕES DE CHAMADA ====================
-    
+
     const toggleMic = () => {
         if (localStreamRef.current) {
             const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -621,13 +621,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         if (file.size > 5 * 1024 * 1024) { showToastMessage("Arquivo muito grande! Máximo 5MB", "error"); return; }
         if (!(await checkInactivity(user.id))) return;
         if (!checkRateLimit(user.id, activeChat.id)) return;
-        
+
         setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
-        
+
         try {
             const uploadResult = await uploadFileToServer(file, activeChat.id, user.id);
             setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
-            
+
             const mediaMessage = {
                 fileId: uploadResult.fileId,
                 fileName: uploadResult.name,
@@ -637,7 +637,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 type: type,
                 timestamp: Date.now()
             };
-            
+
             const msgData = {
                 senderId: user.id,
                 senderName: user.name,
@@ -646,14 +646,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 timestamp: window.firebase.database.ServerValue.TIMESTAMP,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
-            
+
             const ref = activeChat.type === 'group' 
                 ? db.ref(`groups/${activeChat.id}/messages`)
                 : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
-            
+
             await ref.push(msgData);
             showToastMessage(`${type === 'image' ? 'Imagem' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado!`, "success");
-            
+
         } catch (error) { 
             console.error("Erro:", error); 
             showToastMessage("Erro ao enviar arquivo!", "error"); 
@@ -666,19 +666,19 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const renderMediaContent = (msg) => {
         try {
             if (!msg.text || typeof msg.text !== 'string') return <p className="text-gray-800 break-words">{msg.text}</p>;
-            
+
             let mediaData;
             try {
                 mediaData = JSON.parse(msg.text);
             } catch (e) {
                 return <p className="text-gray-800 break-words">{msg.text}</p>;
             }
-            
+
             if (!mediaData.fileId) return <p className="text-gray-800 break-words">{msg.text}</p>;
-            
+
             const [fileUrl, setFileUrl] = React.useState(null);
             const [isLoading, setIsLoading] = React.useState(true);
-            
+
             React.useEffect(() => {
                 const fetchFile = async () => {
                     setIsLoading(true);
@@ -697,7 +697,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 };
                 fetchFile();
             }, [mediaData.fileId]);
-            
+
             // IMAGEM
             if (mediaData.type === 'image' || mediaData.mimeType?.startsWith('image/')) {
                 return (
@@ -727,7 +727,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     </div>
                 );
             }
-            
+
             // VÍDEO
             if (mediaData.type === 'video' || mediaData.mimeType?.startsWith('video/')) {
                 return (
@@ -757,7 +757,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     </div>
                 );
             }
-            
+
             // OUTROS ARQUIVOS
             return (
                 <div className="file-card">
@@ -981,7 +981,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     };
 
     return (
-        <div className="flex h-screen bg-gray-100 overflow-hidden relative">
+        <div className="flex h-screen bg-gray-100 overflow-hidden">
             <style>{chatStyles}</style>
             <ToastComponent />
 
@@ -1034,19 +1034,19 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 <button onClick={toggleMic} className={`call-button w-14 h-14 rounded-full flex items-center justify-center ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
                                     <div className={isMicMuted ? "icon-mic-off text-2xl text-white" : "icon-mic text-2xl text-white"}></div>
                                 </button>
-                                
+
                                 {isVideoCall && (
                                     <button onClick={toggleCam} className={`call-button w-14 h-14 rounded-full flex items-center justify-center ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
                                         <div className={isCamMuted ? "icon-video-off text-2xl text-white" : "icon-video text-2xl text-white"}></div>
                                     </button>
                                 )}
-                                
+
                                 {!isVideoCall && callStatus === 'connected' && (
                                     <button onClick={switchToVideo} className="call-button w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700">
                                         <div className="icon-video text-2xl text-white"></div>
                                     </button>
                                 )}
-                                
+
                                 <button onClick={() => endCall(false)} className="call-button w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
                                     <div className="icon-phone-off text-3xl text-white"></div>
                                 </button>
@@ -1059,7 +1059,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
                         </div>
                     )}
-                    
+
                     {isVideoCall && remoteVideoRef.current?.srcObject && (
                         <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover -z-10" />
                     )}
@@ -1067,7 +1067,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             )}
 
             {/* Sidebar - LADO ESQUERDO */}
-            <div className={`bg-white w-full md:w-[400px] border-r border-gray-200 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`bg-white w-[350px] flex-shrink-0 border-r border-gray-200 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300">
                     <div className="flex items-center gap-3 cursor-pointer" onClick={openSettings}><img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300" /><span className="font-semibold text-gray-700 text-sm">{user.name}</span></div>
                     <div className="flex gap-4 text-gray-600 items-center">
@@ -1087,7 +1087,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
             {/* Main Chat Area - LADO DIREITO */}
             {activeChat ? (
-                <div className={`flex-1 flex flex-col h-full bg-[#efeae2] ${activeChat ? 'flex' : 'hidden md:flex'}`}>
+                <div className={`flex-1 flex flex-col bg-[#efeae2] overflow-hidden ${activeChat ? 'flex' : 'hidden md:flex'}`}>
                     <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300 cursor-pointer" onClick={() => activeChat.type === 'group' && openGroupInfo()}>
                         <div className="flex items-center gap-4"><button onClick={() => setActiveChat(null)} className="md:hidden text-gray-600"><div className="icon-arrow-left"></div></button><img src={activeChat.avatar} className="w-10 h-10 rounded-full" /><div className="flex flex-col"><div className="flex items-center gap-2"><span className="text-gray-800 font-medium">{activeChat.name}</span>{activeChat.type === 'group' && activeChat.members?.[user.id] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Admin</span>)}</div>{activeChat.type === 'group' ? <span className="text-xs text-gray-500">Toque para info do grupo</span> : (activeChat.privacy?.showOnline !== false && activeChat.status === 'online') ? <span className="text-xs text-green-500 font-bold">Online</span> : <span className="text-xs text-gray-500">Offline</span>}</div></div>
                         <div className="flex items-center gap-2 text-gray-600" onClick={(e) => e.stopPropagation()}>
@@ -1118,7 +1118,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                     <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group mb-1`} onContextMenu={(e) => handleContextMenu(e, msg)}>
                                         <div className={`message-bubble rounded-lg p-2 px-3 shadow-sm relative text-sm ${isMe ? 'bg-[#d9fdd3] rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
                                             {!isMe && activeChat.type === 'group' && (<div className="flex items-center gap-1 mb-1"><p className="text-xs text-orange-500 font-bold">{msg.senderName}</p>{activeChat.members?.[msg.senderId] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">👑</span>)}</div>)}
-                                            
+
                                             {isMediaMessage ? renderMediaContent(msg) : msg.type === 'text' ? (
                                                 <div className="relative">
                                                     <p className="text-gray-800 mb-2 leading-relaxed break-words message-text" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text) }}></p>
@@ -1138,7 +1138,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                                     <audio src={msg.audio} className="hidden" onPlay={(e) => handleAudioPlay(e.target)} />
                                                 </div>
                                             )}
-                                            
+
                                             <div className="flex justify-end items-center gap-1 mt-1">
                                                 <span className="text-[10px] text-gray-500">{msg.time}</span>
                                                 {isMe && (msg.status === 'read' ? <div className="icon-check-check text-[14px] text-blue-500"></div> : <div className="icon-check text-[14px] text-gray-400"></div>)}
@@ -1196,7 +1196,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             <AudioRecorder onSendAudio={(base64, duration) => handleSendMessage(base64, 'audio', duration)} onCancel={() => setShowAudioRecorder(false)} />
                         )}
                     </div>
-                    
+
                     {Object.keys(uploadProgress).length > 0 && (
                         <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
                             {Object.entries(uploadProgress).map(([name, progress]) => (
@@ -1214,7 +1214,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     )}
                 </div>
             ) : (
-                <div className="hidden md:flex flex-1 bg-[#f0f2f5] flex-col items-center justify-center border-b-8 border-[#25d366]">
+                <div className="flex-1 bg-[#f0f2f5] flex-col items-center justify-center hidden md:flex border-b-8 border-[#25d366]">
                     <div className="w-64 h-64 mb-8 text-gray-300 flex items-center justify-center"><div className="icon-lock text-9xl text-gray-200"></div></div>
                     <h1 className="text-3xl font-light text-gray-600 mb-4">Privacidade & Segurança</h1>
                     <p className="text-gray-500 text-sm text-center max-w-md">Agora suas mensagens são privadas.<br/>Adicione contatos pelo ID para começar a conversar.</p>
