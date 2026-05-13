@@ -14,7 +14,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [copiedMessageId, setCopiedMessageId] = React.useState(null);
     const [uploadProgress, setUploadProgress] = React.useState({});
     const [downloadProgress, setDownloadProgress] = React.useState({});
-    const [localStream, setLocalStream] = React.useState(null);
 
     // Rate limiter
     const rateLimiter = React.useRef({});
@@ -22,203 +21,16 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const MAX_MSG_PER_MINUTE = 30;
     const BAN_DURATION = 60;
 
-    // ==================== SISTEMA DE ARQUIVOS (1 MINUTO DE EXPIRAÇÃO) ====================
-    const FILE_EXPIRATION_SECONDS = 60; // 1 minuto
-    const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+    // ==================== SISTEMA DE ARQUIVOS EM BASE64 ====================
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB (WhatsApp-like)
 
-    // Armazenamento temporário de arquivos
-    const tempFilesRef = React.useRef({});
-    const p2pTransfersRef = React.useRef({});
-
-    // Upload de arquivo para servidor temporário
-    const uploadFileToServer = async (file, chatId, senderId) => {
+    // Upload de arquivo e conversão para Base64
+    const fileToBase64 = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = async (e) => {
-                const base64 = e.target.result;
-                const fileId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                const expiresAt = Date.now() + (FILE_EXPIRATION_SECONDS * 1000);
-                
-                const fileData = {
-                    id: fileId,
-                    data: base64,
-                    type: file.type,
-                    name: file.name,
-                    size: file.size,
-                    chatId: chatId,
-                    senderId: senderId,
-                    uploadedAt: Date.now(),
-                    expiresAt: expiresAt,
-                    downloadedBy: {}
-                };
-                
-                // Salvar no Firebase (temporário)
-                await db.ref(`temp_files/${fileId}`).set(fileData);
-                tempFilesRef.current[fileId] = fileData;
-                
-                // Agendar expiração automática após 1 minuto
-                setTimeout(async () => {
-                    const fileRef = db.ref(`temp_files/${fileId}`);
-                    const snapshot = await fileRef.once('value');
-                    if (snapshot.val()) {
-                        await fileRef.remove();
-                        delete tempFilesRef.current[fileId];
-                        console.log(`Arquivo ${fileId} expirado e removido após ${FILE_EXPIRATION_SECONDS} segundos`);
-                    }
-                }, FILE_EXPIRATION_SECONDS * 1000);
-                
-                resolve({ fileId, name: file.name, size: file.size, type: file.type, data: base64, expiresAt });
-            };
+            reader.onload = () => resolve(reader.result);
             reader.onerror = reject;
             reader.readAsDataURL(file);
-        });
-    };
-
-    // Marcar que um usuário baixou o arquivo
-    const markFileAsDownloaded = async (fileId, userId) => {
-        await db.ref(`temp_files/${fileId}/downloadedBy/${userId}`).set(Date.now());
-        
-        // Verificar se todos os membros do grupo baixaram
-        const snapshot = await db.ref(`temp_files/${fileId}`).once('value');
-        const data = snapshot.val();
-        if (data && data.downloadedBy && activeChat?.type === 'group') {
-            const totalMembers = Object.keys(activeChat.members || {}).length;
-            if (Object.keys(data.downloadedBy).length >= totalMembers) {
-                await db.ref(`temp_files/${fileId}`).remove();
-                delete tempFilesRef.current[fileId];
-                console.log(`Arquivo ${fileId} removido pois todos baixaram`);
-            }
-        }
-    };
-
-    // ==================== SISTEMA P2P PARA ARQUIVOS ====================
-    
-    // Enviar arquivo via P2P para um usuário específico
-    const sendFileViaP2P = (fileId, targetUserId, fileData) => {
-        const targetCleanId = targetUserId.replace(/[^a-zA-Z0-9]/g, '');
-        const conn = peer.connect(targetCleanId);
-        
-        conn.on('open', () => {
-            // Dividir arquivo em chunks para transferência eficiente
-            const chunkSize = 16384; // 16KB chunks
-            const chunks = Math.ceil(fileData.length / chunkSize);
-            
-            // Enviar metadados primeiro
-            conn.send({
-                type: 'file_metadata',
-                fileId: fileId,
-                totalChunks: chunks,
-                fileName: tempFilesRef.current[fileId]?.name,
-                fileSize: tempFilesRef.current[fileId]?.size,
-                fileType: tempFilesRef.current[fileId]?.type
-            });
-            
-            // Enviar chunks
-            for (let i = 0; i < chunks; i++) {
-                const chunk = fileData.slice(i * chunkSize, (i + 1) * chunkSize);
-                conn.send({
-                    type: 'file_chunk',
-                    fileId: fileId,
-                    chunkIndex: i,
-                    totalChunks: chunks,
-                    data: chunk
-                });
-            }
-            
-            conn.send({ type: 'file_complete', fileId: fileId });
-        });
-    };
-    
-    // Solicitar arquivo via P2P
-    const requestFileViaP2P = (fileId, senderId) => {
-        const senderCleanId = senderId.replace(/[^a-zA-Z0-9]/g, '');
-        const conn = peer.connect(senderCleanId);
-        
-        conn.on('open', () => {
-            conn.send({ type: 'file_request', fileId: fileId });
-        });
-        
-        conn.on('data', (data) => {
-            if (data.type === 'file_metadata') {
-                p2pTransfersRef.current[data.fileId] = {
-                    chunks: [],
-                    totalChunks: data.totalChunks,
-                    fileName: data.fileName,
-                    fileSize: data.fileSize,
-                    fileType: data.fileType
-                };
-                setDownloadProgress(prev => ({ ...prev, [data.fileId]: 0 }));
-            }
-            
-            if (data.type === 'file_chunk') {
-                if (p2pTransfersRef.current[data.fileId]) {
-                    p2pTransfersRef.current[data.fileId].chunks[data.chunkIndex] = data.data;
-                    const progress = ((data.chunkIndex + 1) / data.totalChunks) * 100;
-                    setDownloadProgress(prev => ({ ...prev, [data.fileId]: progress }));
-                }
-            }
-            
-            if (data.type === 'file_complete') {
-                const transfer = p2pTransfersRef.current[data.fileId];
-                if (transfer && transfer.chunks) {
-                    const completeData = transfer.chunks.join('');
-                    const blob = new Blob([completeData], { type: transfer.fileType });
-                    const url = URL.createObjectURL(blob);
-                    
-                    // Salvar localmente no IndexedDB para persistência
-                    saveFileToIndexedDB(data.fileId, completeData, transfer.fileName, transfer.fileType);
-                    
-                    showToastMessage(`Arquivo ${transfer.fileName} baixado via P2P!`, "success");
-                    delete p2pTransfersRef.current[data.fileId];
-                    setDownloadProgress(prev => {
-                        const newProgress = { ...prev };
-                        delete newProgress[data.fileId];
-                        return newProgress;
-                    });
-                }
-            }
-        });
-    };
-    
-    // Salvar arquivo no IndexedDB (armazenamento local persistente)
-    const saveFileToIndexedDB = async (fileId, data, fileName, fileType) => {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open("ChatFilesDB", 1);
-            
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains("files")) {
-                    db.createObjectStore("files", { keyPath: "fileId" });
-                }
-            };
-            
-            request.onsuccess = (e) => {
-                const db = e.target.result;
-                const transaction = db.transaction(["files"], "readwrite");
-                const store = transaction.objectStore("files");
-                store.put({ fileId, data, fileName, fileType, savedAt: Date.now() });
-                resolve();
-            };
-            
-            request.onerror = reject;
-        });
-    };
-    
-    // Recuperar arquivo do IndexedDB
-    const getFileFromIndexedDB = async (fileId) => {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open("ChatFilesDB", 1);
-            
-            request.onsuccess = (e) => {
-                const db = e.target.result;
-                const transaction = db.transaction(["files"], "readonly");
-                const store = transaction.objectStore("files");
-                const getRequest = store.get(fileId);
-                getRequest.onsuccess = () => resolve(getRequest.result);
-                getRequest.onerror = reject;
-            };
-            
-            request.onerror = reject;
         });
     };
 
@@ -384,7 +196,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const openAddContact = () => { pushHistoryState('addContact'); setShowAddContact(true); };
     const openChat = (chat) => { pushHistoryState('chat'); setActiveChat(chat); };
 
-    // Call States (agora usando o CallManager)
+    // Call States (usando o CallManager)
     const [incomingCall, setIncomingCall] = React.useState(null);
     const [callStatus, setCallStatus] = React.useState(null);
     const [isVideoCall, setIsVideoCall] = React.useState(false);
@@ -397,19 +209,23 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [isMicMuted, setIsMicMuted] = React.useState(false);
     const [isCamMuted, setIsCamMuted] = React.useState(false);
     const [callDuration, setCallDuration] = React.useState(0);
+    const [activeSpeakers, setActiveSpeakers] = React.useState({}); // Quem está falando
     const callTimerRef = React.useRef(null);
+    const localStreamRef = React.useRef(null);
     const localVideoRef = React.useRef(null);
     const remoteVideoRef = React.useRef(null);
+    const audioContextRef = React.useRef(null);
+    const analyserRef = React.useRef(null);
 
     // Recording
     const [isRecordingCall, setIsRecordingCall] = React.useState(false);
     const recorderRef = React.useRef(null);
-    const audioContextRef = React.useRef(null);
     const mixedDestRef = React.useRef(null);
     const callTimerRefAux = React.useRef(null);
 
     // Status
     const [backgroundMode, setBackgroundMode] = React.useState(false);
+    const [participantsInfo, setParticipantsInfo] = React.useState({}); // Info dos participantes da chamada
 
     const messagesEndRef = React.useRef(null);
     const currentAudioRef = React.useRef(null);
@@ -421,7 +237,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return activeChat.members?.[user.id] === 'admin';
     }, [activeChat, user.id]);
 
-    // ==================== FUNÇÕES DE CHAMADA ====================
+    // ==================== FUNÇÕES DE CHAMADA COM DETECÇÃO DE QUEM FALA ====================
     
     const formatDuration = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -443,9 +259,43 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
 
+    // Detectar nível de áudio para saber quem está falando
+    const setupAudioAnalyser = (stream, participantId) => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        const analyser = audioContextRef.current.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        const checkVolume = () => {
+            if (!analyserRef.current[participantId]) return;
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const avg = sum / dataArray.length;
+            const isSpeaking = avg > 15; // Limiar para considerar que está falando
+            
+            if (isSpeaking !== activeSpeakers[participantId]) {
+                setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
+            }
+            
+            requestAnimationFrame(() => checkVolume());
+        };
+        
+        analyserRef.current[participantId] = analyser;
+        checkVolume();
+    };
+
     const toggleMic = () => {
-        if (localStream) {
-            const audioTrack = localStream.getAudioTracks()[0];
+        if (localStreamRef.current) {
+            const audioTrack = localStreamRef.current.getAudioTracks()[0];
             if (audioTrack) {
                 audioTrack.enabled = !audioTrack.enabled;
                 setIsMicMuted(!audioTrack.enabled);
@@ -454,8 +304,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     };
 
     const toggleCam = () => {
-        if (localStream && isVideoCall) {
-            const videoTrack = localStream.getVideoTracks()[0];
+        if (localStreamRef.current && isVideoCall) {
+            const videoTrack = localStreamRef.current.getVideoTracks()[0];
             if (videoTrack) {
                 videoTrack.enabled = !videoTrack.enabled;
                 setIsCamMuted(!videoTrack.enabled);
@@ -467,11 +317,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         if (!isVideoCall && callStatus === 'connected') {
             try {
                 const newStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-                const oldVideoTrack = localStream?.getVideoTracks()[0];
+                const oldVideoTrack = localStreamRef.current?.getVideoTracks()[0];
                 if (oldVideoTrack) oldVideoTrack.stop();
                 const newVideoTrack = newStream.getVideoTracks()[0];
-                localStream.addTrack(newVideoTrack);
-                if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+                localStreamRef.current.addTrack(newVideoTrack);
+                if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
                 setIsVideoCall(true);
                 Object.values(activeCalls).forEach(call => {
                     const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
@@ -494,7 +344,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             handleSendMessage(`Chamada de ${type} encerrada • ${durationStr}`, 'system');
         }
         Object.values(activeCalls).forEach(call => call.close());
-        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
         setActiveCalls({});
         setRemoteStreams({});
         setCallStatus(null);
@@ -503,8 +353,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setActiveGroupCall(false);
         setIsMicMuted(false);
         setIsCamMuted(false);
+        setActiveSpeakers({});
+        setParticipantsInfo({});
         if (audioContextRef.current) { audioContextRef.current.close(); audioContextRef.current = null; }
-        setLocalStream(null);
+        analyserRef.current = {};
+        localStreamRef.current = null;
     };
 
     const answerCall = async () => {
@@ -518,12 +371,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsCamMuted(false);
         startCallTimer();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
-        setLocalStream(stream);
+        localStreamRef.current = stream;
         if (isVideo && localVideoRef.current) localVideoRef.current.srcObject = stream;
         const call = incomingCall.callObj;
         call.answer(stream);
-        handleCallStream(call, isVideo);
+        handleCallStream(call, isVideo, call.peer);
         setActiveCalls(prev => ({ ...prev, [call.peer]: call }));
+        // Adicionar info do participante
+        setParticipantsInfo(prev => ({ ...prev, [call.peer]: { id: call.peer, name: call.peer.split('_')[0] } }));
     };
 
     const startCall = async (video = false) => {
@@ -535,13 +390,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsCamMuted(false);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-            setLocalStream(stream);
+            localStreamRef.current = stream;
             if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
             const targetPeerId = activeChat.id.replace(/[^a-zA-Z0-9]/g, '');
             const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video } });
             if (!call) throw new Error("Falha ao iniciar chamada");
-            handleCallStream(call, video);
+            handleCallStream(call, video, targetPeerId);
             setActiveCalls({ [targetPeerId]: call });
+            setParticipantsInfo(prev => ({ ...prev, [targetPeerId]: { id: targetPeerId, name: activeChat.name } }));
             // Timeout para chamada não atendida
             setTimeout(() => {
                 if (callStatus === 'calling') {
@@ -569,12 +425,18 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         handleSendMessage(`📞 Iniciou chamada de ${video ? 'vídeo' : 'voz'} em grupo.`, 'system');
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-            setLocalStream(stream);
+            localStreamRef.current = stream;
             if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
+            // Buscar informações dos participantes
+            for (const id of memberIds) {
+                const userSnap = await db.ref(`users/${id}`).once('value');
+                const userData = userSnap.val();
+                setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
+            }
             memberIds.forEach(id => {
                 const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
                 const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, groupId: activeChat.id } });
-                if (call) { handleCallStream(call, video); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
+                if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
             });
         } catch (err) { console.error("Erro:", err); endCall(); }
     };
@@ -590,28 +452,37 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         startCallTimer();
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            setLocalStream(stream);
+            localStreamRef.current = stream;
             const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
             if (members) {
                 const memberIds = Object.keys(members).filter(id => id !== user.id);
+                for (const id of memberIds) {
+                    const userSnap = await db.ref(`users/${id}`).once('value');
+                    const userData = userSnap.val();
+                    setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
+                }
                 memberIds.forEach(id => {
                     const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
                     const call = peer.call(targetPeerId, stream, { metadata: { isVideo: false, isGroup: true, groupId: activeChat.id } });
-                    if (call) { handleCallStream(call, false); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
+                    if (call) { handleCallStream(call, false, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
                 });
             }
         } catch (e) { console.error("Erro ao entrar:", e); }
     };
 
-    const handleCallStream = (call, isVideo) => {
+    const handleCallStream = (call, isVideo, participantId) => {
         call.on('stream', (remoteStream) => {
             setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+            // Configurar detector de áudio para saber quando o participante fala
+            setupAudioAnalyser(remoteStream, call.peer);
             if (!isVideo) {
                 const audio = new Audio();
                 audio.srcObject = remoteStream;
                 audio.play();
             } else {
-                if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+                if (remoteVideoRef.current && call.peer === Object.keys(activeCalls)[0]) {
+                    remoteVideoRef.current.srcObject = remoteStream;
+                }
             }
             if (callStatus === 'calling') {
                 setCallStatus('connected');
@@ -621,6 +492,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         call.on('close', () => {
             setActiveCalls(prev => { const newCalls = { ...prev }; delete newCalls[call.peer]; if (Object.keys(newCalls).length === 0) endCall(true); return newCalls; });
             setRemoteStreams(prev => { const newSt = { ...prev }; delete newSt[call.peer]; return newSt; });
+            setActiveSpeakers(prev => { const newSp = { ...prev }; delete newSp[call.peer]; return newSp; });
         });
         call.on('error', (err) => console.error(`Erro:`, err));
     };
@@ -628,9 +500,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // Funções auxiliares de áudio
     const initAudioContext = () => {
         if (!audioContextRef.current) {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioContextRef.current = new AudioContext();
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
             mixedDestRef.current = audioContextRef.current.createMediaStreamDestination();
+            analyserRef.current = {};
         }
     };
 
@@ -696,13 +568,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         currentAudioRef.current = audioElement;
     };
 
-    // ==================== FUNÇÃO PARA ENVIAR ARQUIVO (até 1GB) ====================
+    // ==================== FUNÇÃO PARA ENVIAR ARQUIVO EM BASE64 ====================
     const sendMediaFile = async (file, type) => {
         if (!activeChat) return;
         
-        // Verificar tamanho máximo (1GB)
         if (file.size > MAX_FILE_SIZE) { 
-            showToastMessage("Arquivo muito grande! Máximo 1GB", "error"); 
+            showToastMessage("Arquivo muito grande! Máximo 5MB", "error"); 
             return; 
         }
         
@@ -712,26 +583,19 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
 
         try {
-            // Upload para servidor temporário
-            const uploadResult = await uploadFileToServer(file, activeChat.id, user.id);
+            // Converter arquivo para Base64
+            const base64 = await fileToBase64(file);
             setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
 
-            const mediaMessage = {
-                fileId: uploadResult.fileId,
-                fileName: uploadResult.name,
-                fileSize: uploadResult.size,
-                fileType: uploadResult.type,
-                mimeType: file.type,
-                type: type,
-                expiresAt: uploadResult.expiresAt,
-                timestamp: Date.now()
-            };
-
+            // Enviar diretamente o Base64 na mensagem
             const msgData = {
                 senderId: user.id,
                 senderName: user.name,
-                text: JSON.stringify(mediaMessage),
+                text: base64,
                 type: type,
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type,
                 timestamp: window.firebase.database.ServerValue.TIMESTAMP,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
@@ -741,18 +605,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
 
             await ref.push(msgData);
-            showToastMessage(`${type === 'image' ? 'Imagem' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado! (expira em 1 minuto)`, "success");
-
-            // Enviar via P2P para usuários online do grupo
-            if (activeChat.type === 'group') {
-                const members = Object.keys(activeChat.members || {}).filter(id => id !== user.id);
-                for (const memberId of members) {
-                    const statusSnap = await db.ref(`users/${memberId}/status/state`).once('value');
-                    if (statusSnap.val() === 'online') {
-                        sendFileViaP2P(uploadResult.fileId, memberId, uploadResult.data);
-                    }
-                }
-            }
+            showToastMessage(`${type === 'image' ? 'Imagem' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado!`, "success");
 
         } catch (error) { 
             console.error("Erro:", error); 
@@ -762,240 +615,109 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
 
-    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA ====================
+    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA COM BOTÃO DE DOWNLOAD ====================
     const renderMediaContent = (msg) => {
-        try {
-            if (!msg.text || typeof msg.text !== 'string') return <p className="text-gray-800 break-words">{msg.text}</p>;
-
-            let mediaData;
-            try {
-                mediaData = JSON.parse(msg.text);
-            } catch (e) {
-                return <p className="text-gray-800 break-words">{msg.text}</p>;
-            }
-
-            if (!mediaData.fileId) return <p className="text-gray-800 break-words">{msg.text}</p>;
-
-            const [fileUrl, setFileUrl] = React.useState(null);
-            const [isLoading, setIsLoading] = React.useState(true);
-            const [isExpired, setIsExpired] = React.useState(false);
-            const [isDownloading, setIsDownloading] = React.useState(false);
-
-            React.useEffect(() => {
-                const checkFile = async () => {
-                    setIsLoading(true);
-                    try {
-                        // Verificar se o arquivo expirou
-                        if (mediaData.expiresAt && Date.now() > mediaData.expiresAt) {
-                            setIsExpired(true);
-                            setIsLoading(false);
-                            return;
-                        }
-                        
-                        // Tentar buscar do IndexedDB primeiro
-                        const localFile = await getFileFromIndexedDB(mediaData.fileId);
-                        if (localFile) {
-                            const blob = new Blob([localFile.data], { type: mediaData.mimeType });
-                            const url = URL.createObjectURL(blob);
-                            setFileUrl(url);
-                            setIsLoading(false);
-                            return;
-                        }
-                        
-                        // Tentar buscar do Firebase
-                        const snapshot = await db.ref(`temp_files/${mediaData.fileId}`).once('value');
-                        const data = snapshot.val();
-                        if (data && data.data) {
-                            setFileUrl(data.data);
-                            await markFileAsDownloaded(mediaData.fileId, user.id);
-                            // Salvar localmente para acesso futuro
-                            saveFileToIndexedDB(mediaData.fileId, data.data, mediaData.fileName, mediaData.mimeType);
-                        } else {
-                            // Tentar solicitar via P2P do remetente
-                            if (!isDownloading) {
-                                setIsDownloading(true);
-                                requestFileViaP2P(mediaData.fileId, msg.senderId);
-                            }
-                        }
-                    } catch (err) {
-                        console.error("Erro:", err);
-                    } finally {
-                        setIsLoading(false);
-                    }
-                };
-                checkFile();
-            }, [mediaData.fileId]);
-
-            // Verificar expiração
-            if (mediaData.expiresAt && Date.now() > mediaData.expiresAt) {
+        // Se a mensagem tem fileName, é um arquivo enviado
+        if (msg.fileName && msg.text && msg.text.startsWith('data:')) {
+            const isImage = msg.type === 'image' || msg.fileType?.startsWith('image/');
+            const isVideo = msg.type === 'video' || msg.fileType?.startsWith('video/');
+            const fileSizeMB = (msg.fileSize / (1024 * 1024)).toFixed(2);
+            
+            // Função para fazer download
+            const handleDownload = () => {
+                const link = document.createElement('a');
+                link.href = msg.text;
+                link.download = msg.fileName;
+                link.click();
+                showToastMessage(`Baixando ${msg.fileName}...`, "success");
+            };
+            
+            if (isImage) {
                 return (
-                    <div className="file-card">
-                        <div className="icon-file text-2xl text-red-400"></div>
-                        <div className="flex-1">
-                            <p className="text-sm font-medium">{mediaData.fileName}</p>
-                            <p className="text-xs text-red-500">Expirado (1 minuto)</p>
+                    <div className="mb-1">
+                        <img 
+                            src={msg.text} 
+                            className="rounded-lg max-w-full max-h-80 cursor-pointer object-contain" 
+                            onClick={() => window.open(msg.text, '_blank')}
+                            alt={msg.fileName}
+                        />
+                        <div className="flex gap-2 mt-2">
+                            <button 
+                                onClick={handleDownload}
+                                className="text-xs bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 flex items-center gap-1"
+                            >
+                                <div className="icon-download text-xs"></div> Baixar Imagem
+                            </button>
                         </div>
                     </div>
                 );
             }
-
-            // IMAGEM
-            if (mediaData.type === 'image' || mediaData.mimeType?.startsWith('image/')) {
+            
+            if (isVideo) {
                 return (
                     <div className="mb-1">
-                        {isLoading ? (
-                            <div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
-                                <div className="icon-loader animate-spin text-gray-500"></div>
-                                <span className="text-sm">Carregando imagem...</span>
-                            </div>
-                        ) : fileUrl ? (
-                            <img 
-                                src={fileUrl} 
-                                className="rounded-lg max-w-full max-h-80 cursor-pointer object-contain" 
-                                onClick={() => window.open(fileUrl, '_blank')}
-                                alt={mediaData.fileName}
-                            />
-                        ) : (
-                            <div className="file-card">
-                                <div className="icon-image text-2xl text-gray-500"></div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium">{mediaData.fileName}</p>
-                                    <p className="text-xs text-gray-500">{(mediaData.fileSize / (1024 * 1024)).toFixed(2)} MB</p>
-                                </div>
-                                {downloadProgress[mediaData.fileId] ? (
-                                    <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                        <div className="bg-green-500 h-full" style={{ width: `${downloadProgress[mediaData.fileId]}%` }}></div>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => requestFileViaP2P(mediaData.fileId, msg.senderId)} className="download-btn">Baixar</button>
-                                )}
-                            </div>
-                        )}
+                        <video 
+                            src={msg.text} 
+                            controls 
+                            className="rounded-lg max-w-full max-h-80"
+                            poster="https://via.placeholder.com/400x300?text=Video"
+                        />
+                        <div className="flex gap-2 mt-2">
+                            <button 
+                                onClick={handleDownload}
+                                className="text-xs bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 flex items-center gap-1"
+                            >
+                                <div className="icon-download text-xs"></div> Baixar Vídeo
+                            </button>
+                        </div>
                     </div>
                 );
             }
-
-            // VÍDEO
-            if (mediaData.type === 'video' || mediaData.mimeType?.startsWith('video/')) {
-                return (
-                    <div className="mb-1">
-                        {isLoading ? (
-                            <div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
-                                <div className="icon-loader animate-spin text-gray-500"></div>
-                                <span className="text-sm">Carregando vídeo...</span>
-                            </div>
-                        ) : fileUrl ? (
-                            <video 
-                                src={fileUrl} 
-                                controls 
-                                className="rounded-lg max-w-full max-h-80"
-                                poster="https://via.placeholder.com/400x300?text=Video"
-                            />
-                        ) : (
-                            <div className="file-card">
-                                <div className="icon-video text-2xl text-gray-500"></div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium">{mediaData.fileName}</p>
-                                    <p className="text-xs text-gray-500">{(mediaData.fileSize / (1024 * 1024)).toFixed(2)} MB</p>
-                                </div>
-                                {downloadProgress[mediaData.fileId] ? (
-                                    <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                        <div className="bg-green-500 h-full" style={{ width: `${downloadProgress[mediaData.fileId]}%` }}></div>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => requestFileViaP2P(mediaData.fileId, msg.senderId)} className="download-btn">Baixar</button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                );
-            }
-
-            // OUTROS ARQUIVOS (PDF, DOC, ZIP, etc)
+            
+            // Outros arquivos (PDF, DOC, etc)
             return (
                 <div className="file-card">
                     <div className="icon-file text-2xl text-blue-500"></div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{mediaData.fileName}</p>
-                        <p className="text-xs text-gray-500">{(mediaData.fileSize / (1024 * 1024)).toFixed(2)} MB</p>
-                        {mediaData.expiresAt && <p className="text-xs text-orange-500">Expira em: {new Date(mediaData.expiresAt).toLocaleTimeString()}</p>}
+                        <p className="text-sm font-medium truncate">{msg.fileName}</p>
+                        <p className="text-xs text-gray-500">{fileSizeMB} MB</p>
                     </div>
-                    {isLoading ? (
-                        <div className="icon-loader animate-spin text-gray-500"></div>
-                    ) : fileUrl ? (
-                        <a href={fileUrl} download={mediaData.fileName} className="download-btn">Baixar</a>
-                    ) : downloadProgress[mediaData.fileId] ? (
-                        <div className="flex flex-col items-center">
-                            <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                <div className="bg-green-500 h-full" style={{ width: `${downloadProgress[mediaData.fileId]}%` }}></div>
-                            </div>
-                            <span className="text-xs mt-1">{Math.round(downloadProgress[mediaData.fileId])}%</span>
-                        </div>
-                    ) : (
-                        <button onClick={() => requestFileViaP2P(mediaData.fileId, msg.senderId)} className="download-btn">Baixar</button>
-                    )}
+                    <button onClick={handleDownload} className="download-btn">
+                        Baixar
+                    </button>
                 </div>
             );
-        } catch (e) {
+        }
+        
+        // Fallback para texto normal ou JSON antigo
+        if (msg.text && typeof msg.text === 'string' && msg.text.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(msg.text);
+                if (parsed.fileId) {
+                    return (
+                        <div className="file-card">
+                            <div className="icon-file text-2xl text-gray-500"></div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium">{parsed.fileName}</p>
+                                <p className="text-xs text-red-500">Formato antigo - clique para baixar</p>
+                            </div>
+                            <button className="download-btn">Tentar Baixar</button>
+                        </div>
+                    );
+                }
+            } catch(e) {}
             return <p className="text-gray-800 break-words">{msg.text}</p>;
         }
+        
+        return <p className="text-gray-800 break-words" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text || '') }}></p>;
     };
 
-    // PeerJS Setup com suporte P2P
+    // PeerJS Setup
     React.useEffect(() => {
         const cleanId = user.id.replace(/[^a-zA-Z0-9]/g, ''); 
         const newPeer = new window.Peer(cleanId);
         
         newPeer.on('open', (id) => console.log('PeerJS ID:', id));
-        
-        // DataChannel para transferência de arquivos P2P
-        newPeer.on('connection', (conn) => {
-            const receivedChunks = {};
-            
-            conn.on('data', async (data) => {
-                if (data.type === 'file_request') {
-                    // Enviar arquivo solicitado
-                    const fileData = tempFilesRef.current[data.fileId];
-                    if (fileData) {
-                        sendFileViaP2P(data.fileId, conn.peer, fileData.data);
-                    }
-                }
-                
-                if (data.type === 'file_metadata') {
-                    receivedChunks[data.fileId] = {
-                        chunks: [],
-                        totalChunks: data.totalChunks,
-                        fileName: data.fileName,
-                        fileSize: data.fileSize,
-                        fileType: data.fileType
-                    };
-                    setDownloadProgress(prev => ({ ...prev, [data.fileId]: 0 }));
-                }
-                
-                if (data.type === 'file_chunk') {
-                    if (receivedChunks[data.fileId]) {
-                        receivedChunks[data.fileId].chunks[data.chunkIndex] = data.data;
-                        const progress = ((data.chunkIndex + 1) / data.totalChunks) * 100;
-                        setDownloadProgress(prev => ({ ...prev, [data.fileId]: progress }));
-                    }
-                }
-                
-                if (data.type === 'file_complete') {
-                    const transfer = receivedChunks[data.fileId];
-                    if (transfer && transfer.chunks) {
-                        const completeData = transfer.chunks.join('');
-                        saveFileToIndexedDB(data.fileId, completeData, transfer.fileName, transfer.fileType);
-                        showToastMessage(`Arquivo ${transfer.fileName} baixado!`, "success");
-                        delete receivedChunks[data.fileId];
-                        setDownloadProgress(prev => {
-                            const newProgress = { ...prev };
-                            delete newProgress[data.fileId];
-                            return newProgress;
-                        });
-                    }
-                }
-            });
-        });
         
         newPeer.on('call', (call) => {
             setIncomingCall({ callerId: call.peer, callObj: call, isVideo: call.metadata?.isVideo });
@@ -1048,7 +770,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 if (!isFromMe && isRecent) {
                     const isChatActive = activeChat && activeChat.id === chat.id;
                     if (!isChatActive || document.hidden) {
-                        window.NotificationSystem?.show(`Nova mensagem de ${msg.senderName}`, msg.type === 'audio' ? '🎵 Áudio' : (msg.type === 'image' ? '📷 Imagem' : (msg.type === 'video' ? '🎬 Vídeo' : msg.text)), chat.avatar);
+                        window.NotificationSystem?.show(`Nova mensagem de ${msg.senderName}`, msg.type === 'audio' ? '🎵 Áudio' : (msg.type === 'image' ? '📷 Imagem' : (msg.type === 'video' ? '🎬 Vídeo' : (msg.text?.substring(0, 50) || 'Mensagem'))), chat.avatar);
                     }
                 }
             });
@@ -1064,11 +786,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
     const connectToNewPeer = async (peerId, video) => {
         try {
-            const stream = localStream || await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-            if (!localStream) setLocalStream(stream);
+            const stream = localStreamRef.current || await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
+            if (!localStreamRef.current) localStreamRef.current = stream;
             const targetPeerId = peerId.replace(/[^a-zA-Z0-9]/g, '');
             const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, inviterId: user.id } });
-            if (call) { handleCallStream(call, video); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
+            if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
         } catch(e) { console.error("Erro:", e); }
     };
 
@@ -1206,7 +928,41 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         .file-card { background: #f0f2f5; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; min-width: 200px; }
         .download-btn { background: #00a884; color: white; border: none; border-radius: 20px; padding: 5px 12px; font-size: 11px; cursor: pointer; }
         .download-btn:hover { background: #008f6f; }
+        .speaking-indicator { 
+            box-shadow: 0 0 0 2px #00a884;
+            transition: box-shadow 0.1s ease;
+        }
     `;
+
+    // Lista de participantes da chamada para exibir
+    const callParticipantsList = Object.keys(activeCalls).map(peerId => {
+        const info = participantsInfo[peerId] || { id: peerId, name: peerId.split('_')[0] };
+        const isSpeaking = activeSpeakers[peerId];
+        return (
+            <div key={peerId} className={`flex items-center gap-2 p-2 rounded-lg transition-all ${isSpeaking ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <div className="relative">
+                    <img 
+                        src={info.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${info.id}`}
+                        className={`w-8 h-8 rounded-full ${isSpeaking ? 'speaking-indicator' : ''}`}
+                    />
+                    {isSpeaking && (
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    )}
+                </div>
+                <div className="flex-1">
+                    <p className="text-sm font-medium">{info.name}</p>
+                    {isSpeaking && <p className="text-xs text-green-600">Falando...</p>}
+                </div>
+                {isSpeaking && (
+                    <div className="flex gap-0.5">
+                        <div className="w-1 h-3 bg-green-500 animate-pulse" style={{animationDelay: '0s'}}></div>
+                        <div className="w-1 h-5 bg-green-500 animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-1 h-4 bg-green-500 animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                    </div>
+                )}
+            </div>
+        );
+    });
 
     return (
         <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -1241,13 +997,50 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
             {showGroupInfo && activeChat?.type === 'group' && (<GroupInfo activeChat={activeChat} user={user} onClose={() => setShowGroupInfo(false)} />)}
 
-            {/* Call Modal - Chamada de Vídeo/Áudio */}
+            {/* Call Modal - Chamada de Vídeo/Áudio com participantes */}
             {(incomingCall || callStatus) && (
                 <div className="fixed inset-0 z-50 bg-gradient-to-b from-gray-900 to-black flex flex-col items-center justify-center">
+                    {/* Lista de participantes na chamada */}
+                    {callStatus === 'connected' && Object.keys(activeCalls).length > 0 && (
+                        <div className="absolute top-10 left-4 right-4 max-h-40 overflow-y-auto bg-black/50 rounded-lg p-2 backdrop-blur-sm">
+                            <p className="text-white text-xs mb-2">Participantes ({Object.keys(activeCalls).length + 1})</p>
+                            <div className="flex flex-col gap-1">
+                                {/* Próprio usuário */}
+                                <div className={`flex items-center gap-2 p-2 rounded-lg ${activeSpeakers['me'] ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                    <div className="relative">
+                                        <img src={user.avatar} className={`w-8 h-8 rounded-full ${activeSpeakers['me'] ? 'speaking-indicator' : ''}`} />
+                                        {activeSpeakers['me'] && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium">{user.name} (Você)</p>
+                                        {activeSpeakers['me'] && <p className="text-xs text-green-600">Falando...</p>}
+                                    </div>
+                                    {activeSpeakers['me'] && (
+                                        <div className="flex gap-0.5">
+                                            <div className="w-1 h-3 bg-green-500 animate-pulse"></div>
+                                            <div className="w-1 h-5 bg-green-500 animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                                            <div className="w-1 h-4 bg-green-500 animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Outros participantes */}
+                                {callParticipantsList}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Avatar principal (quando não é chamada em grupo ou minimizado) */}
                     <div className="flex flex-col items-center mb-8">
-                        <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall?.callerId || activeChat?.id}`} className="w-32 h-32 rounded-full mb-4 avatar-pulse" />
-                        <h2 className="text-2xl font-semibold text-white mb-1">{incomingCall ? incomingCall.callerId?.split('_')[0] : activeChat?.name}</h2>
-                        <p className="text-gray-400 text-sm">{incomingCall ? 'Chamando...' : (callStatus === 'connected' ? formatDuration(callDuration) : 'Conectando...')}</p>
+                        {Object.keys(activeCalls).length === 0 && (
+                            <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall?.callerId || activeChat?.id}`} className="w-32 h-32 rounded-full mb-4 avatar-pulse" />
+                        )}
+                        <h2 className="text-2xl font-semibold text-white mb-1 text-center">
+                            {incomingCall ? incomingCall.callerId?.split('_')[0] : 
+                             (Object.keys(activeCalls).length > 1 ? `Chamada em grupo (${Object.keys(activeCalls).length + 1})` : activeChat?.name)}
+                        </h2>
+                        <p className="text-gray-400 text-sm">
+                            {incomingCall ? 'Chamando...' : (callStatus === 'connected' ? formatDuration(callDuration) : 'Conectando...')}
+                        </p>
                     </div>
 
                     <div className="flex justify-center gap-6 flex-wrap">
@@ -1281,11 +1074,15 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 <button onClick={() => endCall(false)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
                                     <div className="icon-phone-off text-3xl text-white"></div>
                                 </button>
+                                
+                                <button onClick={() => setIsCallMinimized(!isCallMinimized)} className="w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600">
+                                    <div className="icon-arrow-down text-2xl text-white"></div>
+                                </button>
                             </>
                         )}
                     </div>
 
-                    {isVideoCall && localStream && (
+                    {isVideoCall && localStreamRef.current && (
                         <div className="absolute bottom-4 right-4 w-32 h-48 bg-black rounded-xl overflow-hidden border-2 border-gray-600">
                             <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
                         </div>
@@ -1339,11 +1136,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 const isMe = msg.senderId === user.id;
                                 const isSystem = msg.type === 'system';
                                 const messageId = msg.key || idx;
-                                const isMediaMessage = msg.text && (msg.text.includes('"fileId"') || msg.type === 'image' || msg.type === 'video' || msg.type === 'file');
 
                                 if (isSystem) {
                                     return (<div key={idx} className="flex flex-col items-center my-2 group relative w-full"><div className="bg-[#e1f3fb] text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-2 max-w-[90%] break-words text-center"><div className="icon-info shrink-0"></div>{msg.text}</div></div>);
                                 }
+
+                                // Verificar se é mensagem de mídia (tem fileName e base64)
+                                const isMediaMessage = msg.fileName && msg.text && msg.text.startsWith('data:');
 
                                 return (
                                     <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group mb-1`} onContextMenu={(e) => handleContextMenu(e, msg)}>
@@ -1403,11 +1202,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         {!showAudioRecorder ? (
                             <>
                                 <div className="icon-smile text-2xl text-gray-500 cursor-pointer"></div>
-                                <div className="icon-image text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} title="Enviar Imagem (até 1GB)"></div>
+                                <div className="icon-image text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} title="Enviar Imagem (até 5MB)"></div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'image'); e.target.value = ''; }} />
-                                <div className="icon-video text-2xl text-gray-500 cursor-pointer" onClick={() => videoInputRef.current?.click()} title="Enviar Vídeo (até 1GB)"></div>
+                                <div className="icon-video text-2xl text-gray-500 cursor-pointer" onClick={() => videoInputRef.current?.click()} title="Enviar Vídeo (até 5MB)"></div>
                                 <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'video'); e.target.value = ''; }} />
-                                <div className="icon-file text-2xl text-gray-500 cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'file'); }; input.click(); }} title="Enviar Arquivo (até 1GB)"></div>
+                                <div className="icon-file text-2xl text-gray-500 cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'file'); }; input.click(); }} title="Enviar Arquivo (até 5MB)"></div>
                                 <div className="flex-1 bg-white rounded-lg px-4 py-2 flex items-center">
                                     {editingMessage ? (
                                         <input type="text" value={editInput} onChange={(e) => setEditInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && editMessage(editingMessage, editInput)} placeholder="Editar mensagem..." className="w-full bg-transparent border-none outline-none text-gray-700 text-sm" autoFocus />
