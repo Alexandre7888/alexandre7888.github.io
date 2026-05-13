@@ -25,31 +25,36 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // ==================== ÁUDIOS PERSONALIZADOS ====================
     const callingAudioRef = React.useRef(null);
     const ringtoneAudioRef = React.useRef(null);
-    const CALLING_SOUND_URL = "https://code.codehub.ct.ws/call1.mp3";
+    // URLs de áudio funcionais
+    const CALLING_SOUND_URL = "https://www.soundjay.com/misc/sounds/calling-tone-1.mp3";
     const RINGTONE_SOUND_URL = "https://www.soundjay.com/misc/sounds/iphone-ringtone-1.mp3";
     
     // ==================== SISTEMA DE CALL ID ====================
     const [activeCallId, setActiveCallId] = React.useState(null);
     
     const createCallId = async () => {
-        const newCallId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
-        const callRef = db.ref(`calls/${newCallId}`);
-        await callRef.set({
-            id: newCallId,
-            startedAt: Date.now(),
-            participants: { [user.id]: true },
-            active: true,
-            deviceId: navigator.userAgent || user.id,
-            deviceName: navigator.platform || "Desconhecido"
-        });
-        setActiveCallId(newCallId);
-        return newCallId;
+        try {
+            const newCallId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
+            const callRef = db.ref(`calls/${newCallId}`);
+            await callRef.set({
+                id: newCallId,
+                startedAt: Date.now(),
+                participants: { [user.id]: true },
+                active: true,
+                deviceId: navigator.userAgent || user.id,
+                deviceName: navigator.platform || "Desconhecido"
+            });
+            setActiveCallId(newCallId);
+            return newCallId;
+        } catch(e) { console.error("Erro ao criar Call ID:", e); return null; }
     };
     
     const endCallId = async (callId) => {
         if (callId) {
-            const callRef = db.ref(`calls/${callId}`);
-            await callRef.update({ active: false, endedAt: Date.now() });
+            try {
+                const callRef = db.ref(`calls/${callId}`);
+                await callRef.update({ active: false, endedAt: Date.now() });
+            } catch(e) { console.error("Erro ao encerrar Call ID:", e); }
             setActiveCallId(null);
         }
     };
@@ -77,21 +82,25 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     };
     
     const markMediaAsViewed = async (fileId, userId) => {
-        const fileRef = db.ref(`temp_files/${fileId}/viewers/${userId}`);
-        await fileRef.set(Date.now());
+        try {
+            const fileRef = db.ref(`temp_files/${fileId}/viewers/${userId}`);
+            await fileRef.set(Date.now());
+        } catch(e) { console.error(e); }
     };
     
     // ==================== FUNÇÕES DE VALIDAÇÃO ====================
     const checkInactivity = async (userId) => {
-        const userRef = db.ref(`users/${userId}`);
-        const snapshot = await userRef.once('value');
-        const userData = snapshot.val();
-        const lastActive = userData?.lastActive || userData?.createdAt || Date.now();
-        const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-        if (lastActive < oneWeekAgo) {
-            showToastMessage("Conta inativa por mais de 7 dias! Envie uma mensagem para reativar.", "error");
-            return false;
-        }
+        try {
+            const userRef = db.ref(`users/${userId}`);
+            const snapshot = await userRef.once('value');
+            const userData = snapshot.val();
+            const lastActive = userData?.lastActive || userData?.createdAt || Date.now();
+            const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            if (lastActive < oneWeekAgo) {
+                showToastMessage("Conta inativa por mais de 7 dias! Envie uma mensagem para reativar.", "error");
+                return false;
+            }
+        } catch(e) { console.error(e); }
         return true;
     };
     
@@ -152,13 +161,15 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     
     const editMessage = async (messageKey, newText) => {
         if (!activeChat || !newText || !newText.trim()) return;
-        const msgRef = activeChat.type === 'group' 
-            ? db.ref(`groups/${activeChat.id}/messages/${messageKey}`)
-            : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${messageKey}`);
-        await msgRef.update({ text: newText, edited: true, editedAt: Date.now() });
-        setEditingMessage(null);
-        setEditInput("");
-        showToastMessage("Mensagem editada!", "success");
+        try {
+            const msgRef = activeChat.type === 'group' 
+                ? db.ref(`groups/${activeChat.id}/messages/${messageKey}`)
+                : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${messageKey}`);
+            await msgRef.update({ text: newText, edited: true, editedAt: Date.now() });
+            setEditingMessage(null);
+            setEditInput("");
+            showToastMessage("Mensagem editada!", "success");
+        } catch(e) { console.error(e); }
     };
     
     const canDeleteMessage = (message) => {
@@ -199,7 +210,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     
     // Atualizar lastActive
     React.useEffect(() => {
-        const updateLastActive = () => { db.ref(`users/${user.id}/lastActive`).set(Date.now()); };
+        const updateLastActive = () => { 
+            try { db.ref(`users/${user.id}/lastActive`).set(Date.now()); } catch(e) {} 
+        };
         updateLastActive();
         const interval = setInterval(updateLastActive, 60 * 60 * 1000);
         return () => clearInterval(interval);
@@ -235,10 +248,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     
     // Carregar áudios personalizados
     React.useEffect(() => {
-        callingAudioRef.current = new Audio(CALLING_SOUND_URL);
-        ringtoneAudioRef.current = new Audio(RINGTONE_SOUND_URL);
-        callingAudioRef.current.loop = true;
-        ringtoneAudioRef.current.loop = true;
+        try {
+            callingAudioRef.current = new Audio(CALLING_SOUND_URL);
+            ringtoneAudioRef.current = new Audio(RINGTONE_SOUND_URL);
+            if (callingAudioRef.current) callingAudioRef.current.loop = true;
+            if (ringtoneAudioRef.current) ringtoneAudioRef.current.loop = true;
+        } catch(e) { console.error("Erro ao carregar áudios:", e); }
         return () => {
             if (callingAudioRef.current) { callingAudioRef.current.pause(); callingAudioRef.current = null; }
             if (ringtoneAudioRef.current) { ringtoneAudioRef.current.pause(); ringtoneAudioRef.current = null; }
@@ -351,10 +366,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             const [mediaUrl, setMediaUrl] = React.useState(null);
             React.useEffect(() => {
                 const fetchMedia = async () => {
-                    const fileRef = db.ref(`temp_files/${mediaData.fileId}`);
-                    const snapshot = await fileRef.once('value');
-                    const data = snapshot.val();
-                    if (data && data.data) { setMediaUrl(data.data); await markMediaAsViewed(mediaData.fileId, user.id); }
+                    try {
+                        const fileRef = db.ref(`temp_files/${mediaData.fileId}`);
+                        const snapshot = await fileRef.once('value');
+                        const data = snapshot.val();
+                        if (data && data.data) { setMediaUrl(data.data); await markMediaAsViewed(mediaData.fileId, user.id); }
+                    } catch(e) { console.error(e); }
                 };
                 fetchMedia();
             }, [mediaData.fileId]);
@@ -377,16 +394,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (screenStreamRef.current) { screenStreamRef.current.getTracks().forEach(t => t.stop()); }
             screenStreamRef.current = stream;
             setScreenSharing(true);
-            // Substituir a track de vídeo local pela tela
             const videoTrack = stream.getVideoTracks()[0];
-            const sender = localStreamRef.current?.getVideoTracks()[0];
-            if (sender) {
-                const pc = Object.values(activeCalls)[0]?.peerConnection;
-                if (pc) {
-                    const senderObj = pc.getSenders().find(s => s.track?.kind === 'video');
-                    if (senderObj) senderObj.replaceTrack(videoTrack);
-                }
-            }
+            if (localVideoRef.current) localVideoRef.current.srcObject = stream;
             videoTrack.onended = () => stopScreenShare();
             showToastMessage("Compartilhando tela!", "success");
         } catch (error) { console.error(error); showToastMessage("Erro ao compartilhar tela", "error"); }
@@ -1198,7 +1207,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             ) : (
                 <div className="hidden md:flex flex-1 bg-[#f0f2f5] flex-col items-center justify-center border-b-8 border-[#25d366]">
                     <div className="w-64 h-64 mb-8 text-gray-300 flex items-center justify-center"><div className="icon-lock text-9xl text-gray-200"></div></div>
-                    <h1 className="text-3xl font-light text-gray-600 mb-4">Baixe o app do Meu Zap</h1>
+                    <h1 className="text-3xl font-light text-gray-600 mb-4">Meu Zap</h1>
                     <p className="text-gray-500 text-sm text-center max-w-md">Adicione contatos pelo ID para começar a conversar.</p>
                 </div>
             )}
