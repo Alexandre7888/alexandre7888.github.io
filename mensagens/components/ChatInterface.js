@@ -25,7 +25,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // ==================== ÁUDIOS PERSONALIZADOS ====================
     const callingAudioRef = React.useRef(null);
     const ringtoneAudioRef = React.useRef(null);
-    const CALLING_SOUND_URL = "https://www.soundjay.com/misc/sounds/calling-tone-1.mp3";
+    const CALLING_SOUND_URL = "https://code.codehub.ct.ws/call1.mp3";
     const RINGTONE_SOUND_URL = "https://www.soundjay.com/misc/sounds/iphone-ringtone-1.mp3";
     
     // ==================== SISTEMA DE CALL ID ====================
@@ -49,10 +49,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const endCallId = async (callId) => {
         if (callId) {
             const callRef = db.ref(`calls/${callId}`);
-            await callRef.update({
-                active: false,
-                endedAt: Date.now()
-            });
+            await callRef.update({ active: false, endedAt: Date.now() });
             setActiveCallId(null);
         }
     };
@@ -65,16 +62,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 const base64 = e.target.result;
                 const fileId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 const fileData = {
-                    id: fileId,
-                    data: base64,
-                    type: file.type,
-                    name: file.name,
-                    size: file.size,
-                    chatId: chatId,
-                    senderId: senderId,
-                    uploadedAt: Date.now(),
-                    expiresAt: Date.now() + (MEDIA_EXPIRATION_DAYS * 24 * 60 * 60 * 1000),
-                    viewers: {}
+                    id: fileId, data: base64, type: file.type, name: file.name, size: file.size,
+                    chatId: chatId, senderId: senderId, uploadedAt: Date.now(),
+                    expiresAt: Date.now() + (MEDIA_EXPIRATION_DAYS * 24 * 60 * 60 * 1000), viewers: {}
                 };
                 const fileRef = db.ref(`temp_files/${fileId}`);
                 await fileRef.set(fileData);
@@ -275,7 +265,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const openAddContact = () => { pushHistoryState('addContact'); setShowAddContact(true); };
     const openChat = (chat) => { pushHistoryState('chat'); setActiveChat(chat); };
     
-    // ==================== CHAMADAS ====================
+    // ==================== CHAMADAS SIMPLES ====================
     const [incomingCall, setIncomingCall] = React.useState(null);
     const [callStatus, setCallStatus] = React.useState(null);
     const [isVideoCall, setIsVideoCall] = React.useState(false);
@@ -286,7 +276,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [isCallMinimized, setIsCallMinimized] = React.useState(false);
     const [isMicMuted, setIsMicMuted] = React.useState(false);
     const [isCamMuted, setIsCamMuted] = React.useState(false);
-    const [showSoundBoard, setShowSoundBoard] = React.useState(false);
+    
+    // Detectar se é desktop (para botão de compartilhar tela)
+    const [isDesktop, setIsDesktop] = React.useState(false);
+    React.useEffect(() => {
+        const isDesktopDevice = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        setIsDesktop(isDesktopDevice);
+    }, []);
     
     // Professional Panel Controls
     const [participantVolumes, setParticipantVolumes] = React.useState({});
@@ -374,19 +370,35 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     
     // ==================== FUNÇÕES DE CHAMADA ====================
     const startScreenShare = async () => {
-        if (!professionalPanel || !isCurrentUserAdmin) { alert("Apenas administradores com painel profissional podem compartilhar tela."); return; }
+        if (!isDesktop) { showToastMessage("Compartilhamento de tela disponível apenas no computador!", "error"); return; }
+        if (!isVideoCall) { showToastMessage("Compartilhamento de tela só funciona em chamada de vídeo!", "error"); return; }
         try {
             const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            if (screenStreamRef.current) { screenStreamRef.current.getTracks().forEach(t => t.stop()); }
             screenStreamRef.current = stream;
             setScreenSharing(true);
-            Object.values(activeCalls).forEach(call => { const sender = call.peerConnection?.addTrack(stream.getVideoTracks()[0], stream); });
-            stream.getVideoTracks()[0].onended = () => stopScreenShare();
-        } catch (error) { console.error(error); }
+            // Substituir a track de vídeo local pela tela
+            const videoTrack = stream.getVideoTracks()[0];
+            const sender = localStreamRef.current?.getVideoTracks()[0];
+            if (sender) {
+                const pc = Object.values(activeCalls)[0]?.peerConnection;
+                if (pc) {
+                    const senderObj = pc.getSenders().find(s => s.track?.kind === 'video');
+                    if (senderObj) senderObj.replaceTrack(videoTrack);
+                }
+            }
+            videoTrack.onended = () => stopScreenShare();
+            showToastMessage("Compartilhando tela!", "success");
+        } catch (error) { console.error(error); showToastMessage("Erro ao compartilhar tela", "error"); }
     };
     
     const stopScreenShare = () => {
-        if (screenStreamRef.current) { screenStreamRef.current.getTracks().forEach(track => track.stop()); screenStreamRef.current = null; }
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach(track => track.stop());
+            screenStreamRef.current = null;
+        }
         setScreenSharing(false);
+        showToastMessage("Compartilhamento de tela encerrado", "success");
     };
     
     const sendGlobalAudio = (audioBase64, duration) => {
@@ -509,7 +521,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
     
-    // ==================== PEERJS SETUP CORRIGIDO ====================
+    // ==================== PEERJS SETUP ====================
     React.useEffect(() => {
         if (!user?.id) return;
         const cleanId = user.id.replace(/[^a-zA-Z0-9]/g, '');
@@ -679,7 +691,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         } catch (error) { console.error(error); }
     };
     
-    // ==================== ANSWER CALL CORRIGIDA ====================
+    // ==================== ANSWER CALL ====================
     const answerCall = () => {
         if (!incomingCall || !incomingCall.callObj) return;
         const isVideo = incomingCall.isVideo;
@@ -708,7 +720,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             .catch(err => { console.error("Erro ao acessar mídia:", err); showToastMessage("Erro ao acessar câmera/microfone", "error"); setCallStatus(null); });
     };
     
-    // ==================== START CALL CORRIGIDA ====================
+    // ==================== START CALL ====================
     const startCall = async (video = false) => {
         if (!activeChat) return;
         if (activeChat.type === 'group') { startGroupCall(video); return; }
@@ -825,7 +837,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         call.on('error', (err) => console.error(`Erro com ${call.peer}:`, err));
     };
     
-    // ==================== END CALL CORRIGIDA ====================
+    // ==================== END CALL ====================
     const endCall = (remoteEnded = false) => {
         console.log("Encerrando chamada...");
         if (callingAudioRef.current) { callingAudioRef.current.pause(); callingAudioRef.current.currentTime = 0; }
@@ -1018,6 +1030,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         .call-button { transition: all 0.2s ease; }
         .call-button:hover { transform: scale(1.05); }
         .call-button:active { transform: scale(0.95); }
+        .call-container { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%); }
     `;
     
     return (
@@ -1041,35 +1054,53 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             )}
             {showGroupInfo && activeChat?.type === 'group' && (<GroupInfo activeChat={activeChat} user={user} onClose={() => setShowGroupInfo(false)} />)}
             
-            {/* CALL MODAL */}
+            {/* ==================== CALL MODAL SIMPLES ==================== */}
             {(incomingCall || callStatus) && (
-                <div className={`fixed z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden bg-gradient-to-b from-gray-900 to-black ${isCallMinimized ? 'bottom-4 right-4 w-72 h-80 rounded-2xl border-2 border-white/20' : 'inset-0 flex flex-col items-center justify-center'}`}>
+                <div className={`call-container fixed z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden ${isCallMinimized ? 'bottom-4 right-4 w-64 h-80 rounded-2xl border-2 border-white/20' : 'inset-0 flex flex-col items-center justify-center'}`}>
                     {!isCallMinimized && (
                         <>
                             <div className="flex flex-col items-center mb-8">
-                                <img src={(() => { if (incomingCall) { const contact = chats.find(c => c.id === incomingCall.callerId); return contact?.avatar || user?.avatar; } return activeChat?.avatar; })() || user?.avatar} className="w-32 h-32 rounded-full mb-4 avatar-pulse object-cover" alt="Contact" onError={(e) => { e.target.src = user?.avatar; }} />
-                                <h2 className="text-2xl font-semibold text-white mb-1">{incomingCall ? (chats.find(c => c.id === incomingCall.callerId)?.name || incomingCall.callerId) : activeChat?.name}</h2>
-                                <p className="text-gray-400 text-sm">{incomingCall ? 'Chamando...' : 'Em chamada'}</p>
-                                {callStatus === 'connected' && <p className="text-green-400 text-sm mt-1">{formatDuration(callDuration)}</p>}
+                                <img src={(() => { if (incomingCall) { const contact = chats.find(c => c.id === incomingCall.callerId); return contact?.avatar || user?.avatar; } return activeChat?.avatar; })() || user?.avatar} className="w-28 h-28 rounded-full avatar-pulse object-cover" alt="Contact" />
+                                <h2 className="text-xl font-semibold text-white mt-3">{incomingCall ? (chats.find(c => c.id === incomingCall.callerId)?.name || incomingCall.callerId) : activeChat?.name}</h2>
+                                <p className="text-gray-400 text-sm mt-1">{incomingCall ? 'Chamada recebida...' : (callStatus === 'connected' ? formatDuration(callDuration) : 'Conectando...')}</p>
                             </div>
-                            <div className="flex justify-center gap-6 mt-4">
+                            
+                            <div className="flex justify-center gap-8 mt-4">
                                 {incomingCall ? (
                                     <>
-                                        <button onClick={() => { setIncomingCall(null); if(ringtoneAudioRef.current) ringtoneAudioRef.current.pause(); }} className="call-button w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 shadow-lg"><div className="icon-phone-off text-3xl text-white"></div></button>
-                                        <button onClick={answerCall} className="call-button w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600 shadow-lg"><div className="icon-phone text-3xl text-white"></div></button>
+                                        <button onClick={() => { setIncomingCall(null); if(ringtoneAudioRef.current) ringtoneAudioRef.current.pause(); }} className="call-button w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 shadow-lg">
+                                            <div className="icon-phone-off text-2xl text-white"></div>
+                                        </button>
+                                        <button onClick={answerCall} className="call-button w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600 shadow-lg">
+                                            <div className="icon-phone text-2xl text-white"></div>
+                                        </button>
                                     </>
                                 ) : (
                                     <>
-                                        <button onClick={toggleMic} className={`call-button w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}><div className={isMicMuted ? "icon-mic-off text-2xl text-white" : "icon-mic text-2xl text-white"}></div></button>
-                                        {isVideoCall && (<button onClick={toggleCam} className={`call-button w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}><div className={isCamMuted ? "icon-video-off text-2xl text-white" : "icon-video text-2xl text-white"}></div></button>)}
-                                        <button onClick={() => setShowSoundBoard(!showSoundBoard)} className="call-button w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600 shadow-lg"><div className="icon-music text-2xl text-white"></div></button>
-                                        <button onClick={() => endCall(false)} className="call-button w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 shadow-lg"><div className="icon-phone-off text-3xl text-white"></div></button>
-                                        {isVideoCall && (<button onClick={togglePiP} className="call-button w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600 shadow-lg"><div className="icon-minimize-2 text-2xl text-white"></div></button>)}
-                                        <button onClick={() => setIsCallMinimized(true)} className="call-button w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600 shadow-lg"><div className="icon-arrow-down text-2xl text-white"></div></button>
+                                        <button onClick={toggleMic} className={`call-button w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                            <div className={isMicMuted ? "icon-mic-off text-xl text-white" : "icon-mic text-xl text-white"}></div>
+                                        </button>
+                                        {isVideoCall && (
+                                            <button onClick={toggleCam} className={`call-button w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                                <div className={isCamMuted ? "icon-video-off text-xl text-white" : "icon-video text-xl text-white"}></div>
+                                            </button>
+                                        )}
+                                        {isDesktop && isVideoCall && (
+                                            <button onClick={screenSharing ? stopScreenShare : startScreenShare} className={`call-button w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${screenSharing ? 'bg-green-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                                <div className="icon-monitor text-xl text-white"></div>
+                                            </button>
+                                        )}
+                                        <button onClick={() => endCall(false)} className="call-button w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 shadow-lg">
+                                            <div className="icon-phone-off text-2xl text-white"></div>
+                                        </button>
+                                        <button onClick={() => setIsCallMinimized(true)} className="call-button w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600 shadow-lg absolute top-4 right-4">
+                                            <div className="icon-arrow-down text-white text-sm"></div>
+                                        </button>
                                     </>
                                 )}
                             </div>
-                            {isVideoCall && (<div className="absolute bottom-4 right-4 w-32 h-48 bg-black rounded-xl overflow-hidden shadow-lg border-2 border-gray-600"><video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" /></div>)}
+                            
+                            {isVideoCall && (<div className="absolute bottom-4 right-4 w-28 h-40 bg-black rounded-xl overflow-hidden shadow-lg border-2 border-gray-600"><video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" /></div>)}
                             {isVideoCall && remoteVideoRef.current?.srcObject && (<video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover -z-10" />)}
                         </>
                     )}
@@ -1078,7 +1109,10 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             <img src={activeChat?.avatar || user?.avatar} className="w-12 h-12 rounded-full mb-2 object-cover" alt="Contact" />
                             <p className="text-white text-xs font-medium truncate max-w-[90%]">{activeChat?.name}</p>
                             <p className="text-green-400 text-xs">{formatDuration(callDuration)}</p>
-                            <div className="flex gap-3 mt-3"><button onClick={() => setIsCallMinimized(false)} className="p-2 bg-gray-700 rounded-full"><div className="icon-maximize-2 text-white text-sm"></div></button><button onClick={() => endCall(false)} className="p-2 bg-red-600 rounded-full"><div className="icon-phone-off text-white text-sm"></div></button></div>
+                            <div className="flex gap-3 mt-3">
+                                <button onClick={() => setIsCallMinimized(false)} className="p-2 bg-gray-700 rounded-full"><div className="icon-maximize-2 text-white text-sm"></div></button>
+                                <button onClick={() => endCall(false)} className="p-2 bg-red-600 rounded-full"><div className="icon-phone-off text-white text-sm"></div></button>
+                            </div>
                             {isVideoCall && remoteVideoRef.current?.srcObject && <video ref={remoteVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover -z-10 rounded-2xl" />}
                         </div>
                     )}
@@ -1148,11 +1182,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         {!showAudioRecorder ? (
                             <>
                                 <div className="icon-smile text-2xl text-gray-500 cursor-pointer"></div>
-                                <div className="icon-image text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} title="Enviar Imagem (máx 5MB)"></div>
+                                <div className="icon-image text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} title="Enviar Imagem"></div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'image'); e.target.value = ''; }} />
-                                <div className="icon-video text-2xl text-gray-500 cursor-pointer" onClick={() => videoInputRef.current?.click()} title="Enviar Vídeo (máx 5MB)"></div>
+                                <div className="icon-video text-2xl text-gray-500 cursor-pointer" onClick={() => videoInputRef.current?.click()} title="Enviar Vídeo"></div>
                                 <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'video'); e.target.value = ''; }} />
-                                <div className="icon-file text-2xl text-gray-500 cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'file'); }; input.click(); }} title="Enviar Arquivo (máx 5MB)"></div>
+                                <div className="icon-file text-2xl text-gray-500 cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'file'); }; input.click(); }} title="Enviar Arquivo"></div>
                                 <div className="flex-1 bg-white rounded-lg px-4 py-2 flex items-center">{editingMessage ? (<input type="text" value={editInput} onChange={(e) => setEditInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && editMessage(editingMessage, editInput)} placeholder="Editar mensagem..." className="w-full bg-transparent border-none outline-none text-gray-700 text-sm" autoFocus />) : (<input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && messageInput.trim() && handleSendMessage(messageInput)} placeholder="Mensagem" className="w-full bg-transparent border-none outline-none text-gray-700 placeholder-gray-400 text-sm"/>)}</div>
                                 {editingMessage ? (<div onClick={() => editMessage(editingMessage, editInput)} className="icon-check text-2xl text-green-500 cursor-pointer"></div>) : (messageInput.trim() ? (<div onClick={() => handleSendMessage(messageInput)} className="icon-send text-2xl text-gray-500 cursor-pointer"></div>) : (<div onClick={() => setShowAudioRecorder(true)} className="icon-mic text-2xl text-gray-500 cursor-pointer"></div>))}
                                 {editingMessage && <div onClick={() => { setEditingMessage(null); setEditInput(""); }} className="icon-x text-2xl text-red-500 cursor-pointer"></div>}
@@ -1164,8 +1198,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             ) : (
                 <div className="hidden md:flex flex-1 bg-[#f0f2f5] flex-col items-center justify-center border-b-8 border-[#25d366]">
                     <div className="w-64 h-64 mb-8 text-gray-300 flex items-center justify-center"><div className="icon-lock text-9xl text-gray-200"></div></div>
-                    <h1 className="text-3xl font-light text-gray-600 mb-4">Privacidade & Segurança</h1>
-                    <p className="text-gray-500 text-sm text-center max-w-md">Agora suas mensagens são privadas.<br/>Adicione contatos pelo ID para começar a conversar.</p>
+                    <h1 className="text-3xl font-light text-gray-600 mb-4">Baixe o app do Meu Zap</h1>
+                    <p className="text-gray-500 text-sm text-center max-w-md">Adicione contatos pelo ID para começar a conversar.</p>
                 </div>
             )}
         </div>
