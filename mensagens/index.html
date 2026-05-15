@@ -8,15 +8,14 @@
     <link rel="manifest" href="manifest.json">
 
     <!-- React Dependencies -->
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-X4VF1LWB0F');
-</script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-X4VF1LWB0F');
+    </script>
     <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
     <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
@@ -66,7 +65,7 @@
         }
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         .animate-slide-in-right { animation: slideInRight 0.3s ease-out; }
-        
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
     }
@@ -78,22 +77,42 @@
 <body>
     <div id="root"></div>
 
-<!-- Application Logic -->
-<script type="text/babel" src="utils/firebaseConfig.js"></script>
-<script type="text/babel" src="utils/notifications.js"></script>
-<script type="text/babel" src="utils/chatApi.js"></script>
-<script type="text/babel" src="utils/helpers.js"></script>
-<script type="text/babel" src="components/AudioRecorder.js"></script>
-<script type="text/babel" src="components/Settings.js"></script>
-<script type="text/babel" src="utils/scriptEngine.js"></script>
-<script type="text/babel" src="components/RuleEditor.js"></script>
-<script type="text/babel" src="components/GroupInfo.js"></script>
-<script type="text/babel" src="components/SystemStatus.js"></script>
-<script type="text/babel" src="components/JoinRequestModal.js"></script>
-<script type="text/babel" src="components/Login.js"></script>
-<script type="text/babel" src="components/CallManager.js"></script>  <!-- NOVO -->
-<script type="text/babel" src="components/ChatInterface.js"></script>
-<script type="text/babel" src="app.js"></script>
+    <!-- ==================== UTILS ==================== -->
+    <script type="text/babel" src="utils/firebaseConfig.js"></script>
+    <script type="text/babel" src="utils/notifications.js"></script>
+    <script type="text/babel" src="utils/chatApi.js"></script>
+    <script type="text/babel" src="utils/helpers.js"></script>
+    <script type="text/babel" src="utils/scriptEngine.js"></script>
+
+    <!-- ==================== COMPONENTES BASE ==================== -->
+    <!-- Primeiro o registrador de componentes -->
+    <script type="text/babel" src="components/ComponentRegistry.js"></script>
+    
+    <!-- Depois todos os componentes (ordem não importa, só precisam vir depois do registry) -->
+    <script type="text/babel" src="components/StatusIndicator.js"></script>
+    <script type="text/babel" src="components/StatusBadge.js"></script>
+    <script type="text/babel" src="components/UserAvatar.js"></script>
+    <script type="text/babel" src="components/ContactItem.js"></script>
+    <script type="text/babel" src="components/MessageInput.js"></script>
+    <script type="text/babel" src="components/Toast.js"></script>
+    <script type="text/babel" src="components/Modal.js"></script>
+    <script type="text/babel" src="components/LoadingSpinner.js"></script>
+    <script type="text/babel" src="components/ContextMenu.js"></script>
+    <script type="text/babel" src="components/ComponentLoader.js"></script>
+
+    <!-- ==================== COMPONENTES ESPECÍFICOS DO SISTEMA ==================== -->
+    <script type="text/babel" src="components/AudioRecorder.js"></script>
+    <script type="text/babel" src="components/Settings.js"></script>
+    <script type="text/babel" src="components/RuleEditor.js"></script>
+    <script type="text/babel" src="components/GroupInfo.js"></script>
+    <script type="text/babel" src="components/SystemStatus.js"></script>
+    <script type="text/babel" src="components/JoinRequestModal.js"></script>
+    <script type="text/babel" src="components/Login.js"></script>
+    <script type="text/babel" src="components/CallManager.js"></script>
+
+    <!-- ==================== PRINCIPAL ==================== -->
+    <script type="text/babel" src="components/ChatInterface.js"></script>
+    <script type="text/babel" src="app.js"></script>
 
     <script>
         if ('serviceWorker' in navigator) {
