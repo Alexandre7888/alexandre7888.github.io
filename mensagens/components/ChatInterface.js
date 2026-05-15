@@ -22,7 +22,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const BAN_DURATION = 60;
 
     // ==================== SISTEMA DE ARQUIVOS EM BASE64 ====================
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
     const fileToBase64 = (file) => {
         return new Promise((resolve, reject) => {
@@ -873,8 +873,10 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 await db.ref(`users/${user.id}/contacts/${inputId}`).set({ type: 'private', addedAt: Date.now() });
                 setActiveChat({ ...userData, type: 'private' });
                 setShowAddContact(false);
+            } else {
+                showToastMessage("Usuário ou grupo não encontrado!", "error");
             }
-        } catch (error) { console.error("Erro:", error); }
+        } catch (error) { console.error("Erro:", error); showToastMessage("Erro ao adicionar contato!", "error"); }
     };
 
     const ToastComponent = () => {
@@ -1036,19 +1038,36 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             {/* Sidebar */}
             <div className={`bg-white w-[350px] flex-shrink-0 border-r border-gray-200 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={openSettings}><img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300" /><span className="font-semibold text-gray-700 text-sm">{user.name}</span></div>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={openSettings}>
+                        <img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300" />
+                        <div className="flex flex-col">
+                            <span className="font-semibold text-gray-700 text-sm">{user.name}</span>
+                            {/* Componente automático: headerLeft */}
+                            {window.renderAutoComponents && window.renderAutoComponents('headerLeft', { user })}
+                        </div>
+                    </div>
                     <div className="flex gap-4 text-gray-600 items-center">
-                        <div className={`icon-zap cursor-pointer p-1.5 rounded-full transition ${backgroundMode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-200'}`} onClick={toggleBackgroundMode}></div>
-                        <div className="icon-users cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={handleCreateGroup}></div>
-                        <div className="icon-message-square-plus cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openAddContact}></div>
-                        <div className="icon-settings cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openSettings}></div>
-                        <div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout}></div>
+                        {/* Componentes automáticos no header direito */}
+                        {window.renderAutoComponents && window.renderAutoComponents('headerRight', { user })}
+                        
+                        <div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout} title="Sair da conta"></div>
+                        <div className="icon-users cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={handleCreateGroup} title="Criar grupo"></div>
+                        <div className="icon-message-square-plus cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openAddContact} title="Adicionar contato"></div>
+                        <div className="icon-settings cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openSettings} title="Configurações"></div>
                     </div>
                 </div>
-                <div className="p-2 border-b border-gray-200"><div className="bg-[#f0f2f5] rounded-lg flex items-center px-3 py-1.5"><div className="icon-search text-gray-500 text-sm"></div><input type="text" placeholder="Pesquisar contatos..." className="bg-transparent border-none outline-none ml-3 w-full text-sm py-1" /></div></div>
+                <div className="p-2 border-b border-gray-200">
+                    <div className="bg-[#f0f2f5] rounded-lg flex items-center px-3 py-1.5">
+                        <div className="icon-search text-gray-500 text-sm"></div>
+                        <input type="text" placeholder="Pesquisar contatos..." className="bg-transparent border-none outline-none ml-3 w-full text-sm py-1" />
+                    </div>
+                </div>
                 <div className="flex-1 overflow-y-auto">
                     {chats.map(chat => (<div key={chat.id} onClick={() => openChat(chat)} className={`flex items-center p-3 cursor-pointer hover:bg-[#f5f6f6] ${activeChat?.id === chat.id ? 'bg-[#f0f2f5]' : ''}`}><img src={chat.avatar} className="w-12 h-12 rounded-full mr-3" /><div className="flex-1 border-b border-gray-100 pb-3 h-full flex flex-col justify-center"><div className="flex justify-between items-baseline"><span className="text-gray-900 font-medium">{chat.name}</span>{chat.type === 'group' && chat.members?.[user.id] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full ml-2">Admin</span>)}</div><div className="text-sm text-gray-500 truncate w-48">{chat.type === 'group' ? 'Grupo' : 'Privado'}</div></div></div>))}
                     {chats.length === 0 && (<div className="p-8 text-center text-gray-400 text-sm mt-4 flex flex-col items-center"><div className="icon-book-user text-4xl mb-2 opacity-30"></div>Sua lista de contatos está vazia.<br/>Adicione um ID ou crie um grupo!</div>)}
+                    
+                    {/* Componentes automáticos no fim da sidebar */}
+                    {window.renderAutoComponents && window.renderAutoComponents('sidebarBottom', { user, chats })}
                 </div>
             </div>
 
@@ -1056,7 +1075,24 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             {activeChat ? (
                 <div className={`flex-1 flex flex-col bg-[#efeae2] overflow-hidden ${activeChat ? 'flex' : 'hidden md:flex'}`}>
                     <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300 cursor-pointer" onClick={() => activeChat.type === 'group' && openGroupInfo()}>
-                        <div className="flex items-center gap-4"><button onClick={() => setActiveChat(null)} className="md:hidden text-gray-600"><div className="icon-arrow-left"></div></button><img src={activeChat.avatar} className="w-10 h-10 rounded-full" /><div className="flex flex-col"><div className="flex items-center gap-2"><span className="text-gray-800 font-medium">{activeChat.name}</span>{activeChat.type === 'group' && activeChat.members?.[user.id] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Admin</span>)}</div>{activeChat.type === 'group' ? <span className="text-xs text-gray-500">Toque para info do grupo</span> : (activeChat.privacy?.showOnline !== false && activeChat.status === 'online') ? <span className="text-xs text-green-500 font-bold">Online</span> : <span className="text-xs text-gray-500">Offline</span>}</div></div>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setActiveChat(null)} className="md:hidden text-gray-600">
+                                <div className="icon-arrow-left"></div>
+                            </button>
+                            <img src={activeChat.avatar} className="w-10 h-10 rounded-full" />
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-800 font-medium">{activeChat.name}</span>
+                                    {activeChat.type !== 'group' && (activeChat.status === 'online' ? 
+                                        <span className="text-xs text-green-500 font-bold">Online</span> : 
+                                        <span className="text-xs text-gray-500">Offline</span>)}
+                                </div>
+                                {activeChat.type === 'group' ? 
+                                    <span className="text-xs text-gray-500">Toque para info do grupo</span> : null}
+                            </div>
+                            {/* Componentes automáticos no header do chat */}
+                            {window.renderAutoComponents && window.renderAutoComponents('chatHeader', { activeChat, user })}
+                        </div>
                         <div className="flex items-center gap-2 text-gray-600" onClick={(e) => e.stopPropagation()}>
                             <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(true)}><div className="icon-video text-xl"></div></div>
                             <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(false)}><div className="icon-phone text-xl"></div></div>
@@ -1133,6 +1169,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             <button onClick={() => { deleteMessage(contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 flex items-center gap-2"><div className="icon-trash"></div> Apagar</button>
                         </div>
                     )}
+
+                    {/* Componentes automáticos no footer do chat (acima do input) */}
+                    {window.renderAutoComponents && window.renderAutoComponents('chatFooter', { activeChat, user })}
 
                     {/* Input Area */}
                     <div className="bg-[#f0f2f5] p-3 px-4 flex items-center gap-2">
