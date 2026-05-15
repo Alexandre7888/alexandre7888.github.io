@@ -1,14 +1,21 @@
+// components/Settings.js
 function Settings({ user, onClose, chats }) {
     const [settings, setSettings] = React.useState({
         publicId: true,
         showOnline: true,
         readReceipts: true,
-        readReceiptExceptions: {}, // { userId: true }
-        groupPrivacy: 'everyone', // 'everyone', 'contacts', 'blacklist', 'nobody'
-        groupBlacklist: {} // { userId: true }
+        readReceiptExceptions: {},
+        groupPrivacy: 'everyone',
+        groupBlacklist: {}
     });
     const [showExceptionModal, setShowExceptionModal] = React.useState(false);
     const [showGroupBlacklistModal, setShowGroupBlacklistModal] = React.useState(false);
+    const [showQRModal, setShowQRModal] = React.useState(false);
+    const [qrCodeData, setQrCodeData] = React.useState(null);
+    const [connectionStatus, setConnectionStatus] = React.useState('idle');
+    const [connectionRequests, setConnectionRequests] = React.useState([]);
+
+    const db = window.firebaseDB;
 
     React.useEffect(() => {
         window.firebaseDB.ref(`users/${user.id}/settings`).once('value').then(snapshot => {
@@ -17,6 +24,21 @@ function Settings({ user, onClose, chats }) {
                 setSettings({ ...settings, ...data });
             }
         });
+        
+        // Carrega solicitações de conexão
+        const requestsRef = db.ref(`connectionRequests/${user.id}`);
+        const handleRequests = (snap) => {
+            const data = snap.val();
+            if (data) {
+                const requests = Object.entries(data).map(([id, req]) => ({
+                    id,
+                    ...req
+                }));
+                setConnectionRequests(requests);
+            }
+        };
+        requestsRef.on('value', handleRequests);
+        return () => requestsRef.off('value', handleRequests);
     }, [user.id]);
 
     const updateSetting = (key, value) => {
@@ -47,37 +69,196 @@ function Settings({ user, onClose, chats }) {
 
     const contacts = chats ? chats.filter(c => c.type !== 'group') : [];
 
+    // ==================== FUNÇÕES DO QR CODE ====================
+    const generateQRCode = async () => {
+        setConnectionStatus('generating');
+        
+        try {
+            const connectionToken = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+            const connectionData = {
+                userId: user.id,
+                userName: user.name,
+                userAvatar: user.avatar,
+                token: connectionToken,
+                createdAt: Date.now(),
+                expiresAt: Date.now() + (5 * 60 * 1000),
+                status: 'pending'
+            };
+            
+            await db.ref(`connectionTokens/${connectionToken}`).set(connectionData);
+            
+            const qrData = JSON.stringify({
+                type: 'chat_connection',
+                token: connectionToken,
+                userId: user.id,
+                timestamp: Date.now()
+            });
+            
+            setQrCodeData(qrData);
+            setConnectionStatus('ready');
+            
+            setTimeout(() => {
+                db.ref(`connectionTokens/${connectionToken}`).remove();
+                if (qrCodeData === qrData) {
+                    setConnectionStatus('expired');
+                    setTimeout(() => setShowQRModal(false), 2000);
+                }
+            }, 5 * 60 * 1000);
+            
+        } catch (error) {
+            console.error('Erro ao gerar QR Code:', error);
+            setConnectionStatus('error');
+        }
+    };
+
+    const acceptConnection = async (request) => {
+        await db.ref(`users/${user.id}/contacts/${request.fromUserId}`).set({
+            type: 'private',
+            addedAt: Date.now(),
+            name: request.fromUserName,
+            avatar: request.fromUserAvatar
+        });
+        
+        await db.ref(`connectionRequests/${user.id}/${request.id}`).remove();
+        alert(`✅ ${request.fromUserName} adicionado aos seus contatos!`);
+    };
+
+    const rejectConnection = async (request) => {
+        await db.ref(`connectionRequests/${user.id}/${request.id}`).remove();
+    };
+
     const handleAvatarChange = async (e) => {
         if (!e.target.files[0]) return;
         
         try {
             const file = e.target.files[0];
-            const base64 = await window.compressImage(file, 300, 0.7);
+            const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
             
-            // Update Firebase
-            window.firebaseDB.ref(`users/${user.id}/avatar`).set(base64);
-            
-            // Update Local Storage
+            await window.firebaseDB.ref(`users/${user.id}/avatar`).set(base64);
             const updatedUser = { ...user, avatar: base64 };
             localStorage.setItem("chat_user", JSON.stringify(updatedUser));
-            
-            // Update state (Settings is controlled by props mostly, but we can try to force update or rely on parent re-render if it listened to firebase, 
-            // but for immediate feedback in this modal which uses props.user, we might need to reload or just trust Firebase listener in parent will propagate)
-            // Ideally, App.js listens to user changes or we update the parent. 
-            // Since we are just editing DB, let's assume real-time listener in App/ChatInterface will pick it up? 
-            // Actually ChatInterface passes `user` prop from App.js state which comes from localStorage initially.
-            // We should notify user to reload or handle it better.
-            // BUT, let's update the image src directly in DOM for instant feedback if we want, or just wait.
-            // Let's reload page for simplicity to ensure all states sync, OR dispatch event.
-            // Actually, best way in this architecture: Update DB, and update LocalStorage. App.js won't re-render automatically from LocalStorage change.
-            // Let's use window.location.reload() for a hard sync as requested "funciona de verdade" often implies consistency.
-            // Or better: trigger a callback if we had one.
-            window.location.reload(); 
+            window.location.reload();
             
         } catch (error) {
             console.error("Erro ao trocar foto:", error);
             alert("Erro ao carregar a imagem.");
         }
+    };
+
+    // ==================== COMPONENTE DO QR CODE ====================
+    const QRCodeModal = () => {
+        if (!showQRModal) return null;
+        
+        return React.createElement('div', {
+            className: 'fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4',
+            onClick: () => setShowQRModal(false)
+        },
+            React.createElement('div', {
+                className: 'bg-white rounded-xl max-w-md w-full overflow-hidden',
+                onClick: (e) => e.stopPropagation()
+            },
+                React.createElement('div', { className: 'bg-[#00a884] p-4 text-white flex justify-between items-center' },
+                    React.createElement('h3', { className: 'font-bold text-lg' }, 'Conectar Dispositivos'),
+                    React.createElement('button', { onClick: () => setShowQRModal(false) },
+                        React.createElement('div', { className: 'icon-x text-xl' })
+                    )
+                ),
+                
+                React.createElement('div', { className: 'p-6' },
+                    (() => {
+                        if (connectionStatus === 'generating') {
+                            return React.createElement('div', { className: 'text-center py-8' },
+                                React.createElement('div', { className: 'icon-loader animate-spin text-3xl text-[#00a884] mx-auto mb-3' }),
+                                React.createElement('p', { className: 'text-gray-500' }, 'Gerando QR Code...')
+                            );
+                        }
+                        
+                        if (connectionStatus === 'ready' && qrCodeData) {
+                            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeData)}`;
+                            return React.createElement('div', { className: 'flex flex-col items-center gap-3' },
+                                React.createElement('img', {
+                                    src: qrUrl,
+                                    className: 'w-48 h-48 border-2 border-gray-200 rounded-lg p-2 bg-white',
+                                    alt: 'QR Code'
+                                }),
+                                React.createElement('p', { className: 'text-xs text-gray-500 text-center' },
+                                    'Escaneie com o app MensagensHUB para conectar'
+                                ),
+                                React.createElement('p', { className: 'text-xs text-red-400' },
+                                    '⏱️ Expira em 5 minutos'
+                                )
+                            );
+                        }
+                        
+                        if (connectionStatus === 'expired') {
+                            return React.createElement('div', { className: 'text-center py-8' },
+                                React.createElement('div', { className: 'icon-alert-circle text-5xl text-red-500 mx-auto mb-3' }),
+                                React.createElement('p', { className: 'text-gray-600 font-medium' }, 'QR Code Expirado'),
+                                React.createElement('button', {
+                                    onClick: generateQRCode,
+                                    className: 'mt-4 bg-[#00a884] text-white px-4 py-2 rounded-lg'
+                                }, 'Gerar novo')
+                            );
+                        }
+                        
+                        if (connectionStatus === 'error') {
+                            return React.createElement('div', { className: 'text-center py-8' },
+                                React.createElement('p', { className: 'text-red-500' }, 'Erro ao gerar QR Code')
+                            );
+                        }
+                        
+                        return React.createElement('div', { className: 'text-center py-4' },
+                            React.createElement('div', { className: 'icon-qrcode text-5xl text-gray-400 mx-auto mb-3' }),
+                            React.createElement('p', { className: 'text-gray-500' }, 'Clique em "Gerar QR Code" para começar'),
+                            React.createElement('button', {
+                                onClick: generateQRCode,
+                                className: 'mt-4 bg-[#00a884] text-white px-6 py-2 rounded-lg'
+                            }, 'Gerar QR Code')
+                        );
+                    })()
+                )
+            )
+        );
+    };
+
+    // ==================== MODAL DE SOLICITAÇÕES ====================
+    const RequestsModal = () => {
+        if (connectionRequests.length === 0) return null;
+        
+        return React.createElement('div', {
+            className: 'fixed bottom-20 right-4 z-50 bg-white rounded-lg shadow-xl border border-gray-200 w-72 overflow-hidden animate-slide-in-right'
+        },
+            React.createElement('div', { className: 'bg-[#00a884] text-white px-4 py-2 text-sm font-bold flex justify-between items-center' },
+                React.createElement('span', {}, `Solicitações (${connectionRequests.length})`),
+                React.createElement('button', { onClick: () => setConnectionRequests([]) },
+                    React.createElement('div', { className: 'icon-x text-white text-sm' })
+                )
+            ),
+            React.createElement('div', { className: 'max-h-64 overflow-y-auto p-2' },
+                connectionRequests.map(req => 
+                    React.createElement('div', { key: req.id, className: 'flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg mb-1' },
+                        React.createElement('div', { className: 'flex items-center gap-2' },
+                            React.createElement('img', { src: req.fromUserAvatar, className: 'w-8 h-8 rounded-full' }),
+                            React.createElement('span', { className: 'text-sm font-medium' }, req.fromUserName)
+                        ),
+                        React.createElement('div', { className: 'flex gap-2' },
+                            React.createElement('button', {
+                                onClick: () => acceptConnection(req),
+                                className: 'p-1 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-green-600'
+                            }, '✓'),
+                            React.createElement('button', {
+                                onClick: () => rejectConnection(req),
+                                className: 'p-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600'
+                            }, '✕')
+                        )
+                    )
+                )
+            )
+        );
     };
 
     return (
@@ -160,6 +341,21 @@ function Settings({ user, onClose, chats }) {
                             >
                                 <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${settings.publicId ? 'translate-x-6' : ''}`}></div>
                             </button>
+                        </div>
+
+                        {/* QR Code Connection - SEÇÃO NOVA */}
+                        <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-white shadow-md relative overflow-hidden cursor-pointer hover:opacity-90 transition" onClick={() => setShowQRModal(true)}>
+                            <div className="relative z-10 flex justify-between items-center">
+                                <div>
+                                    <h4 className="font-bold flex items-center gap-2">
+                                        <div className="icon-qrcode"></div> Conectar Dispositivos
+                                    </h4>
+                                    <p className="text-xs text-white/80 mt-1">Compartilhe seus contatos via QR Code</p>
+                                </div>
+                                <div className="bg-white/20 p-2 rounded-full">
+                                    <div className="icon-qrcode text-white text-xl"></div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Wallet / Credits Section */}
@@ -275,6 +471,12 @@ function Settings({ user, onClose, chats }) {
                         </div>
                     </div>
                 )}
+
+                {/* QR Code Modal */}
+                <QRCodeModal />
+                
+                {/* Requests Modal */}
+                <RequestsModal />
             </div>
         </div>
     );
