@@ -1,560 +1,133 @@
-<!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MensagensHUB</title>
+    <meta name="description" content="Aplicativo de mensagens real com CodeHUB">
+    <link rel="manifest" href="manifest.json">
 
-  <!-- SEO -->
-  <meta name="keywords" content="CodeHUB, editor de código online, IDE online, programar no navegador, editor HTML, editor CSS, editor JavaScript, desenvolvimento web online, criar sites online, editor de código grátis, IDE para iniciantes, editor responsivo, ferramenta programação, codar no navegador, editor com terminal, escrever código online, depuração online, editor de código rápido, desenvolvimento colaborativo, criar projetos web, editor frontend, plataforma de codar online, editor de programação, IDE web, editor de scripts, editor JS, editor CSS3, editor HTML5, criar páginas web, prototipagem online, editor web interativo, IDE colaborativa, editor de código com login, projetos online, editor de apps web, editor multiplataforma, editor com versionamento, editor de projetos HTML CSS JS, editor de código para estudantes, IDE para web developers, editor de código com templates, editor de projetos compartilháveis, editor para iniciantes em web, editor rápido e leve, editor de código com terminal integrado, editor de desenvolvimento web, editor de protótipos web, plataforma de aprendizado de programação, editor de sites responsivos, editor de HTML CSS JS online, criar sites responsivos online, editor de front-end, editor com Firebase, editor para projetos pessoais, IDE web gratuita, editor para codar online, editor de código interativo, editor de projetos colaborativos, editor de sites e aplicações, editor para estudantes de programação, editor de código com suporte a frameworks, editor de desenvolvimento ágil, IDE de aprendizado online, editor de projetos rápidos, editor de código para educação, editor de páginas web, editor de apps HTML CSS JS">
-  <meta name="author" content="CodeHUB - Alexandre Braatz Junior, fundador da plataforma">
-  <meta name="google-site-verification" content="d5deNmIStRgPPphEkAypCTSv-E_1gi9ba16et47RSmA" />
+    <!-- React Dependencies -->
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-X4VF1LWB0F');
+    </script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
 
-  <title>CodeHUB - Editor de Código Online</title>
-  <link rel="icon" type="image/png" href="https://alexandre7888.github.io/CodeHUB/InShot_20250807_112151490.jpg">
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-X4VF1LWB0F');
-    gtag('config', 'G-XQE93JQ3RB');
-    gtag('config', 'G-7RYPMEN60E');
-  </script>
+    <!-- Lucide Icons -->
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
 
-  <!-- Scripts Externos -->
-  <script src="https://alexandre7888.github.io/CodeHUB/protecao.js"></script>
-  <script src="https://alexandre7888.github.io/CodeHUB/Botao/floating-menu.js"></script>
-  <script type="module" src="https://code.codehub.ct.ws/client.js"></script>
-  <script src="https://assistente-ia--socialkoala6579904.on.websim.com/embed.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
-  <style>
-    /* Loading Screen Styles */
-    #loading-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle at center, #1e293b, #0f172a);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      color: white;
-      font-family: Arial, sans-serif;
-      z-index: 9999;
-      transition: opacity 0.5s ease;
+    <!-- PeerJS for Real Calls -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <!-- CodeHUB Auth API -->
+    <script src="https://code.codehub.ct.ws/API/userKeyAPI.js"></script>
+
+    <style type="text/tailwindcss">
+        @layer theme {
+        :root {
+            --primary-color: #00a884;
+            --secondary-color: #f0f2f5;
+            --chat-bg: #efeae2;
+            --outgoing-msg: #d9fdd3;
+            --incoming-msg: #ffffff;
+        }
     }
 
-    #loading-screen h1 {
-      margin-top: 20px;
-      font-size: 1.8em;
-      color: #ff9500;
-      text-shadow: 0 0 10px #ff9500, 0 0 20px #ff7300;
-      animation: glowText 2s infinite alternate;
+    @layer base {
+        body {
+            @apply bg-[var(--secondary-color)] text-gray-800 font-sans;
+            overscroll-behavior: none;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
     }
 
-    .loader {
-      width: 280px;
-      height: 280px;
-      animation: spinScale 4s ease-in-out infinite, glow 2s ease-in-out infinite alternate;
-      border-radius: 50%;
-      box-shadow: 0 0 20px rgba(255,149,0,0.5);
-      transition: all 0.5s ease-in-out;
+    @layer utilities {
+        .bg-chat-pattern {
+            background-color: var(--chat-bg);
+            background-image: url("https://www.transparenttextures.com/patterns/subtle-white-feathers.png"); 
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        .animate-slide-in-right { animation: slideInRight 0.3s ease-out; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
     }
-
-    @keyframes glowText {
-      0% { text-shadow: 0 0 5px #ff9500, 0 0 15px #ff7300; }
-      100% { text-shadow: 0 0 15px #ff9500, 0 0 30px #ff7300; }
-    }
-
-    @keyframes spinScale {
-      0%   { transform: rotate(0deg) scale(1); }
-      25%  { transform: rotate(90deg) scale(1.1); }
-      50%  { transform: rotate(180deg) scale(0.9); }
-      75%  { transform: rotate(270deg) scale(1.1); }
-      100% { transform: rotate(360deg) scale(1); }
-    }
-
-    @keyframes glow {
-      0% { box-shadow: 0 0 20px rgba(255,149,0,0.5), 0 0 40px rgba(255,149,0,0.3); }
-      100% { box-shadow: 0 0 40px rgba(255,149,0,0.8), 0 0 80px rgba(255,149,0,0.5); }
-    }
-
-    /* Main App Styles */
-    #app-content {
-      display: none;
-    }
-
-    :root {
-      --primary-color: #4361ee;
-      --secondary-color: #3f37c9;
-      --accent-color: #4895ef;
-      --danger-color: #f72585;
-      --success-color: #4cc9f0;
-      --light-color: #f8f9fa;
-      --dark-color: #212529;
-      --gray-color: #6c757d;
-      --discord-color: #5865F2;
-      --github-color: #24292e;
-    }
-
-    /* Banner personalizado */
-    .admin-banner {
-      color: white;
-      padding: 15px 40px 15px 20px;
-      text-align: center;
-      position: relative;
-      cursor: pointer;
-      transition: all 0.3s;
-      display: none;
-      font-size: 14px;
-      z-index: 100;
-      background-size: cover;
-      background-position: center;
-    }
-    .admin-banner:hover { transform: scale(1.01); }
-    .admin-banner .close-banner {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: rgba(0,0,0,0.3);
-      border: none;
-      color: white;
-      cursor: pointer;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .admin-banner .close-banner:hover { background: rgba(0,0,0,0.5); }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f7fa;
-      color: #333;
-      line-height: 1.6;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-      color: white;
-      padding: 1rem;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .header-content {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .logo-area { display: flex; align-items: center; gap: 1rem; }
-    .logo-area h1 { font-size: 1.5rem; }
-
-    .user-info { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-
-    /* ============ GITHUB BOTÃO ============ */
-    .github-btn {
-      background: var(--github-color); color: white; border: none;
-      padding: 8px 14px; border-radius: 6px; cursor: pointer;
-      display: flex; align-items: center; gap: 6px;
-      font-weight: 600; font-size: 13px; transition: all 0.3s;
-      white-space: nowrap; text-decoration: none;
-    }
-    .github-btn:hover { background: #1b1f23; transform: scale(1.03); }
-    .github-btn.connected { background: #2ea44f; }
-    .github-btn.connected:hover { background: #2c974b; }
-
-    .github-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: #f0f7ff; color: #0366d6; padding: 3px 10px;
-      border-radius: 12px; font-size: 0.75rem; font-weight: 600;
-      border: 1px solid #c8e1ff; margin-bottom: 0.5rem;
-    }
-
-    .sync-btn {
-      background-color: #2ea44f !important; color: white !important;
-    }
-    .sync-btn:hover { background-color: #2c974b !important; }
-
-    .logout-btn {
-      background-color: var(--danger-color); color: white; border: none;
-      padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;
-      font-weight: 600; transition: all 0.3s;
-      display: flex; align-items: center; gap: 0.5rem;
-    }
-
-    .admin-link {
-      background: rgba(255,255,255,0.2); padding: 5px 12px;
-      border-radius: 20px; font-size: 12px; text-decoration: none;
-      color: white; transition: all 0.3s;
-    }
-    .admin-link:hover { background: rgba(255,255,255,0.3); }
-
-    .container { flex: 1; max-width: 1200px; margin: 1rem auto; padding: 0 1rem; width: 100%; }
-
-    .projects-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
-    }
-
-    .new-project-btn {
-      background-color: var(--success-color); color: white; border: none;
-      padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;
-      font-weight: 600; display: flex; align-items: center; gap: 0.5rem;
-      transition: all 0.3s; white-space: nowrap;
-    }
-
-    .projects-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .project-card {
-      background-color: white; border-radius: 10px; padding: 1.5rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.3s ease;
-      border: 1px solid #eaeaea; display: flex; flex-direction: column;
-    }
-    .project-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-
-    .project-name { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--dark-color); }
-    .project-domain { font-size: 0.9rem; color: var(--gray-color); margin-bottom: 0.5rem; }
-
-    .project-actions { display: flex; gap: 0.5rem; margin-top: auto; flex-wrap: wrap; }
-
-    .action-btn {
-      padding: 0.5rem 0.8rem; border: none; border-radius: 6px; cursor: pointer;
-      font-weight: 600; font-size: 0.85rem; display: flex; align-items: center;
-      gap: 0.4rem; transition: all 0.2s; flex: 1; justify-content: center;
-      white-space: nowrap;
-    }
-    .edit-btn { background-color: var(--accent-color); color: white; }
-    .delete-btn { background-color: var(--danger-color); color: white; }
-
-    /* Modal */
-    .modal {
-      display: none; position: fixed; z-index: 1100; left: 0; top: 0;
-      width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
-      backdrop-filter: blur(3px); overflow-y: auto;
-    }
-    .modal-content {
-      background-color: white; margin: 5% auto; padding: 2rem;
-      border-radius: 10px; width: 90%; max-width: 550px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.2); position: relative;
-    }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-    .modal-header h3 { font-size: 1.4rem; color: var(--dark-color); }
-    .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray-color); }
-
-    .form-group { margin-bottom: 1.2rem; }
-    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark-color); }
-    .form-group input, .form-group select {
-      width: 100%; padding: 0.75rem; border: 1px solid #ddd;
-      border-radius: 6px; font-size: 1rem;
-    }
-    .form-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
-    .cancel-btn { background-color: var(--gray-color); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
-    .confirm-btn { background-color: var(--primary-color); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
-
-    .status-msg { padding: 8px 12px; border-radius: 4px; margin: 10px 0; font-size: 0.85rem; display: none; }
-    .status-msg.success { background: #d4edda; color: #155724; display: block; }
-    .status-msg.error { background: #f8d7da; color: #721c24; display: block; }
-    .status-msg.info { background: #cce5ff; color: #004085; display: block; }
-
-    /* Cookie */
-    .cookie-banner {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      background: rgba(0,0,0,0.9); color: white; padding: 1rem;
-      display: flex; flex-wrap: wrap; justify-content: space-between;
-      align-items: center; z-index: 1100;
-    }
-    .cookie-btn { padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 600; }
-    .cookie-accept { background-color: var(--success-color); color: white; border: none; }
-    .cookie-reject { background-color: transparent; color: white; border: 1px solid white; }
-
-    @media (max-width: 768px) {
-      .projects-grid { grid-template-columns: 1fr; }
-      .project-actions { flex-direction: column; }
-      .modal-content { margin: 10% auto; }
-    }
-  </style>
+    </style>
+    <meta name="twitter:title" content="MensagensHUB">
+    <meta name="twitter:description" content="Aplicativo de mensagens real com CodeHUB e Firebase">
 </head>
+
 <body>
-  <div id="loading-screen">
-    <img id="codefox" src="https://alexandre7888.github.io/CodeHUB/CodeFOX/foto1.jpg" class="loader" alt="CodeFOX girando">
-    <h1>Carregando...</h1>
-  </div>
+    <div id="root"></div>
 
-  <div id="app-content">
-    <div id="admin-banner" class="admin-banner" style="display: none;">
-      <span id="banner-text"></span>
-      <button class="close-banner" onclick="fecharBanner()">✕</button>
-    </div>
+    <!-- ==================== UTILS ==================== -->
+    <script type="text/babel" src="utils/firebaseConfig.js"></script>
+    <script type="text/babel" src="utils/notifications.js"></script>
+    <script type="text/babel" src="utils/chatApi.js"></script>
+    <script type="text/babel" src="utils/helpers.js"></script>
+    <script type="text/babel" src="utils/scriptEngine.js"></script>
 
-    <header>
-      <div class="header-content">
-        <div class="logo-area">
-          <h1>🚀 CodeHUB</h1>
-        </div>
-        <div class="user-info" id="user-info">
-          <button id="github-login-btn" class="github-btn" onclick="loginWithGitHub()">
-            🔗 Conectar GitHub
-          </button>
-          <span id="username"></span>
-          <button class="logout-btn" onclick="logout()">Sair</button>
-        </div>
-      </div>
-    </header>
+    <!-- ==================== COMPONENTES BASE ==================== -->
+    <!-- Primeiro o registrador de componentes -->
+    <script type="text/babel" src="components/ComponentRegistry.js"></script>
+    
+    <!-- Depois todos os componentes (ordem não importa, só precisam vir depois do registry) -->
+    <script type="text/babel" src="components/StatusIndicator.js"></script>
+    <script type="text/babel" src="components/StatusBadge.js"></script>
+    <script type="text/babel" src="components/UserAvatar.js"></script>
+    <script type="text/babel" src="components/ContactItem.js"></script>
+    <script type="text/babel" src="components/MessageInput.js"></script>
+    <script type="text/babel" src="components/Toast.js"></script>
+    <script type="text/babel" src="components/Modal.js"></script>
+    <script type="text/babel" src="components/LoadingSpinner.js"></script>
+    <script type="text/babel" src="components/ContextMenu.js"></script>
+    <script type="text/babel" src="components/ComponentLoader.js"></script>
+    <script type="text/babel" src="components/ContactStatusBadge.js"></script>
 
-    <div class="container">
-      <div class="projects-header">
-        <h2>📁 Seus Projetos</h2>
-        <button class="new-project-btn" onclick="openNewProjectModal()">+ Novo Projeto</button>
-      </div>
-      <div id="projects-container" class="projects-grid"></div>
-    </div>
+    <!-- ==================== COMPONENTES ESPECÍFICOS DO SISTEMA ==================== -->
+    <script type="text/babel" src="components/AudioRecorder.js"></script>
+    <script type="text/babel" src="components/Settings.js"></script>
+    <script type="text/babel" src="components/RuleEditor.js"></script>
+    <script type="text/babel" src="components/GroupInfo.js"></script>
+    <script type="text/babel" src="components/SystemStatus.js"></script>
+    <script type="text/babel" src="components/JoinRequestModal.js"></script>
+    <script type="text/babel" src="components/Login.js"></script>
+    <script type="text/babel" src="components/CallManager.js"></script>
 
-    <!-- Modal Projeto -->
-    <div id="project-modal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 id="modal-title">✨ Novo Projeto</h3>
-          <button class="close-btn" onclick="closeProjectModal()">&times;</button>
-        </div>
-        <form id="project-form">
-          <div class="form-group">
-            <label>Nome do Projeto</label>
-            <input type="text" id="project-name" required maxlength="50">
-          </div>
-          <div class="form-group" id="github-section">
-            <label>🔗 Vincular Repositório GitHub (opcional)</label>
-            <div id="github-status" class="status-msg"></div>
-            <select id="github-repo-select">
-              <option value="">Nenhum</option>
-            </select>
-            <button type="button" class="github-btn" onclick="loadRepos()" style="margin-top:8px;width:100%;">🔄 Carregar Repositórios</button>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="cancel-btn" onclick="closeProjectModal()">Cancelar</button>
-            <button type="submit" class="confirm-btn">Salvar</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- ==================== PRINCIPAL ==================== -->
+    <script type="text/babel" src="components/ChatInterface.js"></script>
+    <script type="text/babel" src="app.js"></script>
 
-    <div id="cookie-banner" class="cookie-banner" style="display: none;">
-      <p>🍪 Nós usamos cookies.</p>
-      <div>
-        <button class="cookie-btn cookie-accept" onclick="acceptCookies()">Aceitar</button>
-        <button class="cookie-btn cookie-reject" onclick="rejectCookies()">Recusar</button>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, push, set, onValue, remove, get, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.appspot.com",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const database = getDatabase(app);
-
-    let userData = null;
-    let githubToken = null;
-    let githubRepos = [];
-    let editingProjectId = null;
-
-    const GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwB6xx4nVPuW2aPEbBQawxuekBXFrU6AOYYZXMkjFQ4FB__mN51Ll8GQNIp9lp0IkKV/exec";
-    const GITHUB_CLIENT_ID = "Ov23liuEuOxeSy0cgbYQ"; // ⚠️ SUBSTITUA PELO SEU
-
-    // ============ LOADING ============
-    const loadingScreen = document.getElementById('loading-screen');
-    const appContent = document.getElementById('app-content');
-    const imgs = ["foto1.jpg","foto2.jpg","foto3.jpg"].map(f => `https://alexandre7888.github.io/CodeHUB/CodeFOX/${f}`);
-    let i = 0;
-    setInterval(() => { i = (i+1)%3; document.getElementById('codefox').src = imgs[i]; }, 2000);
-    setTimeout(() => { loadingScreen.style.display='none'; appContent.style.display='block'; }, 1500);
-
-    // ============ GITHUB ============
-    window.loginWithGitHub = function() {
-      const redirect = encodeURIComponent(location.origin + location.pathname);
-      location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${redirect}&scope=repo,user`;
-    };
-
-    function checkGitHubToken() {
-      githubToken = localStorage.getItem("github_token");
-      const btn = document.getElementById('github-login-btn');
-      if (githubToken) {
-        btn.textContent = '✅ GitHub Conectado';
-        btn.className = 'github-btn connected';
-        btn.onclick = () => { if(confirm('Desconectar?')){ localStorage.removeItem('github_token'); githubToken=null; checkGitHubToken(); } };
-      } else {
-        btn.textContent = '🔗 Conectar GitHub';
-        btn.className = 'github-btn';
-        btn.onclick = window.loginWithGitHub;
-      }
-    }
-
-    function jsonp(token, acao, extra={}) {
-      return new Promise((resolve, reject) => {
-        const cb = '_cb' + Date.now();
-        window[cb] = d => { delete window[cb]; d.erro ? reject(new Error(d.erro)) : resolve(d); };
-        let url = `${GOOGLE_SCRIPT}?callback=${cb}&token=${token}&acao=${acao}`;
-        for (let k in extra) url += `&${k}=${encodeURIComponent(extra[k])}`;
-        const s = document.createElement('script'); s.src = url; s.onerror=()=>reject(new Error('Script error')); document.body.appendChild(s);
-      });
-    }
-
-    window.loadRepos = async function() {
-      if (!githubToken) return alert('Conecte o GitHub primeiro!');
-      const st = document.getElementById('github-status');
-      st.textContent = '⏳ Carregando...'; st.className = 'status-msg info';
-      try {
-        githubRepos = await jsonp(githubToken, 'listar');
-        const sel = document.getElementById('github-repo-select');
-        sel.innerHTML = '<option value="">Nenhum</option>';
-        githubRepos.forEach(r => { const o = document.createElement('option'); o.value = r.nome; o.textContent = r.nome; sel.appendChild(o); });
-        st.textContent = `✅ ${githubRepos.length} repositórios`; st.className = 'status-msg success';
-      } catch(e) { st.textContent = '❌ ' + e.message; st.className = 'status-msg error'; }
-    };
-
-    async function syncRepoToProject(repoName, projectId) {
-      if (!githubToken) return;
-      try {
-        const user = await jsonp(githubToken, 'user');
-        const treeUrl = `https://api.github.com/repos/${user.login}/${repoName}/git/trees/main?recursive=1`;
-        const tr = await fetch(treeUrl, { headers: { Authorization: `Bearer ${githubToken}` } });
-        const td = await tr.json();
-        if (!td.tree) return;
-        const files = {};
-        for (const item of td.tree) {
-          if (item.type === 'blob' && item.path.match(/\.(html|css|js)$/)) {
-            const cr = await fetch(item.url, { headers: { Authorization: `Bearer ${githubToken}` } });
-            const cd = await cr.json();
-            const ext = item.path.split('.').pop();
-            const lang = { html:'html', css:'css', js:'javascript' }[ext] || ext;
-            files[item.path.replace(/[.\/]/g,'_')] = { name: item.path, content: atob(cd.content||''), language: lang };
-          }
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                .then(registration => {
+                    console.log('SW registrado com sucesso:', registration.scope);
+                })
+                .catch(err => {
+                    console.log('Falha ao registrar SW:', err);
+                });
+            });
         }
-        if (Object.keys(files).length) {
-          await update(ref(database, `projects/${userData.uid}/${projectId}`), { files, updatedAt: new Date().toISOString() });
-        }
-      } catch(e) { console.error(e); }
-    }
-
-    window.syncProject = async function(projectId, repoName) {
-      if (!confirm(`Sincronizar com ${repoName}?`)) return;
-      await syncRepoToProject(repoName, projectId);
-      alert('✅ Sincronizado!');
-    };
-
-    // ============ PROJETOS ============
-    function loadProjects(uid) {
-      onValue(ref(database, `projects/${uid}`), snap => {
-        const container = document.getElementById('projects-container');
-        container.innerHTML = '';
-        const projects = snap.val() || {};
-        if (!Object.keys(projects).length) container.innerHTML = '<p style="text-align:center;color:#999;">Nenhum projeto</p>';
-        for (const [pid, p] of Object.entries(projects)) {
-          const card = document.createElement('div');
-          card.className = 'project-card';
-          card.innerHTML = `
-            ${p.githubRepo ? `<div class="github-badge">🔗 ${p.githubRepo}</div>` : ''}
-            <div class="project-name">📄 ${p.name||''}</div>
-            <div class="project-actions">
-              <button class="action-btn edit-btn" onclick="location.href='editor.html?projectId=${pid}'">✏️ Abrir</button>
-              ${p.githubRepo ? `<button class="action-btn sync-btn" onclick="syncProject('${pid}','${p.githubRepo}')">🔄 Sincronizar</button>` : ''}
-              <button class="action-btn" style="background:#6c757d;color:white;" onclick="editProject('${pid}')">⚙️</button>
-              <button class="action-btn delete-btn" onclick="deleteProject('${pid}')">🗑️</button>
-            </div>`;
-          container.appendChild(card);
-        }
-      });
-    }
-
-    window.openNewProjectModal = () => { editingProjectId=null; document.getElementById('modal-title').textContent='✨ Novo Projeto'; document.getElementById('project-name').value=''; document.getElementById('project-modal').style.display='block'; };
-    window.closeProjectModal = () => { document.getElementById('project-modal').style.display='none'; };
-    window.editProject = async pid => {
-      const snap = await get(ref(database, `projects/${userData.uid}/${pid}`));
-      const p = snap.val(); editingProjectId=pid;
-      document.getElementById('modal-title').textContent='⚙️ Editar';
-      document.getElementById('project-name').value=p.name||'';
-      document.getElementById('github-repo-select').value=p.githubRepo||'';
-      document.getElementById('project-modal').style.display='block';
-    };
-
-    document.getElementById('project-form').addEventListener('submit', async e => {
-      e.preventDefault();
-      const name = document.getElementById('project-name').value.trim();
-      if (!name) return;
-      const repo = document.getElementById('github-repo-select').value;
-      if (editingProjectId) {
-        await update(ref(database, `projects/${userData.uid}/${editingProjectId}`), { name, githubRepo: repo||null, updatedAt: new Date().toISOString() });
-        if (repo) await syncRepoToProject(repo, editingProjectId);
-      } else {
-        const ref = push(ref(database, `projects/${userData.uid}`));
-        await set(ref, { name, githubRepo: repo||null, owner: userData.displayName, createdAt: new Date().toISOString(), files: { 'index_html': { name:'index.html', content:'<h1>'+name+'</h1>', language:'html' } } });
-        if (repo) await syncRepoToProject(repo, ref.key);
-      }
-      closeProjectModal();
-    });
-
-    window.deleteProject = pid => { if(confirm('Excluir?')) remove(ref(database, `projects/${auth.currentUser.uid}/${pid}`)); };
-    window.logout = () => signOut(auth).then(()=>location.href='auth.html');
-
-    // ============ AUTH ============
-    onAuthStateChanged(auth, async user => {
-      if (!user) return location.href='auth.html';
-      userData = { uid: user.uid, email: user.email, displayName: user.displayName||user.email.split('@')[0] };
-      document.getElementById('username').textContent = '👤 ' + userData.displayName;
-      checkGitHubToken();
-
-      // Se voltou do GitHub com code
-      const params = new URLSearchParams(location.search);
-      const code = params.get('code');
-      if (code) {
-        history.replaceState({}, '', location.pathname);
-        const r = await fetch(`https://code-hub-eta.vercel.app/api/aq?code=${code}`);
-        const d = await r.json();
-        if (d.token) { localStorage.setItem('github_token', d.token); checkGitHubToken(); }
-      }
-
-      loadProjects(user.uid);
-    });
-
-    // ============ COOKIES ============
-    if (!localStorage.getItem('cookiesAccepted')) document.getElementById('cookie-banner').style.display='flex';
-    window.acceptCookies = () => { localStorage.setItem('cookiesAccepted','1'); document.getElementById('cookie-banner').style.display='none'; };
-    window.rejectCookies = () => { localStorage.setItem('cookiesAccepted','0'); document.getElementById('cookie-banner').style.display='none'; };
-  </script>
+    </script>
 </body>
+
 </html>
