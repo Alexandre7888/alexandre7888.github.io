@@ -13,7 +13,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [toastMessage, setToastMessage] = React.useState(null);
     const [copiedMessageId, setCopiedMessageId] = React.useState(null);
     const [uploadProgress, setUploadProgress] = React.useState({});
-    const [downloadProgress, setDownloadProgress] = React.useState({});
+
+    // ==================== MODAL STATES ====================
+    const [showUserInfo, setShowUserInfo] = React.useState(false);
+    const [selectedUser, setSelectedUser] = React.useState(null);
+    const [showAddContact, setShowAddContact] = React.useState(false);
+    const [showGroupInfo, setShowGroupInfo] = React.useState(false);
+    const [showSettings, setShowSettings] = React.useState(false);
+    const [showBotCreator, setShowBotCreator] = React.useState(false);
 
     // Rate limiter
     const rateLimiter = React.useRef({});
@@ -43,6 +50,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             return false;
         }
         return true;
+    };
+
+    const checkIfBlocked = async (userId) => {
+        const blockSnap = await db.ref(`users/${user.id}/blocked/${userId}`).once('value');
+        const blockedByThem = await db.ref(`users/${userId}/blocked/${user.id}`).once('value');
+        return { blockedByMe: blockSnap.exists(), blockedByThem: blockedByThem.exists() };
     };
 
     const checkRateLimit = (userId, chatId) => {
@@ -145,33 +158,15 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setTimeout(() => setToastMessage(null), 3000);
     };
 
-    React.useEffect(() => {
-        const updateLastActive = () => db.ref(`users/${user.id}/lastActive`).set(Date.now());
-        updateLastActive();
-        const interval = setInterval(updateLastActive, 60 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [user.id]);
-
-    React.useEffect(() => {
-        const handleClick = () => setContextMenu({ visible: false, x: 0, y: 0, message: null });
-        window.addEventListener('click', handleClick);
-        return () => window.removeEventListener('click', handleClick);
-    }, []);
-
     // Bot & Media States
-    const [showBotCreator, setShowBotCreator] = React.useState(false);
     const fileInputRef = React.useRef(null);
     const videoInputRef = React.useRef(null);
-
-    // Modal States
-    const [showAddContact, setShowAddContact] = React.useState(false);
-    const [showGroupInfo, setShowGroupInfo] = React.useState(false);
-    const [showSettings, setShowSettings] = React.useState(false);
 
     // Permissions
     const [groupPermissions, setGroupPermissions] = React.useState(null);
     const [professionalPanel, setProfessionalPanel] = React.useState(false);
     const [showProfessionalPanel, setShowProfessionalPanel] = React.useState(false);
+    const [backgroundMode, setBackgroundMode] = React.useState(false);
 
     React.useEffect(() => {
         setProfessionalPanel(localStorage.getItem('professional_panel') === 'activated');
@@ -183,16 +178,22 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (showSettings) setShowSettings(false);
             else if (showGroupInfo) setShowGroupInfo(false);
             else if (showAddContact) setShowAddContact(false);
+            else if (showUserInfo) setShowUserInfo(false);
             else if (activeChat) setActiveChat(null);
         };
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, [showSettings, showGroupInfo, showAddContact, activeChat]);
+    }, [showSettings, showGroupInfo, showAddContact, showUserInfo, activeChat]);
 
     const pushHistoryState = (view) => window.history.pushState({ view }, '', window.location.pathname);
     const openSettings = () => { pushHistoryState('settings'); setShowSettings(true); };
     const openGroupInfo = () => { pushHistoryState('groupInfo'); setShowGroupInfo(true); };
     const openAddContact = () => { pushHistoryState('addContact'); setShowAddContact(true); };
+    const openUserInfoModal = (targetUser) => { 
+        pushHistoryState('userInfo'); 
+        setSelectedUser(targetUser);
+        setShowUserInfo(true); 
+    };
     const openChat = (chat) => { pushHistoryState('chat'); setActiveChat(chat); };
 
     // Call States
@@ -222,8 +223,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const mixedDestRef = React.useRef(null);
     const callTimerRefAux = React.useRef(null);
 
-    // Status
-    const [backgroundMode, setBackgroundMode] = React.useState(false);
+    // Participants
     const [participantsInfo, setParticipantsInfo] = React.useState({});
 
     const messagesEndRef = React.useRef(null);
@@ -235,6 +235,20 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         if (!activeChat || activeChat.type !== 'group') return false;
         return activeChat.members?.[user.id] === 'admin';
     }, [activeChat, user.id]);
+
+    // Atualiza último ativo
+    React.useEffect(() => {
+        const updateLastActive = () => db.ref(`users/${user.id}/lastActive`).set(Date.now());
+        updateLastActive();
+        const interval = setInterval(updateLastActive, 60 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [user.id]);
+
+    React.useEffect(() => {
+        const handleClick = () => setContextMenu({ visible: false, x: 0, y: 0, message: null });
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, []);
 
     // ==================== FUNÇÕES DE CHAMADA ====================
     
@@ -376,6 +390,18 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const startCall = async (video = false) => {
         if (!activeChat) return;
         if (activeChat.type === 'group') { startGroupCall(video); return; }
+        
+        // Verifica bloqueio antes de chamar
+        const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+        if (blockedByMe) {
+            showToastMessage("Você bloqueou este contato! Desbloqueie para ligar.", "error");
+            return;
+        }
+        if (blockedByThem) {
+            showToastMessage("Você foi bloqueado por este contato!", "error");
+            return;
+        }
+        
         setCallStatus('calling');
         setIsVideoCall(video);
         setIsMicMuted(false);
@@ -559,6 +585,19 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // ==================== FUNÇÃO PARA ENVIAR ARQUIVO EM BASE64 ====================
     const sendMediaFile = async (file, type) => {
         if (!activeChat) return;
+        
+        // Verifica bloqueio
+        if (activeChat.type !== 'group') {
+            const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+            if (blockedByMe) {
+                showToastMessage("Desbloqueie o contato para enviar arquivos!", "error");
+                return;
+            }
+            if (blockedByThem) {
+                showToastMessage("Você foi bloqueado por este contato!", "error");
+                return;
+            }
+        }
         
         if (file.size > MAX_FILE_SIZE) { 
             showToastMessage("Arquivo muito grande! Máximo 5MB", "error"); 
@@ -798,31 +837,80 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
     React.useEffect(() => {
         if (!activeChat) return;
-        let messagesRef = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
-        const markAsRead = (msgId, senderId) => {
-            db.ref(`users/${user.id}/settings`).once('value').then(s => {
-                const settings = s.val() || {};
-                let allowReadReceipt = settings.readReceipts !== false;
-                if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
-                if (allowReadReceipt) {
-                    if (activeChat.type === 'group') db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
-                    else db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
-                }
+        
+        // Verifica bloqueio antes de carregar mensagens
+        const loadMessages = async () => {
+            let messagesRef;
+            let isBlocked = false;
+            
+            if (activeChat.type !== 'group') {
+                const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+                isBlocked = blockedByMe || blockedByThem;
+            }
+            
+            if (isBlocked) {
+                setMessages([{
+                    key: 'blocked',
+                    senderId: 'system',
+                    senderName: 'Sistema',
+                    text: activeChat.type !== 'group' ? '❌ Conversa bloqueada. Desbloqueie o contato para ver as mensagens.' : '',
+                    type: 'system',
+                    timestamp: Date.now()
+                }]);
+                return;
+            }
+            
+            messagesRef = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+            
+            const markAsRead = (msgId, senderId) => {
+                db.ref(`users/${user.id}/settings`).once('value').then(s => {
+                    const settings = s.val() || {};
+                    let allowReadReceipt = settings.readReceipts !== false;
+                    if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
+                    if (allowReadReceipt) {
+                        if (activeChat.type === 'group') db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
+                        else db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
+                    }
+                });
+            };
+            
+            messagesRef.limitToLast(50).on('child_added', (snapshot) => {
+                const msg = snapshot.val();
+                setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
+                if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
             });
+            messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
         };
-        messagesRef.limitToLast(50).on('child_added', (snapshot) => {
-            const msg = snapshot.val();
-            setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
-            if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
-        });
-        messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
-        return () => { messagesRef.off(); setMessages([]); };
+        
+        loadMessages();
+        
+        return () => {
+            if (activeChat.type !== 'group') {
+                const messagesRef = db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                messagesRef.off();
+            }
+            setMessages([]);
+        };
     }, [activeChat]);
 
     React.useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
     const handleSendMessage = async (content, type = 'text', duration = null, msgType = 'text') => {
         if (!activeChat) return;
+        
+        // Verifica bloqueio
+        if (activeChat.type !== 'group') {
+            const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+            if (blockedByMe) {
+                showToastMessage("Desbloqueie o contato para enviar mensagens!", "error");
+                return;
+            }
+            if (blockedByThem) {
+                showToastMessage("Você foi bloqueado por este contato!", "error");
+                return;
+            }
+        }
+        
         if (!(await checkInactivity(user.id))) return;
         if (type === 'text' && (!content || !content.trim() || /^[\s\u200B-\u200D\uFEFF]*$/.test(content))) { showToastMessage("Mensagem vazia não é permitida!", "error"); return; }
         const now = Date.now();
@@ -849,7 +937,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         const groupName = prompt("Nome do Grupo:");
         if (groupName) {
             const groupId = Math.floor(1000 + Math.random() * 9000).toString();
-            db.ref(`groups/${groupId}`).set({ id: groupId, name: groupName, avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${groupName}`, members: { [user.id]: 'admin' }, permissions: { sendText: true, sendAudio: true, sendVideo: true, sendMedia: true, changeInfo: false } });
+            db.ref(`groups/${groupId}`).set({ 
+                id: groupId, 
+                name: groupName, 
+                avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${groupName}`, 
+                members: { [user.id]: 'admin' }, 
+                permissions: { sendText: true, sendAudio: true, sendVideo: true, sendMedia: true, changeInfo: false } 
+            });
             db.ref(`users/${user.id}/contacts/${groupId}`).set({ type: 'group', joinedAt: Date.now() });
         }
     };
@@ -929,6 +1023,29 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             {showBotCreator && (<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"><div className="bg-white p-6 rounded-lg w-80"><h3 className="text-lg font-semibold mb-4">Criar Bot</h3><input type="text" id="botName" placeholder="Nome do Bot" className="w-full border rounded p-2 mb-4" /><div className="flex justify-end gap-2"><button onClick={() => setShowBotCreator(false)} className="px-4 py-2 text-gray-600 rounded">Cancelar</button><button onClick={async () => { const name = document.getElementById('botName').value; if (name) { const botId = "bot_" + Math.random().toString(36).substring(2, 10); await db.ref(`users/${botId}`).set({ id: botId, name: name, avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`, isBot: true, createdAt: Date.now() }); alert(`Bot criado! ID: ${botId}`); setShowBotCreator(false); openAddContact(); } }} className="px-4 py-2 bg-[#00a884] text-white rounded">Criar</button></div></div></div>)}
 
             {showSettings && <Settings user={user} onClose={() => setShowSettings(false)} chats={chats} />}
+
+            {showUserInfo && window.UserInfo && React.createElement(window.UserInfo, {
+                currentUser: user,
+                targetUser: selectedUser,
+                onClose: () => setShowUserInfo(false),
+                onSendMessage: (userId) => {
+                    const chat = chats.find(c => c.id === userId);
+                    if (chat) setActiveChat(chat);
+                },
+                onBlockStatusChange: () => {
+                    // Recarrega contatos se necessário
+                    const contactsRef = db.ref(`users/${user.id}/contacts`);
+                    contactsRef.once('value').then(snapshot => {
+                        const data = snapshot.val();
+                        if (data) {
+                            Promise.all(Object.keys(data).map(async id => {
+                                const val = (await db.ref(data[id].type === 'group' ? `groups/${id}` : `users/${id}`).once('value')).val();
+                                return { ...val, type: data[id].type };
+                            })).then(loadedChats => setChats(loadedChats));
+                        }
+                    });
+                }
+            })}
 
             {showAddContact && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
@@ -1063,8 +1180,33 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    {chats.map(chat => (<div key={chat.id} onClick={() => openChat(chat)} className={`flex items-center p-3 cursor-pointer hover:bg-[#f5f6f6] ${activeChat?.id === chat.id ? 'bg-[#f0f2f5]' : ''}`}><img src={chat.avatar} className="w-12 h-12 rounded-full mr-3" /><div className="flex-1 border-b border-gray-100 pb-3 h-full flex flex-col justify-center"><div className="flex justify-between items-baseline"><span className="text-gray-900 font-medium">{chat.name}</span>{chat.type === 'group' && chat.members?.[user.id] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full ml-2">Admin</span>)}</div><div className="text-sm text-gray-500 truncate w-48">{chat.type === 'group' ? 'Grupo' : 'Privado'}</div></div></div>))}
-                    {chats.length === 0 && (<div className="p-8 text-center text-gray-400 text-sm mt-4 flex flex-col items-center"><div className="icon-book-user text-4xl mb-2 opacity-30"></div>Sua lista de contatos está vazia.<br/>Adicione um ID ou crie um grupo!</div>)}
+                    {chats.map(chat => {
+                        const ContactStatusBadge = window.AppComponents?.ContactStatusBadge;
+                        
+                        return (
+                            <div key={chat.id} onClick={() => openChat(chat)} className={`flex items-center p-3 cursor-pointer hover:bg-[#f5f6f6] ${activeChat?.id === chat.id ? 'bg-[#f0f2f5]' : ''}`}>
+                                <img src={chat.avatar} className="w-12 h-12 rounded-full mr-3" />
+                                <div className="flex-1 border-b border-gray-100 pb-3 h-full flex flex-col justify-center">
+                                    <div className="flex justify-between items-baseline">
+                                        <span className="text-gray-900 font-medium">{chat.name}</span>
+                                        {chat.type === 'group' && chat.members?.[user.id] === 'admin' && (
+                                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full ml-2">Admin</span>
+                                        )}
+                                    </div>
+                                    {ContactStatusBadge ? 
+                                        React.createElement(ContactStatusBadge, { contact: chat, currentUser: user }) :
+                                        <div className="text-sm text-gray-500 truncate w-48">{chat.type === 'group' ? 'Grupo' : 'Privado'}</div>
+                                    }
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {chats.length === 0 && (
+                        <div className="p-8 text-center text-gray-400 text-sm mt-4 flex flex-col items-center">
+                            <div className="icon-book-user text-4xl mb-2 opacity-30"></div>
+                            Sua lista de contatos está vazia.<br/>Adicione um ID ou crie um grupo!
+                        </div>
+                    )}
                     
                     {/* Componentes automáticos no fim da sidebar */}
                     {window.renderAutoComponents && window.renderAutoComponents('sidebarBottom', { user, chats })}
@@ -1074,21 +1216,30 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             {/* Main Chat Area */}
             {activeChat ? (
                 <div className={`flex-1 flex flex-col bg-[#efeae2] overflow-hidden ${activeChat ? 'flex' : 'hidden md:flex'}`}>
-                    <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300 cursor-pointer" onClick={() => activeChat.type === 'group' && openGroupInfo()}>
+                    <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setActiveChat(null)} className="md:hidden text-gray-600">
                                 <div className="icon-arrow-left"></div>
                             </button>
-                            <img src={activeChat.avatar} className="w-10 h-10 rounded-full" />
-                            <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-gray-800 font-medium">{activeChat.name}</span>
-                                    {activeChat.type !== 'group' && (activeChat.status === 'online' ? 
-                                        <span className="text-xs text-green-500 font-bold">Online</span> : 
-                                        <span className="text-xs text-gray-500">Offline</span>)}
+                            <div 
+                                className="flex items-center gap-3 cursor-pointer" 
+                                onClick={() => activeChat.type !== 'group' && openUserInfoModal(activeChat)}
+                            >
+                                <img src={activeChat.avatar} className="w-10 h-10 rounded-full" />
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-gray-800 font-medium">{activeChat.name}</span>
+                                        {activeChat.type === 'group' && activeChat.members?.[user.id] === 'admin' && (
+                                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Admin</span>
+                                        )}
+                                    </div>
+                                    {activeChat.type === 'group' ? 
+                                        <span className="text-xs text-gray-500">Toque para info do grupo</span> : 
+                                        (activeChat.status === 'online' ? 
+                                            <span className="text-xs text-green-500 font-bold">Online</span> : 
+                                            <span className="text-xs text-gray-500">Offline</span>)
+                                    }
                                 </div>
-                                {activeChat.type === 'group' ? 
-                                    <span className="text-xs text-gray-500">Toque para info do grupo</span> : null}
                             </div>
                             {/* Componentes automáticos no header do chat */}
                             {window.renderAutoComponents && window.renderAutoComponents('chatHeader', { activeChat, user })}
@@ -1102,7 +1253,15 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </div>
                     </div>
 
-                    {ongoingGroupCall && !activeGroupCall && (<div className="bg-green-100 p-3 flex justify-between items-center px-6 animate-slide-in-right cursor-pointer shadow-inner" onClick={joinGroupCall}><div className="flex items-center gap-3"><div className="p-2 bg-green-500 rounded-full text-white animate-pulse"><div className="icon-phone-incoming text-xl"></div></div><div><p className="font-bold text-green-800">Chamada em andamento</p><p className="text-xs text-green-600">Toque para participar</p></div></div><button className="bg-green-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-green-700 shadow">Entrar</button></div>)}
+                    {ongoingGroupCall && !activeGroupCall && (
+                        <div className="bg-green-100 p-3 flex justify-between items-center px-6 animate-slide-in-right cursor-pointer shadow-inner" onClick={joinGroupCall}>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-green-500 rounded-full text-white animate-pulse"><div className="icon-phone-incoming text-xl"></div></div>
+                                <div><p className="font-bold text-green-800">Chamada em andamento</p><p className="text-xs text-green-600">Toque para participar</p></div>
+                            </div>
+                            <button className="bg-green-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-green-700 shadow">Entrar</button>
+                        </div>
+                    )}
 
                     {/* Messages Area */}
                     <div className="flex-1 overflow-y-auto p-4 bg-chat-pattern relative">
@@ -1114,13 +1273,26 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 const isMediaMessage = msg.fileName && msg.text && msg.text.startsWith('data:');
 
                                 if (isSystem) {
-                                    return (<div key={idx} className="flex flex-col items-center my-2 group relative w-full"><div className="bg-[#e1f3fb] text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-2 max-w-[90%] break-words text-center"><div className="icon-info shrink-0"></div>{msg.text}</div></div>);
+                                    return (
+                                        <div key={idx} className="flex flex-col items-center my-2 group relative w-full">
+                                            <div className="bg-[#e1f3fb] text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-2 max-w-[90%] break-words text-center">
+                                                <div className="icon-info shrink-0"></div>{msg.text}
+                                            </div>
+                                        </div>
+                                    );
                                 }
 
                                 return (
                                     <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group mb-1`} onContextMenu={(e) => handleContextMenu(e, msg)}>
                                         <div className={`message-bubble rounded-lg p-2 px-3 shadow-sm relative text-sm ${isMe ? 'bg-[#d9fdd3] rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
-                                            {!isMe && activeChat.type === 'group' && (<div className="flex items-center gap-1 mb-1"><p className="text-xs text-orange-500 font-bold">{msg.senderName}</p>{activeChat.members?.[msg.senderId] === 'admin' && (<span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">👑</span>)}</div>)}
+                                            {!isMe && activeChat.type === 'group' && (
+                                                <div className="flex items-center gap-1 mb-1">
+                                                    <p className="text-xs text-orange-500 font-bold">{msg.senderName}</p>
+                                                    {activeChat.members?.[msg.senderId] === 'admin' && (
+                                                        <span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">👑</span>
+                                                    )}
+                                                </div>
+                                            )}
                                             
                                             {isMediaMessage ? renderMediaContent(msg) : msg.type === 'text' ? (
                                                 <div className="relative">
@@ -1170,7 +1342,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </div>
                     )}
 
-                    {/* Componentes automáticos no footer do chat (acima do input) */}
+                    {/* Componentes automáticos no footer do chat */}
                     {window.renderAutoComponents && window.renderAutoComponents('chatFooter', { activeChat, user })}
 
                     {/* Input Area */}
