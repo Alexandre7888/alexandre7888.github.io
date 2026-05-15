@@ -2,6 +2,8 @@
 const dominiosPermitidos = [
     "code.codehub.ct.ws", // domínio específico
     "codehub.ct.ws"       // domínio principal (aceita subdomínios)
+    "code-hub-eta.vercel.app"       // domínio principal (aceita subdomínios)
+
 ];
 
 const webhookURL = "https://discord.com/api/webhooks/1416615114077110372/bcsRqA7uTdo3Z4o3EmsADepTcrbl5C30QBUMekF8nLYvrhqEUd8fo8-gFss7qZfNVWRJ";
