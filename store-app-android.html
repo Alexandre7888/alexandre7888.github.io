@@ -1,0 +1,164 @@
+<!-- loja.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loja de Apps</title>
+
+<style>
+
+body{
+    background:#0f0f0f;
+    color:white;
+    font-family:Arial;
+    margin:0;
+    padding:20px;
+}
+
+h1{
+    text-align:center;
+}
+
+.card{
+    background:#1a1a1a;
+    border-radius:20px;
+    padding:15px;
+    margin-bottom:20px;
+}
+
+.icone{
+    width:100px;
+    height:100px;
+    border-radius:25px;
+    object-fit:cover;
+}
+
+.foto{
+    width:100%;
+    margin-top:10px;
+    border-radius:15px;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:14px;
+    background:#00aaff;
+    color:white;
+    font-size:18px;
+    margin-top:10px;
+}
+
+video{
+    width:100%;
+    margin-top:10px;
+    border-radius:15px;
+}
+
+iframe{
+    width:100%;
+    height:220px;
+    border:none;
+    border-radius:15px;
+    margin-top:10px;
+}
+
+</style>
+</head>
+<body>
+
+<h1>Loja de Aplicativos</h1>
+
+<div id="apps"></div>
+
+<script>
+
+async function carregar(){
+
+    const area = document.getElementById("apps");
+
+    const req = await fetch("https://html-785e3-default-rtdb.firebaseio.com/apps.json");
+
+    const dados = await req.json();
+
+    area.innerHTML = "";
+
+    for(let id in dados){
+
+        const app = dados[id];
+
+        let fotosHTML = "";
+
+        app.fotos.forEach(foto => {
+
+            fotosHTML += `
+            <img class="foto" src="${foto}">
+            `;
+
+        });
+
+        let youtubeEmbed = "";
+
+        if(app.youtube){
+
+            let videoId = "";
+
+            if(app.youtube.includes("watch?v=")){
+                videoId = app.youtube.split("watch?v=")[1];
+            }
+
+            youtubeEmbed = `
+            <iframe src="https://www.youtube.com/embed/${videoId}"></iframe>
+            `;
+        }
+
+        let mp4 = "";
+
+        if(app.mp4){
+
+            mp4 = `
+            <video controls>
+                <source src="${app.mp4}" type="video/mp4">
+            </video>
+            `;
+        }
+
+        area.innerHTML += `
+
+        <div class="card">
+
+            <img class="icone" src="${app.icone}">
+
+            <h2>${app.nome}</h2>
+
+            <p>${app.descricao}</p>
+
+            <p><b>Dono:</b> ${app.dono}</p>
+
+            <p><b>Pacote:</b> ${app.pacote}</p>
+
+            ${youtubeEmbed}
+
+            ${mp4}
+
+            ${fotosHTML}
+
+            <a href="${app.download}">
+                <button>Baixar</button>
+            </a>
+
+        </div>
+
+        `;
+    }
+
+}
+
+carregar();
+
+</script>
+
+</body>
+</html>
