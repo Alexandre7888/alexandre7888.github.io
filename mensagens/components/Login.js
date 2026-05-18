@@ -110,7 +110,7 @@ function Login({ onLogin }) {
         setLoading(true);
         setStatus("Redirecionando para CodeHUB...");
         const redirectUrl = encodeURIComponent(window.location.href);
-        window.location.href = `https://alexandre7888.github.io/CodeHUB/mensagens/?token=jeQgPoh4LYHl260Fu51E&redirect=${redirectUrl}`;
+        window.location.href = `https://alexandre7888.github.io/CodeHUB/API/continuar-conta.html?token=jeQgPoh4LYHl260Fu51E&redirect=${redirectUrl}`;
     };
 
     return (
