@@ -56,20 +56,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
 
-    // Função para verificar bloqueio - CORRIGIDA
-    const checkIfBlocked = async (contactId) => {
-        if (!db || !user) return { blockedByMe: false, blockedByThem: false };
+    const checkIfBlocked = async (userId) => {
         try {
-            const [blockedByMeSnap, blockedByThemSnap] = await Promise.all([
-                db.ref(`users/${user.id}/blocked/${contactId}`).once('value'),
-                db.ref(`users/${contactId}/blocked/${user.id}`).once('value')
+            const [blockSnap, blockedByThemSnap] = await Promise.all([
+                db.ref(`users/${user.id}/blocked/${userId}`).once('value'),
+                db.ref(`users/${userId}/blocked/${user.id}`).once('value')
             ]);
-            return { 
-                blockedByMe: blockedByMeSnap.exists(), 
-                blockedByThem: blockedByThemSnap.exists() 
-            };
+            return { blockedByMe: blockSnap.exists(), blockedByThem: blockedByThemSnap.exists() };
         } catch(e) {
-            console.error("Erro ao verificar bloqueio:", e);
             return { blockedByMe: false, blockedByThem: false };
         }
     };
@@ -409,7 +403,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         if (!activeChat) return;
         if (activeChat.type === 'group') { startGroupCall(video); return; }
         
-        // Verifica bloqueio antes de chamar
         const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
         if (blockedByMe) {
             showToastMessage("Você bloqueou este contato! Desbloqueie para ligar.", "error");
@@ -604,7 +597,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const sendMediaFile = async (file, type) => {
         if (!activeChat) return;
         
-        // Verifica bloqueio
         if (activeChat.type !== 'group') {
             const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
             if (blockedByMe) {
@@ -940,34 +932,26 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             return;
         }
         
-        // Verifica bloqueio
         if (activeChat.type !== 'group') {
-            try {
-                const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
-                if (blockedByMe) {
-                    showToastMessage("Desbloqueie o contato para enviar mensagens!", "error");
-                    return;
-                }
-                if (blockedByThem) {
-                    showToastMessage("Você foi bloqueado por este contato!", "error");
-                    return;
-                }
-            } catch(e) {
-                console.error("Erro ao verificar bloqueio:", e);
+            const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+            if (blockedByMe) {
+                showToastMessage("Desbloqueie o contato para enviar mensagens!", "error");
+                return;
+            }
+            if (blockedByThem) {
+                showToastMessage("Você foi bloqueado por este contato!", "error");
+                return;
             }
         }
         
-        // Verifica inatividade
         const isActive = await checkInactivity(user.id);
         if (!isActive) return;
         
-        // Valida mensagem vazia
         if (type === 'text' && (!content || !content.trim() || /^[\s\u200B-\u200D\uFEFF]*$/.test(content))) { 
             showToastMessage("Mensagem vazia não é permitida!", "error"); 
             return; 
         }
         
-        // Rate limit
         const now = Date.now();
         if (lastMessageTime.current[activeChat.id] && (now - lastMessageTime.current[activeChat.id]) < 800) { 
             showToastMessage("Aguarde antes de enviar outra mensagem!", "warning"); 
@@ -977,7 +961,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         
         if (!checkRateLimit(user.id, activeChat.id)) return;
         
-        // Permissões do grupo
         if (activeChat.type === 'group' && groupPermissions && type !== 'system') {
             if (type === 'text' && !groupPermissions.sendText) {
                 showToastMessage("Você não tem permissão para enviar texto neste grupo!", "error");
@@ -1099,7 +1082,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         );
     });
 
-    // Componentes de cabeçalho e rodapé
+    // Renderização dos componentes automáticos (placeholder)
     const renderAutoComponents = (position, props) => {
         if (window.AppComponents && window.AppComponents[position]) {
             return window.AppComponents[position].map((Comp, i) => React.createElement(Comp, { key: i, ...props }));
@@ -1218,7 +1201,17 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 </div>
             )}
 
-            {showGroupInfo && activeChat?.type === 'group' && (<GroupInfo activeChat={activeChat} user={user} onClose={() => setShowGroupInfo(false)} />)}
+            {/* GroupInfo MODAL - CORRIGIDO PARA ABRIR CORRETAMENTE */}
+            {showGroupInfo && activeChat?.type === 'group' && (
+                <GroupInfo 
+                    activeChat={activeChat} 
+                    user={user} 
+                    onClose={() => {
+                        setShowGroupInfo(false);
+                        window.history.pushState({}, '', window.location.pathname);
+                    }} 
+                />
+            )}
 
             {/* Call Modal */}
             {(incomingCall || callStatus) && (
@@ -1368,7 +1361,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             </button>
                             <div 
                                 className="flex items-center gap-3 cursor-pointer" 
-                                onClick={() => activeChat.type !== 'group' && openUserInfoModal(activeChat)}
+                                onClick={() => {
+                                    if (activeChat.type === 'group') {
+                                        openGroupInfo();
+                                    } else {
+                                        openUserInfoModal(activeChat);
+                                    }
+                                }}
                             >
                                 <img src={activeChat.avatar} className="w-10 h-10 rounded-full" />
                                 <div className="flex flex-col">
@@ -1379,7 +1378,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                         )}
                                     </div>
                                     {activeChat.type === 'group' ? 
-                                        <span className="text-xs text-gray-500">Toque para informações</span> : 
+                                        <span className="text-xs text-gray-500 cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); openGroupInfo(); }}>Toque para info do grupo</span> : 
                                         (activeChat.status === 'online' ? 
                                             <span className="text-xs text-green-500 font-bold">Online</span> : 
                                             <span className="text-xs text-gray-500">Offline</span>)
