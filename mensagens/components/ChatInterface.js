@@ -41,21 +41,37 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     };
 
     const checkInactivity = async (userId) => {
-        const snapshot = await db.ref(`users/${userId}`).once('value');
-        const userData = snapshot.val();
-        const lastActive = userData?.lastActive || userData?.createdAt || Date.now();
-        const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-        if (lastActive < oneWeekAgo) {
-            showToastMessage("Conta inativa por mais de 7 dias!", "error");
-            return false;
+        try {
+            const snapshot = await db.ref(`users/${userId}`).once('value');
+            const userData = snapshot.val();
+            const lastActive = userData?.lastActive || userData?.createdAt || Date.now();
+            const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            if (lastActive < oneWeekAgo) {
+                showToastMessage("Conta inativa por mais de 7 dias!", "error");
+                return false;
+            }
+            return true;
+        } catch(e) {
+            return true;
         }
-        return true;
     };
 
-    const checkIfBlocked = async (userId) => {
-        const blockSnap = await db.ref(`users/${user.id}/blocked/${userId}`).once('value');
-        const blockedByThem = await db.ref(`users/${userId}/blocked/${user.id}`).once('value');
-        return { blockedByMe: blockSnap.exists(), blockedByThem: blockedByThem.exists() };
+    // Função para verificar bloqueio - CORRIGIDA
+    const checkIfBlocked = async (contactId) => {
+        if (!db || !user) return { blockedByMe: false, blockedByThem: false };
+        try {
+            const [blockedByMeSnap, blockedByThemSnap] = await Promise.all([
+                db.ref(`users/${user.id}/blocked/${contactId}`).once('value'),
+                db.ref(`users/${contactId}/blocked/${user.id}`).once('value')
+            ]);
+            return { 
+                blockedByMe: blockedByMeSnap.exists(), 
+                blockedByThem: blockedByThemSnap.exists() 
+            };
+        } catch(e) {
+            console.error("Erro ao verificar bloqueio:", e);
+            return { blockedByMe: false, blockedByThem: false };
+        }
     };
 
     const checkRateLimit = (userId, chatId) => {
@@ -238,11 +254,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
     // Atualiza último ativo
     React.useEffect(() => {
-        const updateLastActive = () => db.ref(`users/${user.id}/lastActive`).set(Date.now());
+        const updateLastActive = () => {
+            if (db && user) db.ref(`users/${user.id}/lastActive`).set(Date.now());
+        };
         updateLastActive();
         const interval = setInterval(updateLastActive, 60 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [user.id]);
+    }, [user.id, db]);
 
     React.useEffect(() => {
         const handleClick = () => setContextMenu({ visible: false, x: 0, y: 0, message: null });
@@ -816,126 +834,185 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     }, [activeChat]);
 
     React.useEffect(() => {
+        if (!db || !user) return;
         const contactsRef = db.ref(`users/${user.id}/contacts`);
         const loadContacts = (snapshot) => {
             const data = snapshot.val();
-            if (!data) return;
+            if (!data) {
+                setChats([]);
+                return;
+            }
             Promise.all(Object.keys(data).map(async id => {
-                const ref = data[id].type === 'group' ? `groups/${id}` : `users/${id}`;
-                const val = (await db.ref(ref).once('value')).val();
-                let status = 'offline', privacy = {};
-                if (data[id].type !== 'group' && val) {
-                    status = (await db.ref(`users/${id}/status`).once('value')).val()?.state || 'offline';
-                    privacy = (await db.ref(`users/${id}/settings`).once('value')).val() || {};
+                try {
+                    const ref = data[id].type === 'group' ? `groups/${id}` : `users/${id}`;
+                    const val = (await db.ref(ref).once('value')).val();
+                    let status = 'offline', privacy = {};
+                    if (data[id].type !== 'group' && val) {
+                        const statusSnap = await db.ref(`users/${id}/status`).once('value');
+                        const settingsSnap = await db.ref(`users/${id}/settings`).once('value');
+                        if (statusSnap.val()) status = statusSnap.val().state;
+                        if (settingsSnap.val()) privacy = settingsSnap.val();
+                    }
+                    return { ...val, type: data[id].type, status, privacy, id: id };
+                } catch(e) {
+                    return null;
                 }
-                return { ...val, type: data[id].type, status, privacy };
-            })).then(loadedChats => setChats(prev => { const map = new Map(prev.map(c => [c.id, c])); loadedChats.forEach(c => map.set(c.id, c)); return Array.from(map.values()); }));
+            })).then(loadedChats => {
+                const validChats = loadedChats.filter(c => c !== null);
+                setChats(prev => { 
+                    const map = new Map(prev.map(c => [c.id, c])); 
+                    validChats.forEach(c => map.set(c.id, c)); 
+                    return Array.from(map.values()); 
+                });
+            });
         };
         contactsRef.on('value', loadContacts);
         return () => contactsRef.off();
-    }, [user.id]);
+    }, [user, db]);
 
+    // ==================== FUNÇÃO PARA CARREGAR MENSAGENS ====================
     React.useEffect(() => {
-        if (!activeChat) return;
+        if (!activeChat || !db) return;
         
-        // Verifica bloqueio antes de carregar mensagens
         const loadMessages = async () => {
-            let messagesRef;
-            let isBlocked = false;
-            
-            if (activeChat.type !== 'group') {
-                const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
-                isBlocked = blockedByMe || blockedByThem;
-            }
-            
-            if (isBlocked) {
-                setMessages([{
-                    key: 'blocked',
-                    senderId: 'system',
-                    senderName: 'Sistema',
-                    text: activeChat.type !== 'group' ? '❌ Conversa bloqueada. Desbloqueie o contato para ver as mensagens.' : '',
-                    type: 'system',
-                    timestamp: Date.now()
-                }]);
-                return;
-            }
-            
-            messagesRef = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
-            
-            const markAsRead = (msgId, senderId) => {
-                db.ref(`users/${user.id}/settings`).once('value').then(s => {
-                    const settings = s.val() || {};
-                    let allowReadReceipt = settings.readReceipts !== false;
-                    if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
-                    if (allowReadReceipt) {
-                        if (activeChat.type === 'group') db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
-                        else db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
-                    }
+            try {
+                let messagesRef;
+                let isBlocked = false;
+                
+                if (activeChat.type !== 'group') {
+                    const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+                    isBlocked = blockedByMe || blockedByThem;
+                }
+                
+                if (isBlocked) {
+                    setMessages([{
+                        key: 'blocked',
+                        senderId: 'system',
+                        senderName: 'Sistema',
+                        text: '❌ Conversa bloqueada. Desbloqueie o contato para ver as mensagens.',
+                        type: 'system',
+                        timestamp: Date.now()
+                    }]);
+                    return;
+                }
+                
+                messagesRef = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                
+                const markAsRead = (msgId, senderId) => {
+                    db.ref(`users/${user.id}/settings`).once('value').then(s => {
+                        const settings = s.val() || {};
+                        let allowReadReceipt = settings.readReceipts !== false;
+                        if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
+                        if (allowReadReceipt) {
+                            if (activeChat.type === 'group') db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
+                            else db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
+                        }
+                    });
+                };
+                
+                messagesRef.limitToLast(50).on('child_added', (snapshot) => {
+                    const msg = snapshot.val();
+                    setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
+                    if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
                 });
-            };
-            
-            messagesRef.limitToLast(50).on('child_added', (snapshot) => {
-                const msg = snapshot.val();
-                setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
-                if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
-            });
-            messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
+                messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
+                
+                return () => {
+                    if (messagesRef) messagesRef.off();
+                    setMessages([]);
+                };
+            } catch(e) {
+                console.error("Erro ao carregar mensagens:", e);
+            }
         };
         
         loadMessages();
-        
-        return () => {
-            if (activeChat.type !== 'group') {
-                const messagesRef = db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
-                messagesRef.off();
-            }
-            setMessages([]);
-        };
-    }, [activeChat]);
+    }, [activeChat, user, db]);
 
-    React.useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+    React.useEffect(() => { 
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
+    }, [messages]);
 
+    // ==================== FUNÇÃO PRINCIPAL PARA ENVIAR MENSAGEM ====================
     const handleSendMessage = async (content, type = 'text', duration = null, msgType = 'text') => {
-        if (!activeChat) return;
+        if (!activeChat) {
+            showToastMessage("Nenhum chat selecionado!", "error");
+            return;
+        }
         
         // Verifica bloqueio
         if (activeChat.type !== 'group') {
-            const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
-            if (blockedByMe) {
-                showToastMessage("Desbloqueie o contato para enviar mensagens!", "error");
+            try {
+                const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+                if (blockedByMe) {
+                    showToastMessage("Desbloqueie o contato para enviar mensagens!", "error");
+                    return;
+                }
+                if (blockedByThem) {
+                    showToastMessage("Você foi bloqueado por este contato!", "error");
+                    return;
+                }
+            } catch(e) {
+                console.error("Erro ao verificar bloqueio:", e);
+            }
+        }
+        
+        // Verifica inatividade
+        const isActive = await checkInactivity(user.id);
+        if (!isActive) return;
+        
+        // Valida mensagem vazia
+        if (type === 'text' && (!content || !content.trim() || /^[\s\u200B-\u200D\uFEFF]*$/.test(content))) { 
+            showToastMessage("Mensagem vazia não é permitida!", "error"); 
+            return; 
+        }
+        
+        // Rate limit
+        const now = Date.now();
+        if (lastMessageTime.current[activeChat.id] && (now - lastMessageTime.current[activeChat.id]) < 800) { 
+            showToastMessage("Aguarde antes de enviar outra mensagem!", "warning"); 
+            return; 
+        }
+        lastMessageTime.current[activeChat.id] = now;
+        
+        if (!checkRateLimit(user.id, activeChat.id)) return;
+        
+        // Permissões do grupo
+        if (activeChat.type === 'group' && groupPermissions && type !== 'system') {
+            if (type === 'text' && !groupPermissions.sendText) {
+                showToastMessage("Você não tem permissão para enviar texto neste grupo!", "error");
                 return;
             }
-            if (blockedByThem) {
-                showToastMessage("Você foi bloqueado por este contato!", "error");
+            if (type === 'audio' && !groupPermissions.sendAudio) {
+                showToastMessage("Você não tem permissão para enviar áudio neste grupo!", "error");
                 return;
             }
         }
         
-        if (!(await checkInactivity(user.id))) return;
-        if (type === 'text' && (!content || !content.trim() || /^[\s\u200B-\u200D\uFEFF]*$/.test(content))) { showToastMessage("Mensagem vazia não é permitida!", "error"); return; }
-        const now = Date.now();
-        if (lastMessageTime.current[activeChat.id] && (now - lastMessageTime.current[activeChat.id]) < 800) { showToastMessage("Aguarde!", "warning"); return; }
-        lastMessageTime.current[activeChat.id] = now;
-        if (!checkRateLimit(user.id, activeChat.id)) return;
-        if (activeChat.type === 'group' && groupPermissions && type !== 'system') {
-            if (type === 'text' && !groupPermissions.sendText) return;
-            if (type === 'audio' && !groupPermissions.sendAudio) return;
+        try {
+            if (type === 'audio') {
+                window.ChatAppAPI?.sendAudio(activeChat.id, content, duration, activeChat.type);
+            } else if (type === 'system') {
+                const ref = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                await ref.push({
+                    senderId: 'system', senderName: 'Sistema', text: content, type: 'system',
+                    timestamp: window.firebase.database.ServerValue.TIMESTAMP,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
+            } else {
+                window.ChatAppAPI?.sendMessage(activeChat.id, content, activeChat.type, msgType);
+            }
+            setMessageInput("");
+            setShowAudioRecorder(false);
+        } catch(e) {
+            console.error("Erro ao enviar mensagem:", e);
+            showToastMessage("Erro ao enviar mensagem!", "error");
         }
-        if (type === 'audio') window.ChatAppAPI.sendAudio(activeChat.id, content, duration, activeChat.type);
-        else if (type === 'system') {
-            (activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`)).push({
-                senderId: 'system', senderName: 'Sistema', text: content, type: 'system',
-                timestamp: window.firebase.database.ServerValue.TIMESTAMP,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
-        } else window.ChatAppAPI.sendMessage(activeChat.id, content, activeChat.type, msgType);
-        setMessageInput("");
-        setShowAudioRecorder(false);
     };
 
     const handleCreateGroup = () => {
         const groupName = prompt("Nome do Grupo:");
-        if (groupName) {
+        if (groupName && db) {
             const groupId = Math.floor(1000 + Math.random() * 9000).toString();
             db.ref(`groups/${groupId}`).set({ 
                 id: groupId, 
@@ -945,32 +1022,42 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 permissions: { sendText: true, sendAudio: true, sendVideo: true, sendMedia: true, changeInfo: false } 
             });
             db.ref(`users/${user.id}/contacts/${groupId}`).set({ type: 'group', joinedAt: Date.now() });
+            showToastMessage(`Grupo "${groupName}" criado!`, "success");
         }
     };
 
     const handleAddContact = async (inputId) => {
-        if (!inputId) return;
-        if (inputId.trim().toLowerCase() === 'bot') { setShowAddContact(false); setShowBotCreator(true); return; }
+        if (!inputId || !db) return;
+        if (inputId.trim().toLowerCase() === 'bot') { 
+            setShowAddContact(false); 
+            setShowBotCreator(true); 
+            return; 
+        }
         try {
             const groupSnap = await db.ref(`groups/${inputId}`).once('value');
             if (groupSnap.exists()) {
                 const groupData = groupSnap.val();
                 await db.ref(`users/${user.id}/contacts/${inputId}`).set({ type: 'group', joinedAt: Date.now() });
                 await db.ref(`groups/${inputId}/members/${user.id}`).set('member');
-                setActiveChat({ ...groupData, type: 'group' });
+                setActiveChat({ ...groupData, type: 'group', id: inputId });
                 setShowAddContact(false);
+                showToastMessage(`Você entrou no grupo "${groupData.name}"!`, "success");
                 return;
             }
             const userSnap = await db.ref(`users/${inputId}`).once('value');
             if (userSnap.exists()) {
                 const userData = userSnap.val();
                 await db.ref(`users/${user.id}/contacts/${inputId}`).set({ type: 'private', addedAt: Date.now() });
-                setActiveChat({ ...userData, type: 'private' });
+                setActiveChat({ ...userData, type: 'private', id: inputId });
                 setShowAddContact(false);
+                showToastMessage(`${userData.name || inputId} adicionado aos contatos!`, "success");
             } else {
                 showToastMessage("Usuário ou grupo não encontrado!", "error");
             }
-        } catch (error) { console.error("Erro:", error); showToastMessage("Erro ao adicionar contato!", "error"); }
+        } catch (error) { 
+            console.error("Erro:", error); 
+            showToastMessage("Erro ao adicionar contato!", "error"); 
+        }
     };
 
     const ToastComponent = () => {
@@ -1012,15 +1099,69 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         );
     });
 
+    // Componentes de cabeçalho e rodapé
+    const renderAutoComponents = (position, props) => {
+        if (window.AppComponents && window.AppComponents[position]) {
+            return window.AppComponents[position].map((Comp, i) => React.createElement(Comp, { key: i, ...props }));
+        }
+        return null;
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 overflow-hidden">
             <style>{chatStyles}</style>
             <ToastComponent />
 
             {/* Modais */}
-            {pendingJoinGroupId && (<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"><div className="bg-white p-6 rounded-lg w-80"><h3 className="text-lg font-semibold mb-4">Solicitar Entrada</h3><p className="text-sm text-gray-600 mb-6">Deseja participar deste grupo?</p><div className="flex justify-end gap-2"><button onClick={onClearJoin} className="px-4 py-2 text-gray-600 rounded">Cancelar</button><button onClick={async () => { const groupData = (await db.ref(`groups/${pendingJoinGroupId}`).once('value')).val(); if (groupData) { if (groupData.settings?.requireApproval) { await db.ref(`groups/${pendingJoinGroupId}/requests/${user.id}`).set({ name: user.name, avatar: user.avatar, timestamp: Date.now() }); alert("Solicitação enviada!"); onClearJoin(); } else { await db.ref(`groups/${pendingJoinGroupId}/members/${user.id}`).set('member'); await db.ref(`users/${user.id}/contacts/${pendingJoinGroupId}`).set({ type: 'group', joinedAt: Date.now() }); setActiveChat({ ...groupData, id: pendingJoinGroupId, type: 'group' }); onClearJoin(); } } }} className="px-4 py-2 bg-[#00a884] text-white rounded">Solicitar</button></div></div></div>)}
+            {pendingJoinGroupId && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg w-80">
+                        <h3 className="text-lg font-semibold mb-4">Solicitar Entrada</h3>
+                        <p className="text-sm text-gray-600 mb-6">Deseja participar deste grupo?</p>
+                        <div className="flex justify-end gap-2">
+                            <button onClick={onClearJoin} className="px-4 py-2 text-gray-600 rounded">Cancelar</button>
+                            <button onClick={async () => { 
+                                if (!db) return;
+                                const groupData = (await db.ref(`groups/${pendingJoinGroupId}`).once('value')).val(); 
+                                if (groupData) { 
+                                    if (groupData.settings?.requireApproval) { 
+                                        await db.ref(`groups/${pendingJoinGroupId}/requests/${user.id}`).set({ name: user.name, avatar: user.avatar, timestamp: Date.now() }); 
+                                        alert("Solicitação enviada!"); 
+                                        onClearJoin(); 
+                                    } else { 
+                                        await db.ref(`groups/${pendingJoinGroupId}/members/${user.id}`).set('member'); 
+                                        await db.ref(`users/${user.id}/contacts/${pendingJoinGroupId}`).set({ type: 'group', joinedAt: Date.now() }); 
+                                        setActiveChat({ ...groupData, id: pendingJoinGroupId, type: 'group' }); 
+                                        onClearJoin(); 
+                                    } 
+                                } 
+                            }} className="px-4 py-2 bg-[#00a884] text-white rounded">Solicitar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-            {showBotCreator && (<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"><div className="bg-white p-6 rounded-lg w-80"><h3 className="text-lg font-semibold mb-4">Criar Bot</h3><input type="text" id="botName" placeholder="Nome do Bot" className="w-full border rounded p-2 mb-4" /><div className="flex justify-end gap-2"><button onClick={() => setShowBotCreator(false)} className="px-4 py-2 text-gray-600 rounded">Cancelar</button><button onClick={async () => { const name = document.getElementById('botName').value; if (name) { const botId = "bot_" + Math.random().toString(36).substring(2, 10); await db.ref(`users/${botId}`).set({ id: botId, name: name, avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`, isBot: true, createdAt: Date.now() }); alert(`Bot criado! ID: ${botId}`); setShowBotCreator(false); openAddContact(); } }} className="px-4 py-2 bg-[#00a884] text-white rounded">Criar</button></div></div></div>)}
+            {showBotCreator && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg w-80">
+                        <h3 className="text-lg font-semibold mb-4">Criar Bot</h3>
+                        <input type="text" id="botName" placeholder="Nome do Bot" className="w-full border rounded p-2 mb-4" />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setShowBotCreator(false)} className="px-4 py-2 text-gray-600 rounded">Cancelar</button>
+                            <button onClick={async () => { 
+                                const name = document.getElementById('botName').value; 
+                                if (name && db) { 
+                                    const botId = "bot_" + Math.random().toString(36).substring(2, 10); 
+                                    await db.ref(`users/${botId}`).set({ id: botId, name: name, avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`, isBot: true, createdAt: Date.now() }); 
+                                    alert(`Bot criado! ID: ${botId}`); 
+                                    setShowBotCreator(false); 
+                                    openAddContact(); 
+                                } 
+                            }} className="px-4 py-2 bg-[#00a884] text-white rounded">Criar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showSettings && <Settings user={user} onClose={() => setShowSettings(false)} chats={chats} />}
 
@@ -1033,7 +1174,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     if (chat) setActiveChat(chat);
                 },
                 onBlockStatusChange: () => {
-                    // Recarrega contatos se necessário
                     const contactsRef = db.ref(`users/${user.id}/contacts`);
                     contactsRef.once('value').then(snapshot => {
                         const data = snapshot.val();
@@ -1050,13 +1190,25 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             {showAddContact && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg w-80">
-                        <h3 className="text-lg font-semibold mb-4">{callStatus ? 'Adicionar à Chamada' : 'Adicionar'}</h3>
+                        <h3 className="text-lg font-semibold mb-4">{callStatus ? 'Adicionar à Chamada' : 'Adicionar Contato'}</h3>
                         {callStatus ? (
                             <div className="mb-4 max-h-60 overflow-y-auto">
-                                {chats.filter(c => c.type !== 'group').map(c => (<div key={c.id} onClick={() => handleAddParticipantToCall(c.id)} className="flex items-center p-2 hover:bg-gray-100 cursor-pointer rounded"><img src={c.avatar} className="w-8 h-8 rounded-full mr-2" /><span>{c.name}</span></div>))}
+                                {chats.filter(c => c.type !== 'group').map(c => (
+                                    <div key={c.id} onClick={() => handleAddParticipantToCall(c.id)} className="flex items-center p-2 hover:bg-gray-100 cursor-pointer rounded">
+                                        <img src={c.avatar} className="w-8 h-8 rounded-full mr-2" />
+                                        <span>{c.name}</span>
+                                    </div>
+                                ))}
                             </div>
                         ) : (
-                            <input type="text" id="newContactId" placeholder="Digite ID do Usuário, Grupo ou 'bot'" className="w-full border rounded p-2 mb-4" onKeyDown={(e) => { if (e.key === 'Enter') handleAddContact(e.target.value); }} />
+                            <input 
+                                type="text" 
+                                id="newContactId" 
+                                placeholder="Digite o ID do usuário ou grupo" 
+                                className="w-full border rounded p-2 mb-4" 
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleAddContact(e.target.value); }} 
+                                autoFocus
+                            />
                         )}
                         <div className="flex justify-end gap-2">
                             <button onClick={() => setShowAddContact(false)} className="px-4 py-2 text-gray-600 rounded">Cancelar</button>
@@ -1159,30 +1311,26 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         <img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300" />
                         <div className="flex flex-col">
                             <span className="font-semibold text-gray-700 text-sm">{user.name}</span>
-                            {/* Componente automático: headerLeft */}
-                            {window.renderAutoComponents && window.renderAutoComponents('headerLeft', { user })}
+                            {renderAutoComponents('headerLeft', { user })}
                         </div>
                     </div>
                     <div className="flex gap-4 text-gray-600 items-center">
-                        {/* Componentes automáticos no header direito */}
-                        {window.renderAutoComponents && window.renderAutoComponents('headerRight', { user })}
-                        
-                        <div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout} title="Sair da conta"></div>
+                        {renderAutoComponents('headerRight', { user })}
+                        <div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout} title="Sair"></div>
                         <div className="icon-users cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={handleCreateGroup} title="Criar grupo"></div>
-                        <div className="icon-message-square-plus cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openAddContact} title="Adicionar contato"></div>
+                        <div className="icon-message-square-plus cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openAddContact} title="Adicionar"></div>
                         <div className="icon-settings cursor-pointer hover:bg-gray-200 p-1.5 rounded-full transition" onClick={openSettings} title="Configurações"></div>
                     </div>
                 </div>
                 <div className="p-2 border-b border-gray-200">
                     <div className="bg-[#f0f2f5] rounded-lg flex items-center px-3 py-1.5">
                         <div className="icon-search text-gray-500 text-sm"></div>
-                        <input type="text" placeholder="Pesquisar contatos..." className="bg-transparent border-none outline-none ml-3 w-full text-sm py-1" />
+                        <input type="text" placeholder="Pesquisar..." className="bg-transparent outline-none ml-3 w-full text-sm py-1" />
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    {chats.map(chat => {
+                    {chats.length > 0 ? chats.map(chat => {
                         const ContactStatusBadge = window.AppComponents?.ContactStatusBadge;
-                        
                         return (
                             <div key={chat.id} onClick={() => openChat(chat)} className={`flex items-center p-3 cursor-pointer hover:bg-[#f5f6f6] ${activeChat?.id === chat.id ? 'bg-[#f0f2f5]' : ''}`}>
                                 <img src={chat.avatar} className="w-12 h-12 rounded-full mr-3" />
@@ -1200,16 +1348,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 </div>
                             </div>
                         );
-                    })}
-                    {chats.length === 0 && (
+                    }) : (
                         <div className="p-8 text-center text-gray-400 text-sm mt-4 flex flex-col items-center">
                             <div className="icon-book-user text-4xl mb-2 opacity-30"></div>
-                            Sua lista de contatos está vazia.<br/>Adicione um ID ou crie um grupo!
+                            Nenhum contato encontrado.<br/>Adicione um ID ou crie um grupo!
                         </div>
                     )}
-                    
-                    {/* Componentes automáticos no fim da sidebar */}
-                    {window.renderAutoComponents && window.renderAutoComponents('sidebarBottom', { user, chats })}
+                    {renderAutoComponents('sidebarBottom', { user, chats })}
                 </div>
             </div>
 
@@ -1234,15 +1379,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                         )}
                                     </div>
                                     {activeChat.type === 'group' ? 
-                                        <span className="text-xs text-gray-500">Toque para info do grupo</span> : 
+                                        <span className="text-xs text-gray-500">Toque para informações</span> : 
                                         (activeChat.status === 'online' ? 
                                             <span className="text-xs text-green-500 font-bold">Online</span> : 
                                             <span className="text-xs text-gray-500">Offline</span>)
                                     }
                                 </div>
                             </div>
-                            {/* Componentes automáticos no header do chat */}
-                            {window.renderAutoComponents && window.renderAutoComponents('chatHeader', { activeChat, user })}
+                            {renderAutoComponents('chatHeader', { activeChat, user })}
                         </div>
                         <div className="flex items-center gap-2 text-gray-600" onClick={(e) => e.stopPropagation()}>
                             <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(true)}><div className="icon-video text-xl"></div></div>
@@ -1342,8 +1486,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </div>
                     )}
 
-                    {/* Componentes automáticos no footer do chat */}
-                    {window.renderAutoComponents && window.renderAutoComponents('chatFooter', { activeChat, user })}
+                    {renderAutoComponents('chatFooter', { activeChat, user })}
 
                     {/* Input Area */}
                     <div className="bg-[#f0f2f5] p-3 px-4 flex items-center gap-2">
@@ -1357,9 +1500,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 <div className="icon-file text-2xl text-gray-500 cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = e.target.files[0]; if (file) await sendMediaFile(file, 'file'); }; input.click(); }} title="Enviar Arquivo (até 5MB)"></div>
                                 <div className="flex-1 bg-white rounded-lg px-4 py-2 flex items-center">
                                     {editingMessage ? (
-                                        <input type="text" value={editInput} onChange={(e) => setEditInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && editMessage(editingMessage, editInput)} placeholder="Editar mensagem..." className="w-full bg-transparent border-none outline-none text-gray-700 text-sm" autoFocus />
+                                        <input type="text" value={editInput} onChange={(e) => setEditInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && editMessage(editingMessage, editInput)} placeholder="Editar..." className="w-full bg-transparent outline-none text-gray-700 text-sm" autoFocus />
                                     ) : (
-                                        <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && messageInput.trim() && handleSendMessage(messageInput)} placeholder="Mensagem" className="w-full bg-transparent border-none outline-none text-gray-700 placeholder-gray-400 text-sm"/>
+                                        <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && messageInput.trim() && handleSendMessage(messageInput)} placeholder="Mensagem" className="w-full bg-transparent outline-none text-gray-700 placeholder-gray-400 text-sm"/>
                                     )}
                                 </div>
                                 {editingMessage ? (
