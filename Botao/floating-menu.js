@@ -32,14 +32,14 @@ async function loadButtonsFromFile() {
             {
                 title: "token",
                 description: "esse ambiente é onde gera seus totens",
-                url: "https://code.codehub.ct.ws/API/criar.app",
+                url: "https://alexandre7888.github.io/CodeHUB/API/criar.app",
                 color: "#25d455", 
                 icon: "🔑"
             },
             {
                 title: "nosso blog de ajuda",
                 description: "esse blog é o blog externo",
-                url: "https://code.codehubct.ws/blog",
+                url: "https://alexandre7888.github.io/CodeHUB/blog",
                 color: "#79a789", 
                 icon: "📘"
             },
@@ -53,7 +53,7 @@ async function loadButtonsFromFile() {
             {
                 title: "mensagensHUB",
                 description: "esse é o aplicativo oficial de mensagens",
-                url: "https://code.codehub.ct.ws/mensagens/",
+                url: "https://alexandre7888.github.io/CodeHUB/mensagens/",
                 color: "#13w657", 
                 icon: "📨"
             }
