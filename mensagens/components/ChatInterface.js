@@ -29,7 +29,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const BAN_DURATION = 60;
 
     // ==================== SISTEMA DE ARQUIVOS EM BASE64 ====================
-    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+    // ==================== SISTEMA P2P PARA ARQUIVOS ====================
+    const [p2pTransfers, setP2pTransfers] = React.useState({});
+    const [p2pConnections, setP2pConnections] = React.useState({});
+    const p2pDataChannelRef = React.useRef({});
+    const pendingFileChunksRef = React.useRef({});
 
     const fileToBase64 = (file) => {
         return new Promise((resolve, reject) => {
@@ -38,6 +44,190 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             reader.onerror = reject;
             reader.readAsDataURL(file);
         });
+    };
+
+    // ==================== FUNÇÕES P2P PARA ARQUIVOS ====================
+    
+    const initP2PConnection = (peerId) => {
+        if (p2pConnections[peerId]) return p2pConnections[peerId];
+        
+        const cleanId = peerId.replace(/[^a-zA-Z0-9]/g, '');
+        const conn = peer.connect(cleanId);
+        
+        conn.on('open', () => {
+            console.log(`✅ Conexão P2P estabelecida com ${peerId}`);
+            setP2pConnections(prev => ({ ...prev, [peerId]: conn }));
+        });
+        
+        conn.on('data', (data) => handleP2PData(data, peerId));
+        
+        conn.on('close', () => {
+            console.log(`❌ Conexão P2P fechada com ${peerId}`);
+            setP2pConnections(prev => {
+                const newConns = { ...prev };
+                delete newConns[peerId];
+                return newConns;
+            });
+        });
+        
+        conn.on('error', (err) => console.error(`Erro P2P com ${peerId}:`, err));
+        
+        p2pConnections[peerId] = conn;
+        return conn;
+    };
+
+    const handleP2PData = (data, senderId) => {
+        // Recebendo metadados do arquivo
+        if (data.type === 'file_metadata') {
+            pendingFileChunksRef.current[data.fileId] = {
+                chunks: [],
+                totalChunks: data.totalChunks,
+                fileName: data.fileName,
+                fileType: data.fileType,
+                fileSize: data.fileSize,
+                senderId: senderId
+            };
+            setP2pTransfers(prev => ({
+                ...prev,
+                [data.fileId]: { progress: 0, status: 'recebendo', fileName: data.fileName }
+            }));
+        }
+        
+        // Recebendo chunks do arquivo
+        if (data.type === 'file_chunk') {
+            const pending = pendingFileChunksRef.current[data.fileId];
+            if (pending) {
+                pending.chunks[data.chunkIndex] = data.data;
+                const progress = ((data.chunkIndex + 1) / pending.totalChunks) * 100;
+                setP2pTransfers(prev => ({
+                    ...prev,
+                    [data.fileId]: { ...prev[data.fileId], progress: progress }
+                }));
+            }
+        }
+        
+        // Arquivo completo recebido
+        if (data.type === 'file_complete') {
+            const pending = pendingFileChunksRef.current[data.fileId];
+            if (pending && pending.chunks) {
+                const completeData = pending.chunks.join('');
+                const blob = new Blob([completeData], { type: pending.fileType });
+                const url = URL.createObjectURL(blob);
+                
+                // Salvar no IndexedDB
+                saveFileToIndexedDB(data.fileId, completeData, pending.fileName, pending.fileType);
+                
+                showToastMessage(`✅ Arquivo ${pending.fileName} recebido via P2P!`, "success");
+                
+                // Criar mensagem no chat com o arquivo recebido
+                const msgData = {
+                    senderId: senderId,
+                    senderName: `Usuário ${senderId.substring(0, 8)}`,
+                    text: url,
+                    type: 'file',
+                    fileName: pending.fileName,
+                    fileSize: pending.fileSize,
+                    fileType: pending.fileType,
+                    timestamp: Date.now(),
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+                
+                const ref = activeChat.type === 'group' 
+                    ? db.ref(`groups/${activeChat.id}/messages`)
+                    : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                ref.push(msgData);
+                
+                delete pendingFileChunksRef.current[data.fileId];
+                setP2pTransfers(prev => {
+                    const newTransfers = { ...prev };
+                    delete newTransfers[data.fileId];
+                    return newTransfers;
+                });
+            }
+        }
+        
+        // Solicitação de arquivo
+        if (data.type === 'file_request') {
+            const fileId = data.fileId;
+            const storedFile = localStorage.getItem(`p2p_file_${fileId}`);
+            if (storedFile) {
+                const fileData = JSON.parse(storedFile);
+                sendFileViaP2P(fileId, senderId, fileData.data, fileData.fileName, fileData.fileType, fileData.fileSize);
+            }
+        }
+    };
+
+    const sendFileViaP2P = async (fileId, targetPeerId, fileData, fileName, fileType, fileSize) => {
+        const conn = initP2PConnection(targetPeerId);
+        
+        setP2pTransfers(prev => ({
+            ...prev,
+            [fileId]: { progress: 0, status: 'enviando', fileName, targetPeerId }
+        }));
+        
+        const sendChunk = (conn, chunk, index, total) => {
+            conn.send({
+                type: 'file_chunk',
+                fileId: fileId,
+                chunkIndex: index,
+                totalChunks: total,
+                data: chunk
+            });
+        };
+        
+        conn.on('open', () => {
+            // Enviar metadados
+            conn.send({
+                type: 'file_metadata',
+                fileId: fileId,
+                totalChunks: Math.ceil(fileData.length / 16384),
+                fileName: fileName,
+                fileType: fileType,
+                fileSize: fileSize
+            });
+            
+            // Enviar em chunks de 16KB
+            const chunkSize = 16384;
+            const chunks = Math.ceil(fileData.length / chunkSize);
+            
+            for (let i = 0; i < chunks; i++) {
+                const chunk = fileData.slice(i * chunkSize, (i + 1) * chunkSize);
+                setTimeout(() => {
+                    sendChunk(conn, chunk, i, chunks);
+                    const progress = ((i + 1) / chunks) * 100;
+                    setP2pTransfers(prev => ({
+                        ...prev,
+                        [fileId]: { ...prev[fileId], progress: progress }
+                    }));
+                }, i * 10);
+            }
+            
+            setTimeout(() => {
+                conn.send({ type: 'file_complete', fileId: fileId });
+                setP2pTransfers(prev => {
+                    const newTransfers = { ...prev };
+                    delete newTransfers[fileId];
+                    return newTransfers;
+                });
+                showToastMessage(`✅ Arquivo ${fileName} enviado via P2P!`, "success");
+            }, chunks * 10 + 100);
+        });
+    };
+
+    const saveFileToIndexedDB = async (fileId, data, fileName, fileType) => {
+        // Salvar no localStorage como fallback
+        localStorage.setItem(`p2p_file_${fileId}`, JSON.stringify({
+            data: data,
+            fileName: fileName,
+            fileType: fileType,
+            timestamp: Date.now()
+        }));
+    };
+
+    const requestFileViaP2P = (fileId, senderId) => {
+        const conn = initP2PConnection(senderId);
+        conn.send({ type: 'file_request', fileId: fileId });
+        showToastMessage(`📡 Solicitando arquivo via P2P...`, "info");
     };
 
     const checkInactivity = async (userId) => {
@@ -228,9 +418,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const analyserRef = React.useRef({});
 
     // ==================== MULTI PARTICIPANTES VIDEO CHAMADA ====================
-    const [participantVideos, setParticipantVideos] = React.useState({}); // { peerId: stream }
-    const [participantAudioLevels, setParticipantAudioLevels] = React.useState({}); // { peerId: level }
-    const [gridLayout, setGridLayout] = React.useState('grid'); // 'grid' or 'speaker'
+    const [participantVideos, setParticipantVideos] = React.useState({});
+    const [participantAudioLevels, setParticipantAudioLevels] = React.useState({});
+    const [gridLayout, setGridLayout] = React.useState('grid');
     const [mainSpeakerId, setMainSpeakerId] = React.useState(null);
     const [localVideoEnabled, setLocalVideoEnabled] = React.useState(true);
 
@@ -317,7 +507,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
             }
             
-            // Destacar quem está falando mais alto
             if (level > 30) {
                 setMainSpeakerId(participantId);
             }
@@ -361,7 +550,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
                 setIsVideoCall(true);
                 setLocalVideoEnabled(true);
-                // Adicionar vídeo do próprio usuário à grade
                 setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
                 Object.values(activeCalls).forEach(call => {
                     const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
@@ -493,14 +681,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             
             if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
             
-            // Buscar informações dos participantes
             for (const id of memberIds) {
                 const userSnap = await db.ref(`users/${id}`).once('value');
                 const userData = userSnap.val();
                 setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
             }
             
-            // Adicionar vídeo do próprio usuário à lista da grade
             if (video && localStreamRef.current) {
                 setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
             }
@@ -546,12 +732,10 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         call.on('stream', (remoteStream) => {
             setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
             
-            // Adicionar vídeo do participante à lista para grade
             if (isVideo) {
                 setParticipantVideos(prev => ({ ...prev, [call.peer]: remoteStream }));
             }
             
-            // Configurar detector de áudio para saber quando o participante fala
             setupAudioAnalyser(remoteStream, call.peer);
             
             if (!isVideo) {
@@ -648,7 +832,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         currentAudioRef.current = audioElement;
     };
 
-    // ==================== FUNÇÃO PARA ENVIAR ARQUIVO EM BASE64 ====================
+    // ==================== FUNÇÃO PARA ENVIAR ARQUIVO COM P2P ====================
     const sendMediaFile = async (file, type) => {
         if (!activeChat) return;
         
@@ -678,14 +862,39 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             const base64 = await fileToBase64(file);
             setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
 
+            // Salvar localmente para P2P
+            const fileId = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+            localStorage.setItem(`p2p_file_${fileId}`, JSON.stringify({
+                data: base64,
+                fileName: file.name,
+                fileType: file.type,
+                fileSize: file.size,
+                timestamp: Date.now()
+            }));
+
+            // Enviar via P2P para usuários online
+            if (activeChat.type === 'group') {
+                const members = Object.keys(activeChat.members || {}).filter(id => id !== user.id);
+                for (const memberId of members) {
+                    const statusSnap = await db.ref(`users/${memberId}/status/state`).once('value');
+                    if (statusSnap.val() === 'online') {
+                        sendFileViaP2P(fileId, memberId, base64, file.name, file.type, file.size);
+                    }
+                }
+            } else {
+                // Chat privado
+                sendFileViaP2P(fileId, activeChat.id, base64, file.name, file.type, file.size);
+            }
+
             const msgData = {
                 senderId: user.id,
                 senderName: user.name,
-                text: base64,
+                text: base64.substring(0, 100) + "...",
                 type: type,
                 fileName: file.name,
                 fileSize: file.size,
                 fileType: file.type,
+                p2pFileId: fileId,
                 timestamp: window.firebase.database.ServerValue.TIMESTAMP,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
@@ -695,7 +904,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
 
             await ref.push(msgData);
-            showToastMessage(`${type === 'image' ? 'Imagem' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado!`, "success");
+            showToastMessage(`${type === 'image' ? 'Imagem' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado via P2P!`, "success");
 
         } catch (error) { 
             console.error("Erro:", error); 
@@ -705,25 +914,73 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
 
-    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA ====================
+    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA COM P2P ====================
     const renderMediaContent = (msg) => {
-        if (msg.fileName && msg.text && msg.text.startsWith('data:')) {
+        if (msg.fileName && msg.text) {
             const isImage = msg.type === 'image' || msg.fileType?.startsWith('image/');
             const isVideo = msg.type === 'video' || msg.fileType?.startsWith('video/');
             const fileSizeMB = (msg.fileSize / (1024 * 1024)).toFixed(2);
             
+            const [fileData, setFileData] = React.useState(null);
+            const [isLoading, setIsLoading] = React.useState(!msg.p2pFileId);
+            
+            React.useEffect(() => {
+                if (msg.p2pFileId) {
+                    // Tentar recuperar do localStorage
+                    const stored = localStorage.getItem(`p2p_file_${msg.p2pFileId}`);
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        setFileData(parsed.data);
+                        setIsLoading(false);
+                    } else {
+                        // Solicitar via P2P
+                        requestFileViaP2P(msg.p2pFileId, msg.senderId);
+                        setIsLoading(false);
+                    }
+                }
+            }, [msg.p2pFileId]);
+            
             const handleDownload = () => {
-                const link = document.createElement('a');
-                link.href = msg.text;
-                link.download = msg.fileName;
-                link.click();
-                showToastMessage(`Baixando ${msg.fileName}...`, "success");
+                if (fileData) {
+                    const link = document.createElement('a');
+                    link.href = fileData;
+                    link.download = msg.fileName;
+                    link.click();
+                    showToastMessage(`Baixando ${msg.fileName}...`, "success");
+                } else if (msg.text && msg.text.startsWith('data:')) {
+                    const link = document.createElement('a');
+                    link.href = msg.text;
+                    link.download = msg.fileName;
+                    link.click();
+                }
             };
+            
+            const transfer = p2pTransfers[msg.p2pFileId];
             
             if (isImage) {
                 return (
                     <div className="mb-1">
-                        <img src={msg.text} className="rounded-lg max-w-full max-h-80 cursor-pointer object-contain" onClick={() => window.open(msg.text, '_blank')} alt={msg.fileName} />
+                        {isLoading ? (
+                            <div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
+                                <div className="icon-loader animate-spin text-gray-500"></div>
+                                <span className="text-sm">Carregando imagem via P2P...</span>
+                            </div>
+                        ) : (
+                            <img 
+                                src={fileData || msg.text} 
+                                className="rounded-lg max-w-full max-h-80 cursor-pointer object-contain" 
+                                onClick={() => window.open(fileData || msg.text, '_blank')}
+                                alt={msg.fileName}
+                            />
+                        )}
+                        {transfer && transfer.progress > 0 && transfer.progress < 100 && (
+                            <div className="mt-2">
+                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${transfer.progress}%` }}></div>
+                                </div>
+                                <span className="text-xs text-gray-500">{Math.round(transfer.progress)}%</span>
+                            </div>
+                        )}
                         <button onClick={handleDownload} className="mt-2 text-xs bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600">📥 Baixar Imagem</button>
                     </div>
                 );
@@ -732,7 +989,27 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (isVideo) {
                 return (
                     <div className="mb-1">
-                        <video src={msg.text} controls className="rounded-lg max-w-full max-h-80" poster="https://via.placeholder.com/400x300?text=Video" />
+                        {isLoading ? (
+                            <div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
+                                <div className="icon-loader animate-spin text-gray-500"></div>
+                                <span className="text-sm">Carregando vídeo via P2P...</span>
+                            </div>
+                        ) : (
+                            <video 
+                                src={fileData || msg.text} 
+                                controls 
+                                className="rounded-lg max-w-full max-h-80"
+                                poster="https://via.placeholder.com/400x300?text=Video"
+                            />
+                        )}
+                        {transfer && transfer.progress > 0 && transfer.progress < 100 && (
+                            <div className="mt-2">
+                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${transfer.progress}%` }}></div>
+                                </div>
+                                <span className="text-xs text-gray-500">{Math.round(transfer.progress)}%</span>
+                            </div>
+                        )}
                         <button onClick={handleDownload} className="mt-2 text-xs bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600">📥 Baixar Vídeo</button>
                     </div>
                 );
@@ -745,7 +1022,16 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         <p className="text-sm font-medium truncate">{msg.fileName}</p>
                         <p className="text-xs text-gray-500">{fileSizeMB} MB</p>
                     </div>
-                    <button onClick={handleDownload} className="download-btn">Baixar</button>
+                    {transfer && transfer.progress > 0 && transfer.progress < 100 ? (
+                        <div className="flex flex-col items-center">
+                            <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+                                <div className="bg-green-500 h-full" style={{ width: `${transfer.progress}%` }}></div>
+                            </div>
+                            <span className="text-xs mt-1">{Math.round(transfer.progress)}%</span>
+                        </div>
+                    ) : (
+                        <button onClick={handleDownload} className="download-btn">Baixar</button>
+                    )}
                 </div>
             );
         }
@@ -771,12 +1057,27 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return <p className="text-gray-800 break-words" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text || '') }}></p>;
     };
 
-    // PeerJS Setup
+    // PeerJS Setup com suporte a DataChannel para P2P
     React.useEffect(() => {
         const cleanId = user.id.replace(/[^a-zA-Z0-9]/g, ''); 
         const newPeer = new window.Peer(cleanId);
         
         newPeer.on('open', (id) => console.log('PeerJS ID:', id));
+        
+        // DataChannel para transferência de arquivos P2P
+        newPeer.on('connection', (conn) => {
+            console.log(`Nova conexão P2P de ${conn.peer}`);
+            p2pDataChannelRef.current[conn.peer] = conn;
+            
+            conn.on('data', (data) => {
+                handleP2PData(data, conn.peer);
+            });
+            
+            conn.on('close', () => {
+                console.log(`Conexão P2P fechada: ${conn.peer}`);
+                delete p2pDataChannelRef.current[conn.peer];
+            });
+        });
         
         newPeer.on('call', (call) => {
             setIncomingCall({ callerId: call.peer, callObj: call, isVideo: call.metadata?.isVideo });
@@ -1290,13 +1591,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                         playsInline 
                                         className="w-full h-full object-cover"
                                     />
-                                    {/* Indicador de áudio (quem está falando) */}
                                     {audioLevel > 10 && (
                                         <div className="absolute top-2 left-2 bg-green-500 rounded-lg px-2 py-1 text-xs text-white animate-pulse">
                                             🎤 Falando
                                         </div>
                                     )}
-                                    {/* Barra de nível de áudio */}
                                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
                                         <div className="h-full bg-green-500 transition-all duration-100" style={{ width: `${audioLevel}%` }}></div>
                                     </div>
@@ -1307,16 +1606,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             );
                         })}
                         
-                        {/* Placeholder quando não há participantes em vídeo */}
                         {(!isVideoCall || Object.keys(participantVideos).filter(p => p !== 'me').length === 0) && !incomingCall && (
                             <div className="flex flex-col items-center justify-center">
-                                <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed={activeChat?.id}`} className="w-32 h-32 rounded-full mb-4" />
+                                <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat?.id}`} className="w-32 h-32 rounded-full mb-4" />
                                 <h2 className="text-2xl font-semibold text-white mb-1 text-center">{activeChat?.name}</h2>
                                 <p className="text-gray-400 text-sm">Chamada em andamento...</p>
                             </div>
                         )}
                         
-                        {/* Tela de chamada recebida */}
                         {incomingCall && (
                             <div className="flex flex-col items-center justify-center">
                                 <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall.callerId}`} className="w-32 h-32 rounded-full mb-4 avatar-pulse" />
@@ -1336,31 +1633,26 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
                     {/* Controles da Chamada */}
                     <div className="bg-black/80 p-4 flex justify-center gap-4 flex-wrap">
-                        {/* Botão desligar microfone */}
                         <button onClick={toggleMic} className={`p-3 rounded-full transition-colors ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
                             <div className={isMicMuted ? "icon-mic-off text-xl text-white" : "icon-mic text-xl text-white"}></div>
                         </button>
                         
-                        {/* Botão desligar câmera (só aparece em chamada de vídeo) */}
                         {isVideoCall && (
                             <button onClick={toggleCam} className={`p-3 rounded-full transition-colors ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
                                 <div className={isCamMuted ? "icon-video-off text-xl text-white" : "icon-video text-xl text-white"}></div>
                             </button>
                         )}
                         
-                        {/* Botão trocar para vídeo (só aparece em chamada de áudio) */}
                         {!isVideoCall && callStatus === 'connected' && (
                             <button onClick={switchToVideo} className="p-3 bg-blue-600 rounded-full hover:bg-blue-700">
                                 <div className="icon-video text-xl text-white"></div>
                             </button>
                         )}
                         
-                        {/* Botão alternar layout da grade */}
                         <button onClick={() => setGridLayout(prev => prev === 'grid' ? 'speaker' : 'grid')} className="p-3 bg-gray-700 rounded-full hover:bg-gray-600">
                             <div className="icon-grid text-xl text-white"></div>
                         </button>
                         
-                        {/* Botão encerrar chamada */}
                         <button onClick={() => endCall(false)} className="p-4 bg-red-600 rounded-full hover:bg-red-700">
                             <div className="icon-phone-off text-xl text-white"></div>
                         </button>
@@ -1474,7 +1766,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 const isMe = msg.senderId === user.id;
                                 const isSystem = msg.type === 'system';
                                 const messageId = msg.key || idx;
-                                const isMediaMessage = msg.fileName && msg.text && msg.text.startsWith('data:');
+                                const isMediaMessage = msg.fileName && (msg.text || msg.p2pFileId);
 
                                 if (isSystem) {
                                     return (
@@ -1576,6 +1868,23 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             <AudioRecorder onSendAudio={(base64, duration) => handleSendMessage(base64, 'audio', duration)} onCancel={() => setShowAudioRecorder(false)} />
                         )}
                     </div>
+
+                    {/* Transferências P2P */}
+                    {Object.keys(p2pTransfers).length > 0 && (
+                        <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
+                            {Object.entries(p2pTransfers).map(([fileId, transfer]) => (
+                                <div key={fileId} className="mb-1">
+                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                        <span className="truncate max-w-[200px]">{transfer.fileName}</span>
+                                        <span>{transfer.status === 'enviando' ? 'Enviando' : 'Recebendo'} {Math.round(transfer.progress)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                        <div className="bg-green-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${transfer.progress}%` }}></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {Object.keys(uploadProgress).length > 0 && (
                         <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
