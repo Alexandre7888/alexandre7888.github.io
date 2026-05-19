@@ -454,37 +454,50 @@ const setupAudioAnalyser = (stream, participantId) => {
         } catch(err) { console.error("Erro ao ligar:", err); setCallStatus(null); }
     };
 
-    const startGroupCall = async (video) => {
-        if (groupPermissions && ((video && !groupPermissions.sendVideo) || (!video && !groupPermissions.sendAudio))) return;
-        const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
-        if (!members) return;
-        const memberIds = Object.keys(members).filter(id => id !== user.id);
-        if (memberIds.length === 0) return;
-        setCallStatus('connected');
-        setIsVideoCall(video);
-        setIsMicMuted(false);
-        setIsCamMuted(false);
-        setActiveGroupCall(true);
-        setOngoingGroupCall(null);
-        startCallTimer();
-        db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'active', startedBy: user.id, timestamp: Date.now() });
-        handleSendMessage(`📞 Iniciou chamada de ${video ? 'vídeo' : 'voz'} em grupo.`, 'system');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-            localStreamRef.current = stream;
-            if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
-            for (const id of memberIds) {
-                const userSnap = await db.ref(`users/${id}`).once('value');
-                const userData = userSnap.val();
-                setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
-            }
-            memberIds.forEach(id => {
-                const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
-                const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, groupId: activeChat.id } });
-                if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
-            });
-        } catch (err) { console.error("Erro:", err); endCall(); }
-    };
+const startGroupCall = async (video) => {
+    if (groupPermissions && ((video && !groupPermissions.sendVideo) || (!video && !groupPermissions.sendAudio))) return;
+    const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
+    if (!members) return;
+    const memberIds = Object.keys(members).filter(id => id !== user.id);
+    if (memberIds.length === 0) return;
+    
+    setCallStatus('connected');
+    setIsVideoCall(video);
+    setIsMicMuted(false);
+    setIsCamMuted(false);
+    setActiveGroupCall(true);
+    setOngoingGroupCall(null);
+    startCallTimer();
+    
+    db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'active', startedBy: user.id, timestamp: Date.now() });
+    handleSendMessage(`📞 Iniciou chamada de ${video ? 'vídeo' : 'voz'} em grupo.`, 'system');
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
+        localStreamRef.current = stream;
+        setLocalVideoEnabled(video);
+        
+        if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
+        
+        // Buscar informações dos participantes
+        for (const id of memberIds) {
+            const userSnap = await db.ref(`users/${id}`).once('value');
+            const userData = userSnap.val();
+            setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
+        }
+        
+        // Adicionar vídeo do próprio usuário à lista da grade
+        if (video && localStreamRef.current) {
+            setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
+        }
+        
+        memberIds.forEach(id => {
+            const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
+            const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, groupId: activeChat.id } });
+            if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
+        });
+    } catch (err) { console.error("Erro:", err); endCall(); }
+};
 
     const joinGroupCall = async () => {
         if (!ongoingGroupCall) return;
