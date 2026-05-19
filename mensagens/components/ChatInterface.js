@@ -227,13 +227,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const audioContextRef = React.useRef(null);
     const analyserRef = React.useRef({});
 
-    // ==================== MULTI PARTICIPANTES VIDEO CHAMADA ====================
-    const [participantVideos, setParticipantVideos] = React.useState({}); // { peerId: stream }
-    const [participantAudioLevels, setParticipantAudioLevels] = React.useState({}); // { peerId: level }
-    const [gridLayout, setGridLayout] = React.useState('grid'); // 'grid' or 'speaker'
-    const [mainSpeakerId, setMainSpeakerId] = React.useState(null);
-    const [localVideoEnabled, setLocalVideoEnabled] = React.useState(true);
-
     // Recording
     const [isRecordingCall, setIsRecordingCall] = React.useState(false);
     const recorderRef = React.useRef(null);
@@ -269,7 +262,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return () => window.removeEventListener('click', handleClick);
     }, []);
 
-    // ==================== FUNÇÕES DE CHAMADA ====================
+    // ==================== FUNÇÕES DE CHAMADA REAIS ====================
     
     const formatDuration = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -289,46 +282,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
 
-    // Detectar nível de áudio para saber quem está falando
-    const setupAudioAnalyser = (stream, participantId) => {
-        if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        
-        const source = audioContextRef.current.createMediaStreamSource(stream);
-        const analyser = audioContextRef.current.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-        const checkVolume = () => {
-            if (!analyserRef.current[participantId]) return;
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-            const avg = sum / dataArray.length;
-            const isSpeaking = avg > 15;
-            const level = Math.min(100, Math.floor(avg * 2));
-            
-            setParticipantAudioLevels(prev => ({ ...prev, [participantId]: level }));
-            
-            if (isSpeaking !== activeSpeakers[participantId]) {
-                setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
-            }
-            
-            // Destacar quem está falando mais alto
-            if (level > 30) {
-                setMainSpeakerId(participantId);
-            }
-            
-            requestAnimationFrame(() => checkVolume());
-        };
-        
-        analyserRef.current[participantId] = analyser;
-        checkVolume();
-    };
-
     const toggleMic = () => {
         if (localStreamRef.current) {
             const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -345,7 +298,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (videoTrack) {
                 videoTrack.enabled = !videoTrack.enabled;
                 setIsCamMuted(!videoTrack.enabled);
-                setLocalVideoEnabled(!videoTrack.enabled);
             }
         }
     };
@@ -360,9 +312,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 localStreamRef.current.addTrack(newVideoTrack);
                 if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
                 setIsVideoCall(true);
-                setLocalVideoEnabled(true);
-                // Adicionar vídeo do próprio usuário à grade
-                setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
                 Object.values(activeCalls).forEach(call => {
                     const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
                     if (sender) sender.replaceTrack(newVideoTrack);
@@ -383,8 +332,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             const type = isVideoCall ? 'vídeo' : 'voz';
             handleSendMessage(`Chamada de ${type} encerrada • ${durationStr}`, 'system');
         }
-        Object.values(activeCalls).forEach(call => call.close());
-        if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
+        Object.values(activeCalls).forEach(call => {
+            if (call && call.close) call.close();
+        });
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(t => t.stop());
+        }
         setActiveCalls({});
         setRemoteStreams({});
         setCallStatus(null);
@@ -395,10 +348,10 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsCamMuted(false);
         setActiveSpeakers({});
         setParticipantsInfo({});
-        setParticipantVideos({});
-        setParticipantAudioLevels({});
-        setMainSpeakerId(null);
-        if (audioContextRef.current) { audioContextRef.current.close(); audioContextRef.current = null; }
+        if (audioContextRef.current) { 
+            audioContextRef.current.close(); 
+            audioContextRef.current = null; 
+        }
         analyserRef.current = {};
         localStreamRef.current = null;
     };
@@ -406,6 +359,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const answerCall = async () => {
         window.NotificationSystem?.stopRingtone();
         if (!incomingCall || !incomingCall.callObj) return;
+        
         const isVideo = incomingCall.isVideo;
         setIsVideoCall(isVideo);
         setIncomingCall(null);
@@ -413,23 +367,51 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsMicMuted(false);
         setIsCamMuted(false);
         startCallTimer();
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
-        localStreamRef.current = stream;
-        setLocalVideoEnabled(isVideo);
-        if (isVideo && localVideoRef.current) localVideoRef.current.srcObject = stream;
-        if (isVideo) {
-            setParticipantVideos(prev => ({ ...prev, ['me']: stream }));
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
+            localStreamRef.current = stream;
+            if (isVideo && localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
+            const call = incomingCall.callObj;
+            call.answer(stream);
+            
+            call.on('stream', (remoteStream) => {
+                setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+                if (!isVideo) {
+                    const audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                } else {
+                    if (remoteVideoRef.current) {
+                        remoteVideoRef.current.srcObject = remoteStream;
+                    }
+                }
+            });
+            
+            call.on('close', () => {
+                if (Object.keys(activeCalls).length === 0) {
+                    endCall(true);
+                }
+            });
+            
+            setActiveCalls(prev => ({ ...prev, [call.peer]: call }));
+            setParticipantsInfo(prev => ({ ...prev, [call.peer]: { id: call.peer, name: call.peer.split('_')[0] } }));
+            
+        } catch(err) { 
+            console.error("Erro ao responder chamada:", err); 
+            showToastMessage("Erro ao responder chamada!", "error");
+            endCall();
         }
-        const call = incomingCall.callObj;
-        call.answer(stream);
-        handleCallStream(call, isVideo, call.peer);
-        setActiveCalls(prev => ({ ...prev, [call.peer]: call }));
-        setParticipantsInfo(prev => ({ ...prev, [call.peer]: { id: call.peer, name: call.peer.split('_')[0] } }));
     };
 
     const startCall = async (video = false) => {
         if (!activeChat) return;
-        if (activeChat.type === 'group') { startGroupCall(video); return; }
+        if (activeChat.type === 'group') { 
+            startGroupCall(video); 
+            return; 
+        }
         
         const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
         if (blockedByMe) {
@@ -445,35 +427,71 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsVideoCall(video);
         setIsMicMuted(false);
         setIsCamMuted(false);
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
-            setLocalVideoEnabled(video);
-            if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
-            if (video) {
-                setParticipantVideos(prev => ({ ...prev, ['me']: stream }));
+            if (video && localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
             }
+            
             const targetPeerId = activeChat.id.replace(/[^a-zA-Z0-9]/g, '');
             const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video } });
+            
             if (!call) throw new Error("Falha ao iniciar chamada");
-            handleCallStream(call, video, targetPeerId);
+            
+            call.on('stream', (remoteStream) => {
+                setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+                if (!video) {
+                    const audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                } else {
+                    if (remoteVideoRef.current) {
+                        remoteVideoRef.current.srcObject = remoteStream;
+                    }
+                }
+                if (callStatus === 'calling') {
+                    setCallStatus('connected');
+                    startCallTimer();
+                }
+            });
+            
+            call.on('close', () => {
+                if (Object.keys(activeCalls).length === 0) {
+                    endCall(true);
+                }
+            });
+            
             setActiveCalls({ [targetPeerId]: call });
             setParticipantsInfo(prev => ({ ...prev, [targetPeerId]: { id: targetPeerId, name: activeChat.name } }));
+            
+            // Timeout para chamada não atendida
             setTimeout(() => {
                 if (callStatus === 'calling') {
                     endCall();
                     showToastMessage("Chamada não atendida", "error");
                 }
             }, 30000);
-        } catch(err) { console.error("Erro ao ligar:", err); setCallStatus(null); }
+            
+        } catch(err) { 
+            console.error("Erro ao ligar:", err); 
+            setCallStatus(null);
+            showToastMessage("Erro ao iniciar chamada!", "error");
+        }
     };
 
     const startGroupCall = async (video) => {
         if (groupPermissions && ((video && !groupPermissions.sendVideo) || (!video && !groupPermissions.sendAudio))) return;
+        
         const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
         if (!members) return;
+        
         const memberIds = Object.keys(members).filter(id => id !== user.id);
-        if (memberIds.length === 0) return;
+        if (memberIds.length === 0) {
+            showToastMessage("Nenhum outro membro no grupo!", "error");
+            return;
+        }
         
         setCallStatus('connected');
         setIsVideoCall(video);
@@ -489,9 +507,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
-            setLocalVideoEnabled(video);
-            
-            if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
+            if (video && localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
             
             // Buscar informações dos participantes
             for (const id of memberIds) {
@@ -500,21 +518,27 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
             }
             
-            // Adicionar vídeo do próprio usuário à lista da grade
-            if (video && localStreamRef.current) {
-                setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
-            }
-            
             memberIds.forEach(id => {
                 const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
                 const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, groupId: activeChat.id } });
-                if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
+                
+                if (call) {
+                    call.on('stream', (remoteStream) => {
+                        setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+                    });
+                    setActiveCalls(prev => ({ ...prev, [targetPeerId]: call }));
+                }
             });
-        } catch (err) { console.error("Erro:", err); endCall(); }
+            
+        } catch (err) { 
+            console.error("Erro ao iniciar chamada em grupo:", err); 
+            endCall();
+        }
     };
 
     const joinGroupCall = async () => {
         if (!ongoingGroupCall) return;
+        
         setIsVideoCall(false);
         setCallStatus('connected');
         setIsMicMuted(false);
@@ -522,67 +546,42 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setActiveGroupCall(true);
         setOngoingGroupCall(null);
         startCallTimer();
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             localStreamRef.current = stream;
+            
             const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
             if (members) {
                 const memberIds = Object.keys(members).filter(id => id !== user.id);
+                
                 for (const id of memberIds) {
                     const userSnap = await db.ref(`users/${id}`).once('value');
                     const userData = userSnap.val();
                     setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
                 }
+                
                 memberIds.forEach(id => {
                     const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
                     const call = peer.call(targetPeerId, stream, { metadata: { isVideo: false, isGroup: true, groupId: activeChat.id } });
-                    if (call) { handleCallStream(call, false, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
+                    
+                    if (call) {
+                        call.on('stream', (remoteStream) => {
+                            setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+                        });
+                        setActiveCalls(prev => ({ ...prev, [targetPeerId]: call }));
+                    }
                 });
             }
-        } catch (e) { console.error("Erro ao entrar:", e); }
-    };
-
-    const handleCallStream = (call, isVideo, participantId) => {
-        call.on('stream', (remoteStream) => {
-            setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-            
-            // Adicionar vídeo do participante à lista para grade
-            if (isVideo) {
-                setParticipantVideos(prev => ({ ...prev, [call.peer]: remoteStream }));
-            }
-            
-            // Configurar detector de áudio para saber quando o participante fala
-            setupAudioAnalyser(remoteStream, call.peer);
-            
-            if (!isVideo) {
-                const audio = new Audio();
-                audio.srcObject = remoteStream;
-                audio.play();
-            } else {
-                if (remoteVideoRef.current && call.peer === Object.keys(activeCalls)[0]) {
-                    remoteVideoRef.current.srcObject = remoteStream;
-                }
-            }
-            if (callStatus === 'calling') {
-                setCallStatus('connected');
-                startCallTimer();
-            }
-        });
-        call.on('close', () => {
-            setActiveCalls(prev => { const newCalls = { ...prev }; delete newCalls[call.peer]; if (Object.keys(newCalls).length === 0) endCall(true); return newCalls; });
-            setRemoteStreams(prev => { const newSt = { ...prev }; delete newSt[call.peer]; return newSt; });
-            setParticipantVideos(prev => { const newVideos = { ...prev }; delete newVideos[call.peer]; return newVideos; });
-            setParticipantAudioLevels(prev => { const newLevels = { ...prev }; delete newLevels[call.peer]; return newLevels; });
-            setActiveSpeakers(prev => { const newSp = { ...prev }; delete newSp[call.peer]; return newSp; });
-        });
-        call.on('error', (err) => console.error(`Erro:`, err));
+        } catch (e) { 
+            console.error("Erro ao entrar na chamada:", e); 
+        }
     };
 
     const initAudioContext = () => {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
             mixedDestRef.current = audioContextRef.current.createMediaStreamDestination();
-            analyserRef.current = {};
         }
     };
 
@@ -599,7 +598,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         const stream = mixedDestRef.current.stream;
         const recorder = new MediaRecorder(stream);
         const chunks = [];
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        
+        recorder.ondataavailable = (e) => { 
+            if (e.data.size > 0) chunks.push(e.data); 
+        };
+        
         recorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'audio/webm' });
             const reader = new FileReader();
@@ -612,6 +615,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 }
             };
         };
+        
         recorder.start();
         recorderRef.current = recorder;
         setIsRecordingCall(true);
@@ -620,9 +624,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     };
 
     const stopRecordingCall = () => {
-        if (recorderRef.current && recorderRef.current.state === 'recording') recorderRef.current.stop();
+        if (recorderRef.current && recorderRef.current.state === 'recording') {
+            recorderRef.current.stop();
+        }
         setIsRecordingCall(false);
-        if (callTimerRefAux.current) clearInterval(callTimerRefAux.current);
+        if (callTimerRefAux.current) {
+            clearInterval(callTimerRefAux.current);
+            callTimerRefAux.current = null;
+        }
     };
 
     const toggleBackgroundMode = () => {
@@ -804,28 +813,50 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     }, [user.id]);
 
     React.useEffect(() => {
-        if (!activeChat || activeChat.type !== 'group') { setOngoingGroupCall(null); return; }
+        if (!activeChat || activeChat.type !== 'group') { 
+            setOngoingGroupCall(null); 
+            return; 
+        }
+        
         const callStatusRef = db.ref(`groups/${activeChat.id}/callStatus`);
         const handleStatus = (snap) => {
             const status = snap.val();
-            if (status?.state === 'active') { if (!activeGroupCall) setOngoingGroupCall(status); else setOngoingGroupCall(null); }
-            else if (status?.state === 'ended') { setOngoingGroupCall(null); if ((Date.now() - status.timestamp < 5000) && (callStatus === 'connected' || callStatus === 'calling')) endCall(true); }
-            else setOngoingGroupCall(null);
+            if (status?.state === 'active') { 
+                if (!activeGroupCall) {
+                    setOngoingGroupCall(status);
+                } else {
+                    setOngoingGroupCall(null);
+                }
+            } else if (status?.state === 'ended') { 
+                setOngoingGroupCall(null); 
+                if ((Date.now() - status.timestamp < 5000) && (callStatus === 'connected' || callStatus === 'calling')) {
+                    endCall(true); 
+                }
+            } else {
+                setOngoingGroupCall(null);
+            }
         };
+        
         callStatusRef.on('value', handleStatus);
         return () => callStatusRef.off();
     }, [activeChat, callStatus, activeGroupCall]);
 
     React.useEffect(() => {
         if (!chats.length) return;
+        
         const listeners = [];
         chats.forEach(chat => {
-            const messagesRef = chat.type === 'group' ? db.ref(`groups/${chat.id}/messages`) : db.ref(`chats/${[user.id, chat.id].sort().join('_')}/messages`);
+            const messagesRef = chat.type === 'group' 
+                ? db.ref(`groups/${chat.id}/messages`)
+                : db.ref(`chats/${[user.id, chat.id].sort().join('_')}/messages`);
+                
             const listener = messagesRef.limitToLast(1).on('child_added', (snapshot) => {
                 const msg = snapshot.val();
                 if (!msg) return;
+                
                 const isRecent = (Date.now() - msg.timestamp) < 10000; 
                 const isFromMe = msg.senderId === user.id;
+                
                 if (!isFromMe && isRecent) {
                     const isChatActive = activeChat && activeChat.id === chat.id;
                     if (!isChatActive || document.hidden) {
@@ -841,6 +872,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             });
             listeners.push({ ref: messagesRef, fn: listener });
         });
+        
         return () => listeners.forEach(l => l.ref.off('child_added', l.fn));
     }, [chats, activeChat]);
 
@@ -853,35 +885,55 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         try {
             const stream = localStreamRef.current || await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             if (!localStreamRef.current) localStreamRef.current = stream;
+            
             const targetPeerId = peerId.replace(/[^a-zA-Z0-9]/g, '');
             const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, inviterId: user.id } });
-            if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
-        } catch(e) { console.error("Erro:", e); }
+            
+            if (call) { 
+                handleCallStream(call, video, targetPeerId); 
+                setActiveCalls(prev => ({ ...prev, [targetPeerId]: call }));
+            }
+        } catch(e) { 
+            console.error("Erro ao conectar novo peer:", e); 
+        }
     };
 
     const handleAddParticipantToCall = async (newId) => {
         if (!newId) return;
         await connectToNewPeer(newId, isVideoCall);
         Object.keys(activeCalls).forEach(connectedPeerId => {
-            db.ref(`users/${connectedPeerId}/call_signal`).push({ type: 'connect_peer', targetPeer: newId, timestamp: Date.now() });
+            db.ref(`users/${connectedPeerId}/call_signal`).push({ 
+                type: 'connect_peer', 
+                targetPeer: newId, 
+                timestamp: Date.now() 
+            });
         });
         setShowAddContact(false); 
     };
 
     const endGroupCallForEveryone = () => {
         if (!activeChat || activeChat.type !== 'group') return;
-        if (!confirm("Encerrar chamada para TODOS?")) return;
-        db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'ended', endedBy: user.id, timestamp: Date.now() });
+        if (!confirm("Isso encerrará a chamada para TODOS os participantes. Tem certeza?")) return;
+        
+        db.ref(`groups/${activeChat.id}/callStatus`).set({ 
+            state: 'ended', 
+            endedBy: user.id, 
+            timestamp: Date.now() 
+        });
         endCall();
     };
 
     React.useEffect(() => {
-        if (activeChat && activeChat.type === 'group') db.ref(`groups/${activeChat.id}/permissions`).on('value', s => setGroupPermissions(s.val()));
-        else setGroupPermissions(null);
+        if (activeChat && activeChat.type === 'group') {
+            db.ref(`groups/${activeChat.id}/permissions`).on('value', s => setGroupPermissions(s.val()));
+        } else {
+            setGroupPermissions(null);
+        }
     }, [activeChat]);
 
     React.useEffect(() => {
         if (!db || !user) return;
+        
         const contactsRef = db.ref(`users/${user.id}/contacts`);
         const loadContacts = (snapshot) => {
             const data = snapshot.val();
@@ -889,11 +941,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 setChats([]);
                 return;
             }
+            
             Promise.all(Object.keys(data).map(async id => {
                 try {
                     const ref = data[id].type === 'group' ? `groups/${id}` : `users/${id}`;
                     const val = (await db.ref(ref).once('value')).val();
                     let status = 'offline', privacy = {};
+                    
                     if (data[id].type !== 'group' && val) {
                         const statusSnap = await db.ref(`users/${id}/status`).once('value');
                         const settingsSnap = await db.ref(`users/${id}/settings`).once('value');
@@ -913,6 +967,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 });
             });
         };
+        
         contactsRef.on('value', loadContacts);
         return () => contactsRef.off();
     }, [user, db]);
@@ -943,16 +998,23 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     return;
                 }
                 
-                messagesRef = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                messagesRef = activeChat.type === 'group' 
+                    ? db.ref(`groups/${activeChat.id}/messages`)
+                    : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
                 
                 const markAsRead = (msgId, senderId) => {
                     db.ref(`users/${user.id}/settings`).once('value').then(s => {
                         const settings = s.val() || {};
                         let allowReadReceipt = settings.readReceipts !== false;
-                        if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
+                        if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) {
+                            allowReadReceipt = !allowReadReceipt;
+                        }
                         if (allowReadReceipt) {
-                            if (activeChat.type === 'group') db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
-                            else db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
+                            if (activeChat.type === 'group') {
+                                db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
+                            } else {
+                                db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
+                            }
                         }
                     });
                 };
@@ -960,9 +1022,15 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 messagesRef.limitToLast(50).on('child_added', (snapshot) => {
                     const msg = snapshot.val();
                     setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
-                    if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
+                    if (msg.senderId !== user.id) {
+                        markAsRead(snapshot.key, msg.senderId);
+                    }
                 });
-                messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
+                
+                messagesRef.limitToLast(50).on('child_changed', (snapshot) => {
+                    const val = snapshot.val();
+                    setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...val, key: snapshot.key } : m));
+                });
                 
                 return () => {
                     if (messagesRef) messagesRef.off();
@@ -1031,7 +1099,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (type === 'audio') {
                 window.ChatAppAPI?.sendAudio(activeChat.id, content, duration, activeChat.type);
             } else if (type === 'system') {
-                const ref = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                const ref = activeChat.type === 'group' 
+                    ? db.ref(`groups/${activeChat.id}/messages`)
+                    : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
                 await ref.push({
                     senderId: 'system', senderName: 'Sistema', text: content, type: 'system',
                     timestamp: window.firebase.database.ServerValue.TIMESTAMP,
@@ -1071,6 +1141,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             setShowBotCreator(true); 
             return; 
         }
+        
         try {
             const groupSnap = await db.ref(`groups/${inputId}`).once('value');
             if (groupSnap.exists()) {
@@ -1082,6 +1153,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 showToastMessage(`Você entrou no grupo "${groupData.name}"!`, "success");
                 return;
             }
+            
             const userSnap = await db.ref(`users/${inputId}`).once('value');
             if (userSnap.exists()) {
                 const userData = userSnap.val();
@@ -1093,7 +1165,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 showToastMessage("Usuário ou grupo não encontrado!", "error");
             }
         } catch (error) { 
-            console.error("Erro:", error); 
+            console.error("Erro ao adicionar contato:", error); 
             showToastMessage("Erro ao adicionar contato!", "error"); 
         }
     };
@@ -1235,136 +1307,173 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 />
             )}
 
-            {/* Call Modal - Chamada de Vídeo/Áudio com múltiplos participantes */}
+            {/* Call Modal */}
             {(incomingCall || callStatus) && (
-                <div className="fixed inset-0 z-50 bg-black flex flex-col">
-                    {/* Cabeçalho da Chamada */}
-                    <div className="absolute top-0 left-0 right-0 bg-black/50 p-4 z-20 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="text-white text-sm">
-                                {callStatus === 'connected' ? formatDuration(callDuration) : (incomingCall ? 'Chamando...' : 'Conectando...')}
-                            </span>
-                            <span className="text-white text-xs ml-2">
-                                {Object.keys(participantVideos).length + 1} participantes
-                            </span>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => setIsCallMinimized(!isCallMinimized)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
+                <div className={`fixed inset-0 z-50 transition-all duration-300 ease-in-out ${
+                    isCallMinimized 
+                        ? 'bottom-4 right-4 w-80 h-96 rounded-2xl border-2 border-white/20 bg-black' 
+                        : 'inset-0 bg-black'
+                } flex flex-col items-center justify-center`}>
+                    
+                    {/* Cabeçalho - apenas quando não minimizado */}
+                    {!isCallMinimized && (
+                        <div className="absolute top-10 left-4 right-4 flex justify-between items-center z-10">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                <span className="text-white text-sm">
+                                    {callStatus === 'connected' ? formatDuration(callDuration) : (incomingCall ? 'Chamando...' : 'Conectando...')}
+                                </span>
+                                {Object.keys(activeCalls).length > 0 && (
+                                    <span className="text-white text-xs ml-2">
+                                        {Object.keys(activeCalls).length + 1} participantes
+                                    </span>
+                                )}
+                            </div>
+                            <button onClick={() => setIsCallMinimized(true)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
                                 <div className="icon-arrow-down text-white text-sm"></div>
                             </button>
                         </div>
-                    </div>
-
-                    {/* Grade de Vídeos dos Participantes */}
-                    <div className={`flex-1 p-4 ${gridLayout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col'} items-center justify-center overflow-auto`}>
-                        
-                        {/* Vídeo do Próprio Usuário */}
-                        {isVideoCall && (
-                            <div className={`relative rounded-xl overflow-hidden bg-gray-900 ${gridLayout === 'grid' ? 'aspect-video' : 'w-64 h-48'}`}>
-                                <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-                                <div className="absolute bottom-2 left-2 bg-black/50 rounded-lg px-2 py-1 text-xs text-white flex items-center gap-1">
-                                    <div className={`w-2 h-2 rounded-full ${isMicMuted ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                                    <span>Você</span>
-                                    {!localVideoEnabled && <div className="icon-video-off text-xs ml-1"></div>}
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* Vídeos dos Participantes */}
-                        {Object.entries(participantVideos).filter(([peerId]) => peerId !== 'me').map(([peerId, stream]) => {
-                            const info = participantsInfo[peerId] || { name: peerId.split('_')[0] };
-                            const audioLevel = participantAudioLevels[peerId] || 0;
-                            const isMainSpeaker = mainSpeakerId === peerId;
-                            
-                            return (
-                                <div key={peerId} className={`relative rounded-xl overflow-hidden bg-gray-900 transition-all duration-300 ${gridLayout === 'grid' ? 'aspect-video' : 'w-64 h-48'} ${isMainSpeaker ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}>
-                                    <video 
-                                        ref={el => {
-                                            if (el && stream && el.srcObject !== stream) {
-                                                el.srcObject = stream;
-                                                el.play().catch(e => console.log(e));
-                                            }
-                                        }} 
-                                        autoPlay 
-                                        playsInline 
-                                        className="w-full h-full object-cover"
+                    )}
+                    
+                    {/* Conteúdo da chamada */}
+                    {!isCallMinimized && (
+                        <>
+                            {/* Avatar e informações - quando não é chamada em grupo */}
+                            {Object.keys(activeCalls).length <= 1 && !incomingCall && (
+                                <div className="flex flex-col items-center mb-8">
+                                    <img 
+                                        src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat?.id}`} 
+                                        className="w-32 h-32 rounded-full mb-4 avatar-pulse" 
                                     />
-                                    {/* Indicador de áudio (quem está falando) */}
-                                    {audioLevel > 10 && (
-                                        <div className="absolute top-2 left-2 bg-green-500 rounded-lg px-2 py-1 text-xs text-white animate-pulse">
-                                            🎤 Falando
+                                    <h2 className="text-2xl font-semibold text-white mb-1 text-center">{activeChat?.name}</h2>
+                                    <p className="text-gray-400 text-sm">
+                                        {callStatus === 'connected' ? formatDuration(callDuration) : 'Conectando...'}
+                                    </p>
+                                </div>
+                            )}
+                            
+                            {/* Lista de participantes em chamada de grupo */}
+                            {callStatus === 'connected' && Object.keys(activeCalls).length > 0 && (
+                                <div className="absolute top-20 left-4 right-4 max-h-40 overflow-y-auto bg-black/50 rounded-lg p-2 backdrop-blur-sm">
+                                    <p className="text-white text-xs mb-2">Participantes ({Object.keys(activeCalls).length + 1})</p>
+                                    <div className="flex flex-col gap-1">
+                                        {/* Próprio usuário */}
+                                        <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-100">
+                                            <div className="relative">
+                                                <img src={user.avatar} className="w-8 h-8 rounded-full" />
+                                                <div className={`w-2 h-2 rounded-full absolute -bottom-0.5 -right-0.5 ${isMicMuted ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium">{user.name} (Você)</p>
+                                            </div>
+                                        </div>
+                                        {/* Outros participantes */}
+                                        {Object.keys(activeCalls).map(peerId => {
+                                            const info = participantsInfo[peerId] || { name: peerId.split('_')[0] };
+                                            return (
+                                                <div key={peerId} className="flex items-center gap-2 p-2 rounded-lg bg-gray-100">
+                                                    <img 
+                                                        src={info.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${peerId}`} 
+                                                        className="w-8 h-8 rounded-full" 
+                                                    />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-medium">{info.name}</p>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Tela de chamada recebida */}
+                            {incomingCall && (
+                                <div className="flex flex-col items-center justify-center">
+                                    <img 
+                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall.callerId}`} 
+                                        className="w-32 h-32 rounded-full mb-4 avatar-pulse" 
+                                    />
+                                    <h2 className="text-2xl font-semibold text-white mb-1">{incomingCall.callerId?.split('_')[0]}</h2>
+                                    <p className="text-gray-400 text-sm">Chamada de {incomingCall.isVideo ? 'vídeo' : 'voz'}...</p>
+                                    <div className="flex gap-6 mt-8">
+                                        <button onClick={() => setIncomingCall(null)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
+                                            <div className="icon-phone-off text-3xl text-white"></div>
+                                        </button>
+                                        <button onClick={answerCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600">
+                                            <div className="icon-phone text-3xl text-white"></div>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Vídeo remoto */}
+                            {isVideoCall && remoteVideoRef.current?.srcObject && (
+                                <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover -z-10" />
+                            )}
+                            
+                            {/* Vídeo local */}
+                            {isVideoCall && localStreamRef.current && (
+                                <div className="absolute bottom-4 right-4 w-32 h-48 bg-black rounded-xl overflow-hidden border-2 border-gray-600">
+                                    <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                                    {isMicMuted && (
+                                        <div className="absolute bottom-1 left-1 bg-red-500 rounded-full p-1">
+                                            <div className="icon-mic-off text-white text-xs"></div>
                                         </div>
                                     )}
-                                    {/* Barra de nível de áudio */}
-                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
-                                        <div className="h-full bg-green-500 transition-all duration-100" style={{ width: `${audioLevel}%` }}></div>
-                                    </div>
-                                    <div className="absolute bottom-2 left-2 bg-black/50 rounded-lg px-2 py-1 text-xs text-white">
-                                        {info.name}
-                                    </div>
                                 </div>
-                            );
-                        })}
-                        
-                        {/* Placeholder quando não há participantes em vídeo */}
-                        {(!isVideoCall || Object.keys(participantVideos).filter(p => p !== 'me').length === 0) && !incomingCall && (
-                            <div className="flex flex-col items-center justify-center">
-                                <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed={activeChat?.id}`} className="w-32 h-32 rounded-full mb-4" />
-                                <h2 className="text-2xl font-semibold text-white mb-1 text-center">{activeChat?.name}</h2>
-                                <p className="text-gray-400 text-sm">Chamada em andamento...</p>
+                            )}
+                        </>
+                    )}
+                    
+                    {/* Modo minimizado */}
+                    {isCallMinimized && (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-black rounded-2xl cursor-pointer" onClick={() => setIsCallMinimized(false)}>
+                            <img 
+                                src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat?.id}`} 
+                                className="w-12 h-12 rounded-full mb-2" 
+                            />
+                            <p className="text-white text-xs font-medium truncate max-w-[90%]">{activeChat?.name}</p>
+                            <p className="text-green-400 text-xs">{formatDuration(callDuration)}</p>
+                            <div className="flex gap-3 mt-3">
+                                <button onClick={(e) => { e.stopPropagation(); setIsCallMinimized(false); }} className="p-2 bg-gray-700 rounded-full">
+                                    <div className="icon-maximize-2 text-white text-sm"></div>
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); endCall(false); }} className="p-2 bg-red-600 rounded-full">
+                                    <div className="icon-phone-off text-white text-sm"></div>
+                                </button>
                             </div>
-                        )}
-                        
-                        {/* Tela de chamada recebida */}
-                        {incomingCall && (
-                            <div className="flex flex-col items-center justify-center">
-                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall.callerId}`} className="w-32 h-32 rounded-full mb-4 avatar-pulse" />
-                                <h2 className="text-2xl font-semibold text-white mb-1">{incomingCall.callerId?.split('_')[0]}</h2>
-                                <p className="text-gray-400 text-sm">Chamada de {incomingCall.isVideo ? 'vídeo' : 'voz'}...</p>
-                                <div className="flex gap-6 mt-8">
-                                    <button onClick={() => setIncomingCall(null)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
-                                        <div className="icon-phone-off text-3xl text-white"></div>
-                                    </button>
-                                    <button onClick={answerCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600">
-                                        <div className="icon-phone text-3xl text-white"></div>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Controles da Chamada */}
-                    <div className="bg-black/80 p-4 flex justify-center gap-4 flex-wrap">
-                        {/* Botão desligar microfone */}
-                        <button onClick={toggleMic} className={`p-3 rounded-full transition-colors ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                            <div className={isMicMuted ? "icon-mic-off text-xl text-white" : "icon-mic text-xl text-white"}></div>
-                        </button>
-                        
-                        {/* Botão desligar câmera (só aparece em chamada de vídeo) */}
-                        {isVideoCall && (
-                            <button onClick={toggleCam} className={`p-3 rounded-full transition-colors ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                <div className={isCamMuted ? "icon-video-off text-xl text-white" : "icon-video text-xl text-white"}></div>
+                        </div>
+                    )}
+                    
+                    {/* Controles da Chamada - apenas quando não minimizado e não incoming */}
+                    {!isCallMinimized && !incomingCall && callStatus && (
+                        <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4 flex-wrap z-10">
+                            <button onClick={toggleMic} className={`p-3 rounded-full transition-colors ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                <div className={isMicMuted ? "icon-mic-off text-xl text-white" : "icon-mic text-xl text-white"}></div>
                             </button>
-                        )}
-                        
-                        {/* Botão trocar para vídeo (só aparece em chamada de áudio) */}
-                        {!isVideoCall && callStatus === 'connected' && (
-                            <button onClick={switchToVideo} className="p-3 bg-blue-600 rounded-full hover:bg-blue-700">
-                                <div className="icon-video text-xl text-white"></div>
+                            
+                            {isVideoCall && (
+                                <button onClick={toggleCam} className={`p-3 rounded-full transition-colors ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                    <div className={isCamMuted ? "icon-video-off text-xl text-white" : "icon-video text-xl text-white"}></div>
+                                </button>
+                            )}
+                            
+                            {!isVideoCall && callStatus === 'connected' && (
+                                <button onClick={switchToVideo} className="p-3 bg-blue-600 rounded-full hover:bg-blue-700">
+                                    <div className="icon-video text-xl text-white"></div>
+                                </button>
+                            )}
+                            
+                            <button onClick={() => endCall(false)} className="p-4 bg-red-600 rounded-full hover:bg-red-700">
+                                <div className="icon-phone-off text-xl text-white"></div>
                             </button>
-                        )}
-                        
-                        {/* Botão alternar layout da grade */}
-                        <button onClick={() => setGridLayout(prev => prev === 'grid' ? 'speaker' : 'grid')} className="p-3 bg-gray-700 rounded-full hover:bg-gray-600">
-                            <div className="icon-grid text-xl text-white"></div>
-                        </button>
-                        
-                        {/* Botão encerrar chamada */}
-                        <button onClick={() => endCall(false)} className="p-4 bg-red-600 rounded-full hover:bg-red-700">
-                            <div className="icon-phone-off text-xl text-white"></div>
-                        </button>
-                    </div>
+                            
+                            <button onClick={() => setIsCallMinimized(true)} className="p-3 bg-gray-700 rounded-full hover:bg-gray-600">
+                                <div className="icon-arrow-down text-xl text-white"></div>
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -1449,8 +1558,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-gray-600" onClick={(e) => e.stopPropagation()}>
-                            <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(true)}><div className="icon-video text-xl"></div></div>
-                            <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(false)}><div className="icon-phone text-xl"></div></div>
+                            <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(true)}>
+                                <div className="icon-video text-xl"></div>
+                            </div>
+                            <div className={`p-2 rounded-full cursor-pointer transition-colors ${activeChat.type === 'group' ? 'text-[#00a884] bg-green-50 hover:bg-green-100' : 'hover:bg-gray-200'}`} onClick={() => startCall(false)}>
+                                <div className="icon-phone text-xl"></div>
+                            </div>
                             <div className="w-px h-6 bg-gray-300 mx-1"></div>
                             <div className="icon-search cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div>
                             <div className="icon-more-vertical cursor-pointer hover:bg-gray-200 p-2 rounded-full"></div>
@@ -1460,8 +1573,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     {ongoingGroupCall && !activeGroupCall && (
                         <div className="bg-green-100 p-3 flex justify-between items-center px-6 animate-slide-in-right cursor-pointer shadow-inner" onClick={joinGroupCall}>
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-500 rounded-full text-white animate-pulse"><div className="icon-phone-incoming text-xl"></div></div>
-                                <div><p className="font-bold text-green-800">Chamada em andamento</p><p className="text-xs text-green-600">Toque para participar</p></div>
+                                <div className="p-2 bg-green-500 rounded-full text-white animate-pulse">
+                                    <div className="icon-phone-incoming text-xl"></div>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-green-800">Chamada em andamento</p>
+                                    <p className="text-xs text-green-600">Toque para participar</p>
+                                </div>
                             </div>
                             <button className="bg-green-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-green-700 shadow">Entrar</button>
                         </div>
@@ -1524,10 +1642,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                             </div>
 
                                             {canDeleteMessage(msg) && (
-                                                <button onClick={() => deleteMessage(msg.key)} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"><div className="icon-trash text-xs"></div></button>
+                                                <button onClick={() => deleteMessage(msg.key)} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600">
+                                                    <div className="icon-trash text-xs"></div>
+                                                </button>
                                             )}
                                             {canEditMessage(msg) && !msg.readBy && (
-                                                <button onClick={() => { setEditingMessage(msg.key); setEditInput(msg.text); }} className="absolute -top-2 -right-8 p-1 bg-orange-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-600"><div className="icon-edit text-xs"></div></button>
+                                                <button onClick={() => { setEditingMessage(msg.key); setEditInput(msg.text); }} className="absolute -top-2 -right-8 p-1 bg-orange-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-600">
+                                                    <div className="icon-edit text-xs"></div>
+                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -1540,9 +1662,17 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     {/* Context Menu */}
                     {contextMenu.visible && contextMenu.message && canDeleteMessage(contextMenu.message) && (
                         <div className="fixed z-50 bg-white rounded-lg shadow-xl py-1 border border-gray-200" style={{ top: contextMenu.y, left: contextMenu.x }}>
-                            <button onClick={() => { copyToClipboard(contextMenu.message.text, contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"><div className="icon-copy"></div> Copiar</button>
-                            {canEditMessage(contextMenu.message) && (<button onClick={() => { setEditingMessage(contextMenu.message.key); setEditInput(contextMenu.message.text); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"><div className="icon-edit"></div> Editar</button>)}
-                            <button onClick={() => { deleteMessage(contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 flex items-center gap-2"><div className="icon-trash"></div> Apagar</button>
+                            <button onClick={() => { copyToClipboard(contextMenu.message.text, contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
+                                <div className="icon-copy"></div> Copiar
+                            </button>
+                            {canEditMessage(contextMenu.message) && (
+                                <button onClick={() => { setEditingMessage(contextMenu.message.key); setEditInput(contextMenu.message.text); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
+                                    <div className="icon-edit"></div> Editar
+                                </button>
+                            )}
+                            <button onClick={() => { deleteMessage(contextMenu.message.key); setContextMenu({ visible: false, x: 0, y: 0, message: null }); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 flex items-center gap-2">
+                                <div className="icon-trash"></div> Apagar
+                            </button>
                         </div>
                     )}
 
@@ -1595,9 +1725,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 </div>
             ) : (
                 <div className="flex-1 bg-[#f0f2f5] flex-col items-center justify-center hidden md:flex border-b-8 border-[#25d366]">
-                    <div className="w-64 h-64 mb-8 text-gray-300 flex items-center justify-center"><div className="icon-lock text-9xl text-gray-200"></div></div>
+                    <div className="w-64 h-64 mb-8 text-gray-300 flex items-center justify-center">
+                        <div className="icon-lock text-9xl text-gray-200"></div>
+                    </div>
                     <h1 className="text-3xl font-light text-gray-600 mb-4">Privacidade & Segurança</h1>
-                    <p className="text-gray-500 text-sm text-center max-w-md">Agora suas mensagens são privadas.<br/>Adicione contatos pelo ID para começar a conversar.</p>
+                    <p className="text-gray-500 text-sm text-center max-w-md">
+                        Agora suas mensagens são privadas.<br/>Adicione contatos pelo ID para começar a conversar.
+                    </p>
                 </div>
             )}
         </div>
