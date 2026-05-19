@@ -29,13 +29,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const BAN_DURATION = 60;
 
     // ==================== SISTEMA DE ARQUIVOS EM BASE64 ====================
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
-    // ==================== SISTEMA P2P PARA ARQUIVOS ====================
-    const [p2pTransfers, setP2pTransfers] = React.useState({});
-    const [p2pConnections, setP2pConnections] = React.useState({});
-    const p2pDataChannelRef = React.useRef({});
-    const pendingFileChunksRef = React.useRef({});
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
     const fileToBase64 = (file) => {
         return new Promise((resolve, reject) => {
@@ -44,190 +38,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             reader.onerror = reject;
             reader.readAsDataURL(file);
         });
-    };
-
-    // ==================== FUNÇÕES P2P PARA ARQUIVOS ====================
-    
-    const initP2PConnection = (peerId) => {
-        if (p2pConnections[peerId]) return p2pConnections[peerId];
-        
-        const cleanId = peerId.replace(/[^a-zA-Z0-9]/g, '');
-        const conn = peer.connect(cleanId);
-        
-        conn.on('open', () => {
-            console.log(`✅ Conexão P2P estabelecida com ${peerId}`);
-            setP2pConnections(prev => ({ ...prev, [peerId]: conn }));
-        });
-        
-        conn.on('data', (data) => handleP2PData(data, peerId));
-        
-        conn.on('close', () => {
-            console.log(`❌ Conexão P2P fechada com ${peerId}`);
-            setP2pConnections(prev => {
-                const newConns = { ...prev };
-                delete newConns[peerId];
-                return newConns;
-            });
-        });
-        
-        conn.on('error', (err) => console.error(`Erro P2P com ${peerId}:`, err));
-        
-        p2pConnections[peerId] = conn;
-        return conn;
-    };
-
-    const handleP2PData = (data, senderId) => {
-        // Recebendo metadados do arquivo
-        if (data.type === 'file_metadata') {
-            pendingFileChunksRef.current[data.fileId] = {
-                chunks: [],
-                totalChunks: data.totalChunks,
-                fileName: data.fileName,
-                fileType: data.fileType,
-                fileSize: data.fileSize,
-                senderId: senderId
-            };
-            setP2pTransfers(prev => ({
-                ...prev,
-                [data.fileId]: { progress: 0, status: 'recebendo', fileName: data.fileName }
-            }));
-        }
-        
-        // Recebendo chunks do arquivo
-        if (data.type === 'file_chunk') {
-            const pending = pendingFileChunksRef.current[data.fileId];
-            if (pending) {
-                pending.chunks[data.chunkIndex] = data.data;
-                const progress = ((data.chunkIndex + 1) / pending.totalChunks) * 100;
-                setP2pTransfers(prev => ({
-                    ...prev,
-                    [data.fileId]: { ...prev[data.fileId], progress: progress }
-                }));
-            }
-        }
-        
-        // Arquivo completo recebido
-        if (data.type === 'file_complete') {
-            const pending = pendingFileChunksRef.current[data.fileId];
-            if (pending && pending.chunks) {
-                const completeData = pending.chunks.join('');
-                const blob = new Blob([completeData], { type: pending.fileType });
-                const url = URL.createObjectURL(blob);
-                
-                // Salvar no IndexedDB
-                saveFileToIndexedDB(data.fileId, completeData, pending.fileName, pending.fileType);
-                
-                showToastMessage(`✅ Arquivo ${pending.fileName} recebido via P2P!`, "success");
-                
-                // Criar mensagem no chat com o arquivo recebido
-                const msgData = {
-                    senderId: senderId,
-                    senderName: `Usuário ${senderId.substring(0, 8)}`,
-                    text: url,
-                    type: 'file',
-                    fileName: pending.fileName,
-                    fileSize: pending.fileSize,
-                    fileType: pending.fileType,
-                    timestamp: Date.now(),
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-                
-                const ref = activeChat.type === 'group' 
-                    ? db.ref(`groups/${activeChat.id}/messages`)
-                    : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
-                ref.push(msgData);
-                
-                delete pendingFileChunksRef.current[data.fileId];
-                setP2pTransfers(prev => {
-                    const newTransfers = { ...prev };
-                    delete newTransfers[data.fileId];
-                    return newTransfers;
-                });
-            }
-        }
-        
-        // Solicitação de arquivo
-        if (data.type === 'file_request') {
-            const fileId = data.fileId;
-            const storedFile = localStorage.getItem(`p2p_file_${fileId}`);
-            if (storedFile) {
-                const fileData = JSON.parse(storedFile);
-                sendFileViaP2P(fileId, senderId, fileData.data, fileData.fileName, fileData.fileType, fileData.fileSize);
-            }
-        }
-    };
-
-    const sendFileViaP2P = async (fileId, targetPeerId, fileData, fileName, fileType, fileSize) => {
-        const conn = initP2PConnection(targetPeerId);
-        
-        setP2pTransfers(prev => ({
-            ...prev,
-            [fileId]: { progress: 0, status: 'enviando', fileName, targetPeerId }
-        }));
-        
-        const sendChunk = (conn, chunk, index, total) => {
-            conn.send({
-                type: 'file_chunk',
-                fileId: fileId,
-                chunkIndex: index,
-                totalChunks: total,
-                data: chunk
-            });
-        };
-        
-        conn.on('open', () => {
-            // Enviar metadados
-            conn.send({
-                type: 'file_metadata',
-                fileId: fileId,
-                totalChunks: Math.ceil(fileData.length / 16384),
-                fileName: fileName,
-                fileType: fileType,
-                fileSize: fileSize
-            });
-            
-            // Enviar em chunks de 16KB
-            const chunkSize = 16384;
-            const chunks = Math.ceil(fileData.length / chunkSize);
-            
-            for (let i = 0; i < chunks; i++) {
-                const chunk = fileData.slice(i * chunkSize, (i + 1) * chunkSize);
-                setTimeout(() => {
-                    sendChunk(conn, chunk, i, chunks);
-                    const progress = ((i + 1) / chunks) * 100;
-                    setP2pTransfers(prev => ({
-                        ...prev,
-                        [fileId]: { ...prev[fileId], progress: progress }
-                    }));
-                }, i * 10);
-            }
-            
-            setTimeout(() => {
-                conn.send({ type: 'file_complete', fileId: fileId });
-                setP2pTransfers(prev => {
-                    const newTransfers = { ...prev };
-                    delete newTransfers[fileId];
-                    return newTransfers;
-                });
-                showToastMessage(`✅ Arquivo ${fileName} enviado via P2P!`, "success");
-            }, chunks * 10 + 100);
-        });
-    };
-
-    const saveFileToIndexedDB = async (fileId, data, fileName, fileType) => {
-        // Salvar no localStorage como fallback
-        localStorage.setItem(`p2p_file_${fileId}`, JSON.stringify({
-            data: data,
-            fileName: fileName,
-            fileType: fileType,
-            timestamp: Date.now()
-        }));
-    };
-
-    const requestFileViaP2P = (fileId, senderId) => {
-        const conn = initP2PConnection(senderId);
-        conn.send({ type: 'file_request', fileId: fileId });
-        showToastMessage(`📡 Solicitando arquivo via P2P...`, "info");
     };
 
     const checkInactivity = async (userId) => {
@@ -417,13 +227,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const audioContextRef = React.useRef(null);
     const analyserRef = React.useRef({});
 
-    // ==================== MULTI PARTICIPANTES VIDEO CHAMADA ====================
-    const [participantVideos, setParticipantVideos] = React.useState({});
-    const [participantAudioLevels, setParticipantAudioLevels] = React.useState({});
-    const [gridLayout, setGridLayout] = React.useState('grid');
-    const [mainSpeakerId, setMainSpeakerId] = React.useState(null);
-    const [localVideoEnabled, setLocalVideoEnabled] = React.useState(true);
-
     // Recording
     const [isRecordingCall, setIsRecordingCall] = React.useState(false);
     const recorderRef = React.useRef(null);
@@ -479,7 +282,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
 
-    // Detectar nível de áudio para saber quem está falando
     const setupAudioAnalyser = (stream, participantId) => {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -499,18 +301,10 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
             const avg = sum / dataArray.length;
             const isSpeaking = avg > 15;
-            const level = Math.min(100, Math.floor(avg * 2));
-            
-            setParticipantAudioLevels(prev => ({ ...prev, [participantId]: level }));
             
             if (isSpeaking !== activeSpeakers[participantId]) {
                 setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
             }
-            
-            if (level > 30) {
-                setMainSpeakerId(participantId);
-            }
-            
             requestAnimationFrame(() => checkVolume());
         };
         
@@ -534,7 +328,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (videoTrack) {
                 videoTrack.enabled = !videoTrack.enabled;
                 setIsCamMuted(!videoTrack.enabled);
-                setLocalVideoEnabled(!videoTrack.enabled);
             }
         }
     };
@@ -549,8 +342,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 localStreamRef.current.addTrack(newVideoTrack);
                 if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
                 setIsVideoCall(true);
-                setLocalVideoEnabled(true);
-                setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
                 Object.values(activeCalls).forEach(call => {
                     const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
                     if (sender) sender.replaceTrack(newVideoTrack);
@@ -583,9 +374,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsCamMuted(false);
         setActiveSpeakers({});
         setParticipantsInfo({});
-        setParticipantVideos({});
-        setParticipantAudioLevels({});
-        setMainSpeakerId(null);
         if (audioContextRef.current) { audioContextRef.current.close(); audioContextRef.current = null; }
         analyserRef.current = {};
         localStreamRef.current = null;
@@ -603,11 +391,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         startCallTimer();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
         localStreamRef.current = stream;
-        setLocalVideoEnabled(isVideo);
         if (isVideo && localVideoRef.current) localVideoRef.current.srcObject = stream;
-        if (isVideo) {
-            setParticipantVideos(prev => ({ ...prev, ['me']: stream }));
-        }
         const call = incomingCall.callObj;
         call.answer(stream);
         handleCallStream(call, isVideo, call.peer);
@@ -636,11 +420,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
-            setLocalVideoEnabled(video);
             if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
-            if (video) {
-                setParticipantVideos(prev => ({ ...prev, ['me']: stream }));
-            }
             const targetPeerId = activeChat.id.replace(/[^a-zA-Z0-9]/g, '');
             const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video } });
             if (!call) throw new Error("Falha ao iniciar chamada");
@@ -662,7 +442,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         if (!members) return;
         const memberIds = Object.keys(members).filter(id => id !== user.id);
         if (memberIds.length === 0) return;
-        
         setCallStatus('connected');
         setIsVideoCall(video);
         setIsMicMuted(false);
@@ -670,27 +449,17 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setActiveGroupCall(true);
         setOngoingGroupCall(null);
         startCallTimer();
-        
         db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'active', startedBy: user.id, timestamp: Date.now() });
         handleSendMessage(`📞 Iniciou chamada de ${video ? 'vídeo' : 'voz'} em grupo.`, 'system');
-        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
-            setLocalVideoEnabled(video);
-            
             if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
-            
             for (const id of memberIds) {
                 const userSnap = await db.ref(`users/${id}`).once('value');
                 const userData = userSnap.val();
                 setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
             }
-            
-            if (video && localStreamRef.current) {
-                setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
-            }
-            
             memberIds.forEach(id => {
                 const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
                 const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, groupId: activeChat.id } });
@@ -731,13 +500,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const handleCallStream = (call, isVideo, participantId) => {
         call.on('stream', (remoteStream) => {
             setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-            
-            if (isVideo) {
-                setParticipantVideos(prev => ({ ...prev, [call.peer]: remoteStream }));
-            }
-            
             setupAudioAnalyser(remoteStream, call.peer);
-            
             if (!isVideo) {
                 const audio = new Audio();
                 audio.srcObject = remoteStream;
@@ -755,8 +518,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         call.on('close', () => {
             setActiveCalls(prev => { const newCalls = { ...prev }; delete newCalls[call.peer]; if (Object.keys(newCalls).length === 0) endCall(true); return newCalls; });
             setRemoteStreams(prev => { const newSt = { ...prev }; delete newSt[call.peer]; return newSt; });
-            setParticipantVideos(prev => { const newVideos = { ...prev }; delete newVideos[call.peer]; return newVideos; });
-            setParticipantAudioLevels(prev => { const newLevels = { ...prev }; delete newLevels[call.peer]; return newLevels; });
             setActiveSpeakers(prev => { const newSp = { ...prev }; delete newSp[call.peer]; return newSp; });
         });
         call.on('error', (err) => console.error(`Erro:`, err));
@@ -832,7 +593,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         currentAudioRef.current = audioElement;
     };
 
-    // ==================== FUNÇÃO PARA ENVIAR ARQUIVO COM P2P ====================
+    // ==================== FUNÇÃO PARA ENVIAR ARQUIVO EM BASE64 ====================
     const sendMediaFile = async (file, type) => {
         if (!activeChat) return;
         
@@ -862,39 +623,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             const base64 = await fileToBase64(file);
             setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
 
-            // Salvar localmente para P2P
-            const fileId = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-            localStorage.setItem(`p2p_file_${fileId}`, JSON.stringify({
-                data: base64,
-                fileName: file.name,
-                fileType: file.type,
-                fileSize: file.size,
-                timestamp: Date.now()
-            }));
-
-            // Enviar via P2P para usuários online
-            if (activeChat.type === 'group') {
-                const members = Object.keys(activeChat.members || {}).filter(id => id !== user.id);
-                for (const memberId of members) {
-                    const statusSnap = await db.ref(`users/${memberId}/status/state`).once('value');
-                    if (statusSnap.val() === 'online') {
-                        sendFileViaP2P(fileId, memberId, base64, file.name, file.type, file.size);
-                    }
-                }
-            } else {
-                // Chat privado
-                sendFileViaP2P(fileId, activeChat.id, base64, file.name, file.type, file.size);
-            }
-
             const msgData = {
                 senderId: user.id,
                 senderName: user.name,
-                text: base64.substring(0, 100) + "...",
+                text: base64,
                 type: type,
                 fileName: file.name,
                 fileSize: file.size,
                 fileType: file.type,
-                p2pFileId: fileId,
                 timestamp: window.firebase.database.ServerValue.TIMESTAMP,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
@@ -904,7 +640,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
 
             await ref.push(msgData);
-            showToastMessage(`${type === 'image' ? 'Imagem' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado via P2P!`, "success");
+            showToastMessage(`${type === 'image' ? 'Imagem' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado!`, "success");
 
         } catch (error) { 
             console.error("Erro:", error); 
@@ -914,73 +650,25 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
 
-    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA COM P2P ====================
+    // ==================== FUNÇÃO PARA RENDERIZAR MÍDIA ====================
     const renderMediaContent = (msg) => {
-        if (msg.fileName && msg.text) {
+        if (msg.fileName && msg.text && msg.text.startsWith('data:')) {
             const isImage = msg.type === 'image' || msg.fileType?.startsWith('image/');
             const isVideo = msg.type === 'video' || msg.fileType?.startsWith('video/');
             const fileSizeMB = (msg.fileSize / (1024 * 1024)).toFixed(2);
             
-            const [fileData, setFileData] = React.useState(null);
-            const [isLoading, setIsLoading] = React.useState(!msg.p2pFileId);
-            
-            React.useEffect(() => {
-                if (msg.p2pFileId) {
-                    // Tentar recuperar do localStorage
-                    const stored = localStorage.getItem(`p2p_file_${msg.p2pFileId}`);
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        setFileData(parsed.data);
-                        setIsLoading(false);
-                    } else {
-                        // Solicitar via P2P
-                        requestFileViaP2P(msg.p2pFileId, msg.senderId);
-                        setIsLoading(false);
-                    }
-                }
-            }, [msg.p2pFileId]);
-            
             const handleDownload = () => {
-                if (fileData) {
-                    const link = document.createElement('a');
-                    link.href = fileData;
-                    link.download = msg.fileName;
-                    link.click();
-                    showToastMessage(`Baixando ${msg.fileName}...`, "success");
-                } else if (msg.text && msg.text.startsWith('data:')) {
-                    const link = document.createElement('a');
-                    link.href = msg.text;
-                    link.download = msg.fileName;
-                    link.click();
-                }
+                const link = document.createElement('a');
+                link.href = msg.text;
+                link.download = msg.fileName;
+                link.click();
+                showToastMessage(`Baixando ${msg.fileName}...`, "success");
             };
-            
-            const transfer = p2pTransfers[msg.p2pFileId];
             
             if (isImage) {
                 return (
                     <div className="mb-1">
-                        {isLoading ? (
-                            <div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
-                                <div className="icon-loader animate-spin text-gray-500"></div>
-                                <span className="text-sm">Carregando imagem via P2P...</span>
-                            </div>
-                        ) : (
-                            <img 
-                                src={fileData || msg.text} 
-                                className="rounded-lg max-w-full max-h-80 cursor-pointer object-contain" 
-                                onClick={() => window.open(fileData || msg.text, '_blank')}
-                                alt={msg.fileName}
-                            />
-                        )}
-                        {transfer && transfer.progress > 0 && transfer.progress < 100 && (
-                            <div className="mt-2">
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${transfer.progress}%` }}></div>
-                                </div>
-                                <span className="text-xs text-gray-500">{Math.round(transfer.progress)}%</span>
-                            </div>
-                        )}
+                        <img src={msg.text} className="rounded-lg max-w-full max-h-80 cursor-pointer object-contain" onClick={() => window.open(msg.text, '_blank')} alt={msg.fileName} />
                         <button onClick={handleDownload} className="mt-2 text-xs bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600">📥 Baixar Imagem</button>
                     </div>
                 );
@@ -989,27 +677,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (isVideo) {
                 return (
                     <div className="mb-1">
-                        {isLoading ? (
-                            <div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
-                                <div className="icon-loader animate-spin text-gray-500"></div>
-                                <span className="text-sm">Carregando vídeo via P2P...</span>
-                            </div>
-                        ) : (
-                            <video 
-                                src={fileData || msg.text} 
-                                controls 
-                                className="rounded-lg max-w-full max-h-80"
-                                poster="https://via.placeholder.com/400x300?text=Video"
-                            />
-                        )}
-                        {transfer && transfer.progress > 0 && transfer.progress < 100 && (
-                            <div className="mt-2">
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${transfer.progress}%` }}></div>
-                                </div>
-                                <span className="text-xs text-gray-500">{Math.round(transfer.progress)}%</span>
-                            </div>
-                        )}
+                        <video src={msg.text} controls className="rounded-lg max-w-full max-h-80" poster="https://via.placeholder.com/400x300?text=Video" />
                         <button onClick={handleDownload} className="mt-2 text-xs bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600">📥 Baixar Vídeo</button>
                     </div>
                 );
@@ -1022,16 +690,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         <p className="text-sm font-medium truncate">{msg.fileName}</p>
                         <p className="text-xs text-gray-500">{fileSizeMB} MB</p>
                     </div>
-                    {transfer && transfer.progress > 0 && transfer.progress < 100 ? (
-                        <div className="flex flex-col items-center">
-                            <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                <div className="bg-green-500 h-full" style={{ width: `${transfer.progress}%` }}></div>
-                            </div>
-                            <span className="text-xs mt-1">{Math.round(transfer.progress)}%</span>
-                        </div>
-                    ) : (
-                        <button onClick={handleDownload} className="download-btn">Baixar</button>
-                    )}
+                    <button onClick={handleDownload} className="download-btn">Baixar</button>
                 </div>
             );
         }
@@ -1057,27 +716,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return <p className="text-gray-800 break-words" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text || '') }}></p>;
     };
 
-    // PeerJS Setup com suporte a DataChannel para P2P
+    // PeerJS Setup
     React.useEffect(() => {
         const cleanId = user.id.replace(/[^a-zA-Z0-9]/g, ''); 
         const newPeer = new window.Peer(cleanId);
         
         newPeer.on('open', (id) => console.log('PeerJS ID:', id));
-        
-        // DataChannel para transferência de arquivos P2P
-        newPeer.on('connection', (conn) => {
-            console.log(`Nova conexão P2P de ${conn.peer}`);
-            p2pDataChannelRef.current[conn.peer] = conn;
-            
-            conn.on('data', (data) => {
-                handleP2PData(data, conn.peer);
-            });
-            
-            conn.on('close', () => {
-                console.log(`Conexão P2P fechada: ${conn.peer}`);
-                delete p2pDataChannelRef.current[conn.peer];
-            });
-        });
         
         newPeer.on('call', (call) => {
             setIncomingCall({ callerId: call.peer, callObj: call, isVideo: call.metadata?.isVideo });
@@ -1536,127 +1180,109 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 />
             )}
 
-            {/* Call Modal - Chamada de Vídeo/Áudio com múltiplos participantes */}
+            {/* Call Modal */}
             {(incomingCall || callStatus) && (
-                <div className="fixed inset-0 z-50 bg-black flex flex-col">
-                    {/* Cabeçalho da Chamada */}
-                    <div className="absolute top-0 left-0 right-0 bg-black/50 p-4 z-20 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="text-white text-sm">
-                                {callStatus === 'connected' ? formatDuration(callDuration) : (incomingCall ? 'Chamando...' : 'Conectando...')}
-                            </span>
-                            <span className="text-white text-xs ml-2">
-                                {Object.keys(participantVideos).length + 1} participantes
-                            </span>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => setIsCallMinimized(!isCallMinimized)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
-                                <div className="icon-arrow-down text-white text-sm"></div>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Grade de Vídeos dos Participantes */}
-                    <div className={`flex-1 p-4 ${gridLayout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col'} items-center justify-center overflow-auto`}>
-                        
-                        {/* Vídeo do Próprio Usuário */}
-                        {isVideoCall && (
-                            <div className={`relative rounded-xl overflow-hidden bg-gray-900 ${gridLayout === 'grid' ? 'aspect-video' : 'w-64 h-48'}`}>
-                                <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-                                <div className="absolute bottom-2 left-2 bg-black/50 rounded-lg px-2 py-1 text-xs text-white flex items-center gap-1">
-                                    <div className={`w-2 h-2 rounded-full ${isMicMuted ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                                    <span>Você</span>
-                                    {!localVideoEnabled && <div className="icon-video-off text-xs ml-1"></div>}
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* Vídeos dos Participantes */}
-                        {Object.entries(participantVideos).filter(([peerId]) => peerId !== 'me').map(([peerId, stream]) => {
-                            const info = participantsInfo[peerId] || { name: peerId.split('_')[0] };
-                            const audioLevel = participantAudioLevels[peerId] || 0;
-                            const isMainSpeaker = mainSpeakerId === peerId;
-                            
-                            return (
-                                <div key={peerId} className={`relative rounded-xl overflow-hidden bg-gray-900 transition-all duration-300 ${gridLayout === 'grid' ? 'aspect-video' : 'w-64 h-48'} ${isMainSpeaker ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}>
-                                    <video 
-                                        ref={el => {
-                                            if (el && stream && el.srcObject !== stream) {
-                                                el.srcObject = stream;
-                                                el.play().catch(e => console.log(e));
-                                            }
-                                        }} 
-                                        autoPlay 
-                                        playsInline 
-                                        className="w-full h-full object-cover"
-                                    />
-                                    {audioLevel > 10 && (
-                                        <div className="absolute top-2 left-2 bg-green-500 rounded-lg px-2 py-1 text-xs text-white animate-pulse">
-                                            🎤 Falando
+                <div className="fixed inset-0 z-50 bg-gradient-to-b from-gray-900 to-black flex flex-col items-center justify-center">
+                    {callStatus === 'connected' && Object.keys(activeCalls).length > 0 && (
+                        <div className="absolute top-10 left-4 right-4 max-h-40 overflow-y-auto bg-black/50 rounded-lg p-2 backdrop-blur-sm">
+                            <p className="text-white text-xs mb-2">Participantes ({Object.keys(activeCalls).length + 1})</p>
+                            <div className="flex flex-col gap-1">
+                                <div className={`flex items-center gap-2 p-2 rounded-lg ${activeSpeakers['me'] ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                    <div className="relative">
+                                        <img src={user.avatar} className={`w-8 h-8 rounded-full ${activeSpeakers['me'] ? 'speaking-indicator' : ''}`} />
+                                        {activeSpeakers['me'] && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium">{user.name} (Você)</p>
+                                        {activeSpeakers['me'] && <p className="text-xs text-green-600">Falando...</p>}
+                                    </div>
+                                    {activeSpeakers['me'] && (
+                                        <div className="flex gap-0.5">
+                                            <div className="w-1 h-3 bg-green-500 animate-pulse"></div>
+                                            <div className="w-1 h-5 bg-green-500 animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                                            <div className="w-1 h-4 bg-green-500 animate-pulse" style={{animationDelay: '0.4s'}}></div>
                                         </div>
                                     )}
-                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
-                                        <div className="h-full bg-green-500 transition-all duration-100" style={{ width: `${audioLevel}%` }}></div>
-                                    </div>
-                                    <div className="absolute bottom-2 left-2 bg-black/50 rounded-lg px-2 py-1 text-xs text-white">
-                                        {info.name}
-                                    </div>
                                 </div>
-                            );
-                        })}
-                        
-                        {(!isVideoCall || Object.keys(participantVideos).filter(p => p !== 'me').length === 0) && !incomingCall && (
-                            <div className="flex flex-col items-center justify-center">
-                                <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat?.id}`} className="w-32 h-32 rounded-full mb-4" />
-                                <h2 className="text-2xl font-semibold text-white mb-1 text-center">{activeChat?.name}</h2>
-                                <p className="text-gray-400 text-sm">Chamada em andamento...</p>
+                                {Object.keys(activeCalls).map(peerId => {
+                                    const info = participantsInfo[peerId] || { name: peerId.split('_')[0] };
+                                    const isSpeaking = activeSpeakers[peerId];
+                                    return (
+                                        <div key={peerId} className={`flex items-center gap-2 p-2 rounded-lg ${isSpeaking ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                            <div className="relative">
+                                                <img src={info.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${peerId}`} className={`w-8 h-8 rounded-full ${isSpeaking ? 'speaking-indicator' : ''}`} />
+                                                {isSpeaking && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium">{info.name}</p>
+                                                {isSpeaking && <p className="text-xs text-green-600">Falando...</p>}
+                                            </div>
+                                            {isSpeaking && (
+                                                <div className="flex gap-0.5">
+                                                    <div className="w-1 h-3 bg-green-500 animate-pulse"></div>
+                                                    <div className="w-1 h-5 bg-green-500 animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                                                    <div className="w-1 h-4 bg-green-500 animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col items-center mb-8">
+                        {Object.keys(activeCalls).length === 0 && (
+                            <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall?.callerId || activeChat?.id}`} className="w-32 h-32 rounded-full mb-4 avatar-pulse" />
                         )}
-                        
-                        {incomingCall && (
-                            <div className="flex flex-col items-center justify-center">
-                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall.callerId}`} className="w-32 h-32 rounded-full mb-4 avatar-pulse" />
-                                <h2 className="text-2xl font-semibold text-white mb-1">{incomingCall.callerId?.split('_')[0]}</h2>
-                                <p className="text-gray-400 text-sm">Chamada de {incomingCall.isVideo ? 'vídeo' : 'voz'}...</p>
-                                <div className="flex gap-6 mt-8">
-                                    <button onClick={() => setIncomingCall(null)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
-                                        <div className="icon-phone-off text-3xl text-white"></div>
+                        <h2 className="text-2xl font-semibold text-white mb-1 text-center">
+                            {incomingCall ? incomingCall.callerId?.split('_')[0] : 
+                             (Object.keys(activeCalls).length > 1 ? `Chamada em grupo (${Object.keys(activeCalls).length + 1})` : activeChat?.name)}
+                        </h2>
+                        <p className="text-gray-400 text-sm">
+                            {incomingCall ? 'Chamando...' : (callStatus === 'connected' ? formatDuration(callDuration) : 'Conectando...')}
+                        </p>
+                    </div>
+
+                    <div className="flex justify-center gap-6 flex-wrap">
+                        {incomingCall ? (
+                            <>
+                                <button onClick={() => setIncomingCall(null)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700"><div className="icon-phone-off text-3xl text-white"></div></button>
+                                <button onClick={answerCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600"><div className="icon-phone text-3xl text-white"></div></button>
+                            </>
+                        ) : (
+                            <>
+                                <button onClick={toggleMic} className={`w-14 h-14 rounded-full flex items-center justify-center ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                    <div className={isMicMuted ? "icon-mic-off text-2xl text-white" : "icon-mic text-2xl text-white"}></div>
+                                </button>
+                                {isVideoCall && (
+                                    <button onClick={toggleCam} className={`w-14 h-14 rounded-full flex items-center justify-center ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                        <div className={isCamMuted ? "icon-video-off text-2xl text-white" : "icon-video text-2xl text-white"}></div>
                                     </button>
-                                    <button onClick={answerCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600">
-                                        <div className="icon-phone text-3xl text-white"></div>
+                                )}
+                                {!isVideoCall && callStatus === 'connected' && (
+                                    <button onClick={switchToVideo} className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700">
+                                        <div className="icon-video text-2xl text-white"></div>
                                     </button>
-                                </div>
-                            </div>
+                                )}
+                                <button onClick={() => endCall(false)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
+                                    <div className="icon-phone-off text-3xl text-white"></div>
+                                </button>
+                                <button onClick={() => setIsCallMinimized(!isCallMinimized)} className="w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600">
+                                    <div className="icon-arrow-down text-2xl text-white"></div>
+                                </button>
+                            </>
                         )}
                     </div>
 
-                    {/* Controles da Chamada */}
-                    <div className="bg-black/80 p-4 flex justify-center gap-4 flex-wrap">
-                        <button onClick={toggleMic} className={`p-3 rounded-full transition-colors ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                            <div className={isMicMuted ? "icon-mic-off text-xl text-white" : "icon-mic text-xl text-white"}></div>
-                        </button>
-                        
-                        {isVideoCall && (
-                            <button onClick={toggleCam} className={`p-3 rounded-full transition-colors ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                <div className={isCamMuted ? "icon-video-off text-xl text-white" : "icon-video text-xl text-white"}></div>
-                            </button>
-                        )}
-                        
-                        {!isVideoCall && callStatus === 'connected' && (
-                            <button onClick={switchToVideo} className="p-3 bg-blue-600 rounded-full hover:bg-blue-700">
-                                <div className="icon-video text-xl text-white"></div>
-                            </button>
-                        )}
-                        
-                        <button onClick={() => setGridLayout(prev => prev === 'grid' ? 'speaker' : 'grid')} className="p-3 bg-gray-700 rounded-full hover:bg-gray-600">
-                            <div className="icon-grid text-xl text-white"></div>
-                        </button>
-                        
-                        <button onClick={() => endCall(false)} className="p-4 bg-red-600 rounded-full hover:bg-red-700">
-                            <div className="icon-phone-off text-xl text-white"></div>
-                        </button>
-                    </div>
+                    {isVideoCall && localStreamRef.current && (
+                        <div className="absolute bottom-4 right-4 w-32 h-48 bg-black rounded-xl overflow-hidden border-2 border-gray-600">
+                            <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                        </div>
+                    )}
+                    {isVideoCall && remoteVideoRef.current?.srcObject && (
+                        <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover -z-10" />
+                    )}
                 </div>
             )}
 
@@ -1766,7 +1392,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 const isMe = msg.senderId === user.id;
                                 const isSystem = msg.type === 'system';
                                 const messageId = msg.key || idx;
-                                const isMediaMessage = msg.fileName && (msg.text || msg.p2pFileId);
+                                const isMediaMessage = msg.fileName && msg.text && msg.text.startsWith('data:');
 
                                 if (isSystem) {
                                     return (
@@ -1868,23 +1494,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             <AudioRecorder onSendAudio={(base64, duration) => handleSendMessage(base64, 'audio', duration)} onCancel={() => setShowAudioRecorder(false)} />
                         )}
                     </div>
-
-                    {/* Transferências P2P */}
-                    {Object.keys(p2pTransfers).length > 0 && (
-                        <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
-                            {Object.entries(p2pTransfers).map(([fileId, transfer]) => (
-                                <div key={fileId} className="mb-1">
-                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                        <span className="truncate max-w-[200px]">{transfer.fileName}</span>
-                                        <span>{transfer.status === 'enviando' ? 'Enviando' : 'Recebendo'} {Math.round(transfer.progress)}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                        <div className="bg-green-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${transfer.progress}%` }}></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
 
                     {Object.keys(uploadProgress).length > 0 && (
                         <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
