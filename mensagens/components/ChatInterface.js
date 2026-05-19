@@ -206,33 +206,33 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     };
     const openChat = (chat) => { pushHistoryState('chat'); setActiveChat(chat); };
 
-// Call States
-const [incomingCall, setIncomingCall] = React.useState(null);
-const [callStatus, setCallStatus] = React.useState(null);
-const [isVideoCall, setIsVideoCall] = React.useState(false);
-const [activeGroupCall, setActiveGroupCall] = React.useState(false);
-const [peer, setPeer] = React.useState(null);
-const [activeCalls, setActiveCalls] = React.useState({});
-const [remoteStreams, setRemoteStreams] = React.useState({});
-const [ongoingGroupCall, setOngoingGroupCall] = React.useState(null);
-const [isCallMinimized, setIsCallMinimized] = React.useState(false);
-const [isMicMuted, setIsMicMuted] = React.useState(false);
-const [isCamMuted, setIsCamMuted] = React.useState(false);
-const [callDuration, setCallDuration] = React.useState(0);
-const [activeSpeakers, setActiveSpeakers] = React.useState({});
-const callTimerRef = React.useRef(null);
-const localStreamRef = React.useRef(null);
-const localVideoRef = React.useRef(null);
-const remoteVideoRef = React.useRef(null);
-const audioContextRef = React.useRef(null);
-const analyserRef = React.useRef({});
+    // Call States
+    const [incomingCall, setIncomingCall] = React.useState(null);
+    const [callStatus, setCallStatus] = React.useState(null);
+    const [isVideoCall, setIsVideoCall] = React.useState(false);
+    const [activeGroupCall, setActiveGroupCall] = React.useState(false);
+    const [peer, setPeer] = React.useState(null);
+    const [activeCalls, setActiveCalls] = React.useState({});
+    const [remoteStreams, setRemoteStreams] = React.useState({});
+    const [ongoingGroupCall, setOngoingGroupCall] = React.useState(null);
+    const [isCallMinimized, setIsCallMinimized] = React.useState(false);
+    const [isMicMuted, setIsMicMuted] = React.useState(false);
+    const [isCamMuted, setIsCamMuted] = React.useState(false);
+    const [callDuration, setCallDuration] = React.useState(0);
+    const [activeSpeakers, setActiveSpeakers] = React.useState({});
+    const callTimerRef = React.useRef(null);
+    const localStreamRef = React.useRef(null);
+    const localVideoRef = React.useRef(null);
+    const remoteVideoRef = React.useRef(null);
+    const audioContextRef = React.useRef(null);
+    const analyserRef = React.useRef({});
 
-// ==================== MULTI PARTICIPANTES VIDEO CHAMADA ====================
-const [participantVideos, setParticipantVideos] = React.useState({}); // { peerId: stream }
-const [participantAudioLevels, setParticipantAudioLevels] = React.useState({}); // { peerId: level }
-const [gridLayout, setGridLayout] = React.useState('grid'); // 'grid' or 'speaker'
-const [mainSpeakerId, setMainSpeakerId] = React.useState(null);
-const [localVideoEnabled, setLocalVideoEnabled] = React.useState(true);
+    // ==================== MULTI PARTICIPANTES VIDEO CHAMADA ====================
+    const [participantVideos, setParticipantVideos] = React.useState({}); // { peerId: stream }
+    const [participantAudioLevels, setParticipantAudioLevels] = React.useState({}); // { peerId: level }
+    const [gridLayout, setGridLayout] = React.useState('grid'); // 'grid' or 'speaker'
+    const [mainSpeakerId, setMainSpeakerId] = React.useState(null);
+    const [localVideoEnabled, setLocalVideoEnabled] = React.useState(true);
 
     // Recording
     const [isRecordingCall, setIsRecordingCall] = React.useState(false);
@@ -289,47 +289,46 @@ const [localVideoEnabled, setLocalVideoEnabled] = React.useState(true);
         }
     };
 
-// Detectar nível de áudio para saber quem está falando
-const setupAudioAnalyser = (stream, participantId) => {
-    if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    
-    const source = audioContextRef.current.createMediaStreamSource(stream);
-    const analyser = audioContextRef.current.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
-    
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    
-    const checkVolume = () => {
-        if (!analyserRef.current[participantId]) return;
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
-        }
-        const avg = sum / dataArray.length;
-        const isSpeaking = avg > 15;
-        const level = Math.min(100, Math.floor(avg * 2));
-        
-        setParticipantAudioLevels(prev => ({ ...prev, [participantId]: level }));
-        
-        if (isSpeaking !== activeSpeakers[participantId]) {
-            setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
+    // Detectar nível de áudio para saber quem está falando
+    const setupAudioAnalyser = (stream, participantId) => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
         }
         
-        // Destacar quem está falando mais alto
-        if (level > 30) {
-            setMainSpeakerId(participantId);
-        }
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        const analyser = audioContextRef.current.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
         
-        requestAnimationFrame(() => checkVolume());
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        const checkVolume = () => {
+            if (!analyserRef.current[participantId]) return;
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+            const avg = sum / dataArray.length;
+            const isSpeaking = avg > 15;
+            const level = Math.min(100, Math.floor(avg * 2));
+            
+            setParticipantAudioLevels(prev => ({ ...prev, [participantId]: level }));
+            
+            if (isSpeaking !== activeSpeakers[participantId]) {
+                setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
+            }
+            
+            // Destacar quem está falando mais alto
+            if (level > 30) {
+                setMainSpeakerId(participantId);
+            }
+            
+            requestAnimationFrame(() => checkVolume());
+        };
+        
+        analyserRef.current[participantId] = analyser;
+        checkVolume();
     };
-    
-    analyserRef.current[participantId] = analyser;
-    checkVolume();
-};
+
     const toggleMic = () => {
         if (localStreamRef.current) {
             const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -346,6 +345,7 @@ const setupAudioAnalyser = (stream, participantId) => {
             if (videoTrack) {
                 videoTrack.enabled = !videoTrack.enabled;
                 setIsCamMuted(!videoTrack.enabled);
+                setLocalVideoEnabled(!videoTrack.enabled);
             }
         }
     };
@@ -360,6 +360,9 @@ const setupAudioAnalyser = (stream, participantId) => {
                 localStreamRef.current.addTrack(newVideoTrack);
                 if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
                 setIsVideoCall(true);
+                setLocalVideoEnabled(true);
+                // Adicionar vídeo do próprio usuário à grade
+                setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
                 Object.values(activeCalls).forEach(call => {
                     const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
                     if (sender) sender.replaceTrack(newVideoTrack);
@@ -392,6 +395,9 @@ const setupAudioAnalyser = (stream, participantId) => {
         setIsCamMuted(false);
         setActiveSpeakers({});
         setParticipantsInfo({});
+        setParticipantVideos({});
+        setParticipantAudioLevels({});
+        setMainSpeakerId(null);
         if (audioContextRef.current) { audioContextRef.current.close(); audioContextRef.current = null; }
         analyserRef.current = {};
         localStreamRef.current = null;
@@ -409,7 +415,11 @@ const setupAudioAnalyser = (stream, participantId) => {
         startCallTimer();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
         localStreamRef.current = stream;
+        setLocalVideoEnabled(isVideo);
         if (isVideo && localVideoRef.current) localVideoRef.current.srcObject = stream;
+        if (isVideo) {
+            setParticipantVideos(prev => ({ ...prev, ['me']: stream }));
+        }
         const call = incomingCall.callObj;
         call.answer(stream);
         handleCallStream(call, isVideo, call.peer);
@@ -438,7 +448,11 @@ const setupAudioAnalyser = (stream, participantId) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
+            setLocalVideoEnabled(video);
             if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
+            if (video) {
+                setParticipantVideos(prev => ({ ...prev, ['me']: stream }));
+            }
             const targetPeerId = activeChat.id.replace(/[^a-zA-Z0-9]/g, '');
             const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video } });
             if (!call) throw new Error("Falha ao iniciar chamada");
@@ -454,50 +468,50 @@ const setupAudioAnalyser = (stream, participantId) => {
         } catch(err) { console.error("Erro ao ligar:", err); setCallStatus(null); }
     };
 
-const startGroupCall = async (video) => {
-    if (groupPermissions && ((video && !groupPermissions.sendVideo) || (!video && !groupPermissions.sendAudio))) return;
-    const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
-    if (!members) return;
-    const memberIds = Object.keys(members).filter(id => id !== user.id);
-    if (memberIds.length === 0) return;
-    
-    setCallStatus('connected');
-    setIsVideoCall(video);
-    setIsMicMuted(false);
-    setIsCamMuted(false);
-    setActiveGroupCall(true);
-    setOngoingGroupCall(null);
-    startCallTimer();
-    
-    db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'active', startedBy: user.id, timestamp: Date.now() });
-    handleSendMessage(`📞 Iniciou chamada de ${video ? 'vídeo' : 'voz'} em grupo.`, 'system');
-    
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-        localStreamRef.current = stream;
-        setLocalVideoEnabled(video);
+    const startGroupCall = async (video) => {
+        if (groupPermissions && ((video && !groupPermissions.sendVideo) || (!video && !groupPermissions.sendAudio))) return;
+        const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
+        if (!members) return;
+        const memberIds = Object.keys(members).filter(id => id !== user.id);
+        if (memberIds.length === 0) return;
         
-        if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
+        setCallStatus('connected');
+        setIsVideoCall(video);
+        setIsMicMuted(false);
+        setIsCamMuted(false);
+        setActiveGroupCall(true);
+        setOngoingGroupCall(null);
+        startCallTimer();
         
-        // Buscar informações dos participantes
-        for (const id of memberIds) {
-            const userSnap = await db.ref(`users/${id}`).once('value');
-            const userData = userSnap.val();
-            setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
-        }
+        db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'active', startedBy: user.id, timestamp: Date.now() });
+        handleSendMessage(`📞 Iniciou chamada de ${video ? 'vídeo' : 'voz'} em grupo.`, 'system');
         
-        // Adicionar vídeo do próprio usuário à lista da grade
-        if (video && localStreamRef.current) {
-            setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
-        }
-        
-        memberIds.forEach(id => {
-            const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
-            const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, groupId: activeChat.id } });
-            if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
-        });
-    } catch (err) { console.error("Erro:", err); endCall(); }
-};
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
+            localStreamRef.current = stream;
+            setLocalVideoEnabled(video);
+            
+            if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
+            
+            // Buscar informações dos participantes
+            for (const id of memberIds) {
+                const userSnap = await db.ref(`users/${id}`).once('value');
+                const userData = userSnap.val();
+                setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
+            }
+            
+            // Adicionar vídeo do próprio usuário à lista da grade
+            if (video && localStreamRef.current) {
+                setParticipantVideos(prev => ({ ...prev, ['me']: localStreamRef.current }));
+            }
+            
+            memberIds.forEach(id => {
+                const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
+                const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, groupId: activeChat.id } });
+                if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
+            });
+        } catch (err) { console.error("Erro:", err); endCall(); }
+    };
 
     const joinGroupCall = async () => {
         if (!ongoingGroupCall) return;
@@ -528,41 +542,41 @@ const startGroupCall = async (video) => {
         } catch (e) { console.error("Erro ao entrar:", e); }
     };
 
-const handleCallStream = (call, isVideo, participantId) => {
-    call.on('stream', (remoteStream) => {
-        setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-        
-        // Adicionar vídeo do participante à lista para grade
-        if (isVideo) {
-            setParticipantVideos(prev => ({ ...prev, [call.peer]: remoteStream }));
-        }
-        
-        // Configurar detector de áudio para saber quando o participante fala
-        setupAudioAnalyser(remoteStream, call.peer);
-        
-        if (!isVideo) {
-            const audio = new Audio();
-            audio.srcObject = remoteStream;
-            audio.play();
-        } else {
-            if (remoteVideoRef.current && call.peer === Object.keys(activeCalls)[0]) {
-                remoteVideoRef.current.srcObject = remoteStream;
+    const handleCallStream = (call, isVideo, participantId) => {
+        call.on('stream', (remoteStream) => {
+            setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+            
+            // Adicionar vídeo do participante à lista para grade
+            if (isVideo) {
+                setParticipantVideos(prev => ({ ...prev, [call.peer]: remoteStream }));
             }
-        }
-        if (callStatus === 'calling') {
-            setCallStatus('connected');
-            startCallTimer();
-        }
-    });
-    call.on('close', () => {
-        setActiveCalls(prev => { const newCalls = { ...prev }; delete newCalls[call.peer]; if (Object.keys(newCalls).length === 0) endCall(true); return newCalls; });
-        setRemoteStreams(prev => { const newSt = { ...prev }; delete newSt[call.peer]; return newSt; });
-        setParticipantVideos(prev => { const newVideos = { ...prev }; delete newVideos[call.peer]; return newVideos; });
-        setParticipantAudioLevels(prev => { const newLevels = { ...prev }; delete newLevels[call.peer]; return newLevels; });
-        setActiveSpeakers(prev => { const newSp = { ...prev }; delete newSp[call.peer]; return newSp; });
-    });
-    call.on('error', (err) => console.error(`Erro:`, err));
-};
+            
+            // Configurar detector de áudio para saber quando o participante fala
+            setupAudioAnalyser(remoteStream, call.peer);
+            
+            if (!isVideo) {
+                const audio = new Audio();
+                audio.srcObject = remoteStream;
+                audio.play();
+            } else {
+                if (remoteVideoRef.current && call.peer === Object.keys(activeCalls)[0]) {
+                    remoteVideoRef.current.srcObject = remoteStream;
+                }
+            }
+            if (callStatus === 'calling') {
+                setCallStatus('connected');
+                startCallTimer();
+            }
+        });
+        call.on('close', () => {
+            setActiveCalls(prev => { const newCalls = { ...prev }; delete newCalls[call.peer]; if (Object.keys(newCalls).length === 0) endCall(true); return newCalls; });
+            setRemoteStreams(prev => { const newSt = { ...prev }; delete newSt[call.peer]; return newSt; });
+            setParticipantVideos(prev => { const newVideos = { ...prev }; delete newVideos[call.peer]; return newVideos; });
+            setParticipantAudioLevels(prev => { const newLevels = { ...prev }; delete newLevels[call.peer]; return newLevels; });
+            setActiveSpeakers(prev => { const newSp = { ...prev }; delete newSp[call.peer]; return newSp; });
+        });
+        call.on('error', (err) => console.error(`Erro:`, err));
+    };
 
     const initAudioContext = () => {
         if (!audioContextRef.current) {
@@ -903,90 +917,68 @@ const handleCallStream = (call, isVideo, participantId) => {
         return () => contactsRef.off();
     }, [user, db]);
 
-// ==================== FUNÇÃO PARA CARREGAR MENSAGENS COM TEMPO REAL ====================
-React.useEffect(() => {
-    if (!activeChat || !db) return;
-    
-    let messagesRef;
-    let isBlocked = false;
-    
-    const loadMessagesWithRealTime = async () => {
-        if (activeChat.type !== 'group') {
-            const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
-            isBlocked = blockedByMe || blockedByThem;
-        }
+    // ==================== FUNÇÃO PARA CARREGAR MENSAGENS ====================
+    React.useEffect(() => {
+        if (!activeChat || !db) return;
         
-        if (isBlocked) {
-            setMessages([{
-                key: 'blocked',
-                senderId: 'system',
-                senderName: 'Sistema',
-                text: '❌ Conversa bloqueada. Desbloqueie o contato para ver as mensagens.',
-                type: 'system',
-                timestamp: Date.now()
-            }]);
-            return;
-        }
-        
-        messagesRef = activeChat.type === 'group' 
-            ? db.ref(`groups/${activeChat.id}/messages`)
-            : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
-        
-        const markAsRead = (msgId, senderId) => {
-            db.ref(`users/${user.id}/settings`).once('value').then(s => {
-                const settings = s.val() || {};
-                let allowReadReceipt = settings.readReceipts !== false;
-                if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
-                if (allowReadReceipt) {
-                    if (activeChat.type === 'group') {
-                        db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
-                    } else {
-                        db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
-                    }
+        const loadMessages = async () => {
+            try {
+                let messagesRef;
+                let isBlocked = false;
+                
+                if (activeChat.type !== 'group') {
+                    const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+                    isBlocked = blockedByMe || blockedByThem;
                 }
-            });
+                
+                if (isBlocked) {
+                    setMessages([{
+                        key: 'blocked',
+                        senderId: 'system',
+                        senderName: 'Sistema',
+                        text: '❌ Conversa bloqueada. Desbloqueie o contato para ver as mensagens.',
+                        type: 'system',
+                        timestamp: Date.now()
+                    }]);
+                    return;
+                }
+                
+                messagesRef = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                
+                const markAsRead = (msgId, senderId) => {
+                    db.ref(`users/${user.id}/settings`).once('value').then(s => {
+                        const settings = s.val() || {};
+                        let allowReadReceipt = settings.readReceipts !== false;
+                        if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
+                        if (allowReadReceipt) {
+                            if (activeChat.type === 'group') db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
+                            else db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
+                        }
+                    });
+                };
+                
+                messagesRef.limitToLast(50).on('child_added', (snapshot) => {
+                    const msg = snapshot.val();
+                    setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
+                    if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
+                });
+                messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
+                
+                return () => {
+                    if (messagesRef) messagesRef.off();
+                    setMessages([]);
+                };
+            } catch(e) {
+                console.error("Erro ao carregar mensagens:", e);
+            }
         };
         
-        // LISTENERS EM TEMPO REAL para mensagens novas
-        messagesRef.limitToLast(50).on('child_added', (snapshot) => {
-            const msg = snapshot.val();
-            if (!msg) return;
-            
-            setMessages(prev => {
-                // Verificar se a mensagem já existe para não duplicar
-                const exists = prev.some(m => m.key === snapshot.key);
-                if (exists) return prev;
-                return [...prev, { ...msg, key: snapshot.key }];
-            });
-            
-            if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
-        });
-        
-        // LISTENER EM TEMPO REAL para mensagens alteradas (editadas)
-        messagesRef.limitToLast(50).on('child_changed', (snapshot) => {
-            const changedMsg = snapshot.val();
-            setMessages(prev => prev.map(msg => 
-                msg.key === snapshot.key ? { ...changedMsg, key: snapshot.key } : msg
-            ));
-        });
-        
-        // LISTENER EM TEMPO REAL para mensagens removidas (apagadas)
-        messagesRef.limitToLast(50).on('child_removed', (snapshot) => {
-            setMessages(prev => prev.filter(msg => msg.key !== snapshot.key));
-        });
-    };
-    
-    loadMessagesWithRealTime();
-    
-    return () => {
-        if (messagesRef) {
-            messagesRef.off('child_added');
-            messagesRef.off('child_changed');
-            messagesRef.off('child_removed');
-        }
-        setMessages([]);
-    };
-}, [activeChat, user, db]);
+        loadMessages();
+    }, [activeChat, user, db]);
+
+    React.useEffect(() => { 
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
+    }, [messages]);
 
     // ==================== FUNÇÃO PRINCIPAL PARA ENVIAR MENSAGEM ====================
     const handleSendMessage = async (content, type = 'text', duration = null, msgType = 'text') => {
@@ -1121,30 +1113,6 @@ React.useEffect(() => {
         .speaking-indicator { box-shadow: 0 0 0 2px #00a884; }
     `;
 
-    const callParticipantsList = Object.keys(activeCalls).map(peerId => {
-        const info = participantsInfo[peerId] || { id: peerId, name: peerId.split('_')[0] };
-        const isSpeaking = activeSpeakers[peerId];
-        return (
-            <div key={peerId} className={`flex items-center gap-2 p-2 rounded-lg ${isSpeaking ? 'bg-green-100' : 'bg-gray-100'}`}>
-                <div className="relative">
-                    <img src={info.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${info.id}`} className={`w-8 h-8 rounded-full ${isSpeaking ? 'speaking-indicator' : ''}`} />
-                    {isSpeaking && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>}
-                </div>
-                <div className="flex-1">
-                    <p className="text-sm font-medium">{info.name}</p>
-                    {isSpeaking && <p className="text-xs text-green-600">Falando...</p>}
-                </div>
-                {isSpeaking && (
-                    <div className="flex gap-0.5">
-                        <div className="w-1 h-3 bg-green-500 animate-pulse"></div>
-                        <div className="w-1 h-5 bg-green-500 animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                        <div className="w-1 h-4 bg-green-500 animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                    </div>
-                )}
-            </div>
-        );
-    });
-
     return (
         <div className="flex h-screen bg-gray-100 overflow-hidden">
             <style>{chatStyles}</style>
@@ -1256,7 +1224,6 @@ React.useEffect(() => {
                 </div>
             )}
 
-            {/* GroupInfo MODAL */}
             {showGroupInfo && activeChat?.type === 'group' && (
                 <GroupInfo 
                     activeChat={activeChat} 
@@ -1268,156 +1235,136 @@ React.useEffect(() => {
                 />
             )}
 
-{/* Call Modal */}
-{(incomingCall || callStatus) && (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
-        {/* Cabeçalho da Chamada */}
-        <div className="absolute top-0 left-0 right-0 bg-black/50 p-4 z-20 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span className="text-white text-sm">
-                    {callStatus === 'connected' ? formatDuration(callDuration) : (incomingCall ? 'Chamando...' : 'Conectando...')}
-                </span>
-                <span className="text-white text-xs ml-2">
-                    {Object.keys(participantVideos).length + 1} participantes
-                </span>
-            </div>
-            <div className="flex gap-2">
-                <button onClick={() => setIsCallMinimized(!isCallMinimized)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
-                    <div className="icon-arrow-down text-white text-sm"></div>
-                </button>
-            </div>
-        </div>
-
-        {/* Grade de Vídeos dos Participantes */}
-        <div className={`flex-1 p-4 ${gridLayout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col'} items-center justify-center overflow-auto`}>
-            
-            {/* Vídeo do Próprio Usuário */}
-            {isVideoCall && (
-                <div className={`relative rounded-xl overflow-hidden bg-gray-900 ${gridLayout === 'grid' ? 'aspect-video' : 'w-64 h-48'}`}>
-                    <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-                    <div className="absolute bottom-2 left-2 bg-black/50 rounded-lg px-2 py-1 text-xs text-white flex items-center gap-1">
-                        <div className={`w-2 h-2 rounded-full ${isMicMuted ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                        <span>Você</span>
-                        {!localVideoEnabled && <div className="icon-video-off text-xs ml-1"></div>}
+            {/* Call Modal - Chamada de Vídeo/Áudio com múltiplos participantes */}
+            {(incomingCall || callStatus) && (
+                <div className="fixed inset-0 z-50 bg-black flex flex-col">
+                    {/* Cabeçalho da Chamada */}
+                    <div className="absolute top-0 left-0 right-0 bg-black/50 p-4 z-20 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                            <span className="text-white text-sm">
+                                {callStatus === 'connected' ? formatDuration(callDuration) : (incomingCall ? 'Chamando...' : 'Conectando...')}
+                            </span>
+                            <span className="text-white text-xs ml-2">
+                                {Object.keys(participantVideos).length + 1} participantes
+                            </span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => setIsCallMinimized(!isCallMinimized)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
+                                <div className="icon-arrow-down text-white text-sm"></div>
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
-            
-            {/* Vídeos dos Participantes */}
-            {Object.entries(participantVideos).map(([peerId, stream]) => {
-                const info = participantsInfo[peerId] || { name: peerId.split('_')[0] };
-                const audioLevel = participantAudioLevels[peerId] || 0;
-                const isMainSpeaker = mainSpeakerId === peerId;
-                
-                return (
-                    <div key={peerId} className={`relative rounded-xl overflow-hidden bg-gray-900 transition-all duration-300 ${gridLayout === 'grid' ? 'aspect-video' : 'w-64 h-48'} ${isMainSpeaker ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}>
-                        <video 
-                            ref={el => {
-                                if (el && stream && el.srcObject !== stream) {
-                                    el.srcObject = stream;
-                                    el.play().catch(e => console.log(e));
-                                }
-                            }} 
-                            autoPlay 
-                            playsInline 
-                            className="w-full h-full object-cover"
-                        />
-                        {/* Indicador de áudio (quem está falando) */}
-                        {audioLevel > 10 && (
-                            <div className="absolute top-2 left-2 bg-green-500 rounded-lg px-2 py-1 text-xs text-white animate-pulse">
-                                🎤 Falando
+
+                    {/* Grade de Vídeos dos Participantes */}
+                    <div className={`flex-1 p-4 ${gridLayout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col'} items-center justify-center overflow-auto`}>
+                        
+                        {/* Vídeo do Próprio Usuário */}
+                        {isVideoCall && (
+                            <div className={`relative rounded-xl overflow-hidden bg-gray-900 ${gridLayout === 'grid' ? 'aspect-video' : 'w-64 h-48'}`}>
+                                <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                                <div className="absolute bottom-2 left-2 bg-black/50 rounded-lg px-2 py-1 text-xs text-white flex items-center gap-1">
+                                    <div className={`w-2 h-2 rounded-full ${isMicMuted ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                                    <span>Você</span>
+                                    {!localVideoEnabled && <div className="icon-video-off text-xs ml-1"></div>}
+                                </div>
                             </div>
                         )}
-                        {/* Barra de nível de áudio */}
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
-                            <div className="h-full bg-green-500 transition-all duration-100" style={{ width: `${audioLevel}%` }}></div>
-                        </div>
-                        <div className="absolute bottom-2 left-2 bg-black/50 rounded-lg px-2 py-1 text-xs text-white">
-                            {info.name}
-                        </div>
+                        
+                        {/* Vídeos dos Participantes */}
+                        {Object.entries(participantVideos).filter(([peerId]) => peerId !== 'me').map(([peerId, stream]) => {
+                            const info = participantsInfo[peerId] || { name: peerId.split('_')[0] };
+                            const audioLevel = participantAudioLevels[peerId] || 0;
+                            const isMainSpeaker = mainSpeakerId === peerId;
+                            
+                            return (
+                                <div key={peerId} className={`relative rounded-xl overflow-hidden bg-gray-900 transition-all duration-300 ${gridLayout === 'grid' ? 'aspect-video' : 'w-64 h-48'} ${isMainSpeaker ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}>
+                                    <video 
+                                        ref={el => {
+                                            if (el && stream && el.srcObject !== stream) {
+                                                el.srcObject = stream;
+                                                el.play().catch(e => console.log(e));
+                                            }
+                                        }} 
+                                        autoPlay 
+                                        playsInline 
+                                        className="w-full h-full object-cover"
+                                    />
+                                    {/* Indicador de áudio (quem está falando) */}
+                                    {audioLevel > 10 && (
+                                        <div className="absolute top-2 left-2 bg-green-500 rounded-lg px-2 py-1 text-xs text-white animate-pulse">
+                                            🎤 Falando
+                                        </div>
+                                    )}
+                                    {/* Barra de nível de áudio */}
+                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
+                                        <div className="h-full bg-green-500 transition-all duration-100" style={{ width: `${audioLevel}%` }}></div>
+                                    </div>
+                                    <div className="absolute bottom-2 left-2 bg-black/50 rounded-lg px-2 py-1 text-xs text-white">
+                                        {info.name}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        
+                        {/* Placeholder quando não há participantes em vídeo */}
+                        {(!isVideoCall || Object.keys(participantVideos).filter(p => p !== 'me').length === 0) && !incomingCall && (
+                            <div className="flex flex-col items-center justify-center">
+                                <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed={activeChat?.id}`} className="w-32 h-32 rounded-full mb-4" />
+                                <h2 className="text-2xl font-semibold text-white mb-1 text-center">{activeChat?.name}</h2>
+                                <p className="text-gray-400 text-sm">Chamada em andamento...</p>
+                            </div>
+                        )}
+                        
+                        {/* Tela de chamada recebida */}
+                        {incomingCall && (
+                            <div className="flex flex-col items-center justify-center">
+                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall.callerId}`} className="w-32 h-32 rounded-full mb-4 avatar-pulse" />
+                                <h2 className="text-2xl font-semibold text-white mb-1">{incomingCall.callerId?.split('_')[0]}</h2>
+                                <p className="text-gray-400 text-sm">Chamada de {incomingCall.isVideo ? 'vídeo' : 'voz'}...</p>
+                                <div className="flex gap-6 mt-8">
+                                    <button onClick={() => setIncomingCall(null)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
+                                        <div className="icon-phone-off text-3xl text-white"></div>
+                                    </button>
+                                    <button onClick={answerCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600">
+                                        <div className="icon-phone text-3xl text-white"></div>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                );
-            })}
-            
-            {/* Placeholder quando não há participantes em vídeo */}
-            {(!isVideoCall || Object.keys(participantVideos).length === 0) && !incomingCall && (
-                <div className="flex flex-col items-center justify-center">
-                    <img src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat?.id}`} className="w-32 h-32 rounded-full mb-4" />
-                    <h2 className="text-2xl font-semibold text-white mb-1 text-center">{activeChat?.name}</h2>
-                    <p className="text-gray-400 text-sm">Chamada em andamento...</p>
-                </div>
-            )}
-            
-            {/* Tela de chamada recebida */}
-            {incomingCall && (
-                <div className="flex flex-col items-center justify-center">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall.callerId}`} className="w-32 h-32 rounded-full mb-4 avatar-pulse" />
-                    <h2 className="text-2xl font-semibold text-white mb-1">{incomingCall.callerId?.split('_')[0]}</h2>
-                    <p className="text-gray-400 text-sm">Chamada de {incomingCall.isVideo ? 'vídeo' : 'voz'}...</p>
-                    <div className="flex gap-6 mt-8">
-                        <button onClick={() => setIncomingCall(null)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
-                            <div className="icon-phone-off text-3xl text-white"></div>
+
+                    {/* Controles da Chamada */}
+                    <div className="bg-black/80 p-4 flex justify-center gap-4 flex-wrap">
+                        {/* Botão desligar microfone */}
+                        <button onClick={toggleMic} className={`p-3 rounded-full transition-colors ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                            <div className={isMicMuted ? "icon-mic-off text-xl text-white" : "icon-mic text-xl text-white"}></div>
                         </button>
-                        <button onClick={answerCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600">
-                            <div className="icon-phone text-3xl text-white"></div>
+                        
+                        {/* Botão desligar câmera (só aparece em chamada de vídeo) */}
+                        {isVideoCall && (
+                            <button onClick={toggleCam} className={`p-3 rounded-full transition-colors ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                <div className={isCamMuted ? "icon-video-off text-xl text-white" : "icon-video text-xl text-white"}></div>
+                            </button>
+                        )}
+                        
+                        {/* Botão trocar para vídeo (só aparece em chamada de áudio) */}
+                        {!isVideoCall && callStatus === 'connected' && (
+                            <button onClick={switchToVideo} className="p-3 bg-blue-600 rounded-full hover:bg-blue-700">
+                                <div className="icon-video text-xl text-white"></div>
+                            </button>
+                        )}
+                        
+                        {/* Botão alternar layout da grade */}
+                        <button onClick={() => setGridLayout(prev => prev === 'grid' ? 'speaker' : 'grid')} className="p-3 bg-gray-700 rounded-full hover:bg-gray-600">
+                            <div className="icon-grid text-xl text-white"></div>
+                        </button>
+                        
+                        {/* Botão encerrar chamada */}
+                        <button onClick={() => endCall(false)} className="p-4 bg-red-600 rounded-full hover:bg-red-700">
+                            <div className="icon-phone-off text-xl text-white"></div>
                         </button>
                     </div>
-                </div>
-            )}
-        </div>
-
-        {/* Controles da Chamada */}
-        <div className="bg-black/80 p-4 flex justify-center gap-4 flex-wrap">
-            {/* Botão desligar microfone */}
-            <button onClick={toggleMic} className={`p-3 rounded-full transition-colors ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                <div className={isMicMuted ? "icon-mic-off text-xl text-white" : "icon-mic text-xl text-white"}></div>
-            </button>
-            
-            {/* Botão desligar câmera (só aparece em chamada de vídeo) */}
-            {isVideoCall && (
-                <button onClick={() => {
-                    if (localStreamRef.current) {
-                        const videoTrack = localStreamRef.current.getVideoTracks()[0];
-                        if (videoTrack) {
-                            videoTrack.enabled = !videoTrack.enabled;
-                            setLocalVideoEnabled(videoTrack.enabled);
-                            setIsCamMuted(!videoTrack.enabled);
-                        }
-                    }
-                }} className={`p-3 rounded-full transition-colors ${isCamMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                    <div className={isCamMuted ? "icon-video-off text-xl text-white" : "icon-video text-xl text-white"}></div>
-                </button>
-            )}
-            
-            {/* Botão trocar para vídeo (só aparece em chamada de áudio) */}
-            {!isVideoCall && callStatus === 'connected' && (
-                <button onClick={switchToVideo} className="p-3 bg-blue-600 rounded-full hover:bg-blue-700">
-                    <div className="icon-video text-xl text-white"></div>
-                </button>
-            )}
-            
-            {/* Botão alternar layout da grade */}
-            <button onClick={() => setGridLayout(prev => prev === 'grid' ? 'speaker' : 'grid')} className="p-3 bg-gray-700 rounded-full hover:bg-gray-600">
-                <div className="icon-grid text-xl text-white"></div>
-            </button>
-            
-            {/* Botão encerrar chamada */}
-            <button onClick={() => endCall(false)} className="p-4 bg-red-600 rounded-full hover:bg-red-700">
-                <div className="icon-phone-off text-xl text-white"></div>
-            </button>
-        </div>
-    </div>
-)}
-
-                    {isVideoCall && localStreamRef.current && (
-                        <div className="absolute bottom-4 right-4 w-32 h-48 bg-black rounded-xl overflow-hidden border-2 border-gray-600">
-                            <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-                        </div>
-                    )}
-                    {isVideoCall && remoteVideoRef.current?.srcObject && (
-                        <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover -z-10" />
-                    )}
                 </div>
             )}
 
