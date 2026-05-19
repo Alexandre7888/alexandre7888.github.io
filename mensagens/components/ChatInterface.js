@@ -515,31 +515,41 @@ const setupAudioAnalyser = (stream, participantId) => {
         } catch (e) { console.error("Erro ao entrar:", e); }
     };
 
-    const handleCallStream = (call, isVideo, participantId) => {
-        call.on('stream', (remoteStream) => {
-            setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-            setupAudioAnalyser(remoteStream, call.peer);
-            if (!isVideo) {
-                const audio = new Audio();
-                audio.srcObject = remoteStream;
-                audio.play();
-            } else {
-                if (remoteVideoRef.current && call.peer === Object.keys(activeCalls)[0]) {
-                    remoteVideoRef.current.srcObject = remoteStream;
-                }
+const handleCallStream = (call, isVideo, participantId) => {
+    call.on('stream', (remoteStream) => {
+        setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+        
+        // Adicionar vídeo do participante à lista para grade
+        if (isVideo) {
+            setParticipantVideos(prev => ({ ...prev, [call.peer]: remoteStream }));
+        }
+        
+        // Configurar detector de áudio para saber quando o participante fala
+        setupAudioAnalyser(remoteStream, call.peer);
+        
+        if (!isVideo) {
+            const audio = new Audio();
+            audio.srcObject = remoteStream;
+            audio.play();
+        } else {
+            if (remoteVideoRef.current && call.peer === Object.keys(activeCalls)[0]) {
+                remoteVideoRef.current.srcObject = remoteStream;
             }
-            if (callStatus === 'calling') {
-                setCallStatus('connected');
-                startCallTimer();
-            }
-        });
-        call.on('close', () => {
-            setActiveCalls(prev => { const newCalls = { ...prev }; delete newCalls[call.peer]; if (Object.keys(newCalls).length === 0) endCall(true); return newCalls; });
-            setRemoteStreams(prev => { const newSt = { ...prev }; delete newSt[call.peer]; return newSt; });
-            setActiveSpeakers(prev => { const newSp = { ...prev }; delete newSp[call.peer]; return newSp; });
-        });
-        call.on('error', (err) => console.error(`Erro:`, err));
-    };
+        }
+        if (callStatus === 'calling') {
+            setCallStatus('connected');
+            startCallTimer();
+        }
+    });
+    call.on('close', () => {
+        setActiveCalls(prev => { const newCalls = { ...prev }; delete newCalls[call.peer]; if (Object.keys(newCalls).length === 0) endCall(true); return newCalls; });
+        setRemoteStreams(prev => { const newSt = { ...prev }; delete newSt[call.peer]; return newSt; });
+        setParticipantVideos(prev => { const newVideos = { ...prev }; delete newVideos[call.peer]; return newVideos; });
+        setParticipantAudioLevels(prev => { const newLevels = { ...prev }; delete newLevels[call.peer]; return newLevels; });
+        setActiveSpeakers(prev => { const newSp = { ...prev }; delete newSp[call.peer]; return newSp; });
+    });
+    call.on('error', (err) => console.error(`Erro:`, err));
+};
 
     const initAudioContext = () => {
         if (!audioContextRef.current) {
