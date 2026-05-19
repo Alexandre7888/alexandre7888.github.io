@@ -206,26 +206,33 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     };
     const openChat = (chat) => { pushHistoryState('chat'); setActiveChat(chat); };
 
-    // Call States
-    const [incomingCall, setIncomingCall] = React.useState(null);
-    const [callStatus, setCallStatus] = React.useState(null);
-    const [isVideoCall, setIsVideoCall] = React.useState(false);
-    const [activeGroupCall, setActiveGroupCall] = React.useState(false);
-    const [peer, setPeer] = React.useState(null);
-    const [activeCalls, setActiveCalls] = React.useState({});
-    const [remoteStreams, setRemoteStreams] = React.useState({});
-    const [ongoingGroupCall, setOngoingGroupCall] = React.useState(null);
-    const [isCallMinimized, setIsCallMinimized] = React.useState(false);
-    const [isMicMuted, setIsMicMuted] = React.useState(false);
-    const [isCamMuted, setIsCamMuted] = React.useState(false);
-    const [callDuration, setCallDuration] = React.useState(0);
-    const [activeSpeakers, setActiveSpeakers] = React.useState({});
-    const callTimerRef = React.useRef(null);
-    const localStreamRef = React.useRef(null);
-    const localVideoRef = React.useRef(null);
-    const remoteVideoRef = React.useRef(null);
-    const audioContextRef = React.useRef(null);
-    const analyserRef = React.useRef({});
+// Call States
+const [incomingCall, setIncomingCall] = React.useState(null);
+const [callStatus, setCallStatus] = React.useState(null);
+const [isVideoCall, setIsVideoCall] = React.useState(false);
+const [activeGroupCall, setActiveGroupCall] = React.useState(false);
+const [peer, setPeer] = React.useState(null);
+const [activeCalls, setActiveCalls] = React.useState({});
+const [remoteStreams, setRemoteStreams] = React.useState({});
+const [ongoingGroupCall, setOngoingGroupCall] = React.useState(null);
+const [isCallMinimized, setIsCallMinimized] = React.useState(false);
+const [isMicMuted, setIsMicMuted] = React.useState(false);
+const [isCamMuted, setIsCamMuted] = React.useState(false);
+const [callDuration, setCallDuration] = React.useState(0);
+const [activeSpeakers, setActiveSpeakers] = React.useState({});
+const callTimerRef = React.useRef(null);
+const localStreamRef = React.useRef(null);
+const localVideoRef = React.useRef(null);
+const remoteVideoRef = React.useRef(null);
+const audioContextRef = React.useRef(null);
+const analyserRef = React.useRef({});
+
+// ==================== MULTI PARTICIPANTES VIDEO CHAMADA ====================
+const [participantVideos, setParticipantVideos] = React.useState({}); // { peerId: stream }
+const [participantAudioLevels, setParticipantAudioLevels] = React.useState({}); // { peerId: level }
+const [gridLayout, setGridLayout] = React.useState('grid'); // 'grid' or 'speaker'
+const [mainSpeakerId, setMainSpeakerId] = React.useState(null);
+const [localVideoEnabled, setLocalVideoEnabled] = React.useState(true);
 
     // Recording
     const [isRecordingCall, setIsRecordingCall] = React.useState(false);
