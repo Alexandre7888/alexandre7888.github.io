@@ -289,36 +289,47 @@ const [localVideoEnabled, setLocalVideoEnabled] = React.useState(true);
         }
     };
 
-    const setupAudioAnalyser = (stream, participantId) => {
-        if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+// Detectar nível de áudio para saber quem está falando
+const setupAudioAnalyser = (stream, participantId) => {
+    if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    const source = audioContextRef.current.createMediaStreamSource(stream);
+    const analyser = audioContextRef.current.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    
+    const checkVolume = () => {
+        if (!analyserRef.current[participantId]) return;
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const isSpeaking = avg > 15;
+        const level = Math.min(100, Math.floor(avg * 2));
+        
+        setParticipantAudioLevels(prev => ({ ...prev, [participantId]: level }));
+        
+        if (isSpeaking !== activeSpeakers[participantId]) {
+            setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
         }
         
-        const source = audioContextRef.current.createMediaStreamSource(stream);
-        const analyser = audioContextRef.current.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
+        // Destacar quem está falando mais alto
+        if (level > 30) {
+            setMainSpeakerId(participantId);
+        }
         
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-        const checkVolume = () => {
-            if (!analyserRef.current[participantId]) return;
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-            const avg = sum / dataArray.length;
-            const isSpeaking = avg > 15;
-            
-            if (isSpeaking !== activeSpeakers[participantId]) {
-                setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
-            }
-            requestAnimationFrame(() => checkVolume());
-        };
-        
-        analyserRef.current[participantId] = analyser;
-        checkVolume();
+        requestAnimationFrame(() => checkVolume());
     };
-
+    
+    analyserRef.current[participantId] = analyser;
+    checkVolume();
+};
     const toggleMic = () => {
         if (localStreamRef.current) {
             const audioTrack = localStreamRef.current.getAudioTracks()[0];
