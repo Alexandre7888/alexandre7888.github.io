@@ -862,68 +862,90 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return () => contactsRef.off();
     }, [user, db]);
 
-    // ==================== FUNÇÃO PARA CARREGAR MENSAGENS ====================
-    React.useEffect(() => {
-        if (!activeChat || !db) return;
+// ==================== FUNÇÃO PARA CARREGAR MENSAGENS COM TEMPO REAL ====================
+React.useEffect(() => {
+    if (!activeChat || !db) return;
+    
+    let messagesRef;
+    let isBlocked = false;
+    
+    const loadMessagesWithRealTime = async () => {
+        if (activeChat.type !== 'group') {
+            const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
+            isBlocked = blockedByMe || blockedByThem;
+        }
         
-        const loadMessages = async () => {
-            try {
-                let messagesRef;
-                let isBlocked = false;
-                
-                if (activeChat.type !== 'group') {
-                    const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
-                    isBlocked = blockedByMe || blockedByThem;
+        if (isBlocked) {
+            setMessages([{
+                key: 'blocked',
+                senderId: 'system',
+                senderName: 'Sistema',
+                text: '❌ Conversa bloqueada. Desbloqueie o contato para ver as mensagens.',
+                type: 'system',
+                timestamp: Date.now()
+            }]);
+            return;
+        }
+        
+        messagesRef = activeChat.type === 'group' 
+            ? db.ref(`groups/${activeChat.id}/messages`)
+            : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+        
+        const markAsRead = (msgId, senderId) => {
+            db.ref(`users/${user.id}/settings`).once('value').then(s => {
+                const settings = s.val() || {};
+                let allowReadReceipt = settings.readReceipts !== false;
+                if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
+                if (allowReadReceipt) {
+                    if (activeChat.type === 'group') {
+                        db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
+                    } else {
+                        db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
+                    }
                 }
-                
-                if (isBlocked) {
-                    setMessages([{
-                        key: 'blocked',
-                        senderId: 'system',
-                        senderName: 'Sistema',
-                        text: '❌ Conversa bloqueada. Desbloqueie o contato para ver as mensagens.',
-                        type: 'system',
-                        timestamp: Date.now()
-                    }]);
-                    return;
-                }
-                
-                messagesRef = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
-                
-                const markAsRead = (msgId, senderId) => {
-                    db.ref(`users/${user.id}/settings`).once('value').then(s => {
-                        const settings = s.val() || {};
-                        let allowReadReceipt = settings.readReceipts !== false;
-                        if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
-                        if (allowReadReceipt) {
-                            if (activeChat.type === 'group') db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
-                            else db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
-                        }
-                    });
-                };
-                
-                messagesRef.limitToLast(50).on('child_added', (snapshot) => {
-                    const msg = snapshot.val();
-                    setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
-                    if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
-                });
-                messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
-                
-                return () => {
-                    if (messagesRef) messagesRef.off();
-                    setMessages([]);
-                };
-            } catch(e) {
-                console.error("Erro ao carregar mensagens:", e);
-            }
+            });
         };
         
-        loadMessages();
-    }, [activeChat, user, db]);
-
-    React.useEffect(() => { 
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
-    }, [messages]);
+        // LISTENERS EM TEMPO REAL para mensagens novas
+        messagesRef.limitToLast(50).on('child_added', (snapshot) => {
+            const msg = snapshot.val();
+            if (!msg) return;
+            
+            setMessages(prev => {
+                // Verificar se a mensagem já existe para não duplicar
+                const exists = prev.some(m => m.key === snapshot.key);
+                if (exists) return prev;
+                return [...prev, { ...msg, key: snapshot.key }];
+            });
+            
+            if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
+        });
+        
+        // LISTENER EM TEMPO REAL para mensagens alteradas (editadas)
+        messagesRef.limitToLast(50).on('child_changed', (snapshot) => {
+            const changedMsg = snapshot.val();
+            setMessages(prev => prev.map(msg => 
+                msg.key === snapshot.key ? { ...changedMsg, key: snapshot.key } : msg
+            ));
+        });
+        
+        // LISTENER EM TEMPO REAL para mensagens removidas (apagadas)
+        messagesRef.limitToLast(50).on('child_removed', (snapshot) => {
+            setMessages(prev => prev.filter(msg => msg.key !== snapshot.key));
+        });
+    };
+    
+    loadMessagesWithRealTime();
+    
+    return () => {
+        if (messagesRef) {
+            messagesRef.off('child_added');
+            messagesRef.off('child_changed');
+            messagesRef.off('child_removed');
+        }
+        setMessages([]);
+    };
+}, [activeChat, user, db]);
 
     // ==================== FUNÇÃO PRINCIPAL PARA ENVIAR MENSAGEM ====================
     const handleSendMessage = async (content, type = 'text', duration = null, msgType = 'text') => {
