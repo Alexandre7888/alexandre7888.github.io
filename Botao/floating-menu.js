@@ -16,13 +16,6 @@ async function loadButtonsFromFile() {
         // Botões de fallback caso o arquivo não carregue
         return [
             {
-                title: "Editor de Código",
-                description: "Crie e edite projetos online", 
-                url: "https://alexandre7888.github.io/CodeHUB/editor.html",
-                color: "#667eea",
-                icon: "💻"
-            },
-            {
                 title: "WhatsApp",
                 description: "Fale conosco",
                 url: "https://wa.me/554799536379",
