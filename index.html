@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- SEO -->
-  <meta name="keywords" content="CodeHUB, editor de código online, IDE online, programar no navegador, editor HTML, editor CSS, editor JavaScript, desenvolvimento web online, criar sites online, editor de código grátis, IDE para iniciantes, editor responsivo, ferramenta programação, codar no navegador, editor com terminal, escrever código online, depuração online, editor de código rápido, desenvolvimento colaborativo, criar projetos web, editor frontend, plataforma de codar online, editor de programação, IDE web, editor de scripts, editor JS, editor CSS3, editor HTML5, criar páginas web, prototipagem online, editor web interativo, IDE colaborativa, editor de código com login, projetos online, editor de apps web, editor multiplataforma, editor com versionamento, editor de projetos HTML CSS JS, editor de código para estudantes, IDE para web developers, editor de código com templates, editor de projetos compartilháveis, editor para iniciantes em web, editor rápido e leve, editor de código com terminal integrado, editor de desenvolvimento web, editor de protótipos web, plataforma de aprendizado de programação, editor de sites responsivos, editor de HTML CSS JS online, criar sites responsivos online, editor de front-end, editor com Firebase, editor para projetos pessoais, IDE web gratuita, editor para codar online, editor de código interativo, editor de projetos colaborativos, editor de sites e aplicações, editor para estudantes de programação, editor de código com suporte a frameworks, editor de desenvolvimento ágil, IDE de aprendizado online, editor de projetos rápidos, editor de código para educação, editor de páginas web, editor de apps HTML CSS JS">
-  <meta name="author" content="CodeHUB - Alexandre Braatz Junior, fundador da plataforma">
+  <meta name="keywords" content="CodeHUB, relógio analógico, relógio de ponteiro, bússola online, ferramenta web, desenvolvimento web, programação, projetos web, plataforma de projetos">
+  <meta name="description" content="CodeHUB - Plataforma de gerenciamento de projetos com relógio analógico estilo bússola.">
+  <meta name="author" content="CodeHUB - Alexandre Braatz Junior">
   <meta name="google-site-verification" content="d5deNmIStRgPPphEkAypCTSv-E_1gi9ba16et47RSmA" />
 
-  <title>CodeHUB - Editor de Código Online</title>
+  <title>CodeHUB - Relógio Analógico</title>
   <link rel="icon" type="image/png" href="https://alexandre7888.github.io/CodeHUB/InShot_20250807_112151490.jpg">
 
   <!-- Google Analytics -->
@@ -19,14 +20,11 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
     gtag('config', 'G-X4VF1LWB0F');
-    gtag('config', 'G-XQE93JQ3RB');
-    gtag('config', 'G-7RYPMEN60E');
   </script>
 
   <!-- Scripts Externos -->
   <script src="https://alexandre7888.github.io/CodeHUB/protecao.js"></script>
   <script src="https://alexandre7888.github.io/CodeHUB/Botao/floating-menu.js"></script>
-  <script type="module" src="https://code.codehub.ct.ws/client.js"></script>
   <script src="https://assistente-ia--socialkoala6579904.on.websim.com/embed.js"></script>
 
   <style>
@@ -97,49 +95,13 @@
       --light-color: #f8f9fa;
       --dark-color: #212529;
       --gray-color: #6c757d;
-      --discord-color: #5865F2;
-      --github-color: #24292e;
     }
-
-    /* Banner personalizado */
-    .admin-banner {
-      color: white;
-      padding: 15px 40px 15px 20px;
-      text-align: center;
-      position: relative;
-      cursor: pointer;
-      transition: all 0.3s;
-      display: none;
-      font-size: 14px;
-      z-index: 100;
-      background-size: cover;
-      background-position: center;
-    }
-    .admin-banner:hover { transform: scale(1.01); }
-    .admin-banner .close-banner {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: rgba(0,0,0,0.3);
-      border: none;
-      color: white;
-      cursor: pointer;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .admin-banner .close-banner:hover { background: rgba(0,0,0,0.5); }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f7fa;
+      background: #0a0f1a;
       color: #333;
       line-height: 1.6;
       min-height: 100vh;
@@ -169,30 +131,6 @@
 
     .user-info { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 
-    /* ============ GITHUB BOTÃO ============ */
-    .github-btn {
-      background: var(--github-color); color: white; border: none;
-      padding: 8px 14px; border-radius: 6px; cursor: pointer;
-      display: flex; align-items: center; gap: 6px;
-      font-weight: 600; font-size: 13px; transition: all 0.3s;
-      white-space: nowrap; text-decoration: none;
-    }
-    .github-btn:hover { background: #1b1f23; transform: scale(1.03); }
-    .github-btn.connected { background: #2ea44f; }
-    .github-btn.connected:hover { background: #2c974b; }
-
-    .github-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: #f0f7ff; color: #0366d6; padding: 3px 10px;
-      border-radius: 12px; font-size: 0.75rem; font-weight: 600;
-      border: 1px solid #c8e1ff; margin-bottom: 0.5rem;
-    }
-
-    .sync-btn {
-      background-color: #2ea44f !important; color: white !important;
-    }
-    .sync-btn:hover { background-color: #2c974b !important; }
-
     .logout-btn {
       background-color: var(--danger-color); color: white; border: none;
       padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;
@@ -200,19 +138,13 @@
       display: flex; align-items: center; gap: 0.5rem;
     }
 
-    .admin-link {
-      background: rgba(255,255,255,0.2); padding: 5px 12px;
-      border-radius: 20px; font-size: 12px; text-decoration: none;
-      color: white; transition: all 0.3s;
-    }
-    .admin-link:hover { background: rgba(255,255,255,0.3); }
-
     .container { flex: 1; max-width: 1200px; margin: 1rem auto; padding: 0 1rem; width: 100%; }
 
     .projects-header {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
     }
+    .projects-header h2 { color: white; }
 
     .new-project-btn {
       background-color: var(--success-color); color: white; border: none;
@@ -236,7 +168,6 @@
     .project-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
 
     .project-name { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--dark-color); }
-    .project-domain { font-size: 0.9rem; color: var(--gray-color); margin-bottom: 0.5rem; }
 
     .project-actions { display: flex; gap: 0.5rem; margin-top: auto; flex-wrap: wrap; }
 
@@ -246,7 +177,7 @@
       gap: 0.4rem; transition: all 0.2s; flex: 1; justify-content: center;
       white-space: nowrap;
     }
-    .edit-btn { background-color: var(--accent-color); color: white; }
+    .view-clock-btn { background-color: var(--accent-color); color: white; }
     .delete-btn { background-color: var(--danger-color); color: white; }
 
     /* Modal */
@@ -266,18 +197,13 @@
 
     .form-group { margin-bottom: 1.2rem; }
     .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark-color); }
-    .form-group input, .form-group select {
+    .form-group input {
       width: 100%; padding: 0.75rem; border: 1px solid #ddd;
       border-radius: 6px; font-size: 1rem;
     }
     .form-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
     .cancel-btn { background-color: var(--gray-color); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
     .confirm-btn { background-color: var(--primary-color); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
-
-    .status-msg { padding: 8px 12px; border-radius: 4px; margin: 10px 0; font-size: 0.85rem; display: none; }
-    .status-msg.success { background: #d4edda; color: #155724; display: block; }
-    .status-msg.error { background: #f8d7da; color: #721c24; display: block; }
-    .status-msg.info { background: #cce5ff; color: #004085; display: block; }
 
     /* Cookie */
     .cookie-banner {
@@ -289,6 +215,47 @@
     .cookie-btn { padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 600; }
     .cookie-accept { background-color: var(--success-color); color: white; border: none; }
     .cookie-reject { background-color: transparent; color: white; border: 1px solid white; }
+
+    /* Modal do Relógio */
+    .clock-modal {
+      display: none;
+      position: fixed;
+      z-index: 1200;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+    }
+    .clock-modal-content {
+      background: #0a0f1a;
+      border-radius: 50%;
+      padding: 20px;
+      position: relative;
+    }
+    .close-clock {
+      position: absolute;
+      top: -15px;
+      right: -15px;
+      background: #f72585;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 35px;
+      height: 35px;
+      font-size: 20px;
+      cursor: pointer;
+      z-index: 1201;
+    }
+    canvas {
+      width: min(70vw, 70vh, 350px);
+      height: min(70vw, 70vh, 350px);
+      background: #11161f;
+      border-radius: 50%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5), inset 0 0 0 2px #2a3a4a, inset 0 0 0 6px #0a0f14;
+    }
 
     @media (max-width: 768px) {
       .projects-grid { grid-template-columns: 1fr; }
@@ -304,20 +271,12 @@
   </div>
 
   <div id="app-content">
-    <div id="admin-banner" class="admin-banner" style="display: none;">
-      <span id="banner-text"></span>
-      <button class="close-banner" onclick="fecharBanner()">✕</button>
-    </div>
-
     <header>
       <div class="header-content">
         <div class="logo-area">
           <h1>🚀 CodeHUB</h1>
         </div>
         <div class="user-info" id="user-info">
-          <button id="github-login-btn" class="github-btn" onclick="loginWithGitHub()">
-            🔗 Conectar GitHub
-          </button>
           <span id="username"></span>
           <button class="logout-btn" onclick="logout()">Sair</button>
         </div>
@@ -344,19 +303,19 @@
             <label>Nome do Projeto</label>
             <input type="text" id="project-name" required maxlength="50">
           </div>
-          <div class="form-group" id="github-section">
-            <label>🔗 Vincular Repositório GitHub (opcional)</label>
-            <div id="github-status" class="status-msg"></div>
-            <select id="github-repo-select">
-              <option value="">Nenhum</option>
-            </select>
-            <button type="button" class="github-btn" onclick="loadRepos()" style="margin-top:8px;width:100%;">🔄 Carregar Repositórios</button>
-          </div>
           <div class="form-actions">
             <button type="button" class="cancel-btn" onclick="closeProjectModal()">Cancelar</button>
             <button type="submit" class="confirm-btn">Salvar</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal do Relógio -->
+    <div id="clock-modal" class="clock-modal">
+      <div class="clock-modal-content">
+        <button class="close-clock" onclick="closeClockModal()">✕</button>
+        <canvas id="clockCanvas" width="400" height="400"></canvas>
       </div>
     </div>
 
@@ -369,10 +328,159 @@
     </div>
   </div>
 
+  <script>
+    // ============ RELÓGIO ============
+    let clockInterval = null;
+    
+    window.showClock = function() {
+      const modal = document.getElementById('clock-modal');
+      modal.style.display = 'flex';
+      startClock();
+    };
+    
+    window.closeClockModal = function() {
+      const modal = document.getElementById('clock-modal');
+      modal.style.display = 'none';
+      if (clockInterval) clearInterval(clockInterval);
+    };
+    
+    function startClock() {
+      if (clockInterval) clearInterval(clockInterval);
+      drawClockOnce();
+      clockInterval = setInterval(drawClockOnce, 1000);
+    }
+    
+    function drawClockOnce() {
+      const canvas = document.getElementById('clockCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+      const center = size/2;
+      const radius = size * 0.42;
+      
+      ctx.clearRect(0, 0, size, size);
+      
+      const grad = ctx.createRadialGradient(center-8, center-8, 5, center, center, radius+10);
+      grad.addColorStop(0, '#1a2533');
+      grad.addColorStop(1, '#0c111c');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(center, center, radius+5, 0, Math.PI*2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(center, center, radius+2, 0, Math.PI*2);
+      ctx.strokeStyle = '#7f8c8d';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      
+      for(let i = 0; i < 60; i++) {
+        let angle = i * Math.PI * 2 / 60 - Math.PI/2;
+        let inner = (i % 5 === 0) ? radius - 18 : radius - 8;
+        let outer = radius - 3;
+        
+        if(i % 15 === 0) {
+          ctx.beginPath();
+          ctx.moveTo(center + Math.cos(angle) * (radius-25), center + Math.sin(angle) * (radius-25));
+          ctx.lineTo(center + Math.cos(angle) * (radius+4), center + Math.sin(angle) * (radius+4));
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#e6b422';
+          ctx.stroke();
+          
+          ctx.beginPath();
+          ctx.moveTo(center + Math.cos(angle+0.12) * (radius-20), center + Math.sin(angle+0.12) * (radius-20));
+          ctx.lineTo(center + Math.cos(angle) * (radius+6), center + Math.sin(angle) * (radius+6));
+          ctx.lineTo(center + Math.cos(angle-0.12) * (radius-20), center + Math.sin(angle-0.12) * (radius-20));
+          ctx.fillStyle = '#f0c674';
+          ctx.fill();
+        }
+        else if(i % 5 === 0) {
+          ctx.beginPath();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#bcc9db';
+          ctx.moveTo(center + Math.cos(angle) * inner, center + Math.sin(angle) * inner);
+          ctx.lineTo(center + Math.cos(angle) * outer, center + Math.sin(angle) * outer);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = '#4a627a';
+          ctx.moveTo(center + Math.cos(angle) * (radius-6), center + Math.sin(angle) * (radius-6));
+          ctx.lineTo(center + Math.cos(angle) * outer, center + Math.sin(angle) * outer);
+          ctx.stroke();
+        }
+      }
+      
+      ctx.beginPath();
+      ctx.arc(center, center, radius-28, 0, Math.PI*2);
+      ctx.strokeStyle = '#3e5a77';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      
+      ctx.font = `bold ${Math.floor(size/18)}px "Segoe UI", system-ui`;
+      ctx.fillStyle = '#e2e9f0';
+      ctx.fillText("12", center-11, center-radius+22);
+      ctx.fillText("6", center-6, center+radius-20);
+      ctx.fillText("3", center+radius-28, center+9);
+      ctx.fillText("9", center-radius+18, center+9);
+      
+      ctx.font = `500 ${Math.floor(size/22)}px "Segoe UI"`;
+      ctx.fillStyle = '#c9b16b';
+      ctx.fillText("N", center-5, center-radius+10);
+      ctx.fillText("S", center-5, center+radius-12);
+      ctx.fillText("E", center+radius-20, center+6);
+      ctx.fillText("W", center-radius+12, center+6);
+      
+      let now = new Date();
+      let hours = now.getHours() % 12;
+      let minutes = now.getMinutes();
+      let seconds = now.getSeconds();
+      
+      let hourAngle = (hours * 30 + minutes * 0.5) * Math.PI / 180 - Math.PI/2;
+      let minuteAngle = (minutes * 6 + seconds * 0.1) * Math.PI / 180 - Math.PI/2;
+      let secondAngle = (seconds * 6) * Math.PI / 180 - Math.PI/2;
+      
+      ctx.beginPath();
+      ctx.moveTo(center, center);
+      ctx.lineTo(center + Math.cos(hourAngle) * (radius*0.5), center + Math.sin(hourAngle) * (radius*0.5));
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#d9e2f0';
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = '#00000040';
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(center, center);
+      ctx.lineTo(center + Math.cos(minuteAngle) * (radius*0.75), center + Math.sin(minuteAngle) * (radius*0.75));
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#cbdae9';
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(center, center);
+      ctx.lineTo(center + Math.cos(secondAngle) * (radius*0.85), center + Math.sin(secondAngle) * (radius*0.85));
+      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = '#ff8866';
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.arc(center, center, 7, 0, Math.PI*2);
+      ctx.fillStyle = '#332211';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(center, center, 3.5, 0, Math.PI*2);
+      ctx.fillStyle = '#f5c17a';
+      ctx.fill();
+      
+      ctx.shadowBlur = 0;
+    }
+  </script>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, push, set, onValue, remove, get, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getDatabase, ref, push, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -389,14 +497,8 @@
     const database = getDatabase(app);
 
     let userData = null;
-    let githubToken = null;
-    let githubRepos = [];
     let editingProjectId = null;
 
-    const GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwB6xx4nVPuW2aPEbBQawxuekBXFrU6AOYYZXMkjFQ4FB__mN51Ll8GQNIp9lp0IkKV/exec";
-    const GITHUB_CLIENT_ID = "Ov23liuEuOxeSy0cgbYQ"; // ⚠️ SUBSTITUA PELO SEU
-
-    // ============ LOADING ============
     const loadingScreen = document.getElementById('loading-screen');
     const appContent = document.getElementById('app-content');
     const imgs = ["foto1.jpg","foto2.jpg","foto3.jpg"].map(f => `https://alexandre7888.github.io/CodeHUB/CodeFOX/${f}`);
@@ -404,80 +506,6 @@
     setInterval(() => { i = (i+1)%3; document.getElementById('codefox').src = imgs[i]; }, 2000);
     setTimeout(() => { loadingScreen.style.display='none'; appContent.style.display='block'; }, 1500);
 
-    // ============ GITHUB ============
-    window.loginWithGitHub = function() {
-      const redirect = encodeURIComponent(location.origin + location.pathname);
-      location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${redirect}&scope=repo,user`;
-    };
-
-    function checkGitHubToken() {
-      githubToken = localStorage.getItem("github_token");
-      const btn = document.getElementById('github-login-btn');
-      if (githubToken) {
-        btn.textContent = '✅ GitHub Conectado';
-        btn.className = 'github-btn connected';
-        btn.onclick = () => { if(confirm('Desconectar?')){ localStorage.removeItem('github_token'); githubToken=null; checkGitHubToken(); } };
-      } else {
-        btn.textContent = '🔗 Conectar GitHub';
-        btn.className = 'github-btn';
-        btn.onclick = window.loginWithGitHub;
-      }
-    }
-
-    function jsonp(token, acao, extra={}) {
-      return new Promise((resolve, reject) => {
-        const cb = '_cb' + Date.now();
-        window[cb] = d => { delete window[cb]; d.erro ? reject(new Error(d.erro)) : resolve(d); };
-        let url = `${GOOGLE_SCRIPT}?callback=${cb}&token=${token}&acao=${acao}`;
-        for (let k in extra) url += `&${k}=${encodeURIComponent(extra[k])}`;
-        const s = document.createElement('script'); s.src = url; s.onerror=()=>reject(new Error('Script error')); document.body.appendChild(s);
-      });
-    }
-
-    window.loadRepos = async function() {
-      if (!githubToken) return alert('Conecte o GitHub primeiro!');
-      const st = document.getElementById('github-status');
-      st.textContent = '⏳ Carregando...'; st.className = 'status-msg info';
-      try {
-        githubRepos = await jsonp(githubToken, 'listar');
-        const sel = document.getElementById('github-repo-select');
-        sel.innerHTML = '<option value="">Nenhum</option>';
-        githubRepos.forEach(r => { const o = document.createElement('option'); o.value = r.nome; o.textContent = r.nome; sel.appendChild(o); });
-        st.textContent = `✅ ${githubRepos.length} repositórios`; st.className = 'status-msg success';
-      } catch(e) { st.textContent = '❌ ' + e.message; st.className = 'status-msg error'; }
-    };
-
-    async function syncRepoToProject(repoName, projectId) {
-      if (!githubToken) return;
-      try {
-        const user = await jsonp(githubToken, 'user');
-        const treeUrl = `https://api.github.com/repos/${user.login}/${repoName}/git/trees/main?recursive=1`;
-        const tr = await fetch(treeUrl, { headers: { Authorization: `Bearer ${githubToken}` } });
-        const td = await tr.json();
-        if (!td.tree) return;
-        const files = {};
-        for (const item of td.tree) {
-          if (item.type === 'blob' && item.path.match(/\.(html|css|js)$/)) {
-            const cr = await fetch(item.url, { headers: { Authorization: `Bearer ${githubToken}` } });
-            const cd = await cr.json();
-            const ext = item.path.split('.').pop();
-            const lang = { html:'html', css:'css', js:'javascript' }[ext] || ext;
-            files[item.path.replace(/[.\/]/g,'_')] = { name: item.path, content: atob(cd.content||''), language: lang };
-          }
-        }
-        if (Object.keys(files).length) {
-          await update(ref(database, `projects/${userData.uid}/${projectId}`), { files, updatedAt: new Date().toISOString() });
-        }
-      } catch(e) { console.error(e); }
-    }
-
-    window.syncProject = async function(projectId, repoName) {
-      if (!confirm(`Sincronizar com ${repoName}?`)) return;
-      await syncRepoToProject(repoName, projectId);
-      alert('✅ Sincronizado!');
-    };
-
-    // ============ PROJETOS ============
     function loadProjects(uid) {
       onValue(ref(database, `projects/${uid}`), snap => {
         const container = document.getElementById('projects-container');
@@ -488,11 +516,9 @@
           const card = document.createElement('div');
           card.className = 'project-card';
           card.innerHTML = `
-            ${p.githubRepo ? `<div class="github-badge">🔗 ${p.githubRepo}</div>` : ''}
             <div class="project-name">📄 ${p.name||''}</div>
             <div class="project-actions">
-              <button class="action-btn edit-btn" onclick="location.href='editor.html?projectId=${pid}'">✏️ Abrir</button>
-              ${p.githubRepo ? `<button class="action-btn sync-btn" onclick="syncProject('${pid}','${p.githubRepo}')">🔄 Sincronizar</button>` : ''}
+              <button class="action-btn view-clock-btn" onclick="showClock()">🕐 Ver Relógio</button>
               <button class="action-btn" style="background:#6c757d;color:white;" onclick="editProject('${pid}')">⚙️</button>
               <button class="action-btn delete-btn" onclick="deleteProject('${pid}')">🗑️</button>
             </div>`;
@@ -508,7 +534,6 @@
       const p = snap.val(); editingProjectId=pid;
       document.getElementById('modal-title').textContent='⚙️ Editar';
       document.getElementById('project-name').value=p.name||'';
-      document.getElementById('github-repo-select').value=p.githubRepo||'';
       document.getElementById('project-modal').style.display='block';
     };
 
@@ -516,42 +541,25 @@
       e.preventDefault();
       const name = document.getElementById('project-name').value.trim();
       if (!name) return;
-      const repo = document.getElementById('github-repo-select').value;
       if (editingProjectId) {
-        await update(ref(database, `projects/${userData.uid}/${editingProjectId}`), { name, githubRepo: repo||null, updatedAt: new Date().toISOString() });
-        if (repo) await syncRepoToProject(repo, editingProjectId);
+        await set(ref(database, `projects/${userData.uid}/${editingProjectId}`), { name, updatedAt: new Date().toISOString() });
       } else {
-        const ref = push(ref(database, `projects/${userData.uid}`));
-        await set(ref, { name, githubRepo: repo||null, owner: userData.displayName, createdAt: new Date().toISOString(), files: { 'index_html': { name:'index.html', content:'<h1>'+name+'</h1>', language:'html' } } });
-        if (repo) await syncRepoToProject(repo, ref.key);
+        const newRef = push(ref(database, `projects/${userData.uid}`));
+        await set(newRef, { name, owner: userData.displayName, createdAt: new Date().toISOString() });
       }
       closeProjectModal();
     });
 
-    window.deleteProject = pid => { if(confirm('Excluir?')) remove(ref(database, `projects/${auth.currentUser.uid}/${pid}`)); };
+    window.deleteProject = pid => { if(confirm('Excluir projeto?')) remove(ref(database, `projects/${auth.currentUser.uid}/${pid}`)); };
     window.logout = () => signOut(auth).then(()=>location.href='auth.html');
 
-    // ============ AUTH ============
     onAuthStateChanged(auth, async user => {
       if (!user) return location.href='auth.html';
       userData = { uid: user.uid, email: user.email, displayName: user.displayName||user.email.split('@')[0] };
       document.getElementById('username').textContent = '👤 ' + userData.displayName;
-      checkGitHubToken();
-
-      // Se voltou do GitHub com code
-      const params = new URLSearchParams(location.search);
-      const code = params.get('code');
-      if (code) {
-        history.replaceState({}, '', location.pathname);
-        const r = await fetch(`https://code-hub-eta.vercel.app/api/aq?code=${code}`);
-        const d = await r.json();
-        if (d.token) { localStorage.setItem('github_token', d.token); checkGitHubToken(); }
-      }
-
       loadProjects(user.uid);
     });
 
-    // ============ COOKIES ============
     if (!localStorage.getItem('cookiesAccepted')) document.getElementById('cookie-banner').style.display='flex';
     window.acceptCookies = () => { localStorage.setItem('cookiesAccepted','1'); document.getElementById('cookie-banner').style.display='none'; };
     window.rejectCookies = () => { localStorage.setItem('cookiesAccepted','0'); document.getElementById('cookie-banner').style.display='none'; };
