@@ -21,6 +21,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [showGroupInfo, setShowGroupInfo] = React.useState(false);
     const [showSettings, setShowSettings] = React.useState(false);
     const [showBotCreator, setShowBotCreator] = React.useState(false);
+    const [showReportModal, setShowReportModal] = React.useState(false);
+    const [reportReason, setReportReason] = React.useState("");
+    const [reporting, setReporting] = React.useState(false);
+    const [showAddFriendModal, setShowAddFriendModal] = React.useState(false);
+    const [friendUsername, setFriendUsername] = React.useState("");
 
     // Rate limiter
     const rateLimiter = React.useRef({});
@@ -31,6 +36,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     // ==================== SISTEMA DE ARQUIVOS EM BASE64 ====================
     const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+    // Estados de amizade e bloqueio
+    const [friends, setFriends] = React.useState({});
+    const [friendRequests, setFriendRequests] = React.useState({});
+    const [blockedUsers, setBlockedUsers] = React.useState({});
+
     const fileToBase64 = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -40,6 +50,367 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         });
     };
 
+    const db = window.firebaseDB;
+
+    // ==================== FUNÇÕES DE AMIZADE ====================
+    
+    const loadFriendsData = async () => {
+        if (!db || !user) return;
+        
+        try {
+            const friendsSnap = await db.ref(`users/${user.id}/friends`).once('value');
+            setFriends(friendsSnap.val() || {});
+            
+            const requestsSnap = await db.ref(`users/${user.id}/friendRequests/received`).once('value');
+            setFriendRequests(requestsSnap.val() || {});
+            
+            const blockedSnap = await db.ref(`users/${user.id}/blocked`).once('value');
+            setBlockedUsers(blockedSnap.val() || {});
+        } catch(e) {
+            console.error("Erro ao carregar dados de amizade:", e);
+        }
+    };
+
+    const sendFriendRequestByUsername = async () => {
+        if (!friendUsername.trim()) {
+            showToastMessage("Digite um nome de usuário!", "error");
+            return;
+        }
+        
+        try {
+            const usersSnap = await db.ref(`users`).orderByChild('name').equalTo(friendUsername).once('value');
+            const users = usersSnap.val();
+            
+            if (!users) {
+                showToastMessage("Usuário não encontrado!", "error");
+                return;
+            }
+            
+            const targetUserId = Object.keys(users)[0];
+            const targetUserData = users[targetUserId];
+            
+            if (targetUserId === user.id) {
+                showToastMessage("Você não pode adicionar a si mesmo!", "error");
+                return;
+            }
+            
+            const existingFriend = await db.ref(`users/${user.id}/friends/${targetUserId}`).once('value');
+            if (existingFriend.exists()) {
+                showToastMessage("Você já é amigo deste usuário!", "info");
+                return;
+            }
+            
+            await db.ref(`users/${targetUserId}/friendRequests/received/${user.id}`).set({
+                fromId: user.id,
+                fromName: user.name,
+                fromAvatar: user.avatar,
+                timestamp: Date.now(),
+                status: 'pending',
+                username: user.name
+            });
+            
+            await db.ref(`users/${user.id}/friendRequests/sent/${targetUserId}`).set({
+                toId: targetUserId,
+                toName: targetUserData.name,
+                timestamp: Date.now(),
+                status: 'pending'
+            });
+            
+            showToastMessage(`Solicitação enviada para @${friendUsername}!`, "success");
+            setShowAddFriendModal(false);
+            setFriendUsername("");
+            
+        } catch(e) {
+            console.error("Erro ao enviar solicitação:", e);
+            showToastMessage("Erro ao enviar solicitação!", "error");
+        }
+    };
+
+    const acceptFriendRequest = async (fromUserId, fromName) => {
+        try {
+            await db.ref(`users/${user.id}/friends/${fromUserId}`).set({
+                addedAt: Date.now(),
+                name: fromName,
+                avatar: null
+            });
+            
+            await db.ref(`users/${fromUserId}/friends/${user.id}`).set({
+                addedAt: Date.now(),
+                name: user.name,
+                avatar: user.avatar
+            });
+            
+            await db.ref(`users/${user.id}/friendRequests/received/${fromUserId}`).remove();
+            await db.ref(`users/${fromUserId}/friendRequests/sent/${user.id}`).remove();
+            
+            showToastMessage(`Você agora é amigo de ${fromName}!`, "success");
+            loadFriendsData();
+        } catch(e) {
+            console.error("Erro ao aceitar solicitação:", e);
+            showToastMessage("Erro ao aceitar solicitação!", "error");
+        }
+    };
+
+    const rejectFriendRequest = async (fromUserId) => {
+        try {
+            await db.ref(`users/${user.id}/friendRequests/received/${fromUserId}`).remove();
+            await db.ref(`users/${fromUserId}/friendRequests/sent/${user.id}`).remove();
+            showToastMessage("Solicitação recusada!", "success");
+            loadFriendsData();
+        } catch(e) {
+            console.error("Erro ao recusar solicitação:", e);
+            showToastMessage("Erro ao recusar solicitação!", "error");
+        }
+    };
+
+    const removeFriend = async (friendId, friendName) => {
+        if (!confirm(`Deseja remover ${friendName} dos seus amigos?`)) return;
+        
+        try {
+            await db.ref(`users/${user.id}/friends/${friendId}`).remove();
+            await db.ref(`users/${friendId}/friends/${user.id}`).remove();
+            showToastMessage(`${friendName} removido dos amigos!`, "success");
+            loadFriendsData();
+        } catch(e) {
+            console.error("Erro ao remover amigo:", e);
+            showToastMessage("Erro ao remover amigo!", "error");
+        }
+    };
+
+    // ==================== FUNÇÕES DE DENÚNCIA ====================
+    
+    const reportUser = async () => {
+        if (!reportReason.trim()) {
+            showToastMessage("Digite um motivo para a denúncia!", "error");
+            return;
+        }
+        
+        setReporting(true);
+        
+        try {
+            await db.ref(`reports/${Date.now()}_${user.id}_${selectedUser?.id}`).set({
+                reportedBy: user.id,
+                reportedByName: user.name,
+                reportedUser: selectedUser?.id,
+                reportedUserName: selectedUser?.name,
+                reason: reportReason,
+                timestamp: Date.now(),
+                status: "pending",
+                chatId: activeChat?.id,
+                chatName: activeChat?.name
+            });
+            
+            showToastMessage("Denúncia enviada! Nossa equipe irá analisar.", "success");
+            setShowReportModal(false);
+            setReportReason("");
+        } catch(e) {
+            console.error("Erro ao denunciar:", e);
+            showToastMessage("Erro ao enviar denúncia!", "error");
+        } finally {
+            setReporting(false);
+        }
+    };
+
+    // ==================== CHAMADAS SEM PRECISAR SER AMIGO (SPAM) ====================
+    
+    const startCall = async (video = false) => {
+        if (!activeChat) return;
+        if (activeChat.type === 'group') { startGroupCall(video); return; }
+        
+        setCallStatus('calling');
+        setIsVideoCall(video);
+        setIsMicMuted(false);
+        setIsCamMuted(false);
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
+            localStreamRef.current = stream;
+            if (video && localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
+            
+            const targetPeerId = activeChat.id.replace(/[^a-zA-Z0-9]/g, '');
+            const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video } });
+            
+            if (!call) throw new Error("Falha ao iniciar chamada");
+            
+            call.on('stream', (remoteStream) => {
+                setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+                if (!video) {
+                    const audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                } else {
+                    if (remoteVideoRef.current) {
+                        remoteVideoRef.current.srcObject = remoteStream;
+                    }
+                }
+                if (callStatus === 'calling') {
+                    setCallStatus('connected');
+                    startCallTimer();
+                }
+            });
+            
+            call.on('close', () => {
+                if (Object.keys(activeCalls).length === 0) endCall(true);
+            });
+            
+            setActiveCalls({ [targetPeerId]: call });
+            setParticipantsInfo(prev => ({ ...prev, [targetPeerId]: { id: targetPeerId, name: activeChat.name } }));
+            
+            setTimeout(() => {
+                if (callStatus === 'calling') {
+                    endCall();
+                    showToastMessage("Chamada não atendida", "error");
+                }
+            }, 30000);
+            
+        } catch(err) { 
+            console.error("Erro ao ligar:", err); 
+            setCallStatus(null);
+            showToastMessage("Erro ao iniciar chamada!", "error");
+        }
+    };
+
+    // ==================== USER INFO DENTRO DO CHATINTERFACE ====================
+    
+    const UserInfoModal = () => {
+        if (!showUserInfo || !selectedUser) return null;
+        
+        const isFriend = friends[selectedUser.id];
+        const hasPendingRequest = friendRequests[selectedUser.id];
+        const isBlocked = blockedUsers[selectedUser.id];
+        
+        return (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+                    <div className="bg-[#f0f2f5] p-4 flex justify-between items-center border-b sticky top-0">
+                        <h2 className="font-semibold text-gray-800">Informações do Contato</h2>
+                        <button onClick={() => setShowUserInfo(false)} className="text-gray-500 hover:text-gray-700">
+                            <div className="icon-x text-xl"></div>
+                        </button>
+                    </div>
+                    
+                    <div className="p-6">
+                        <div className="flex justify-center mb-4">
+                            {selectedUser.avatar ? (
+                                <img src={selectedUser.avatar} className="w-32 h-32 rounded-full object-cover border-4 border-gray-200" />
+                            ) : (
+                                <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-200">
+                                    <div className="icon-user text-5xl text-gray-400"></div>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <h3 className="text-xl font-bold text-center text-gray-800">{selectedUser.name}</h3>
+                        <p className="text-center text-gray-500 text-sm mt-1">@{selectedUser.name}</p>
+                        <p className="text-center text-gray-400 text-xs">ID: {selectedUser.id}</p>
+                        
+                        {/* Botões de Ação */}
+                        <div className="flex flex-wrap justify-center gap-3 mt-6">
+                            <button onClick={() => { setShowUserInfo(false); startCall(false); }} className="flex flex-col items-center gap-1 p-2 bg-green-50 rounded-lg hover:bg-green-100 transition">
+                                <div className="icon-phone text-xl text-green-600"></div>
+                                <span className="text-xs">Ligar</span>
+                            </button>
+                            <button onClick={() => { setShowUserInfo(false); startCall(true); }} className="flex flex-col items-center gap-1 p-2 bg-green-50 rounded-lg hover:bg-green-100 transition">
+                                <div className="icon-video text-xl text-green-600"></div>
+                                <span className="text-xs">Video</span>
+                            </button>
+                            <button onClick={() => { setShowUserInfo(false); openChat(selectedUser); }} className="flex flex-col items-center gap-1 p-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
+                                <div className="icon-message-circle text-xl text-blue-600"></div>
+                                <span className="text-xs">Mensagem</span>
+                            </button>
+                        </div>
+                        
+                        {/* Status de Amizade */}
+                        <div className="mt-6 pt-4 border-t border-gray-100">
+                            {isBlocked ? (
+                                <button onClick={() => {
+                                    db.ref(`users/${user.id}/blocked/${selectedUser.id}`).remove();
+                                    loadFriendsData();
+                                    showToastMessage("Usuário desbloqueado!", "success");
+                                    setShowUserInfo(false);
+                                }} className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                                    Desbloquear Usuário
+                                </button>
+                            ) : isFriend ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-center gap-2 text-green-600">
+                                        <div className="icon-user-check"></div>
+                                        <span className="text-sm">Amigos</span>
+                                    </div>
+                                    <button onClick={() => removeFriend(selectedUser.id, selectedUser.name)} className="w-full py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
+                                        Remover Amigo
+                                    </button>
+                                </div>
+                            ) : hasPendingRequest ? (
+                                <div className="flex gap-2">
+                                    <button onClick={() => acceptFriendRequest(selectedUser.id, selectedUser.name)} className="flex-1 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">Aceitar</button>
+                                    <button onClick={() => rejectFriendRequest(selectedUser.id)} className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">Recusar</button>
+                                </div>
+                            ) : (
+                                <button onClick={() => {
+                                    setFriendUsername(selectedUser.name);
+                                    sendFriendRequestByUsername();
+                                }} className="w-full py-2 bg-[#00a884] text-white rounded-lg hover:bg-[#008f6f] transition flex items-center justify-center gap-2">
+                                    <div className="icon-user-plus"></div> Adicionar Amigo
+                                </button>
+                            )}
+                        </div>
+                        
+                        {/* Botões de Bloqueio e Denúncia */}
+                        {!isBlocked && (
+                            <div className="mt-4 flex gap-2">
+                                <button onClick={() => {
+                                    db.ref(`users/${user.id}/blocked/${selectedUser.id}`).set({ blockedAt: Date.now() });
+                                    loadFriendsData();
+                                    showToastMessage("Usuário bloqueado!", "success");
+                                    setShowUserInfo(false);
+                                }} className="flex-1 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2">
+                                    <div className="icon-ban"></div> Bloquear
+                                </button>
+                                <button onClick={() => setShowReportModal(true)} className="flex-1 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition flex items-center justify-center gap-2">
+                                    <div className="icon-flag"></div> Denunciar
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                
+                {/* Modal de Denúncia */}
+                {showReportModal && (
+                    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+                            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                                <h3 className="text-lg font-semibold">Denunciar {selectedUser?.name}</h3>
+                                <button onClick={() => setShowReportModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <div className="icon-x"></div>
+                                </button>
+                            </div>
+                            <div className="p-4">
+                                <textarea 
+                                    value={reportReason} 
+                                    onChange={(e) => setReportReason(e.target.value)} 
+                                    placeholder="Motivo da denúncia (ex: spam, ofensas, etc)..."
+                                    className="w-full border rounded-lg p-3 text-sm focus:outline-none focus:border-red-500" 
+                                    rows="4"
+                                />
+                            </div>
+                            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+                                <button onClick={() => setShowReportModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                                <button onClick={reportUser} disabled={reporting} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
+                                    {reporting ? 'Enviando...' : 'Enviar Denúncia'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // ==================== VERIFICAÇÕES ====================
+    
     const checkInactivity = async (userId) => {
         try {
             const snapshot = await db.ref(`users/${userId}`).once('value');
@@ -58,10 +429,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
     const checkIfBlocked = async (userId) => {
         try {
-            const [blockSnap, blockedByThemSnap] = await Promise.all([
-                db.ref(`users/${user.id}/blocked/${userId}`).once('value'),
-                db.ref(`users/${userId}/blocked/${user.id}`).once('value')
-            ]);
+            const blockSnap = await db.ref(`users/${user.id}/blocked/${userId}`).once('value');
+            const blockedByThemSnap = await db.ref(`users/${userId}/blocked/${user.id}`).once('value');
             return { blockedByMe: blockSnap.exists(), blockedByThem: blockedByThemSnap.exists() };
         } catch(e) {
             return { blockedByMe: false, blockedByThem: false };
@@ -180,6 +549,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
     React.useEffect(() => {
         setProfessionalPanel(localStorage.getItem('professional_panel') === 'activated');
+        loadFriendsData();
     }, []);
 
     // Navigation
@@ -239,7 +609,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const messagesEndRef = React.useRef(null);
     const currentAudioRef = React.useRef(null);
     const backgroundAudioRef = React.useRef(null);
-    const db = window.firebaseDB;
 
     const isCurrentUserAdmin = React.useMemo(() => {
         if (!activeChat || activeChat.type !== 'group') return false;
@@ -262,7 +631,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return () => window.removeEventListener('click', handleClick);
     }, []);
 
-    // ==================== FUNÇÕES DE CHAMADA REAIS ====================
+    // ==================== FUNÇÕES DE CHAMADA ====================
     
     const formatDuration = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -280,6 +649,36 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             clearInterval(callTimerRef.current);
             callTimerRef.current = null;
         }
+    };
+
+    const setupAudioAnalyser = (stream, participantId) => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        const analyser = audioContextRef.current.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        const checkVolume = () => {
+            if (!analyserRef.current[participantId]) return;
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+            const avg = sum / dataArray.length;
+            const isSpeaking = avg > 15;
+            
+            if (isSpeaking !== activeSpeakers[participantId]) {
+                setActiveSpeakers(prev => ({ ...prev, [participantId]: isSpeaking }));
+            }
+            requestAnimationFrame(() => checkVolume());
+        };
+        
+        analyserRef.current[participantId] = analyser;
+        checkVolume();
     };
 
     const toggleMic = () => {
@@ -332,12 +731,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             const type = isVideoCall ? 'vídeo' : 'voz';
             handleSendMessage(`Chamada de ${type} encerrada • ${durationStr}`, 'system');
         }
-        Object.values(activeCalls).forEach(call => {
-            if (call && call.close) call.close();
-        });
-        if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(t => t.stop());
-        }
+        Object.values(activeCalls).forEach(call => call.close());
+        if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
         setActiveCalls({});
         setRemoteStreams({});
         setCallStatus(null);
@@ -348,10 +743,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsCamMuted(false);
         setActiveSpeakers({});
         setParticipantsInfo({});
-        if (audioContextRef.current) { 
-            audioContextRef.current.close(); 
-            audioContextRef.current = null; 
-        }
+        if (audioContextRef.current) { audioContextRef.current.close(); audioContextRef.current = null; }
         analyserRef.current = {};
         localStreamRef.current = null;
     };
@@ -359,7 +751,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const answerCall = async () => {
         window.NotificationSystem?.stopRingtone();
         if (!incomingCall || !incomingCall.callObj) return;
-        
         const isVideo = incomingCall.isVideo;
         setIsVideoCall(isVideo);
         setIncomingCall(null);
@@ -367,131 +758,22 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setIsMicMuted(false);
         setIsCamMuted(false);
         startCallTimer();
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
-            localStreamRef.current = stream;
-            if (isVideo && localVideoRef.current) {
-                localVideoRef.current.srcObject = stream;
-            }
-            const call = incomingCall.callObj;
-            call.answer(stream);
-            
-            call.on('stream', (remoteStream) => {
-                setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-                if (!isVideo) {
-                    const audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.play();
-                } else {
-                    if (remoteVideoRef.current) {
-                        remoteVideoRef.current.srcObject = remoteStream;
-                    }
-                }
-            });
-            
-            call.on('close', () => {
-                if (Object.keys(activeCalls).length === 0) {
-                    endCall(true);
-                }
-            });
-            
-            setActiveCalls(prev => ({ ...prev, [call.peer]: call }));
-            setParticipantsInfo(prev => ({ ...prev, [call.peer]: { id: call.peer, name: call.peer.split('_')[0] } }));
-            
-        } catch(err) { 
-            console.error("Erro ao responder chamada:", err); 
-            showToastMessage("Erro ao responder chamada!", "error");
-            endCall();
-        }
-    };
-
-    const startCall = async (video = false) => {
-        if (!activeChat) return;
-        if (activeChat.type === 'group') { 
-            startGroupCall(video); 
-            return; 
-        }
-        
-        const { blockedByMe, blockedByThem } = await checkIfBlocked(activeChat.id);
-        if (blockedByMe) {
-            showToastMessage("Você bloqueou este contato! Desbloqueie para ligar.", "error");
-            return;
-        }
-        if (blockedByThem) {
-            showToastMessage("Você foi bloqueado por este contato!", "error");
-            return;
-        }
-        
-        setCallStatus('calling');
-        setIsVideoCall(video);
-        setIsMicMuted(false);
-        setIsCamMuted(false);
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-            localStreamRef.current = stream;
-            if (video && localVideoRef.current) {
-                localVideoRef.current.srcObject = stream;
-            }
-            
-            const targetPeerId = activeChat.id.replace(/[^a-zA-Z0-9]/g, '');
-            const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video } });
-            
-            if (!call) throw new Error("Falha ao iniciar chamada");
-            
-            call.on('stream', (remoteStream) => {
-                setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-                if (!video) {
-                    const audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.play();
-                } else {
-                    if (remoteVideoRef.current) {
-                        remoteVideoRef.current.srcObject = remoteStream;
-                    }
-                }
-                if (callStatus === 'calling') {
-                    setCallStatus('connected');
-                    startCallTimer();
-                }
-            });
-            
-            call.on('close', () => {
-                if (Object.keys(activeCalls).length === 0) {
-                    endCall(true);
-                }
-            });
-            
-            setActiveCalls({ [targetPeerId]: call });
-            setParticipantsInfo(prev => ({ ...prev, [targetPeerId]: { id: targetPeerId, name: activeChat.name } }));
-            
-            // Timeout para chamada não atendida
-            setTimeout(() => {
-                if (callStatus === 'calling') {
-                    endCall();
-                    showToastMessage("Chamada não atendida", "error");
-                }
-            }, 30000);
-            
-        } catch(err) { 
-            console.error("Erro ao ligar:", err); 
-            setCallStatus(null);
-            showToastMessage("Erro ao iniciar chamada!", "error");
-        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
+        localStreamRef.current = stream;
+        if (isVideo && localVideoRef.current) localVideoRef.current.srcObject = stream;
+        const call = incomingCall.callObj;
+        call.answer(stream);
+        handleCallStream(call, isVideo, call.peer);
+        setActiveCalls(prev => ({ ...prev, [call.peer]: call }));
+        setParticipantsInfo(prev => ({ ...prev, [call.peer]: { id: call.peer, name: call.peer.split('_')[0] } }));
     };
 
     const startGroupCall = async (video) => {
         if (groupPermissions && ((video && !groupPermissions.sendVideo) || (!video && !groupPermissions.sendAudio))) return;
-        
         const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
         if (!members) return;
-        
         const memberIds = Object.keys(members).filter(id => id !== user.id);
-        if (memberIds.length === 0) {
-            showToastMessage("Nenhum outro membro no grupo!", "error");
-            return;
-        }
+        if (memberIds.length === 0) return;
         
         setCallStatus('connected');
         setIsVideoCall(video);
@@ -507,11 +789,8 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             localStreamRef.current = stream;
-            if (video && localVideoRef.current) {
-                localVideoRef.current.srcObject = stream;
-            }
+            if (video && localVideoRef.current) localVideoRef.current.srcObject = stream;
             
-            // Buscar informações dos participantes
             for (const id of memberIds) {
                 const userSnap = await db.ref(`users/${id}`).once('value');
                 const userData = userSnap.val();
@@ -521,24 +800,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             memberIds.forEach(id => {
                 const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
                 const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, groupId: activeChat.id } });
-                
-                if (call) {
-                    call.on('stream', (remoteStream) => {
-                        setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-                    });
-                    setActiveCalls(prev => ({ ...prev, [targetPeerId]: call }));
-                }
+                if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
             });
-            
-        } catch (err) { 
-            console.error("Erro ao iniciar chamada em grupo:", err); 
-            endCall();
-        }
+        } catch (err) { console.error("Erro:", err); endCall(); }
     };
 
     const joinGroupCall = async () => {
         if (!ongoingGroupCall) return;
-        
         setIsVideoCall(false);
         setCallStatus('connected');
         setIsMicMuted(false);
@@ -546,42 +814,57 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         setActiveGroupCall(true);
         setOngoingGroupCall(null);
         startCallTimer();
-        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             localStreamRef.current = stream;
-            
             const members = (await db.ref(`groups/${activeChat.id}/members`).once('value')).val();
             if (members) {
                 const memberIds = Object.keys(members).filter(id => id !== user.id);
-                
                 for (const id of memberIds) {
                     const userSnap = await db.ref(`users/${id}`).once('value');
                     const userData = userSnap.val();
                     setParticipantsInfo(prev => ({ ...prev, [id]: { id: id, name: userData?.name || id, avatar: userData?.avatar } }));
                 }
-                
                 memberIds.forEach(id => {
                     const targetPeerId = id.replace(/[^a-zA-Z0-9]/g, '');
                     const call = peer.call(targetPeerId, stream, { metadata: { isVideo: false, isGroup: true, groupId: activeChat.id } });
-                    
-                    if (call) {
-                        call.on('stream', (remoteStream) => {
-                            setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-                        });
-                        setActiveCalls(prev => ({ ...prev, [targetPeerId]: call }));
-                    }
+                    if (call) { handleCallStream(call, false, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
                 });
             }
-        } catch (e) { 
-            console.error("Erro ao entrar na chamada:", e); 
-        }
+        } catch (e) { console.error("Erro ao entrar:", e); }
+    };
+
+    const handleCallStream = (call, isVideo, participantId) => {
+        call.on('stream', (remoteStream) => {
+            setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+            setupAudioAnalyser(remoteStream, call.peer);
+            if (!isVideo) {
+                const audio = new Audio();
+                audio.srcObject = remoteStream;
+                audio.play();
+            } else {
+                if (remoteVideoRef.current && call.peer === Object.keys(activeCalls)[0]) {
+                    remoteVideoRef.current.srcObject = remoteStream;
+                }
+            }
+            if (callStatus === 'calling') {
+                setCallStatus('connected');
+                startCallTimer();
+            }
+        });
+        call.on('close', () => {
+            setActiveCalls(prev => { const newCalls = { ...prev }; delete newCalls[call.peer]; if (Object.keys(newCalls).length === 0) endCall(true); return newCalls; });
+            setRemoteStreams(prev => { const newSt = { ...prev }; delete newSt[call.peer]; return newSt; });
+            setActiveSpeakers(prev => { const newSp = { ...prev }; delete newSp[call.peer]; return newSp; });
+        });
+        call.on('error', (err) => console.error(`Erro:`, err));
     };
 
     const initAudioContext = () => {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
             mixedDestRef.current = audioContextRef.current.createMediaStreamDestination();
+            analyserRef.current = {};
         }
     };
 
@@ -598,11 +881,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         const stream = mixedDestRef.current.stream;
         const recorder = new MediaRecorder(stream);
         const chunks = [];
-        
-        recorder.ondataavailable = (e) => { 
-            if (e.data.size > 0) chunks.push(e.data); 
-        };
-        
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
         recorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'audio/webm' });
             const reader = new FileReader();
@@ -615,7 +894,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 }
             };
         };
-        
         recorder.start();
         recorderRef.current = recorder;
         setIsRecordingCall(true);
@@ -624,14 +902,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     };
 
     const stopRecordingCall = () => {
-        if (recorderRef.current && recorderRef.current.state === 'recording') {
-            recorderRef.current.stop();
-        }
+        if (recorderRef.current && recorderRef.current.state === 'recording') recorderRef.current.stop();
         setIsRecordingCall(false);
-        if (callTimerRefAux.current) {
-            clearInterval(callTimerRefAux.current);
-            callTimerRefAux.current = null;
-        }
+        if (callTimerRefAux.current) clearInterval(callTimerRefAux.current);
     };
 
     const toggleBackgroundMode = () => {
@@ -813,50 +1086,28 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     }, [user.id]);
 
     React.useEffect(() => {
-        if (!activeChat || activeChat.type !== 'group') { 
-            setOngoingGroupCall(null); 
-            return; 
-        }
-        
+        if (!activeChat || activeChat.type !== 'group') { setOngoingGroupCall(null); return; }
         const callStatusRef = db.ref(`groups/${activeChat.id}/callStatus`);
         const handleStatus = (snap) => {
             const status = snap.val();
-            if (status?.state === 'active') { 
-                if (!activeGroupCall) {
-                    setOngoingGroupCall(status);
-                } else {
-                    setOngoingGroupCall(null);
-                }
-            } else if (status?.state === 'ended') { 
-                setOngoingGroupCall(null); 
-                if ((Date.now() - status.timestamp < 5000) && (callStatus === 'connected' || callStatus === 'calling')) {
-                    endCall(true); 
-                }
-            } else {
-                setOngoingGroupCall(null);
-            }
+            if (status?.state === 'active') { if (!activeGroupCall) setOngoingGroupCall(status); else setOngoingGroupCall(null); }
+            else if (status?.state === 'ended') { setOngoingGroupCall(null); if ((Date.now() - status.timestamp < 5000) && (callStatus === 'connected' || callStatus === 'calling')) endCall(true); }
+            else setOngoingGroupCall(null);
         };
-        
         callStatusRef.on('value', handleStatus);
         return () => callStatusRef.off();
     }, [activeChat, callStatus, activeGroupCall]);
 
     React.useEffect(() => {
         if (!chats.length) return;
-        
         const listeners = [];
         chats.forEach(chat => {
-            const messagesRef = chat.type === 'group' 
-                ? db.ref(`groups/${chat.id}/messages`)
-                : db.ref(`chats/${[user.id, chat.id].sort().join('_')}/messages`);
-                
+            const messagesRef = chat.type === 'group' ? db.ref(`groups/${chat.id}/messages`) : db.ref(`chats/${[user.id, chat.id].sort().join('_')}/messages`);
             const listener = messagesRef.limitToLast(1).on('child_added', (snapshot) => {
                 const msg = snapshot.val();
                 if (!msg) return;
-                
                 const isRecent = (Date.now() - msg.timestamp) < 10000; 
                 const isFromMe = msg.senderId === user.id;
-                
                 if (!isFromMe && isRecent) {
                     const isChatActive = activeChat && activeChat.id === chat.id;
                     if (!isChatActive || document.hidden) {
@@ -872,7 +1123,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             });
             listeners.push({ ref: messagesRef, fn: listener });
         });
-        
         return () => listeners.forEach(l => l.ref.off('child_added', l.fn));
     }, [chats, activeChat]);
 
@@ -885,55 +1135,35 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         try {
             const stream = localStreamRef.current || await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
             if (!localStreamRef.current) localStreamRef.current = stream;
-            
             const targetPeerId = peerId.replace(/[^a-zA-Z0-9]/g, '');
             const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, inviterId: user.id } });
-            
-            if (call) { 
-                handleCallStream(call, video, targetPeerId); 
-                setActiveCalls(prev => ({ ...prev, [targetPeerId]: call }));
-            }
-        } catch(e) { 
-            console.error("Erro ao conectar novo peer:", e); 
-        }
+            if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
+        } catch(e) { console.error("Erro:", e); }
     };
 
     const handleAddParticipantToCall = async (newId) => {
         if (!newId) return;
         await connectToNewPeer(newId, isVideoCall);
         Object.keys(activeCalls).forEach(connectedPeerId => {
-            db.ref(`users/${connectedPeerId}/call_signal`).push({ 
-                type: 'connect_peer', 
-                targetPeer: newId, 
-                timestamp: Date.now() 
-            });
+            db.ref(`users/${connectedPeerId}/call_signal`).push({ type: 'connect_peer', targetPeer: newId, timestamp: Date.now() });
         });
         setShowAddContact(false); 
     };
 
     const endGroupCallForEveryone = () => {
         if (!activeChat || activeChat.type !== 'group') return;
-        if (!confirm("Isso encerrará a chamada para TODOS os participantes. Tem certeza?")) return;
-        
-        db.ref(`groups/${activeChat.id}/callStatus`).set({ 
-            state: 'ended', 
-            endedBy: user.id, 
-            timestamp: Date.now() 
-        });
+        if (!confirm("Encerrar chamada para TODOS?")) return;
+        db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'ended', endedBy: user.id, timestamp: Date.now() });
         endCall();
     };
 
     React.useEffect(() => {
-        if (activeChat && activeChat.type === 'group') {
-            db.ref(`groups/${activeChat.id}/permissions`).on('value', s => setGroupPermissions(s.val()));
-        } else {
-            setGroupPermissions(null);
-        }
+        if (activeChat && activeChat.type === 'group') db.ref(`groups/${activeChat.id}/permissions`).on('value', s => setGroupPermissions(s.val()));
+        else setGroupPermissions(null);
     }, [activeChat]);
 
     React.useEffect(() => {
         if (!db || !user) return;
-        
         const contactsRef = db.ref(`users/${user.id}/contacts`);
         const loadContacts = (snapshot) => {
             const data = snapshot.val();
@@ -941,13 +1171,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 setChats([]);
                 return;
             }
-            
             Promise.all(Object.keys(data).map(async id => {
                 try {
                     const ref = data[id].type === 'group' ? `groups/${id}` : `users/${id}`;
                     const val = (await db.ref(ref).once('value')).val();
                     let status = 'offline', privacy = {};
-                    
                     if (data[id].type !== 'group' && val) {
                         const statusSnap = await db.ref(`users/${id}/status`).once('value');
                         const settingsSnap = await db.ref(`users/${id}/settings`).once('value');
@@ -967,7 +1195,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 });
             });
         };
-        
         contactsRef.on('value', loadContacts);
         return () => contactsRef.off();
     }, [user, db]);
@@ -998,23 +1225,16 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                     return;
                 }
                 
-                messagesRef = activeChat.type === 'group' 
-                    ? db.ref(`groups/${activeChat.id}/messages`)
-                    : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                messagesRef = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
                 
                 const markAsRead = (msgId, senderId) => {
                     db.ref(`users/${user.id}/settings`).once('value').then(s => {
                         const settings = s.val() || {};
                         let allowReadReceipt = settings.readReceipts !== false;
-                        if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) {
-                            allowReadReceipt = !allowReadReceipt;
-                        }
+                        if (settings.readReceiptExceptions && settings.readReceiptExceptions[senderId]) allowReadReceipt = !allowReadReceipt;
                         if (allowReadReceipt) {
-                            if (activeChat.type === 'group') {
-                                db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
-                            } else {
-                                db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
-                            }
+                            if (activeChat.type === 'group') db.ref(`groups/${activeChat.id}/messages/${msgId}/readBy/${user.id}`).set(Date.now());
+                            else db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages/${msgId}/status`).set('read');
                         }
                     });
                 };
@@ -1022,15 +1242,9 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 messagesRef.limitToLast(50).on('child_added', (snapshot) => {
                     const msg = snapshot.val();
                     setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
-                    if (msg.senderId !== user.id) {
-                        markAsRead(snapshot.key, msg.senderId);
-                    }
+                    if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
                 });
-                
-                messagesRef.limitToLast(50).on('child_changed', (snapshot) => {
-                    const val = snapshot.val();
-                    setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...val, key: snapshot.key } : m));
-                });
+                messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
                 
                 return () => {
                     if (messagesRef) messagesRef.off();
@@ -1099,9 +1313,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             if (type === 'audio') {
                 window.ChatAppAPI?.sendAudio(activeChat.id, content, duration, activeChat.type);
             } else if (type === 'system') {
-                const ref = activeChat.type === 'group' 
-                    ? db.ref(`groups/${activeChat.id}/messages`)
-                    : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                const ref = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
                 await ref.push({
                     senderId: 'system', senderName: 'Sistema', text: content, type: 'system',
                     timestamp: window.firebase.database.ServerValue.TIMESTAMP,
@@ -1125,7 +1337,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             db.ref(`groups/${groupId}`).set({ 
                 id: groupId, 
                 name: groupName, 
-                avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${groupName}`, 
+                avatar: null,
                 members: { [user.id]: 'admin' }, 
                 permissions: { sendText: true, sendAudio: true, sendVideo: true, sendMedia: true, changeInfo: false } 
             });
@@ -1141,7 +1353,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             setShowBotCreator(true); 
             return; 
         }
-        
         try {
             const groupSnap = await db.ref(`groups/${inputId}`).once('value');
             if (groupSnap.exists()) {
@@ -1153,7 +1364,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 showToastMessage(`Você entrou no grupo "${groupData.name}"!`, "success");
                 return;
             }
-            
             const userSnap = await db.ref(`users/${inputId}`).once('value');
             if (userSnap.exists()) {
                 const userData = userSnap.val();
@@ -1165,7 +1375,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 showToastMessage("Usuário ou grupo não encontrado!", "error");
             }
         } catch (error) { 
-            console.error("Erro ao adicionar contato:", error); 
+            console.error("Erro:", error); 
             showToastMessage("Erro ao adicionar contato!", "error"); 
         }
     };
@@ -1189,6 +1399,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         <div className="flex h-screen bg-gray-100 overflow-hidden">
             <style>{chatStyles}</style>
             <ToastComponent />
+            <UserInfoModal />
 
             {/* Modais */}
             {pendingJoinGroupId && (
@@ -1230,7 +1441,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                 const name = document.getElementById('botName').value; 
                                 if (name && db) { 
                                     const botId = "bot_" + Math.random().toString(36).substring(2, 10); 
-                                    await db.ref(`users/${botId}`).set({ id: botId, name: name, avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`, isBot: true, createdAt: Date.now() }); 
+                                    await db.ref(`users/${botId}`).set({ id: botId, name: name, avatar: null, isBot: true, createdAt: Date.now() }); 
                                     alert(`Bot criado! ID: ${botId}`); 
                                     setShowBotCreator(false); 
                                     openAddContact(); 
@@ -1243,37 +1454,56 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
             {showSettings && <Settings user={user} onClose={() => setShowSettings(false)} chats={chats} />}
 
-            {showUserInfo && window.UserInfo && React.createElement(window.UserInfo, {
-                currentUser: user,
-                targetUser: selectedUser,
-                onClose: () => setShowUserInfo(false),
-                onSendMessage: (userId) => {
-                    const chat = chats.find(c => c.id === userId);
-                    if (chat) setActiveChat(chat);
-                },
-                onBlockStatusChange: () => {
-                    const contactsRef = db.ref(`users/${user.id}/contacts`);
-                    contactsRef.once('value').then(snapshot => {
-                        const data = snapshot.val();
-                        if (data) {
-                            Promise.all(Object.keys(data).map(async id => {
-                                const val = (await db.ref(data[id].type === 'group' ? `groups/${id}` : `users/${id}`).once('value')).val();
-                                return { ...val, type: data[id].type };
-                            })).then(loadedChats => setChats(loadedChats));
-                        }
-                    });
-                }
-            })}
+            {/* Modal para adicionar amigo por @username */}
+            {showAddFriendModal && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg w-80">
+                        <h3 className="text-lg font-semibold mb-4">Adicionar Amigo</h3>
+                        <p className="text-sm text-gray-500 mb-2">Digite o nome de usuário (@username)</p>
+                        <input 
+                            type="text" 
+                            value={friendUsername}
+                            onChange={(e) => setFriendUsername(e.target.value)}
+                            placeholder="@usuario" 
+                            className="w-full border rounded-lg p-2 mb-4 focus:outline-none focus:border-[#00a884]"
+                            onKeyPress={(e) => e.key === 'Enter' && sendFriendRequestByUsername()}
+                            autoFocus
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setShowAddFriendModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                            <button onClick={sendFriendRequestByUsername} className="px-4 py-2 bg-[#00a884] text-white rounded-lg hover:bg-[#008f6f]">Enviar Solicitação</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showAddContact && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg w-80">
                         <h3 className="text-lg font-semibold mb-4">{callStatus ? 'Adicionar à Chamada' : 'Adicionar Contato'}</h3>
+                        
+                        {!callStatus && (
+                            <button 
+                                onClick={() => setShowAddFriendModal(true)}
+                                className="w-full mb-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2"
+                            >
+                                <div className="icon-user-plus"></div>
+                                Adicionar por @username
+                            </button>
+                        )}
+                        
                         {callStatus ? (
                             <div className="mb-4 max-h-60 overflow-y-auto">
+                                <p className="text-sm text-gray-500 mb-2">Contatos disponíveis:</p>
                                 {chats.filter(c => c.type !== 'group').map(c => (
                                     <div key={c.id} onClick={() => handleAddParticipantToCall(c.id)} className="flex items-center p-2 hover:bg-gray-100 cursor-pointer rounded">
-                                        <img src={c.avatar} className="w-8 h-8 rounded-full mr-2" />
+                                        {c.avatar ? (
+                                            <img src={c.avatar} className="w-8 h-8 rounded-full mr-2" />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
+                                                <div className="icon-user text-gray-400 text-xs"></div>
+                                            </div>
+                                        )}
                                         <span>{c.name}</span>
                                     </div>
                                 ))}
@@ -1296,6 +1526,38 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 </div>
             )}
 
+            {/* Solicitações de Amizade Pendentes */}
+            {Object.keys(friendRequests).length > 0 && (
+                <div className="absolute top-16 left-4 right-4 z-50 max-h-60 overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-200">
+                    <div className="p-3 bg-gray-50 border-b font-semibold text-gray-700">Solicitações de Amizade</div>
+                    {Object.entries(friendRequests).map(([fromId, req]) => (
+                        <div key={fromId} className="p-3 flex items-center justify-between border-b hover:bg-gray-50">
+                            <div className="flex items-center gap-3">
+                                {req.fromAvatar ? (
+                                    <img src={req.fromAvatar} className="w-10 h-10 rounded-full object-cover" />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <div className="icon-user text-gray-400"></div>
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="font-medium">{req.fromName}</p>
+                                    <p className="text-xs text-gray-500">@{req.fromName}</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => acceptFriendRequest(fromId, req.fromName)} className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                                    <div className="icon-check text-sm"></div>
+                                </button>
+                                <button onClick={() => rejectFriendRequest(fromId)} className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                                    <div className="icon-x text-sm"></div>
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {showGroupInfo && activeChat?.type === 'group' && (
                 <GroupInfo 
                     activeChat={activeChat} 
@@ -1309,110 +1571,50 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
 
             {/* Call Modal */}
             {(incomingCall || callStatus) && (
-                <div className={`fixed inset-0 z-50 transition-all duration-300 ease-in-out ${
-                    isCallMinimized 
-                        ? 'bottom-4 right-4 w-80 h-96 rounded-2xl border-2 border-white/20 bg-black' 
-                        : 'inset-0 bg-black'
-                } flex flex-col items-center justify-center`}>
+                <div className={`fixed inset-0 z-50 transition-all duration-300 ease-in-out ${isCallMinimized ? 'bottom-4 right-4 w-80 h-96 rounded-2xl border-2 border-white/20 bg-black' : 'inset-0 bg-black'} flex flex-col items-center justify-center`}>
                     
-                    {/* Cabeçalho - apenas quando não minimizado */}
-                    {!isCallMinimized && (
-                        <div className="absolute top-10 left-4 right-4 flex justify-between items-center z-10">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                <span className="text-white text-sm">
-                                    {callStatus === 'connected' ? formatDuration(callDuration) : (incomingCall ? 'Chamando...' : 'Conectando...')}
-                                </span>
-                                {Object.keys(activeCalls).length > 0 && (
-                                    <span className="text-white text-xs ml-2">
-                                        {Object.keys(activeCalls).length + 1} participantes
-                                    </span>
-                                )}
-                            </div>
-                            <button onClick={() => setIsCallMinimized(true)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
-                                <div className="icon-arrow-down text-white text-sm"></div>
-                            </button>
-                        </div>
-                    )}
-                    
-                    {/* Conteúdo da chamada */}
                     {!isCallMinimized && (
                         <>
-                            {/* Avatar e informações - quando não é chamada em grupo */}
-                            {Object.keys(activeCalls).length <= 1 && !incomingCall && (
-                                <div className="flex flex-col items-center mb-8">
-                                    <img 
-                                        src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat?.id}`} 
-                                        className="w-32 h-32 rounded-full mb-4 avatar-pulse" 
-                                    />
-                                    <h2 className="text-2xl font-semibold text-white mb-1 text-center">{activeChat?.name}</h2>
-                                    <p className="text-gray-400 text-sm">
-                                        {callStatus === 'connected' ? formatDuration(callDuration) : 'Conectando...'}
-                                    </p>
+                            <div className="absolute top-10 left-4 right-4 flex justify-between items-center z-10">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                    <span className="text-white text-sm">
+                                        {callStatus === 'connected' ? formatDuration(callDuration) : (incomingCall ? 'Chamando...' : 'Conectando...')}
+                                    </span>
                                 </div>
-                            )}
+                                <button onClick={() => setIsCallMinimized(true)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
+                                    <div className="icon-arrow-down text-white text-sm"></div>
+                                </button>
+                            </div>
                             
-                            {/* Lista de participantes em chamada de grupo */}
-                            {callStatus === 'connected' && Object.keys(activeCalls).length > 0 && (
-                                <div className="absolute top-20 left-4 right-4 max-h-40 overflow-y-auto bg-black/50 rounded-lg p-2 backdrop-blur-sm">
-                                    <p className="text-white text-xs mb-2">Participantes ({Object.keys(activeCalls).length + 1})</p>
-                                    <div className="flex flex-col gap-1">
-                                        {/* Próprio usuário */}
-                                        <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-100">
-                                            <div className="relative">
-                                                <img src={user.avatar} className="w-8 h-8 rounded-full" />
-                                                <div className={`w-2 h-2 rounded-full absolute -bottom-0.5 -right-0.5 ${isMicMuted ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="text-sm font-medium">{user.name} (Você)</p>
-                                            </div>
+                            <div className="flex flex-col items-center mb-8">
+                                {incomingCall ? (
+                                    incomingCall.callerAvatar ? (
+                                        <img src={incomingCall.callerAvatar} className="w-32 h-32 rounded-full mb-4 avatar-pulse object-cover" />
+                                    ) : (
+                                        <div className="w-32 h-32 rounded-full mb-4 bg-gray-600 flex items-center justify-center avatar-pulse">
+                                            <div className="icon-user text-5xl text-white"></div>
                                         </div>
-                                        {/* Outros participantes */}
-                                        {Object.keys(activeCalls).map(peerId => {
-                                            const info = participantsInfo[peerId] || { name: peerId.split('_')[0] };
-                                            return (
-                                                <div key={peerId} className="flex items-center gap-2 p-2 rounded-lg bg-gray-100">
-                                                    <img 
-                                                        src={info.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${peerId}`} 
-                                                        className="w-8 h-8 rounded-full" 
-                                                    />
-                                                    <div className="flex-1">
-                                                        <p className="text-sm font-medium">{info.name}</p>
-                                                    </div>
-                                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                                </div>
-                                            );
-                                        })}
+                                    )
+                                ) : activeChat?.avatar ? (
+                                    <img src={activeChat.avatar} className="w-32 h-32 rounded-full mb-4 avatar-pulse object-cover" />
+                                ) : (
+                                    <div className="w-32 h-32 rounded-full mb-4 bg-gray-600 flex items-center justify-center avatar-pulse">
+                                        <div className="icon-user text-5xl text-white"></div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                                <h2 className="text-2xl font-semibold text-white mb-1 text-center">
+                                    {incomingCall ? incomingCall.callerId?.split('_')[0] : activeChat?.name}
+                                </h2>
+                                <p className="text-gray-400 text-sm">
+                                    {incomingCall ? 'Chamando...' : (callStatus === 'connected' ? formatDuration(callDuration) : 'Conectando...')}
+                                </p>
+                            </div>
                             
-                            {/* Tela de chamada recebida */}
-                            {incomingCall && (
-                                <div className="flex flex-col items-center justify-center">
-                                    <img 
-                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${incomingCall.callerId}`} 
-                                        className="w-32 h-32 rounded-full mb-4 avatar-pulse" 
-                                    />
-                                    <h2 className="text-2xl font-semibold text-white mb-1">{incomingCall.callerId?.split('_')[0]}</h2>
-                                    <p className="text-gray-400 text-sm">Chamada de {incomingCall.isVideo ? 'vídeo' : 'voz'}...</p>
-                                    <div className="flex gap-6 mt-8">
-                                        <button onClick={() => setIncomingCall(null)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
-                                            <div className="icon-phone-off text-3xl text-white"></div>
-                                        </button>
-                                        <button onClick={answerCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600">
-                                            <div className="icon-phone text-3xl text-white"></div>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {/* Vídeo remoto */}
                             {isVideoCall && remoteVideoRef.current?.srcObject && (
                                 <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover -z-10" />
                             )}
                             
-                            {/* Vídeo local */}
                             {isVideoCall && localStreamRef.current && (
                                 <div className="absolute bottom-4 right-4 w-32 h-48 bg-black rounded-xl overflow-hidden border-2 border-gray-600">
                                     <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
@@ -1426,13 +1628,15 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </>
                     )}
                     
-                    {/* Modo minimizado */}
                     {isCallMinimized && (
                         <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-black rounded-2xl cursor-pointer" onClick={() => setIsCallMinimized(false)}>
-                            <img 
-                                src={activeChat?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat?.id}`} 
-                                className="w-12 h-12 rounded-full mb-2" 
-                            />
+                            {activeChat?.avatar ? (
+                                <img src={activeChat.avatar} className="w-12 h-12 rounded-full mb-2 object-cover" />
+                            ) : (
+                                <div className="w-12 h-12 rounded-full mb-2 bg-gray-600 flex items-center justify-center">
+                                    <div className="icon-user text-white text-xl"></div>
+                                </div>
+                            )}
                             <p className="text-white text-xs font-medium truncate max-w-[90%]">{activeChat?.name}</p>
                             <p className="text-green-400 text-xs">{formatDuration(callDuration)}</p>
                             <div className="flex gap-3 mt-3">
@@ -1446,7 +1650,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         </div>
                     )}
                     
-                    {/* Controles da Chamada - apenas quando não minimizado e não incoming */}
                     {!isCallMinimized && !incomingCall && callStatus && (
                         <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4 flex-wrap z-10">
                             <button onClick={toggleMic} className={`p-3 rounded-full transition-colors ${isMicMuted ? 'bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
@@ -1468,9 +1671,16 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             <button onClick={() => endCall(false)} className="p-4 bg-red-600 rounded-full hover:bg-red-700">
                                 <div className="icon-phone-off text-xl text-white"></div>
                             </button>
-                            
-                            <button onClick={() => setIsCallMinimized(true)} className="p-3 bg-gray-700 rounded-full hover:bg-gray-600">
-                                <div className="icon-arrow-down text-xl text-white"></div>
+                        </div>
+                    )}
+                    
+                    {!isCallMinimized && incomingCall && (
+                        <div className="flex gap-6 mt-8">
+                            <button onClick={() => setIncomingCall(null)} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
+                                <div className="icon-phone-off text-3xl text-white"></div>
+                            </button>
+                            <button onClick={answerCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600">
+                                <div className="icon-phone text-3xl text-white"></div>
                             </button>
                         </div>
                     )}
@@ -1481,10 +1691,14 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             <div className={`bg-white w-[350px] flex-shrink-0 border-r border-gray-200 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="bg-[#f0f2f5] p-3 px-4 flex justify-between items-center h-16 border-b border-gray-300">
                     <div className="flex items-center gap-3 cursor-pointer" onClick={openSettings}>
-                        <img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300" />
-                        <div className="flex flex-col">
-                            <span className="font-semibold text-gray-700 text-sm">{user.name}</span>
-                        </div>
+                        {user.avatar ? (
+                            <img src={user.avatar} className="w-10 h-10 rounded-full border border-gray-300 object-cover" />
+                        ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                <div className="icon-user text-gray-500"></div>
+                            </div>
+                        )}
+                        <span className="font-semibold text-gray-700 text-sm">{user.name}</span>
                     </div>
                     <div className="flex gap-4 text-gray-600 items-center">
                         <div className="icon-log-out cursor-pointer text-red-500 hover:bg-red-50 p-1.5 rounded-full transition" onClick={onLogout} title="Sair"></div>
@@ -1502,7 +1716,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 <div className="flex-1 overflow-y-auto">
                     {chats.length > 0 ? chats.map(chat => (
                         <div key={chat.id} onClick={() => openChat(chat)} className={`flex items-center p-3 cursor-pointer hover:bg-[#f5f6f6] ${activeChat?.id === chat.id ? 'bg-[#f0f2f5]' : ''}`}>
-                            <img src={chat.avatar} className="w-12 h-12 rounded-full mr-3" />
+                            {chat.avatar ? (
+                                <img src={chat.avatar} className="w-12 h-12 rounded-full mr-3 object-cover" />
+                            ) : (
+                                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                    <div className="icon-user text-gray-400"></div>
+                                </div>
+                            )}
                             <div className="flex-1 border-b border-gray-100 pb-3 h-full flex flex-col justify-center">
                                 <div className="flex justify-between items-baseline">
                                     <span className="text-gray-900 font-medium">{chat.name}</span>
@@ -1540,7 +1760,13 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                                     }
                                 }}
                             >
-                                <img src={activeChat.avatar} className="w-10 h-10 rounded-full" />
+                                {activeChat.avatar ? (
+                                    <img src={activeChat.avatar} className="w-10 h-10 rounded-full object-cover" />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <div className="icon-user text-gray-500"></div>
+                                    </div>
+                                )}
                                 <div className="flex flex-col">
                                     <div className="flex items-center gap-2">
                                         <span className="text-gray-800 font-medium">{activeChat.name}</span>
