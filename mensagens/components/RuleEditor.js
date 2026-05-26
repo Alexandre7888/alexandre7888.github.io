@@ -6,68 +6,23 @@ function RuleEditor({ activeChat, user, onClose }) {
     const [name, setName] = React.useState("");
     const [description, setDescription] = React.useState("");
     const [isActive, setIsActive] = React.useState(true);
-    const [triggerType, setTriggerType] = React.useState('onMessage'); // onMessage, onMemberJoin, onMemberLeave, onCall
+    const [triggerType, setTriggerType] = React.useState('onMessage');
     const [executionDelay, setExecutionDelay] = React.useState(0);
     const [cooldown, setCooldown] = React.useState(0);
     const [actionType, setActionType] = React.useState('javascript');
     const [showApiDocs, setShowApiDocs] = React.useState(false);
     const [testResult, setTestResult] = React.useState(null);
     const [testInput, setTestInput] = React.useState("");
-    const [variables, setVariables] = React.useState({
-        message: { text: "", senderId: "", senderName: "" },
-        member: { id: "", name: "", role: "" },
-        chat: { id: "", name: "" }
-    });
+
+    // TEMPLATES CORRIGIDOS (sem template string dentro de template string)
     const [templates, setTemplates] = React.useState([
-        { name: "🚫 Anti-Spam", code: `// Bloqueia mensagens repetidas
-const messageCount = chat.getUserMessageCount(member.id, 60000);
-if (messageCount > 5) {
-    chat.warnUser(member.id, "Evite spam!");
-    chat.deleteMessage(message.id);
-}` },
-        { name: "👋 Boas-vindas", code: `// Envia mensagem de boas-vindas
-if (message.text.includes("oi") || message.text.includes("olá")) {
-    chat.sendMessage("👋 Bem-vindo(a) ao grupo, " + member.name + "!");
-}` },
-        { name: "🔞 Filtro de Palavrões", code: `// Lista de palavras proibidas
-const blockedWords = ["palavrao1", "palavrao2", "xingamento"];
-for (let word of blockedWords) {
-    if (message.text.toLowerCase().includes(word)) {
-        chat.deleteMessage(message.id);
-        chat.warnUser(member.id, "Linguagem inadequada detectada!");
-        break;
-    }
-}` },
-        { name: "📢 Auto-Responder", code: `// Responde automaticamente a perguntas comuns
-const faq = {
-    "horario": "Funcionamos das 9h às 18h",
-    "preco": "Consulte nosso site para valores",
-    "contato": "Envie uma mensagem privada para o admin"
-};
-for (let key in faq) {
-    if (message.text.toLowerCase().includes(key)) {
-        chat.sendMessage(faq[key]);
-        break;
-    }
-}` },
-        { name: "🎮 Comandos Personalizados", code: `// Comandos como !regras, !ajuda
-if (message.text.startsWith("!regras")) {
-    chat.sendMessage("📜 1. Respeito acima de tudo\\n2. Sem spam\\n3. Conteúdo apropriado");
-}
-if (message.text.startsWith("!ajuda")) {
-    chat.sendMessage("Comandos disponíveis: !regras, !info, !admin");
-}` },
-        { name: "📊 Log de Atividades", code: `// Registra ações importantes
-chat.logActivity(member.id, "Enviou mensagem: " + message.text.substring(0, 50));
-console.log(`[${new Date().toLocaleString()}] ${member.name}: ${message.text}`);` },
-        { name: "🔒 Moderador Automático", code: `// Detecta e remove conteúdo suspeito
-const suspicious = ["link", "apostas", "promoção"];
-for (let word of suspicious) {
-    if (message.text.toLowerCase().includes(word)) {
-        chat.sendMessageToAdmin(`⚠️ Mensagem suspeita de ${member.name}: ${message.text}`);
-        break;
-    }
-}` }
+        { name: "🚫 Anti-Spam", code: "// Bloqueia mensagens repetidas\nconst messageCount = chat.getUserMessageCount(member.id, 60000);\nif (messageCount > 5) {\n    chat.warnUser(member.id, 'Evite spam!');\n    chat.deleteMessage(message.id);\n}" },
+        { name: "👋 Boas-vindas", code: "// Envia mensagem de boas-vindas\nif (message.text.includes('oi') || message.text.includes('olá')) {\n    chat.sendMessage('👋 Bem-vindo(a) ao grupo, ' + member.name + '!');\n}" },
+        { name: "🔞 Filtro de Palavrões", code: "// Lista de palavras proibidas\nconst blockedWords = ['palavrao1', 'palavrao2', 'xingamento'];\nfor (let word of blockedWords) {\n    if (message.text.toLowerCase().includes(word)) {\n        chat.deleteMessage(message.id);\n        chat.warnUser(member.id, 'Linguagem inadequada detectada!');\n        break;\n    }\n}" },
+        { name: "📢 Auto-Responder", code: "// Responde automaticamente a perguntas comuns\nconst faq = {\n    'horario': 'Funcionamos das 9h às 18h',\n    'preco': 'Consulte nosso site para valores',\n    'contato': 'Envie uma mensagem privada para o admin'\n};\nfor (let key in faq) {\n    if (message.text.toLowerCase().includes(key)) {\n        chat.sendMessage(faq[key]);\n        break;\n    }\n}" },
+        { name: "🎮 Comandos Personalizados", code: "// Comandos como !regras, !ajuda\nif (message.text.startsWith('!regras')) {\n    chat.sendMessage('📜 1. Respeito acima de tudo\\n2. Sem spam\\n3. Conteúdo apropriado');\n}\nif (message.text.startsWith('!ajuda')) {\n    chat.sendMessage('Comandos disponíveis: !regras, !info, !admin');\n}" },
+        { name: "📊 Log de Atividades", code: "// Registra ações importantes\nchat.logActivity(member.id, 'Enviou mensagem: ' + message.text.substring(0, 50));\nconsole.log('[Log] ' + member.name + ': ' + message.text);" },
+        { name: "🔒 Moderador Automático", code: "// Detecta e remove conteúdo suspeito\nconst suspicious = ['link', 'apostas', 'promocao'];\nfor (let word of suspicious) {\n    if (message.text.toLowerCase().includes(word)) {\n        chat.sendMessageToAdmin('⚠️ Mensagem suspeita de ' + member.name + ': ' + message.text);\n        break;\n    }\n}" }
     ]);
 
     const db = window.firebaseDB;
@@ -150,7 +105,6 @@ for (let word of suspicious) {
 
     const testScript = async () => {
         try {
-            // Simular execução do script
             const mockMessage = {
                 text: testInput || "mensagem de teste",
                 senderId: "test_user",
@@ -177,7 +131,6 @@ for (let word of suspicious) {
                 getUserMessageCount: (userId, timeWindow) => 3
             };
 
-            // Executar código (com segurança)
             const asyncEval = new Function('message', 'member', 'chat', 'console', code);
             await asyncEval(mockMessage, mockMember, mockChat, console);
             
