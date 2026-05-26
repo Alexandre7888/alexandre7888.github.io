@@ -9,117 +9,165 @@ function RuleEditor({ activeChat, user, onClose }) {
     const [triggerType, setTriggerType] = React.useState('onMessage');
     const [executionDelay, setExecutionDelay] = React.useState(0);
     const [cooldown, setCooldown] = React.useState(0);
-    const [actionType, setActionType] = React.useState('javascript');
     const [showApiDocs, setShowApiDocs] = React.useState(false);
     const [testResult, setTestResult] = React.useState(null);
     const [testInput, setTestInput] = React.useState("");
-
-    // TEMPLATES CORRIGIDOS (sem template string dentro de template string)
-    const [templates, setTemplates] = React.useState([
-        { name: "🚫 Anti-Spam", code: "// Bloqueia mensagens repetidas\nconst messageCount = chat.getUserMessageCount(member.id, 60000);\nif (messageCount > 5) {\n    chat.warnUser(member.id, 'Evite spam!');\n    chat.deleteMessage(message.id);\n}" },
-        { name: "👋 Boas-vindas", code: "// Envia mensagem de boas-vindas\nif (message.text.includes('oi') || message.text.includes('olá')) {\n    chat.sendMessage('👋 Bem-vindo(a) ao grupo, ' + member.name + '!');\n}" },
-        { name: "🔞 Filtro de Palavrões", code: "// Lista de palavras proibidas\nconst blockedWords = ['palavrao1', 'palavrao2', 'xingamento'];\nfor (let word of blockedWords) {\n    if (message.text.toLowerCase().includes(word)) {\n        chat.deleteMessage(message.id);\n        chat.warnUser(member.id, 'Linguagem inadequada detectada!');\n        break;\n    }\n}" },
-        { name: "📢 Auto-Responder", code: "// Responde automaticamente a perguntas comuns\nconst faq = {\n    'horario': 'Funcionamos das 9h às 18h',\n    'preco': 'Consulte nosso site para valores',\n    'contato': 'Envie uma mensagem privada para o admin'\n};\nfor (let key in faq) {\n    if (message.text.toLowerCase().includes(key)) {\n        chat.sendMessage(faq[key]);\n        break;\n    }\n}" },
-        { name: "🎮 Comandos Personalizados", code: "// Comandos como !regras, !ajuda\nif (message.text.startsWith('!regras')) {\n    chat.sendMessage('📜 1. Respeito acima de tudo\\n2. Sem spam\\n3. Conteúdo apropriado');\n}\nif (message.text.startsWith('!ajuda')) {\n    chat.sendMessage('Comandos disponíveis: !regras, !info, !admin');\n}" },
-        { name: "📊 Log de Atividades", code: "// Registra ações importantes\nchat.logActivity(member.id, 'Enviou mensagem: ' + message.text.substring(0, 50));\nconsole.log('[Log] ' + member.name + ': ' + message.text);" },
-        { name: "🔒 Moderador Automático", code: "// Detecta e remove conteúdo suspeito\nconst suspicious = ['link', 'apostas', 'promocao'];\nfor (let word of suspicious) {\n    if (message.text.toLowerCase().includes(word)) {\n        chat.sendMessageToAdmin('⚠️ Mensagem suspeita de ' + member.name + ': ' + message.text);\n        break;\n    }\n}" }
-    ]);
+    const [saving, setSaving] = React.useState(false);
+    const [loading, setLoading] = React.useState(true);
 
     const db = window.firebaseDB;
 
+    // Templates sem template strings problemáticas
+    const templates = [
+        { name: "🚫 Anti-Spam", code: "const messageCount = chat.getUserMessageCount(member.id, 60000);\nif (messageCount > 5) {\n    chat.warnUser(member.id, 'Evite spam!');\n    chat.deleteMessage(message.id);\n}" },
+        { name: "👋 Boas-vindas", code: "if (message.text.includes('oi') || message.text.includes('olá')) {\n    chat.sendMessage('👋 Bem-vindo(a) ao grupo, ' + member.name + '!');\n}" },
+        { name: "🔞 Filtro", code: "const blockedWords = ['palavrao1', 'palavrao2'];\nfor (let word of blockedWords) {\n    if (message.text.toLowerCase().includes(word)) {\n        chat.deleteMessage(message.id);\n        chat.warnUser(member.id, 'Linguagem inadequada!');\n        break;\n    }\n}" },
+        { name: "📢 Auto-Responder", code: "const faq = { 'horario': 'Funcionamos das 9h as 18h', 'preco': 'Consulte nosso site' };\nfor (let key in faq) {\n    if (message.text.toLowerCase().includes(key)) {\n        chat.sendMessage(faq[key]);\n        break;\n    }\n}" },
+        { name: "🎮 Comandos", code: "if (message.text.startsWith('!regras')) {\n    chat.sendMessage('Regras do grupo: 1. Respeito 2. Sem spam');\n}\nif (message.text.startsWith('!ajuda')) {\n    chat.sendMessage('Comandos: !regras, !info');\n}" }
+    ];
+
+    // Carregar scripts
     React.useEffect(() => {
-        if (!activeChat) return;
+        if (!activeChat || !db) {
+            setLoading(false);
+            return;
+        }
+        
         const rulesRef = db.ref(`groups/${activeChat.id}/scripts`);
-        rulesRef.on('value', snap => {
-            setScripts(snap.val() || {});
-        });
-        return () => rulesRef.off();
-    }, [activeChat]);
+        
+        const handleData = (snapshot) => {
+            const data = snapshot.val();
+            setScripts(data || {});
+            setLoading(false);
+        };
+        
+        rulesRef.on('value', handleData);
+        
+        return () => {
+            rulesRef.off('value', handleData);
+        };
+    }, [activeChat, db]);
 
+    // Salvar regra
     const handleSave = async () => {
-        if (!name) return alert("Dê um nome para a regra.");
-        const id = selectedScriptId || 'rule_' + Date.now();
-
-        await db.ref(`groups/${activeChat.id}/scripts/${id}`).set({
-            name: name,
-            description: description,
-            code: code,
-            active: isActive,
-            triggerType: triggerType,
-            executionDelay: executionDelay,
-            cooldown: cooldown,
-            actionType: actionType,
-            createdBy: user.id,
-            createdByName: user.name,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            lastExecuted: null,
-            executionCount: 0
-        });
-
-        setSelectedScriptId(null);
-        setName("");
-        setDescription("");
-        setCode("");
-        setIsActive(true);
-        setTriggerType('onMessage');
-        setExecutionDelay(0);
-        setCooldown(0);
-        alert("Regra salva com sucesso!");
+        if (!name.trim()) {
+            alert("Digite um nome para a regra!");
+            return;
+        }
+        
+        if (!code.trim()) {
+            alert("Digite o código da regra!");
+            return;
+        }
+        
+        setSaving(true);
+        
+        try {
+            const id = selectedScriptId || 'rule_' + Date.now();
+            const scriptRef = db.ref(`groups/${activeChat.id}/scripts/${id}`);
+            
+            await scriptRef.set({
+                name: name,
+                description: description || "",
+                code: code,
+                active: isActive,
+                triggerType: triggerType,
+                executionDelay: executionDelay,
+                cooldown: cooldown,
+                createdBy: user?.id || "unknown",
+                createdByName: user?.name || "unknown",
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                executionCount: 0
+            });
+            
+            // Limpar formulário
+            setSelectedScriptId(null);
+            setName("");
+            setDescription("");
+            setCode("");
+            setIsActive(true);
+            setTriggerType('onMessage');
+            setExecutionDelay(0);
+            setCooldown(0);
+            
+            alert("Regra salva com sucesso!");
+            
+        } catch (error) {
+            console.error("Erro ao salvar:", error);
+            alert("Erro ao salvar regra: " + error.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
+    // Carregar regra para edição
     const loadScript = (id) => {
-        const s = scripts[id];
+        const script = scripts[id];
+        if (!script) return;
+        
         setSelectedScriptId(id);
-        setName(s.name || "");
-        setDescription(s.description || "");
-        setCode(s.code || "");
-        setIsActive(s.active !== false);
-        setTriggerType(s.triggerType || 'onMessage');
-        setExecutionDelay(s.executionDelay || 0);
-        setCooldown(s.cooldown || 0);
-        setActionType(s.actionType || 'javascript');
+        setName(script.name || "");
+        setDescription(script.description || "");
+        setCode(script.code || "");
+        setIsActive(script.active !== false);
+        setTriggerType(script.triggerType || 'onMessage');
+        setExecutionDelay(script.executionDelay || 0);
+        setCooldown(script.cooldown || 0);
     };
 
+    // Excluir regra
     const deleteScript = async (id) => {
-        if (confirm("Apagar esta regra permanentemente?")) {
+        if (!confirm("Tem certeza que deseja excluir esta regra permanentemente?")) {
+            return;
+        }
+        
+        try {
             await db.ref(`groups/${activeChat.id}/scripts/${id}`).remove();
+            
             if (selectedScriptId === id) {
                 setSelectedScriptId(null);
                 setName("");
                 setDescription("");
                 setCode("");
             }
+            
+            alert("Regra excluída com sucesso!");
+            
+        } catch (error) {
+            console.error("Erro ao excluir:", error);
+            alert("Erro ao excluir regra!");
         }
     };
 
+    // Ativar/Desativar regra
     const toggleScriptActive = async (id, currentActive) => {
-        await db.ref(`groups/${activeChat.id}/scripts/${id}/active`).set(!currentActive);
+        try {
+            await db.ref(`groups/${activeChat.id}/scripts/${id}/active`).set(!currentActive);
+        } catch (error) {
+            console.error("Erro ao alterar status:", error);
+            alert("Erro ao alterar status da regra!");
+        }
     };
 
+    // Carregar template
     const loadTemplate = (template) => {
         setName(template.name);
         setCode(template.code);
         setDescription(`Template: ${template.name}`);
     };
 
-    const testScript = async () => {
+    // Testar script
+    const testScript = () => {
+        if (!code.trim()) {
+            setTestResult({ success: false, message: "Digite um código para testar!" });
+            setTimeout(() => setTestResult(null), 3000);
+            return;
+        }
+        
         try {
-            const mockMessage = {
-                text: testInput || "mensagem de teste",
-                senderId: "test_user",
-                senderName: "Testador",
-                id: "test_msg_123",
-                timestamp: Date.now()
-            };
-            const mockMember = {
-                id: user.id,
-                name: user.name,
-                role: "member"
-            };
+            // Criar funções mock para teste
             const mockChat = {
-                id: activeChat.id,
-                name: activeChat.name,
                 sendMessage: (text) => console.log("[TEST] sendMessage:", text),
                 deleteMessage: (id) => console.log("[TEST] deleteMessage:", id),
                 warnUser: (id, reason) => console.log("[TEST] warnUser:", id, reason),
@@ -130,49 +178,61 @@ function RuleEditor({ activeChat, user, onClose }) {
                 logActivity: (userId, action) => console.log("[TEST] logActivity:", userId, action),
                 getUserMessageCount: (userId, timeWindow) => 3
             };
-
-            const asyncEval = new Function('message', 'member', 'chat', 'console', code);
-            await asyncEval(mockMessage, mockMember, mockChat, console);
             
-            setTestResult({ success: true, message: "Script executado com sucesso! Verifique o console para logs." });
+            const mockMessage = {
+                text: testInput || "mensagem de teste",
+                senderId: "test_user",
+                senderName: "Testador",
+                id: "test_msg_123"
+            };
+            
+            const mockMember = {
+                id: user?.id || "test_user",
+                name: user?.name || "Testador",
+                role: "member"
+            };
+            
+            // Executar código
+            const asyncEval = new Function('message', 'member', 'chat', code);
+            asyncEval(mockMessage, mockMember, mockChat);
+            
+            setTestResult({ success: true, message: "✅ Script executado sem erros! Verifique o console." });
+            
         } catch (error) {
-            setTestResult({ success: false, message: `Erro: ${error.message}` });
+            setTestResult({ success: false, message: `❌ Erro: ${error.message}` });
         }
+        
         setTimeout(() => setTestResult(null), 5000);
     };
 
-    const exportScripts = () => {
-        const data = JSON.stringify(scripts, null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `rules_${activeChat.id}_${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+    // Nova regra
+    const newRule = () => {
+        setSelectedScriptId(null);
+        setName("");
+        setDescription("");
+        setCode("");
+        setIsActive(true);
+        setTriggerType('onMessage');
+        setExecutionDelay(0);
+        setCooldown(0);
     };
 
-    const importScripts = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const imported = JSON.parse(event.target.result);
-                for (const [id, script] of Object.entries(imported)) {
-                    await db.ref(`groups/${activeChat.id}/scripts/${id}`).set({
-                        ...script,
-                        importedAt: Date.now(),
-                        importedBy: user.id
-                    });
-                }
-                alert("Regras importadas com sucesso!");
-            } catch (error) {
-                alert("Erro ao importar: " + error.message);
-            }
-        };
-        reader.readAsText(file);
-    };
+    if (loading) {
+        return (
+            <div className="fixed inset-0 bg-white z-30 flex flex-col animate-slide-in-right">
+                <div className="bg-gray-800 text-white p-4 flex items-center gap-3">
+                    <button onClick={onClose} className="hover:bg-gray-700 p-1 rounded">
+                        <div className="icon-arrow-left"></div>
+                    </button>
+                    <h2 className="font-mono font-bold text-green-400">Editor de Regras</h2>
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="icon-loader animate-spin text-3xl text-[#00a884]"></div>
+                    <span className="ml-2 text-gray-500">Carregando...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 bg-white z-30 flex flex-col animate-slide-in-right">
@@ -182,19 +242,12 @@ function RuleEditor({ activeChat, user, onClose }) {
                     <button onClick={onClose} className="hover:bg-gray-700 p-1 rounded">
                         <div className="icon-arrow-left"></div>
                     </button>
-                    <h2 className="font-mono font-bold text-green-400">{'<Editor de Regras Avançado />'}</h2>
+                    <h2 className="font-mono font-bold text-green-400">Editor de Regras Avançado</h2>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={() => setShowApiDocs(!showApiDocs)} className="text-xs bg-blue-600 px-3 py-1 rounded hover:bg-blue-500">
                         📚 API Docs
                     </button>
-                    <button onClick={exportScripts} className="text-xs bg-green-600 px-3 py-1 rounded hover:bg-green-500">
-                        📤 Exportar
-                    </button>
-                    <label className="text-xs bg-purple-600 px-3 py-1 rounded hover:bg-purple-500 cursor-pointer">
-                        📥 Importar
-                        <input type="file" accept=".json" onChange={importScripts} className="hidden" />
-                    </label>
                 </div>
             </div>
 
@@ -229,27 +282,11 @@ function RuleEditor({ activeChat, user, onClose }) {
                                     <div><code className="bg-gray-200 px-1 rounded">chat.sendMessage(text)</code> - Envia mensagem no grupo</div>
                                     <div><code className="bg-gray-200 px-1 rounded">chat.deleteMessage(msgId)</code> - Apaga mensagem</div>
                                     <div><code className="bg-gray-200 px-1 rounded">chat.warnUser(userId, reason)</code> - Adverte usuário</div>
-                                    <div><code className="bg-gray-200 px-1 rounded">chat.muteUser(userId, seconds)</code> - Silencia usuário</div>
                                     <div><code className="bg-gray-200 px-1 rounded">chat.kickMember(userId)</code> - Expulsa membro</div>
                                     <div><code className="bg-gray-200 px-1 rounded">chat.banMember(userId)</code> - Bane membro</div>
                                     <div><code className="bg-gray-200 px-1 rounded">chat.sendMessageToAdmin(text)</code> - Envia para admins</div>
                                     <div><code className="bg-gray-200 px-1 rounded">chat.logActivity(userId, action)</code> - Registra log</div>
-                                    <div><code className="bg-gray-200 px-1 rounded">chat.getUserMessageCount(userId, timeWindowMs)</code> - Conta msgs</div>
                                 </div>
-                            </div>
-                            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                                <h4 className="font-bold text-yellow-700 mb-2">⚠️ Exemplo Completo</h4>
-                                <pre className="text-xs bg-gray-900 text-green-400 p-3 rounded overflow-x-auto">{`// Anti-spam avançado
-const msgCount = chat.getUserMessageCount(member.id, 60000);
-if (msgCount > 10) {
-    chat.warnUser(member.id, "Spam detectado!");
-    chat.muteMember(member.id, 300);
-    chat.logActivity(member.id, "Mutado por spam");
-}
-if (message.text.includes("palavrao")) {
-    chat.deleteMessage(message.id);
-    chat.warnUser(member.id, "Linguagem inadequada!");
-}`}</pre>
                             </div>
                         </div>
                     </div>
@@ -262,13 +299,12 @@ if (message.text.includes("palavrao")) {
                 <div className="w-80 border-r border-gray-200 bg-gray-50 flex flex-col">
                     <div className="p-3 border-b space-y-2">
                         <button 
-                            onClick={() => { setSelectedScriptId(null); setName(""); setDescription(""); setCode(""); setIsActive(true); setTriggerType('onMessage'); setExecutionDelay(0); setCooldown(0); }}
+                            onClick={newRule}
                             className="w-full bg-[#00a884] text-white py-2 rounded-lg shadow hover:bg-[#008f6f] transition flex items-center justify-center gap-2"
                         >
                             <div className="icon-plus"></div> Nova Regra
                         </button>
                         
-                        {/* Templates Dropdown */}
                         <details className="text-sm">
                             <summary className="cursor-pointer text-gray-600 hover:text-gray-800 p-2 rounded-lg bg-gray-100">📋 Templates Prontos</summary>
                             <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
@@ -303,10 +339,6 @@ if (message.text.includes("palavrao")) {
                                         </div>
                                         {script.description && <div className="text-xs text-gray-500 mt-0.5 truncate">{script.description}</div>}
                                         <div className="text-xs text-gray-400 font-mono truncate mt-1">{script.code?.substring(0, 40)}...</div>
-                                        <div className="text-[10px] text-gray-400 mt-1 flex gap-2">
-                                            <span>🔄 {script.executionCount || 0} execuções</span>
-                                            <span>⚡ {script.triggerType === 'onMessage' ? 'Mensagem' : script.triggerType === 'onMemberJoin' ? 'Entrada' : 'Saída'}</span>
-                                        </div>
                                     </div>
                                     <div className="flex gap-1">
                                         <button 
@@ -361,7 +393,6 @@ if (message.text.includes("palavrao")) {
                             <option value="onMessage">📨 Ao receber mensagem</option>
                             <option value="onMemberJoin">👤 Quando membro entra</option>
                             <option value="onMemberLeave">🚪 Quando membro sai</option>
-                            <option value="onCall">📞 Durante chamada</option>
                         </select>
                         <label className="flex items-center gap-2 text-white text-sm">
                             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4" />
@@ -372,20 +403,15 @@ if (message.text.includes("palavrao")) {
                     <div className="p-2 bg-gray-700 border-t border-gray-600 flex gap-2 flex-wrap">
                         <div className="flex items-center gap-2 text-white text-sm">
                             <span>⏱️ Delay:</span>
-                            <input type="number" value={executionDelay} onChange={(e) => setExecutionDelay(parseInt(e.target.value) || 0)} className="w-16 bg-gray-600 text-white px-2 py-1 rounded" />
-                            <span>ms</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-white text-sm">
-                            <span>🔄 Cooldown:</span>
-                            <input type="number" value={cooldown} onChange={(e) => setCooldown(parseInt(e.target.value) || 0)} className="w-16 bg-gray-600 text-white px-2 py-1 rounded" />
+                            <input type="number" value={executionDelay} onChange={(e) => setExecutionDelay(parseInt(e.target.value) || 0)} className="w-20 bg-gray-600 text-white px-2 py-1 rounded" />
                             <span>ms</span>
                         </div>
                         <div className="flex-1"></div>
                         <button onClick={testScript} className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-500 flex items-center gap-1">
                             <div className="icon-play"></div> Testar
                         </button>
-                        <button onClick={handleSave} className="bg-green-600 text-white px-4 py-1 rounded font-bold text-sm hover:bg-green-500 flex items-center gap-1">
-                            <div className="icon-save"></div> SALVAR
+                        <button onClick={handleSave} disabled={saving} className="bg-green-600 text-white px-4 py-1 rounded font-bold text-sm hover:bg-green-500 flex items-center gap-1 disabled:opacity-50">
+                            <div className="icon-save"></div> {saving ? 'Salvando...' : 'SALVAR'}
                         </button>
                     </div>
                     
@@ -411,12 +437,12 @@ if (message.text.includes("palavrao")) {
                     <textarea 
                         className="flex-1 w-full bg-[#1e1e1e] text-[#d4d4d4] p-4 font-mono text-sm outline-none resize-none"
                         spellCheck="false"
-                        placeholder={`// Escreva seu código JavaScript aqui...
+                        placeholder="// Escreva seu código JavaScript aqui...
 // Exemplo:
 // if (message.text.includes('spam')) {
-//    chat.warnUser(member.id, "Evite spam!");
+//    chat.warnUser(member.id, 'Evite spam!');
 //    chat.deleteMessage(message.id);
-// }`}
+// }"
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
                     ></textarea>
