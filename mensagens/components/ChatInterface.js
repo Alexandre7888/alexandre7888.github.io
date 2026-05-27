@@ -41,6 +41,10 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
     const [friendRequests, setFriendRequests] = React.useState({});
     const [blockedUsers, setBlockedUsers] = React.useState({});
 
+    // ==================== REFERÊNCIA DO MOTOR DE REGRAS ====================
+    const ruleMotorRef = React.useRef(null);
+
+    // ==================== FUNÇÕES DE ARQUIVO ====================
     const fileToBase64 = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -209,204 +213,6 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         } finally {
             setReporting(false);
         }
-    };
-
-    // ==================== CHAMADAS SEM PRECISAR SER AMIGO (SPAM) ====================
-    
-    const startCall = async (video = false) => {
-        if (!activeChat) return;
-        if (activeChat.type === 'group') { startGroupCall(video); return; }
-        
-        setCallStatus('calling');
-        setIsVideoCall(video);
-        setIsMicMuted(false);
-        setIsCamMuted(false);
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-            localStreamRef.current = stream;
-            if (video && localVideoRef.current) {
-                localVideoRef.current.srcObject = stream;
-            }
-            
-            const targetPeerId = activeChat.id.replace(/[^a-zA-Z0-9]/g, '');
-            const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video } });
-            
-            if (!call) throw new Error("Falha ao iniciar chamada");
-            
-            call.on('stream', (remoteStream) => {
-                setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
-                if (!video) {
-                    const audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.play();
-                } else {
-                    if (remoteVideoRef.current) {
-                        remoteVideoRef.current.srcObject = remoteStream;
-                    }
-                }
-                if (callStatus === 'calling') {
-                    setCallStatus('connected');
-                    startCallTimer();
-                }
-            });
-            
-            call.on('close', () => {
-                if (Object.keys(activeCalls).length === 0) endCall(true);
-            });
-            
-            setActiveCalls({ [targetPeerId]: call });
-            setParticipantsInfo(prev => ({ ...prev, [targetPeerId]: { id: targetPeerId, name: activeChat.name } }));
-            
-            setTimeout(() => {
-                if (callStatus === 'calling') {
-                    endCall();
-                    showToastMessage("Chamada não atendida", "error");
-                }
-            }, 30000);
-            
-        } catch(err) { 
-            console.error("Erro ao ligar:", err); 
-            setCallStatus(null);
-            showToastMessage("Erro ao iniciar chamada!", "error");
-        }
-    };
-
-    // ==================== USER INFO DENTRO DO CHATINTERFACE ====================
-    
-    const UserInfoModal = () => {
-        if (!showUserInfo || !selectedUser) return null;
-        
-        const isFriend = friends[selectedUser.id];
-        const hasPendingRequest = friendRequests[selectedUser.id];
-        const isBlocked = blockedUsers[selectedUser.id];
-        
-        return (
-            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in">
-                    <div className="bg-[#f0f2f5] p-4 flex justify-between items-center border-b sticky top-0">
-                        <h2 className="font-semibold text-gray-800">Informações do Contato</h2>
-                        <button onClick={() => setShowUserInfo(false)} className="text-gray-500 hover:text-gray-700">
-                            <div className="icon-x text-xl"></div>
-                        </button>
-                    </div>
-                    
-                    <div className="p-6">
-                        <div className="flex justify-center mb-4">
-                            {selectedUser.avatar ? (
-                                <img src={selectedUser.avatar} className="w-32 h-32 rounded-full object-cover border-4 border-gray-200" />
-                            ) : (
-                                <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-200">
-                                    <div className="icon-user text-5xl text-gray-400"></div>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <h3 className="text-xl font-bold text-center text-gray-800">{selectedUser.name}</h3>
-                        <p className="text-center text-gray-500 text-sm mt-1">@{selectedUser.name}</p>
-                        <p className="text-center text-gray-400 text-xs">ID: {selectedUser.id}</p>
-                        
-                        {/* Botões de Ação */}
-                        <div className="flex flex-wrap justify-center gap-3 mt-6">
-                            <button onClick={() => { setShowUserInfo(false); startCall(false); }} className="flex flex-col items-center gap-1 p-2 bg-green-50 rounded-lg hover:bg-green-100 transition">
-                                <div className="icon-phone text-xl text-green-600"></div>
-                                <span className="text-xs">Ligar</span>
-                            </button>
-                            <button onClick={() => { setShowUserInfo(false); startCall(true); }} className="flex flex-col items-center gap-1 p-2 bg-green-50 rounded-lg hover:bg-green-100 transition">
-                                <div className="icon-video text-xl text-green-600"></div>
-                                <span className="text-xs">Video</span>
-                            </button>
-                            <button onClick={() => { setShowUserInfo(false); openChat(selectedUser); }} className="flex flex-col items-center gap-1 p-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
-                                <div className="icon-message-circle text-xl text-blue-600"></div>
-                                <span className="text-xs">Mensagem</span>
-                            </button>
-                        </div>
-                        
-                        {/* Status de Amizade */}
-                        <div className="mt-6 pt-4 border-t border-gray-100">
-                            {isBlocked ? (
-                                <button onClick={() => {
-                                    db.ref(`users/${user.id}/blocked/${selectedUser.id}`).remove();
-                                    loadFriendsData();
-                                    showToastMessage("Usuário desbloqueado!", "success");
-                                    setShowUserInfo(false);
-                                }} className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
-                                    Desbloquear Usuário
-                                </button>
-                            ) : isFriend ? (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-center gap-2 text-green-600">
-                                        <div className="icon-user-check"></div>
-                                        <span className="text-sm">Amigos</span>
-                                    </div>
-                                    <button onClick={() => removeFriend(selectedUser.id, selectedUser.name)} className="w-full py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
-                                        Remover Amigo
-                                    </button>
-                                </div>
-                            ) : hasPendingRequest ? (
-                                <div className="flex gap-2">
-                                    <button onClick={() => acceptFriendRequest(selectedUser.id, selectedUser.name)} className="flex-1 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">Aceitar</button>
-                                    <button onClick={() => rejectFriendRequest(selectedUser.id)} className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">Recusar</button>
-                                </div>
-                            ) : (
-                                <button onClick={() => {
-                                    setFriendUsername(selectedUser.name);
-                                    sendFriendRequestByUsername();
-                                }} className="w-full py-2 bg-[#00a884] text-white rounded-lg hover:bg-[#008f6f] transition flex items-center justify-center gap-2">
-                                    <div className="icon-user-plus"></div> Adicionar Amigo
-                                </button>
-                            )}
-                        </div>
-                        
-                        {/* Botões de Bloqueio e Denúncia */}
-                        {!isBlocked && (
-                            <div className="mt-4 flex gap-2">
-                                <button onClick={() => {
-                                    db.ref(`users/${user.id}/blocked/${selectedUser.id}`).set({ blockedAt: Date.now() });
-                                    loadFriendsData();
-                                    showToastMessage("Usuário bloqueado!", "success");
-                                    setShowUserInfo(false);
-                                }} className="flex-1 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2">
-                                    <div className="icon-ban"></div> Bloquear
-                                </button>
-                                <button onClick={() => setShowReportModal(true)} className="flex-1 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition flex items-center justify-center gap-2">
-                                    <div className="icon-flag"></div> Denunciar
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-                
-                {/* Modal de Denúncia */}
-                {showReportModal && (
-                    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-                            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                                <h3 className="text-lg font-semibold">Denunciar {selectedUser?.name}</h3>
-                                <button onClick={() => setShowReportModal(false)} className="text-gray-400 hover:text-gray-600">
-                                    <div className="icon-x"></div>
-                                </button>
-                            </div>
-                            <div className="p-4">
-                                <textarea 
-                                    value={reportReason} 
-                                    onChange={(e) => setReportReason(e.target.value)} 
-                                    placeholder="Motivo da denúncia (ex: spam, ofensas, etc)..."
-                                    className="w-full border rounded-lg p-3 text-sm focus:outline-none focus:border-red-500" 
-                                    rows="4"
-                                />
-                            </div>
-                            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
-                                <button onClick={() => setShowReportModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
-                                <button onClick={reportUser} disabled={reporting} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
-                                    {reporting ? 'Enviando...' : 'Enviar Denúncia'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
     };
 
     // ==================== VERIFICAÇÕES ====================
@@ -615,6 +421,34 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return activeChat.members?.[user.id] === 'admin';
     }, [activeChat, user.id]);
 
+    // ==================== INICIALIZAR MOTOR DE REGRAS ====================
+    React.useEffect(() => {
+        if (!db || !user) return;
+        
+        if (!window.ruleMotorInstance) {
+            if (typeof window.RuleMotor === 'function') {
+                window.ruleMotorInstance = new window.RuleMotor();
+                console.log('[ChatInterface] Instância do RuleMotor criada');
+            } else {
+                console.warn('[ChatInterface] RuleMotor não está disponível');
+                return;
+            }
+        }
+        
+        if (window.ruleMotorInstance && !ruleMotorRef.current) {
+            window.ruleMotorInstance.init(db, user);
+            ruleMotorRef.current = window.ruleMotorInstance;
+            console.log('[ChatInterface] Motor de regras inicializado');
+        }
+        
+        return () => {
+            if (ruleMotorRef.current) {
+                ruleMotorRef.current.stop();
+                ruleMotorRef.current = null;
+            }
+        };
+    }, [db, user]);
+
     // Atualiza último ativo
     React.useEffect(() => {
         const updateLastActive = () => {
@@ -623,7 +457,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         updateLastActive();
         const interval = setInterval(updateLastActive, 60 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [user.id, db]);
+    }, [user?.id, db]);
 
     React.useEffect(() => {
         const handleClick = () => setContextMenu({ visible: false, x: 0, y: 0, message: null });
@@ -766,6 +600,65 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         handleCallStream(call, isVideo, call.peer);
         setActiveCalls(prev => ({ ...prev, [call.peer]: call }));
         setParticipantsInfo(prev => ({ ...prev, [call.peer]: { id: call.peer, name: call.peer.split('_')[0] } }));
+    };
+
+    const startCall = async (video = false) => {
+        if (!activeChat) return;
+        if (activeChat.type === 'group') { startGroupCall(video); return; }
+        
+        setCallStatus('calling');
+        setIsVideoCall(video);
+        setIsMicMuted(false);
+        setIsCamMuted(false);
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
+            localStreamRef.current = stream;
+            if (video && localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
+            
+            const targetPeerId = activeChat.id.replace(/[^a-zA-Z0-9]/g, '');
+            const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video } });
+            
+            if (!call) throw new Error("Falha ao iniciar chamada");
+            
+            call.on('stream', (remoteStream) => {
+                setRemoteStreams(prev => ({ ...prev, [call.peer]: remoteStream }));
+                if (!video) {
+                    const audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                } else {
+                    if (remoteVideoRef.current) {
+                        remoteVideoRef.current.srcObject = remoteStream;
+                    }
+                }
+                if (callStatus === 'calling') {
+                    setCallStatus('connected');
+                    startCallTimer();
+                }
+            });
+            
+            call.on('close', () => {
+                if (Object.keys(activeCalls).length === 0) endCall(true);
+            });
+            
+            setActiveCalls({ [targetPeerId]: call });
+            setParticipantsInfo(prev => ({ ...prev, [targetPeerId]: { id: targetPeerId, name: activeChat.name } }));
+            
+            setTimeout(() => {
+                if (callStatus === 'calling') {
+                    endCall();
+                    showToastMessage("Chamada não atendida", "error");
+                }
+            }, 30000);
+            
+        } catch(err) { 
+            console.error("Erro ao ligar:", err); 
+            setCallStatus(null);
+            showToastMessage("Erro ao iniciar chamada!", "error");
+        }
     };
 
     const startGroupCall = async (video) => {
@@ -968,7 +861,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 fileName: file.name,
                 fileSize: file.size,
                 fileType: file.type,
-                timestamp: window.firebase.database.ServerValue.TIMESTAMP,
+                timestamp: Date.now(),
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
 
@@ -1053,8 +946,141 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return <p className="text-gray-800 break-words" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text || '') }}></p>;
     };
 
+    // ==================== USER INFO DENTRO DO CHATINTERFACE ====================
+    const UserInfoModal = () => {
+        if (!showUserInfo || !selectedUser) return null;
+        
+        const isFriend = friends[selectedUser.id];
+        const hasPendingRequest = friendRequests[selectedUser.id];
+        const isBlocked = blockedUsers[selectedUser.id];
+        
+        return (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-[#f0f2f5] p-4 flex justify-between items-center border-b sticky top-0">
+                        <h2 className="font-semibold text-gray-800">Informações do Contato</h2>
+                        <button onClick={() => setShowUserInfo(false)} className="text-gray-500 hover:text-gray-700">
+                            <div className="icon-x text-xl"></div>
+                        </button>
+                    </div>
+                    
+                    <div className="p-6">
+                        <div className="flex justify-center mb-4">
+                            {selectedUser.avatar ? (
+                                <img src={selectedUser.avatar} className="w-32 h-32 rounded-full object-cover border-4 border-gray-200" />
+                            ) : (
+                                <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-200">
+                                    <div className="icon-user text-5xl text-gray-400"></div>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <h3 className="text-xl font-bold text-center text-gray-800">{selectedUser.name}</h3>
+                        <p className="text-center text-gray-500 text-sm mt-1">@{selectedUser.name}</p>
+                        <p className="text-center text-gray-400 text-xs">ID: {selectedUser.id}</p>
+                        
+                        <div className="flex flex-wrap justify-center gap-3 mt-6">
+                            <button onClick={() => { setShowUserInfo(false); startCall(false); }} className="flex flex-col items-center gap-1 p-2 bg-green-50 rounded-lg hover:bg-green-100 transition">
+                                <div className="icon-phone text-xl text-green-600"></div>
+                                <span className="text-xs">Ligar</span>
+                            </button>
+                            <button onClick={() => { setShowUserInfo(false); startCall(true); }} className="flex flex-col items-center gap-1 p-2 bg-green-50 rounded-lg hover:bg-green-100 transition">
+                                <div className="icon-video text-xl text-green-600"></div>
+                                <span className="text-xs">Video</span>
+                            </button>
+                            <button onClick={() => { setShowUserInfo(false); openChat(selectedUser); }} className="flex flex-col items-center gap-1 p-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
+                                <div className="icon-message-circle text-xl text-blue-600"></div>
+                                <span className="text-xs">Mensagem</span>
+                            </button>
+                        </div>
+                        
+                        <div className="mt-6 pt-4 border-t border-gray-100">
+                            {isBlocked ? (
+                                <button onClick={() => {
+                                    db.ref(`users/${user.id}/blocked/${selectedUser.id}`).remove();
+                                    loadFriendsData();
+                                    showToastMessage("Usuário desbloqueado!", "success");
+                                    setShowUserInfo(false);
+                                }} className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                                    Desbloquear Usuário
+                                </button>
+                            ) : isFriend ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-center gap-2 text-green-600">
+                                        <div className="icon-user-check"></div>
+                                        <span className="text-sm">Amigos</span>
+                                    </div>
+                                    <button onClick={() => removeFriend(selectedUser.id, selectedUser.name)} className="w-full py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
+                                        Remover Amigo
+                                    </button>
+                                </div>
+                            ) : hasPendingRequest ? (
+                                <div className="flex gap-2">
+                                    <button onClick={() => acceptFriendRequest(selectedUser.id, selectedUser.name)} className="flex-1 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">Aceitar</button>
+                                    <button onClick={() => rejectFriendRequest(selectedUser.id)} className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">Recusar</button>
+                                </div>
+                            ) : (
+                                <button onClick={() => {
+                                    setFriendUsername(selectedUser.name);
+                                    sendFriendRequestByUsername();
+                                }} className="w-full py-2 bg-[#00a884] text-white rounded-lg hover:bg-[#008f6f] transition flex items-center justify-center gap-2">
+                                    <div className="icon-user-plus"></div> Adicionar Amigo
+                                </button>
+                            )}
+                        </div>
+                        
+                        {!isBlocked && (
+                            <div className="mt-4 flex gap-2">
+                                <button onClick={() => {
+                                    db.ref(`users/${user.id}/blocked/${selectedUser.id}`).set({ blockedAt: Date.now() });
+                                    loadFriendsData();
+                                    showToastMessage("Usuário bloqueado!", "success");
+                                    setShowUserInfo(false);
+                                }} className="flex-1 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2">
+                                    <div className="icon-ban"></div> Bloquear
+                                </button>
+                                <button onClick={() => setShowReportModal(true)} className="flex-1 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition flex items-center justify-center gap-2">
+                                    <div className="icon-flag"></div> Denunciar
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                
+                {showReportModal && (
+                    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+                            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                                <h3 className="text-lg font-semibold">Denunciar {selectedUser?.name}</h3>
+                                <button onClick={() => setShowReportModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <div className="icon-x"></div>
+                                </button>
+                            </div>
+                            <div className="p-4">
+                                <textarea 
+                                    value={reportReason} 
+                                    onChange={(e) => setReportReason(e.target.value)} 
+                                    placeholder="Motivo da denúncia (ex: spam, ofensas, etc)..."
+                                    className="w-full border rounded-lg p-3 text-sm focus:outline-none focus:border-red-500" 
+                                    rows="4"
+                                />
+                            </div>
+                            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+                                <button onClick={() => setShowReportModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                                <button onClick={reportUser} disabled={reporting} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
+                                    {reporting ? 'Enviando...' : 'Enviar Denúncia'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     // PeerJS Setup
     React.useEffect(() => {
+        if (!user?.id) return;
         const cleanId = user.id.replace(/[^a-zA-Z0-9]/g, ''); 
         const newPeer = new window.Peer(cleanId);
         
@@ -1073,95 +1099,19 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         const userStatusRef = db.ref(`users/${user.id}/status`);
         connectedRef.on("value", (snap) => {
             if (snap.val() === true) {
-                userStatusRef.onDisconnect().set({ state: 'offline', lastChanged: window.firebase.database.ServerValue.TIMESTAMP });
-                userStatusRef.set({ state: 'online', lastChanged: window.firebase.database.ServerValue.TIMESTAMP });
+                userStatusRef.onDisconnect().set({ state: 'offline', lastChanged: Date.now() });
+                userStatusRef.set({ state: 'online', lastChanged: Date.now() });
             }
         });
         
         return () => { 
             newPeer.destroy(); 
             connectedRef.off(); 
-            userStatusRef.set({ state: 'offline', lastChanged: window.firebase.database.ServerValue.TIMESTAMP });
+            userStatusRef.set({ state: 'offline', lastChanged: Date.now() });
         };
-    }, [user.id]);
+    }, [user?.id]);
 
-    React.useEffect(() => {
-        if (!activeChat || activeChat.type !== 'group') { setOngoingGroupCall(null); return; }
-        const callStatusRef = db.ref(`groups/${activeChat.id}/callStatus`);
-        const handleStatus = (snap) => {
-            const status = snap.val();
-            if (status?.state === 'active') { if (!activeGroupCall) setOngoingGroupCall(status); else setOngoingGroupCall(null); }
-            else if (status?.state === 'ended') { setOngoingGroupCall(null); if ((Date.now() - status.timestamp < 5000) && (callStatus === 'connected' || callStatus === 'calling')) endCall(true); }
-            else setOngoingGroupCall(null);
-        };
-        callStatusRef.on('value', handleStatus);
-        return () => callStatusRef.off();
-    }, [activeChat, callStatus, activeGroupCall]);
-
-    React.useEffect(() => {
-        if (!chats.length) return;
-        const listeners = [];
-        chats.forEach(chat => {
-            const messagesRef = chat.type === 'group' ? db.ref(`groups/${chat.id}/messages`) : db.ref(`chats/${[user.id, chat.id].sort().join('_')}/messages`);
-            const listener = messagesRef.limitToLast(1).on('child_added', (snapshot) => {
-                const msg = snapshot.val();
-                if (!msg) return;
-                const isRecent = (Date.now() - msg.timestamp) < 10000; 
-                const isFromMe = msg.senderId === user.id;
-                if (!isFromMe && isRecent) {
-                    const isChatActive = activeChat && activeChat.id === chat.id;
-                    if (!isChatActive || document.hidden) {
-                        window.NotificationSystem?.show(
-                            `Nova mensagem de ${msg.senderName}`,
-                            msg.type === 'audio' ? '🎵 Mensagem de áudio' : (msg.type === 'image' ? '📷 Imagem' : (msg.type === 'video' ? '🎬 Vídeo' : (msg.text?.substring(0, 50) || 'Mensagem'))),
-                            chat.avatar,
-                            `msg-${chat.id}`,
-                            chat.id
-                        );
-                    }
-                }
-            });
-            listeners.push({ ref: messagesRef, fn: listener });
-        });
-        return () => listeners.forEach(l => l.ref.off('child_added', l.fn));
-    }, [chats, activeChat]);
-
-    const handleJoinSuccess = (groupData) => {
-        setActiveChat({ ...groupData, id: pendingJoinGroupId, type: 'group' });
-        onClearJoin();
-    };
-
-    const connectToNewPeer = async (peerId, video) => {
-        try {
-            const stream = localStreamRef.current || await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-            if (!localStreamRef.current) localStreamRef.current = stream;
-            const targetPeerId = peerId.replace(/[^a-zA-Z0-9]/g, '');
-            const call = peer.call(targetPeerId, stream, { metadata: { isVideo: video, isGroup: true, inviterId: user.id } });
-            if (call) { handleCallStream(call, video, targetPeerId); setActiveCalls(prev => ({ ...prev, [targetPeerId]: call })); }
-        } catch(e) { console.error("Erro:", e); }
-    };
-
-    const handleAddParticipantToCall = async (newId) => {
-        if (!newId) return;
-        await connectToNewPeer(newId, isVideoCall);
-        Object.keys(activeCalls).forEach(connectedPeerId => {
-            db.ref(`users/${connectedPeerId}/call_signal`).push({ type: 'connect_peer', targetPeer: newId, timestamp: Date.now() });
-        });
-        setShowAddContact(false); 
-    };
-
-    const endGroupCallForEveryone = () => {
-        if (!activeChat || activeChat.type !== 'group') return;
-        if (!confirm("Encerrar chamada para TODOS?")) return;
-        db.ref(`groups/${activeChat.id}/callStatus`).set({ state: 'ended', endedBy: user.id, timestamp: Date.now() });
-        endCall();
-    };
-
-    React.useEffect(() => {
-        if (activeChat && activeChat.type === 'group') db.ref(`groups/${activeChat.id}/permissions`).on('value', s => setGroupPermissions(s.val()));
-        else setGroupPermissions(null);
-    }, [activeChat]);
-
+    // Carregar chats
     React.useEffect(() => {
         if (!db || !user) return;
         const contactsRef = db.ref(`users/${user.id}/contacts`);
@@ -1199,7 +1149,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         return () => contactsRef.off();
     }, [user, db]);
 
-    // ==================== FUNÇÃO PARA CARREGAR MENSAGENS ====================
+    // ==================== FUNÇÃO PARA CARREGAR MENSAGENS E EXECUTAR REGRAS ====================
     React.useEffect(() => {
         if (!activeChat || !db) return;
         
@@ -1242,8 +1192,24 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 messagesRef.limitToLast(50).on('child_added', (snapshot) => {
                     const msg = snapshot.val();
                     setMessages(prev => [...prev, { ...msg, key: snapshot.key }]);
+                    
                     if (msg.senderId !== user.id) markAsRead(snapshot.key, msg.senderId);
+                    
+                    // ==================== EXECUTAR REGRAS PARA MENSAGENS RECEBIDAS ====================
+                    if (activeChat.type === 'group' && msg.senderId !== user.id && window.ruleMotorInstance) {
+                        const memberData = {
+                            id: msg.senderId,
+                            name: msg.senderName,
+                            role: activeChat.members?.[msg.senderId] || 'member'
+                        };
+                        
+                        setTimeout(() => {
+                            window.ruleMotorInstance.executeRules(activeChat.id, msg, memberData);
+                            console.log(`[ChatInterface] Regras executadas para mensagem de ${msg.senderName}`);
+                        }, 100);
+                    }
                 });
+                
                 messagesRef.limitToLast(50).on('child_changed', (snapshot) => setMessages(prev => prev.map(m => m.key === snapshot.key ? { ...snapshot.val(), key: snapshot.key } : m)));
                 
                 return () => {
@@ -1311,16 +1277,35 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         
         try {
             if (type === 'audio') {
-                window.ChatAppAPI?.sendAudio(activeChat.id, content, duration, activeChat.type);
+                const msgData = {
+                    senderId: user.id,
+                    senderName: user.name,
+                    text: '🎵 Mensagem de áudio',
+                    type: 'audio',
+                    audio: content,
+                    duration: duration,
+                    timestamp: Date.now(),
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+                const ref = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                await ref.push(msgData);
             } else if (type === 'system') {
                 const ref = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
                 await ref.push({
                     senderId: 'system', senderName: 'Sistema', text: content, type: 'system',
-                    timestamp: window.firebase.database.ServerValue.TIMESTAMP,
+                    timestamp: Date.now(),
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 });
             } else {
-                window.ChatAppAPI?.sendMessage(activeChat.id, content, activeChat.type, msgType);
+                const ref = activeChat.type === 'group' ? db.ref(`groups/${activeChat.id}/messages`) : db.ref(`chats/${[user.id, activeChat.id].sort().join('_')}/messages`);
+                await ref.push({
+                    senderId: user.id,
+                    senderName: user.name,
+                    text: content,
+                    type: type === 'text' ? 'text' : msgType,
+                    timestamp: Date.now(),
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
             }
             setMessageInput("");
             setShowAudioRecorder(false);
@@ -1380,6 +1365,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         }
     };
 
+    const handleJoinSuccess = (groupData) => {
+        setActiveChat({ ...groupData, id: pendingJoinGroupId, type: 'group' });
+        onClearJoin();
+    };
+
     const ToastComponent = () => {
         if (!toastMessage) return null;
         return <div className={`fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg text-white text-sm ${toastMessage.type === 'error' ? 'bg-red-500' : toastMessage.type === 'success' ? 'bg-green-500' : 'bg-gray-800'}`}>{toastMessage.message}</div>;
@@ -1393,6 +1383,10 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
         .download-btn { background: #00a884; color: white; border: none; border-radius: 20px; padding: 5px 12px; font-size: 11px; cursor: pointer; }
         .download-btn:hover { background: #008f6f; }
         .speaking-indicator { box-shadow: 0 0 0 2px #00a884; }
+        .animate-slide-in-right { animation: slideInRight 0.3s ease-out; }
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .avatar-pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0,168,132,0.7); } 70% { box-shadow: 0 0 0 10px rgba(0,168,132,0); } 100% { box-shadow: 0 0 0 0 rgba(0,168,132,0); } }
     `;
 
     return (
@@ -1401,7 +1395,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
             <ToastComponent />
             <UserInfoModal />
 
-            {/* Modais */}
+            {/* Modal de entrada em grupo */}
             {pendingJoinGroupId && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg w-80">
@@ -1430,6 +1424,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 </div>
             )}
 
+            {/* Criador de Bot */}
             {showBotCreator && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg w-80">
@@ -1452,9 +1447,10 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 </div>
             )}
 
+            {/* Configurações */}
             {showSettings && <Settings user={user} onClose={() => setShowSettings(false)} chats={chats} />}
 
-            {/* Modal para adicionar amigo por @username */}
+            {/* Modal para adicionar amigo */}
             {showAddFriendModal && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg w-80">
@@ -1477,6 +1473,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 </div>
             )}
 
+            {/* Modal adicionar contato */}
             {showAddContact && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg w-80">
@@ -1496,7 +1493,11 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                             <div className="mb-4 max-h-60 overflow-y-auto">
                                 <p className="text-sm text-gray-500 mb-2">Contatos disponíveis:</p>
                                 {chats.filter(c => c.type !== 'group').map(c => (
-                                    <div key={c.id} onClick={() => handleAddParticipantToCall(c.id)} className="flex items-center p-2 hover:bg-gray-100 cursor-pointer rounded">
+                                    <div key={c.id} onClick={() => {
+                                        const targetPeerId = c.id.replace(/[^a-zA-Z0-9]/g, '');
+                                        connectToNewPeer(targetPeerId, isVideoCall);
+                                        setShowAddContact(false);
+                                    }} className="flex items-center p-2 hover:bg-gray-100 cursor-pointer rounded">
                                         {c.avatar ? (
                                             <img src={c.avatar} className="w-8 h-8 rounded-full mr-2" />
                                         ) : (
@@ -1520,7 +1521,7 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                         )}
                         <div className="flex justify-end gap-2">
                             <button onClick={() => setShowAddContact(false)} className="px-4 py-2 text-gray-600 rounded">Cancelar</button>
-                            <button onClick={() => { const val = document.getElementById('newContactId')?.value; if (val) callStatus ? handleAddParticipantToCall(val) : handleAddContact(val); }} className="px-4 py-2 bg-[#00a884] text-white rounded">Ir</button>
+                            <button onClick={() => { const val = document.getElementById('newContactId')?.value; if (val) callStatus ? connectToNewPeer(val.replace(/[^a-zA-Z0-9]/g, ''), isVideoCall) : handleAddContact(val); setShowAddContact(false); }} className="px-4 py-2 bg-[#00a884] text-white rounded">Ir</button>
                         </div>
                     </div>
                 </div>
@@ -1558,10 +1559,12 @@ function ChatInterface({ user, onLogout, pendingJoinGroupId, onClearJoin }) {
                 </div>
             )}
 
+            {/* Informações do Grupo */}
             {showGroupInfo && activeChat?.type === 'group' && (
                 <GroupInfo 
                     activeChat={activeChat} 
                     user={user} 
+                    db={db}
                     onClose={() => {
                         setShowGroupInfo(false);
                         window.history.pushState({}, '', window.location.pathname);
