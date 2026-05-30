@@ -563,13 +563,7 @@ function GroupInfo({ activeChat, user, onClose }) {
                             <span>Permissões do Grupo</span>
                         </div>
                         {isAdmin && (
-                            <div className="flex gap-3 items-center">
-                                <button onClick={() => setShowRuleEditor(true)} className="text-xs bg-gray-900 text-[#00ff9d] px-3 py-1.5 rounded hover:bg-black font-mono flex items-center gap-2 shadow-sm border border-gray-700 transition-all hover:scale-105">
-                                    <div className="icon-code w-3 h-3"></div> 
-                                    <span className="font-bold">EDITOR DE REGRAS (JS)</span>
-                                </button>
-                                <button onClick={addCustomPermission} className="text-xs text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">+ Permissão</button>
-                            </div>
+                            <button onClick={addCustomPermission} className="text-xs text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">+ Permissão</button>
                         )}
                     </div>
                     <div className="divide-y divide-gray-100">
