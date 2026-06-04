@@ -49,7 +49,6 @@
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
         .bg-chat-pattern { background-color: #efeae2; background-image: url("https://www.transparenttextures.com/patterns/subtle-white-feathers.png"); }
         
-        /* Botão Sino */
         #btn-notificacoes {
             position: fixed;
             bottom: 20px;
@@ -75,9 +74,21 @@
             background-color: #008f6e;
         }
         
-        /* Classe para esconder o botão se já estiver inscrito */
         #btn-notificacoes.hidden {
             display: none;
+        }
+        
+        .toast-notify {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-size: 14px;
+            animation: fadeIn 0.3s ease;
         }
         
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
@@ -88,12 +99,11 @@
 <body>
     <div id="root"></div>
     
-    <!-- Botão Sino para ativar notificações -->
     <button id="btn-notificacoes">
         <i class="fas fa-bell"></i>
     </button>
 
-    <!-- ==================== FIREBASE CONFIG ==================== -->
+    <!-- Firebase Config -->
     <script type="text/babel">
         const firebaseConfig = {
             databaseURL: "https://html-785e3-default-rtdb.firebaseio.com/"
@@ -102,174 +112,166 @@
         window.firebaseDB = firebase.database();
     </script>
 
-    <!-- ==================== ONESIGNAL MANAGER ==================== -->
-    <script type="text/babel">
-        window.OneSignalManager = {
-            currentUserId: null,
-            currentSubscriptionId: null,
-            initialized: false,
-            
-            async init(userId) {
-                this.currentUserId = userId;
-                this.initialized = true;
-                
-                return new Promise((resolve) => {
-                    OneSignal.push(async () => {
-                        OneSignal.init({
-                            appId: "9d6e714d-c316-428d-80fa-ba51aaec2a18",
-                            notifyButton: { enable: false },
-                            allowLocalhostAsSecureOrigin: true,
-                        });
-                        
-                        // Aguarda um pouco para garantir que o OneSignal carregou
-                        setTimeout(async () => {
-                            // Verifica se já está inscrito
-                            const isEnabled = await OneSignal.isPushNotificationsEnabled();
-                            console.log('📢 Status da inscrição:', isEnabled ? 'Inscrito' : 'Não inscrito');
-                            
-                            // Esconde o botão se já estiver inscrito
-                            const btn = document.getElementById('btn-notificacoes');
-                            if (btn) {
-                                if (isEnabled) {
-                                    btn.classList.add('hidden');
-                                } else {
-                                    btn.classList.remove('hidden');
-                                }
-                            }
-                            
-                            if (isEnabled) {
-                                await this.getAndSaveSubscriptionId();
-                            }
-                        }, 1000);
-                        
-                        // Monitora mudanças na inscrição
-                        OneSignal.on('subscriptionChange', async (isSubscribed) => {
-                            console.log('📢 Mudança:', isSubscribed ? 'Usuário PERMITIU' : 'Usuário CANCELOU');
-                            
-                            const btn = document.getElementById('btn-notificacoes');
-                            if (btn) {
-                                if (isSubscribed) {
-                                    btn.classList.add('hidden');
-                                } else {
-                                    btn.classList.remove('hidden');
-                                }
-                            }
-                            
-                            if (isSubscribed && this.currentUserId) {
-                                await this.getAndSaveSubscriptionId();
-                            } else if (!isSubscribed && this.currentUserId) {
-                                await this.removeSubscriptionId();
-                            }
-                        });
-                        
-                        resolve(true);
-                    });
-                });
-            },
-            
-            async getAndSaveSubscriptionId() {
-                return new Promise((resolve) => {
-                    OneSignal.push(async () => {
-                        const subscriptionId = await OneSignal.getSubscriptionId();
-                        
-                        if (subscriptionId && this.currentUserId) {
-                            this.currentSubscriptionId = subscriptionId;
-                            console.log('📱 Subscription ID capturado:', subscriptionId);
-                            
-                            try {
-                                await window.firebaseDB.ref(`users/${this.currentUserId}/onesignal`).set({
-                                    subscriptionId: subscriptionId,
-                                    updatedAt: Date.now(),
-                                    status: 'subscribed'
-                                });
-                                console.log('✅ Subscription ID salvo no Firebase!');
-                                this.mostrarToast('✅ Notificações ativadas com sucesso!');
-                            } catch (error) {
-                                console.error('❌ Erro ao salvar:', error);
-                            }
-                        }
-                        resolve(subscriptionId);
-                    });
-                });
-            },
-            
-            async removeSubscriptionId() {
-                if (this.currentUserId) {
-                    try {
-                        await window.firebaseDB.ref(`users/${this.currentUserId}/onesignal`).remove();
-                        console.log('🗑️ Subscription ID removido do Firebase');
-                        this.mostrarToast('🔕 Notificações desativadas');
-                    } catch (error) {
-                        console.error('❌ Erro ao remover:', error);
-                    }
-                }
-            },
-            
-            async pedirPermissao() {
-                console.log('🔔 Solicitando permissão para notificações...');
-                
-                // Garante que o OneSignal está pronto
-                OneSignal.push(async () => {
-                    try {
-                        // Verifica se já tem permissão
-                        const isEnabled = await OneSignal.isPushNotificationsEnabled();
-                        
-                        if (isEnabled) {
-                            console.log('✅ Já está inscrito, salvando ID...');
-                            await this.getAndSaveSubscriptionId();
-                            
-                            const btn = document.getElementById('btn-notificacoes');
-                            if (btn) btn.classList.add('hidden');
-                        } else {
-                            // Pede permissão
-                            const result = await OneSignal.registerForPushNotifications();
-                            console.log('Resultado da permissão:', result);
-                        }
-                    } catch (error) {
-                        console.error('❌ Erro ao pedir permissão:', error);
-                    }
-                });
-            },
-            
-            mostrarToast(mensagem) {
-                // Cria um toast simples para feedback
-                const toast = document.createElement('div');
-                toast.textContent = mensagem;
-                toast.style.position = 'fixed';
-                toast.style.bottom = '90px';
-                toast.style.right = '20px';
-                toast.style.backgroundColor = '#333';
-                toast.style.color = 'white';
-                toast.style.padding = '10px 20px';
-                toast.style.borderRadius = '8px';
-                toast.style.zIndex = '10000';
-                toast.style.fontSize = '14px';
-                toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-                document.body.appendChild(toast);
-                
-                setTimeout(() => {
-                    toast.remove();
-                }, 3000);
-            }
-        };
+    <!-- OneSignal Manager SIMPLES -->
+    <script>
+        // Variáveis globais
+        let currentUserId = null;
         
-        // Aguarda o DOM carregar completamente antes de adicionar o evento
-        document.addEventListener('DOMContentLoaded', () => {
+        // Função para mostrar toast
+        function mostrarToast(mensagem) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-notify';
+            toast.textContent = mensagem;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // Função para salvar Subscription ID no Firebase
+        async function salvarSubscriptionId(subscriptionId) {
+            if (!currentUserId || !subscriptionId) {
+                console.log('❌ userId ou subscriptionId vazio');
+                return false;
+            }
+            
+            try {
+                await window.firebaseDB.ref(`users/${currentUserId}/onesignal`).set({
+                    subscriptionId: subscriptionId,
+                    updatedAt: Date.now(),
+                    status: 'subscribed'
+                });
+                console.log('✅ ID salvo no Firebase:', subscriptionId);
+                mostrarToast('✅ Notificações ativadas!');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                return false;
+            }
+        }
+        
+        // Função para remover ID do Firebase
+        async function removerSubscriptionId() {
+            if (!currentUserId) return false;
+            try {
+                await window.firebaseDB.ref(`users/${currentUserId}/onesignal`).remove();
+                console.log('🗑️ ID removido do Firebase');
+                mostrarToast('🔕 Notificações desativadas');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                return false;
+            }
+        }
+        
+        // Função para atualizar visibilidade do botão
+        function atualizarBotao(inscrito) {
             const btn = document.getElementById('btn-notificacoes');
             if (btn) {
-                // Remove eventos anteriores
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log('🔔 Botão clicado!');
-                    if (window.OneSignalManager) {
-                        window.OneSignalManager.pedirPermissao();
+                if (inscrito) {
+                    btn.classList.add('hidden');
+                } else {
+                    btn.classList.remove('hidden');
+                }
+            }
+        }
+        
+        // Função principal para pedir permissão
+        function pedirPermissaoNotificacao() {
+            console.log('🔔 Botão clicado! Pedindo permissão...');
+            
+            OneSignal.push(function() {
+                OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
+                    if (isEnabled) {
+                        console.log('✅ Já está inscrito');
+                        mostrarToast('✅ Você já recebe notificações!');
+                        atualizarBotao(true);
                     } else {
-                        console.error('❌ OneSignalManager não está disponível');
+                        console.log('📢 Solicitando permissão...');
+                        OneSignal.registerForPushNotifications().then(function() {
+                            console.log('✅ Permissão concedida!');
+                            // Aguarda um pouco e pega o ID
+                            setTimeout(function() {
+                                OneSignal.getSubscriptionId().then(function(subscriptionId) {
+                                    if (subscriptionId) {
+                                        console.log('📱 ID:', subscriptionId);
+                                        salvarSubscriptionId(subscriptionId);
+                                        atualizarBotao(true);
+                                    }
+                                });
+                            }, 2000);
+                        }).catch(function(err) {
+                            console.log('❌ Usuário negou:', err);
+                            mostrarToast('❌ Você precisa permitir as notificações');
+                        });
                     }
                 });
+            });
+        }
+        
+        // Inicializar OneSignal e verificar status
+        function iniciarOneSignal(userId) {
+            currentUserId = userId;
+            
+            OneSignal.push(function() {
+                OneSignal.init({
+                    appId: "9d6e714d-c316-428d-80fa-ba51aaec2a18",
+                    notifyButton: { enable: false },
+                    allowLocalhostAsSecureOrigin: true,
+                });
+                
+                // Verifica status atual
+                setTimeout(function() {
+                    OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
+                        console.log('📢 Status:', isEnabled ? 'Inscrito' : 'Não inscrito');
+                        atualizarBotao(isEnabled);
+                        
+                        if (isEnabled) {
+                            OneSignal.getSubscriptionId().then(function(subscriptionId) {
+                                if (subscriptionId) {
+                                    salvarSubscriptionId(subscriptionId);
+                                }
+                            });
+                        }
+                    });
+                }, 2000);
+                
+                // Monitora mudanças
+                OneSignal.on('subscriptionChange', function(isSubscribed) {
+                    console.log('📢 Mudou:', isSubscribed ? 'Inscrito' : 'Cancelou');
+                    atualizarBotao(isSubscribed);
+                    
+                    if (isSubscribed && currentUserId) {
+                        setTimeout(function() {
+                            OneSignal.getSubscriptionId().then(function(subscriptionId) {
+                                if (subscriptionId) salvarSubscriptionId(subscriptionId);
+                            });
+                        }, 1000);
+                    } else if (!isSubscribed && currentUserId) {
+                        removerSubscriptionId();
+                    }
+                });
+            });
+        }
+        
+        // EXPOR FUNÇÕES GLOBALMENTE
+        window.iniciarOneSignal = iniciarOneSignal;
+        window.pedirPermissaoNotificacao = pedirPermissaoNotificacao;
+        
+        // Configurar botão quando o DOM carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('btn-notificacoes');
+            if (btn) {
+                // Remove eventos antigos
+                const novoBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(novoBtn, btn);
+                
+                novoBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔔 Clique detectado!');
+                    if (window.pedirPermissaoNotificacao) {
+                        window.pedirPermissaoNotificacao();
+                    }
+                };
             }
         });
     </script>
