@@ -318,4 +318,184 @@
     </script>
 </body>
 
+</html>                });
+                console.log('✅ ID salvo no Firebase:', subscriptionId);
+                mostrarToast('✅ Notificações ativadas!');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                return false;
+            }
+        }
+        
+        // Função para remover ID do Firebase
+        async function removerSubscriptionId() {
+            if (!currentUserId) return false;
+            try {
+                await window.firebaseDB.ref(`users/${currentUserId}/onesignal`).remove();
+                console.log('🗑️ ID removido do Firebase');
+                mostrarToast('🔕 Notificações desativadas');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                return false;
+            }
+        }
+        
+        // Função para atualizar visibilidade do botão
+        function atualizarBotao(inscrito) {
+            const btn = document.getElementById('btn-notificacoes');
+            if (btn) {
+                if (inscrito) {
+                    btn.classList.add('hidden');
+                } else {
+                    btn.classList.remove('hidden');
+                }
+            }
+        }
+        
+        // Função principal para pedir permissão
+        function pedirPermissaoNotificacao() {
+            console.log('🔔 Botão clicado! Pedindo permissão...');
+            
+            OneSignal.push(function() {
+                OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
+                    if (isEnabled) {
+                        console.log('✅ Já está inscrito');
+                        mostrarToast('✅ Você já recebe notificações!');
+                        atualizarBotao(true);
+                    } else {
+                        console.log('📢 Solicitando permissão...');
+                        OneSignal.registerForPushNotifications().then(function() {
+                            console.log('✅ Permissão concedida!');
+                            // Aguarda um pouco e pega o ID
+                            setTimeout(function() {
+                                OneSignal.getSubscriptionId().then(function(subscriptionId) {
+                                    if (subscriptionId) {
+                                        console.log('📱 ID:', subscriptionId);
+                                        salvarSubscriptionId(subscriptionId);
+                                        atualizarBotao(true);
+                                    }
+                                });
+                            }, 2000);
+                        }).catch(function(err) {
+                            console.log('❌ Usuário negou:', err);
+                            mostrarToast('❌ Você precisa permitir as notificações');
+                        });
+                    }
+                });
+            });
+        }
+        
+        // Inicializar OneSignal e verificar status
+        function iniciarOneSignal(userId) {
+            currentUserId = userId;
+            
+            OneSignal.push(function() {
+                OneSignal.init({
+                    appId: "9d6e714d-c316-428d-80fa-ba51aaec2a18",
+                    notifyButton: { enable: false },
+                    allowLocalhostAsSecureOrigin: true,
+                });
+                
+                // Verifica status atual
+                setTimeout(function() {
+                    OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
+                        console.log('📢 Status:', isEnabled ? 'Inscrito' : 'Não inscrito');
+                        atualizarBotao(isEnabled);
+                        
+                        if (isEnabled) {
+                            OneSignal.getSubscriptionId().then(function(subscriptionId) {
+                                if (subscriptionId) {
+                                    salvarSubscriptionId(subscriptionId);
+                                }
+                            });
+                        }
+                    });
+                }, 2000);
+                
+                // Monitora mudanças
+                OneSignal.on('subscriptionChange', function(isSubscribed) {
+                    console.log('📢 Mudou:', isSubscribed ? 'Inscrito' : 'Cancelou');
+                    atualizarBotao(isSubscribed);
+                    
+                    if (isSubscribed && currentUserId) {
+                        setTimeout(function() {
+                            OneSignal.getSubscriptionId().then(function(subscriptionId) {
+                                if (subscriptionId) salvarSubscriptionId(subscriptionId);
+                            });
+                        }, 1000);
+                    } else if (!isSubscribed && currentUserId) {
+                        removerSubscriptionId();
+                    }
+                });
+            });
+        }
+        
+        // EXPOR FUNÇÕES GLOBALMENTE
+        window.iniciarOneSignal = iniciarOneSignal;
+        window.pedirPermissaoNotificacao = pedirPermissaoNotificacao;
+        
+        // Configurar botão quando o DOM carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('btn-notificacoes');
+            if (btn) {
+                // Remove eventos antigos
+                const novoBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(novoBtn, btn);
+                
+                novoBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔔 Clique detectado!');
+                    if (window.pedirPermissaoNotificacao) {
+                        window.pedirPermissaoNotificacao();
+                    }
+                };
+            }
+        });
+    </script>
+
+    <!-- ==================== COMPONENTES ==================== -->
+    <script type="text/babel" src="components/ComponentRegistry.js"></script>
+    <script type="text/babel" src="components/UserInfo.js"></script>
+    <script type="text/babel" src="components/StatusIndicator.js"></script>
+    <script type="text/babel" src="components/StatusBadge.js"></script>
+    <script type="text/babel" src="components/UserAvatar.js"></script>
+    <script type="text/babel" src="components/ContactItem.js"></script>
+    <script type="text/babel" src="components/MessageInput.js"></script>
+    <script type="text/babel" src="components/Toast.js"></script>
+    <script type="text/babel" src="components/Modal.js"></script>
+    <script type="text/babel" src="components/LoadingSpinner.js"></script>
+    <script type="text/babel" src="components/ContextMenu.js"></script>
+    <script type="text/babel" src="components/ComponentLoader.js"></script>
+    <script type="text/babel" src="components/ContactStatusBadge.js"></script>
+    <script type="text/babel" src="components/AudioRecorder.js"></script>
+    <script type="text/babel" src="components/Settings.js"></script>
+    <script type="text/babel" src="components/RuleEditor.js"></script>
+    <script type="text/babel" src="components/GroupInfo.js"></script>
+    <script type="text/babel" src="components/SystemStatus.js"></script>
+    <script type="text/babel" src="components/JoinRequestModal.js"></script>
+    <script type="text/babel" src="components/Login.js"></script>
+    <script type="text/babel" src="components/CallManager.js"></script>
+    <script type="text/babel" src="components/QRCodeConnection.js"></script>
+    <script type="text/babel" src="components/RuleMotor.js"></script>
+    <script type="text/babel" src="components/ChatInterface.js"></script>
+    <script type="text/babel" src="app.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                .then(registration => {
+                    console.log('SW registrado com sucesso:', registration.scope);
+                })
+                .catch(err => {
+                    console.log('Falha ao registrar SW:', err);
+                });
+            });
+        }
+    </script>
+</body>
+
 </html>
