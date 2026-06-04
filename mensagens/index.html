@@ -48,25 +48,6 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
         .bg-chat-pattern { background-color: #efeae2; background-image: url("https://www.transparenttextures.com/patterns/subtle-white-feathers.png"); }
-        
-        #custom-notification-bell {
-            position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px;
-            border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); z-index: 9999;
-            transition: all 0.3s ease; font-size: 28px; border: none;
-        }
-        #custom-notification-bell.bell-active {
-            background-color: #00a884;
-            color: white;
-        }
-        #custom-notification-bell.bell-inactive {
-            background-color: #ef4444;
-            color: white;
-        }
-        #custom-notification-bell:hover { transform: scale(1.1); }
-        #custom-notification-bell.hidden { display: none; }
-        
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -74,11 +55,6 @@
 
 <body>
     <div id="root"></div>
-    
-    <!-- Botão que muda de cor e função -->
-    <button id="custom-notification-bell" class="bell-inactive">
-        <i class="fas fa-bell"></i>
-    </button>
 
     <!-- ==================== FIREBASE CONFIG ==================== -->
     <script type="text/babel">
@@ -104,22 +80,26 @@
                             appId: "9d6e714d-c316-428d-80fa-ba51aaec2a18",
                             notifyButton: { enable: false },
                             allowLocalhostAsSecureOrigin: true,
+                            autoRegister: true  // 🔥 AUTO REGISTER - pergunta automaticamente
                         });
                         
+                        // Verifica se já está inscrito
                         const isEnabled = await OneSignal.isPushNotificationsEnabled();
-                        this.updateBellUI(isEnabled);
+                        console.log('📢 Status da inscrição:', isEnabled ? 'Inscrito' : 'Não inscrito');
                         
                         if (isEnabled) {
                             await this.getAndSaveSubscriptionId();
                         }
                         
+                        // Monitora mudanças na inscrição
                         OneSignal.on('subscriptionChange', async (isSubscribed) => {
-                            console.log('📢 Mudança:', isSubscribed ? 'Inscrito' : 'Cancelou');
-                            this.updateBellUI(isSubscribed);
+                            console.log('📢 Mudança:', isSubscribed ? 'Usuário PERMITIU' : 'Usuário CANCELOU');
                             
                             if (isSubscribed && this.currentUserId) {
+                                // Usuário permitiu - salva o ID
                                 await this.getAndSaveSubscriptionId();
                             } else if (!isSubscribed && this.currentUserId) {
+                                // Usuário cancelou - remove do Firebase
                                 await this.removeSubscriptionId();
                             }
                         });
@@ -136,7 +116,7 @@
                         
                         if (subscriptionId && this.currentUserId) {
                             this.currentSubscriptionId = subscriptionId;
-                            console.log('📱 Subscription ID:', subscriptionId);
+                            console.log('📱 Subscription ID capturado:', subscriptionId);
                             
                             try {
                                 await window.firebaseDB.ref(`users/${this.currentUserId}/onesignal`).set({
@@ -144,10 +124,12 @@
                                     updatedAt: Date.now(),
                                     status: 'subscribed'
                                 });
-                                console.log('✅ ID salvo no Firebase!');
+                                console.log('✅ Subscription ID salvo no Firebase com sucesso!');
                             } catch (error) {
-                                console.error('❌ Erro ao salvar:', error);
+                                console.error('❌ Erro ao salvar no Firebase:', error);
                             }
+                        } else {
+                            console.log('⚠️ Nenhum subscription ID encontrado');
                         }
                         resolve(subscriptionId);
                     });
@@ -158,53 +140,13 @@
                 if (this.currentUserId) {
                     try {
                         await window.firebaseDB.ref(`users/${this.currentUserId}/onesignal`).remove();
-                        console.log('🗑️ ID removido do Firebase');
+                        console.log('🗑️ Subscription ID removido do Firebase');
                     } catch (error) {
                         console.error('❌ Erro ao remover:', error);
                     }
                 }
-            },
-            
-            updateBellUI(isSubscribed) {
-                const bell = document.getElementById('custom-notification-bell');
-                if (!bell) return;
-                
-                if (isSubscribed) {
-                    // Está inscrito - botão VERDE e ícone de sino (para desativar)
-                    bell.className = 'bell-active';
-                    bell.innerHTML = '<i class="fas fa-bell-slash"></i>'; // Sino com risco
-                    bell.title = 'Desativar notificações';
-                } else {
-                    // Não está inscrito - botão VERMELHO e ícone de sino (para ativar)
-                    bell.className = 'bell-inactive';
-                    bell.innerHTML = '<i class="fas fa-bell"></i>'; // Sino normal
-                    bell.title = 'Ativar notificações';
-                }
-            },
-            
-            async toggleNotification() {
-                const isEnabled = await OneSignal.isPushNotificationsEnabled();
-                
-                if (isEnabled) {
-                    // Se está ativado, desativa
-                    console.log('🔕 Desativando notificações...');
-                    OneSignal.push(() => {
-                        OneSignal.setSubscription(false);
-                    });
-                } else {
-                    // Se está desativado, ativa
-                    console.log('🔔 Ativando notificações...');
-                    OneSignal.push(() => {
-                        OneSignal.registerForPushNotifications();
-                    });
-                }
             }
         };
-        
-        // Clique no sino - agora faz ATIVAR ou DESATIVAR
-        document.getElementById('custom-notification-bell').addEventListener('click', () => {
-            window.OneSignalManager.toggleNotification();
-        });
     </script>
 
     <!-- ==================== COMPONENTES ==================== -->
