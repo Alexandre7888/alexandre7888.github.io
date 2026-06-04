@@ -48,49 +48,6 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
         .bg-chat-pattern { background-color: #efeae2; background-image: url("https://www.transparenttextures.com/patterns/subtle-white-feathers.png"); }
-        
-        #btn-notificacoes {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 56px;
-            height: 56px;
-            background-color: #00a884;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-            z-index: 9999;
-            transition: all 0.3s ease;
-            font-size: 28px;
-            color: white;
-            border: none;
-        }
-        
-        #btn-notificacoes:hover {
-            transform: scale(1.1);
-            background-color: #008f6e;
-        }
-        
-        #btn-notificacoes.hidden {
-            display: none;
-        }
-        
-        .toast-notify {
-            position: fixed;
-            bottom: 90px;
-            right: 20px;
-            background-color: #333;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            z-index: 10000;
-            font-size: 14px;
-            animation: fadeIn 0.3s ease;
-        }
-        
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -98,12 +55,8 @@
 
 <body>
     <div id="root"></div>
-    
-    <button id="btn-notificacoes">
-        <i class="fas fa-bell"></i>
-    </button>
 
-    <!-- Firebase Config -->
+    <!-- ==================== FIREBASE CONFIG ==================== -->
     <script type="text/babel">
         const firebaseConfig = {
             databaseURL: "https://html-785e3-default-rtdb.firebaseio.com/"
@@ -112,19 +65,10 @@
         window.firebaseDB = firebase.database();
     </script>
 
-    <!-- OneSignal Manager SIMPLES -->
+    <!-- ==================== ONESIGNAL PADRÃO ==================== -->
     <script>
-        // Variáveis globais
+        // Variável global do usuário
         let currentUserId = null;
-        
-        // Função para mostrar toast
-        function mostrarToast(mensagem) {
-            const toast = document.createElement('div');
-            toast.className = 'toast-notify';
-            toast.textContent = mensagem;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
         
         // Função para salvar Subscription ID no Firebase
         async function salvarSubscriptionId(subscriptionId) {
@@ -139,11 +83,10 @@
                     updatedAt: Date.now(),
                     status: 'subscribed'
                 });
-                console.log('✅ ID salvo no Firebase:', subscriptionId);
-                mostrarToast('✅ Notificações ativadas!');
+                console.log('✅ Subscription ID salvo no Firebase:', subscriptionId);
                 return true;
             } catch (error) {
-                console.error('❌ Erro:', error);
+                console.error('❌ Erro ao salvar:', error);
                 return false;
             }
         }
@@ -153,307 +96,75 @@
             if (!currentUserId) return false;
             try {
                 await window.firebaseDB.ref(`users/${currentUserId}/onesignal`).remove();
-                console.log('🗑️ ID removido do Firebase');
-                mostrarToast('🔕 Notificações desativadas');
+                console.log('🗑️ Subscription ID removido do Firebase');
                 return true;
             } catch (error) {
-                console.error('❌ Erro:', error);
+                console.error('❌ Erro ao remover:', error);
                 return false;
             }
         }
         
-        // Função para atualizar visibilidade do botão
-        function atualizarBotao(inscrito) {
-            const btn = document.getElementById('btn-notificacoes');
-            if (btn) {
-                if (inscrito) {
-                    btn.classList.add('hidden');
-                } else {
-                    btn.classList.remove('hidden');
-                }
-            }
-        }
-        
-        // Função principal para pedir permissão
-        function pedirPermissaoNotificacao() {
-            console.log('🔔 Botão clicado! Pedindo permissão...');
-            
-            OneSignal.push(function() {
-                OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
-                    if (isEnabled) {
-                        console.log('✅ Já está inscrito');
-                        mostrarToast('✅ Você já recebe notificações!');
-                        atualizarBotao(true);
-                    } else {
-                        console.log('📢 Solicitando permissão...');
-                        OneSignal.registerForPushNotifications().then(function() {
-                            console.log('✅ Permissão concedida!');
-                            // Aguarda um pouco e pega o ID
-                            setTimeout(function() {
-                                OneSignal.getSubscriptionId().then(function(subscriptionId) {
-                                    if (subscriptionId) {
-                                        console.log('📱 ID:', subscriptionId);
-                                        salvarSubscriptionId(subscriptionId);
-                                        atualizarBotao(true);
-                                    }
-                                });
-                            }, 2000);
-                        }).catch(function(err) {
-                            console.log('❌ Usuário negou:', err);
-                            mostrarToast('❌ Você precisa permitir as notificações');
-                        });
-                    }
-                });
-            });
-        }
-        
-        // Inicializar OneSignal e verificar status
+        // Função para iniciar OneSignal
         function iniciarOneSignal(userId) {
             currentUserId = userId;
+            console.log('🚀 Iniciando OneSignal para usuário:', userId);
+            
+            window.OneSignal = window.OneSignal || [];
             
             OneSignal.push(function() {
                 OneSignal.init({
                     appId: "9d6e714d-c316-428d-80fa-ba51aaec2a18",
-                    notifyButton: { enable: false },
+                    notifyButton: {
+                        enable: true,  // 🔥 ATIVA O BOTÃO PADRÃO DO ONESIGNAL 🔥
+                        position: 'bottom-right',  // Posição do botão
+                        theme: 'default',
+                        size: 'medium',
+                        offset: {
+                            bottom: '20px',
+                            right: '20px'
+                        }
+                    },
                     allowLocalhostAsSecureOrigin: true,
                 });
                 
-                // Verifica status atual
-                setTimeout(function() {
-                    OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
-                        console.log('📢 Status:', isEnabled ? 'Inscrito' : 'Não inscrito');
-                        atualizarBotao(isEnabled);
-                        
-                        if (isEnabled) {
+                // Verifica se já está inscrito e salva o ID
+                OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
+                    console.log('📢 Status da inscrição:', isEnabled ? 'Inscrito' : 'Não inscrito');
+                    
+                    if (isEnabled) {
+                        OneSignal.getSubscriptionId().then(function(subscriptionId) {
+                            if (subscriptionId) {
+                                console.log('📱 Subscription ID:', subscriptionId);
+                                salvarSubscriptionId(subscriptionId);
+                            }
+                        });
+                    }
+                });
+                
+                // Monitora mudanças na inscrição
+                OneSignal.on('subscriptionChange', function(isSubscribed) {
+                    console.log('📢 Mudança na inscrição:', isSubscribed ? 'Inscrito' : 'Cancelou');
+                    
+                    if (isSubscribed && currentUserId) {
+                        // Usuário permitiu notificações - pega o ID e salva
+                        setTimeout(function() {
                             OneSignal.getSubscriptionId().then(function(subscriptionId) {
                                 if (subscriptionId) {
+                                    console.log('📱 Novo Subscription ID:', subscriptionId);
                                     salvarSubscriptionId(subscriptionId);
                                 }
                             });
-                        }
-                    });
-                }, 2000);
-                
-                // Monitora mudanças
-                OneSignal.on('subscriptionChange', function(isSubscribed) {
-                    console.log('📢 Mudou:', isSubscribed ? 'Inscrito' : 'Cancelou');
-                    atualizarBotao(isSubscribed);
-                    
-                    if (isSubscribed && currentUserId) {
-                        setTimeout(function() {
-                            OneSignal.getSubscriptionId().then(function(subscriptionId) {
-                                if (subscriptionId) salvarSubscriptionId(subscriptionId);
-                            });
                         }, 1000);
                     } else if (!isSubscribed && currentUserId) {
+                        // Usuário cancelou - remove do Firebase
                         removerSubscriptionId();
                     }
                 });
             });
         }
         
-        // EXPOR FUNÇÕES GLOBALMENTE
+        // Exporta a função globalmente
         window.iniciarOneSignal = iniciarOneSignal;
-        window.pedirPermissaoNotificacao = pedirPermissaoNotificacao;
-        
-        // Configurar botão quando o DOM carregar
-        document.addEventListener('DOMContentLoaded', function() {
-            const btn = document.getElementById('btn-notificacoes');
-            if (btn) {
-                // Remove eventos antigos
-                const novoBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(novoBtn, btn);
-                
-                novoBtn.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('🔔 Clique detectado!');
-                    if (window.pedirPermissaoNotificacao) {
-                        window.pedirPermissaoNotificacao();
-                    }
-                };
-            }
-        });
-    </script>
-
-    <!-- ==================== COMPONENTES ==================== -->
-    <script type="text/babel" src="components/ComponentRegistry.js"></script>
-    <script type="text/babel" src="components/UserInfo.js"></script>
-    <script type="text/babel" src="components/StatusIndicator.js"></script>
-    <script type="text/babel" src="components/StatusBadge.js"></script>
-    <script type="text/babel" src="components/UserAvatar.js"></script>
-    <script type="text/babel" src="components/ContactItem.js"></script>
-    <script type="text/babel" src="components/MessageInput.js"></script>
-    <script type="text/babel" src="components/Toast.js"></script>
-    <script type="text/babel" src="components/Modal.js"></script>
-    <script type="text/babel" src="components/LoadingSpinner.js"></script>
-    <script type="text/babel" src="components/ContextMenu.js"></script>
-    <script type="text/babel" src="components/ComponentLoader.js"></script>
-    <script type="text/babel" src="components/ContactStatusBadge.js"></script>
-    <script type="text/babel" src="components/AudioRecorder.js"></script>
-    <script type="text/babel" src="components/Settings.js"></script>
-    <script type="text/babel" src="components/RuleEditor.js"></script>
-    <script type="text/babel" src="components/GroupInfo.js"></script>
-    <script type="text/babel" src="components/SystemStatus.js"></script>
-    <script type="text/babel" src="components/JoinRequestModal.js"></script>
-    <script type="text/babel" src="components/Login.js"></script>
-    <script type="text/babel" src="components/CallManager.js"></script>
-    <script type="text/babel" src="components/QRCodeConnection.js"></script>
-    <script type="text/babel" src="components/RuleMotor.js"></script>
-    <script type="text/babel" src="components/ChatInterface.js"></script>
-    <script type="text/babel" src="app.js"></script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                .then(registration => {
-                    console.log('SW registrado com sucesso:', registration.scope);
-                })
-                .catch(err => {
-                    console.log('Falha ao registrar SW:', err);
-                });
-            });
-        }
-    </script>
-</body>
-
-</html>                });
-                console.log('✅ ID salvo no Firebase:', subscriptionId);
-                mostrarToast('✅ Notificações ativadas!');
-                return true;
-            } catch (error) {
-                console.error('❌ Erro:', error);
-                return false;
-            }
-        }
-        
-        // Função para remover ID do Firebase
-        async function removerSubscriptionId() {
-            if (!currentUserId) return false;
-            try {
-                await window.firebaseDB.ref(`users/${currentUserId}/onesignal`).remove();
-                console.log('🗑️ ID removido do Firebase');
-                mostrarToast('🔕 Notificações desativadas');
-                return true;
-            } catch (error) {
-                console.error('❌ Erro:', error);
-                return false;
-            }
-        }
-        
-        // Função para atualizar visibilidade do botão
-        function atualizarBotao(inscrito) {
-            const btn = document.getElementById('btn-notificacoes');
-            if (btn) {
-                if (inscrito) {
-                    btn.classList.add('hidden');
-                } else {
-                    btn.classList.remove('hidden');
-                }
-            }
-        }
-        
-        // Função principal para pedir permissão
-        function pedirPermissaoNotificacao() {
-            console.log('🔔 Botão clicado! Pedindo permissão...');
-            
-            OneSignal.push(function() {
-                OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
-                    if (isEnabled) {
-                        console.log('✅ Já está inscrito');
-                        mostrarToast('✅ Você já recebe notificações!');
-                        atualizarBotao(true);
-                    } else {
-                        console.log('📢 Solicitando permissão...');
-                        OneSignal.registerForPushNotifications().then(function() {
-                            console.log('✅ Permissão concedida!');
-                            // Aguarda um pouco e pega o ID
-                            setTimeout(function() {
-                                OneSignal.getSubscriptionId().then(function(subscriptionId) {
-                                    if (subscriptionId) {
-                                        console.log('📱 ID:', subscriptionId);
-                                        salvarSubscriptionId(subscriptionId);
-                                        atualizarBotao(true);
-                                    }
-                                });
-                            }, 2000);
-                        }).catch(function(err) {
-                            console.log('❌ Usuário negou:', err);
-                            mostrarToast('❌ Você precisa permitir as notificações');
-                        });
-                    }
-                });
-            });
-        }
-        
-        // Inicializar OneSignal e verificar status
-        function iniciarOneSignal(userId) {
-            currentUserId = userId;
-            
-            OneSignal.push(function() {
-                OneSignal.init({
-                    appId: "9d6e714d-c316-428d-80fa-ba51aaec2a18",
-                    notifyButton: { enable: false },
-                    allowLocalhostAsSecureOrigin: true,
-                });
-                
-                // Verifica status atual
-                setTimeout(function() {
-                    OneSignal.isPushNotificationsEnabled().then(function(isEnabled) {
-                        console.log('📢 Status:', isEnabled ? 'Inscrito' : 'Não inscrito');
-                        atualizarBotao(isEnabled);
-                        
-                        if (isEnabled) {
-                            OneSignal.getSubscriptionId().then(function(subscriptionId) {
-                                if (subscriptionId) {
-                                    salvarSubscriptionId(subscriptionId);
-                                }
-                            });
-                        }
-                    });
-                }, 2000);
-                
-                // Monitora mudanças
-                OneSignal.on('subscriptionChange', function(isSubscribed) {
-                    console.log('📢 Mudou:', isSubscribed ? 'Inscrito' : 'Cancelou');
-                    atualizarBotao(isSubscribed);
-                    
-                    if (isSubscribed && currentUserId) {
-                        setTimeout(function() {
-                            OneSignal.getSubscriptionId().then(function(subscriptionId) {
-                                if (subscriptionId) salvarSubscriptionId(subscriptionId);
-                            });
-                        }, 1000);
-                    } else if (!isSubscribed && currentUserId) {
-                        removerSubscriptionId();
-                    }
-                });
-            });
-        }
-        
-        // EXPOR FUNÇÕES GLOBALMENTE
-        window.iniciarOneSignal = iniciarOneSignal;
-        window.pedirPermissaoNotificacao = pedirPermissaoNotificacao;
-        
-        // Configurar botão quando o DOM carregar
-        document.addEventListener('DOMContentLoaded', function() {
-            const btn = document.getElementById('btn-notificacoes');
-            if (btn) {
-                // Remove eventos antigos
-                const novoBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(novoBtn, btn);
-                
-                novoBtn.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('🔔 Clique detectado!');
-                    if (window.pedirPermissaoNotificacao) {
-                        window.pedirPermissaoNotificacao();
-                    }
-                };
-            }
-        });
     </script>
 
     <!-- ==================== COMPONENTES ==================== -->
