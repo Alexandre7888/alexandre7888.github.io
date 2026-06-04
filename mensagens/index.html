@@ -1,5 +1,5 @@
 <html lang="pt-br">
- 
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -48,6 +48,33 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
         .bg-chat-pattern { background-color: #efeae2; background-image: url("https://www.transparenttextures.com/patterns/subtle-white-feathers.png"); }
+        
+        /* Botão Sino */
+        #btn-notificacoes {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background-color: #00a884;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            z-index: 9999;
+            transition: all 0.3s ease;
+            font-size: 28px;
+            color: white;
+            border: none;
+        }
+        
+        #btn-notificacoes:hover {
+            transform: scale(1.1);
+            background-color: #008f6e;
+        }
+        
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -55,6 +82,11 @@
 
 <body>
     <div id="root"></div>
+    
+    <!-- Botão Sino para ativar notificações -->
+    <button id="btn-notificacoes">
+        <i class="fas fa-bell"></i>
+    </button>
 
     <!-- ==================== FIREBASE CONFIG ==================== -->
     <script type="text/babel">
@@ -80,7 +112,6 @@
                             appId: "9d6e714d-c316-428d-80fa-ba51aaec2a18",
                             notifyButton: { enable: false },
                             allowLocalhostAsSecureOrigin: true,
-                            autoRegister: true  // 🔥 AUTO REGISTER - pergunta automaticamente
                         });
                         
                         // Verifica se já está inscrito
@@ -96,10 +127,8 @@
                             console.log('📢 Mudança:', isSubscribed ? 'Usuário PERMITIU' : 'Usuário CANCELOU');
                             
                             if (isSubscribed && this.currentUserId) {
-                                // Usuário permitiu - salva o ID
                                 await this.getAndSaveSubscriptionId();
                             } else if (!isSubscribed && this.currentUserId) {
-                                // Usuário cancelou - remove do Firebase
                                 await this.removeSubscriptionId();
                             }
                         });
@@ -124,12 +153,10 @@
                                     updatedAt: Date.now(),
                                     status: 'subscribed'
                                 });
-                                console.log('✅ Subscription ID salvo no Firebase com sucesso!');
+                                console.log('✅ Subscription ID salvo no Firebase!');
                             } catch (error) {
-                                console.error('❌ Erro ao salvar no Firebase:', error);
+                                console.error('❌ Erro ao salvar:', error);
                             }
-                        } else {
-                            console.log('⚠️ Nenhum subscription ID encontrado');
                         }
                         resolve(subscriptionId);
                     });
@@ -145,8 +172,20 @@
                         console.error('❌ Erro ao remover:', error);
                     }
                 }
+            },
+            
+            async pedirPermissao() {
+                console.log('🔔 Solicitando permissão para notificações...');
+                OneSignal.push(() => {
+                    OneSignal.registerForPushNotifications();
+                });
             }
         };
+        
+        // Clique no botão - pede permissão
+        document.getElementById('btn-notificacoes').addEventListener('click', () => {
+            window.OneSignalManager.pedirPermissao();
+        });
     </script>
 
     <!-- ==================== COMPONENTES ==================== -->
