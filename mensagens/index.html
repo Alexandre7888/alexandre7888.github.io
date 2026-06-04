@@ -51,15 +51,22 @@
         
         #custom-notification-bell {
             position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px;
-            background-color: #00a884; border-radius: 50%; display: flex;
+            border-radius: 50%; display: flex;
             align-items: center; justify-content: center; cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); z-index: 9999;
-            transition: all 0.3s ease; font-size: 28px; color: white; border: none;
+            transition: all 0.3s ease; font-size: 28px; border: none;
         }
-        #custom-notification-bell:hover { transform: scale(1.1); background-color: #008f6e; }
+        #custom-notification-bell.bell-active {
+            background-color: #00a884;
+            color: white;
+        }
+        #custom-notification-bell.bell-inactive {
+            background-color: #ef4444;
+            color: white;
+        }
+        #custom-notification-bell:hover { transform: scale(1.1); }
         #custom-notification-bell.hidden { display: none; }
-        @keyframes bellShake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } }
-        #custom-notification-bell:hover i { animation: bellShake 0.5s ease-in-out; }
+        
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -68,7 +75,8 @@
 <body>
     <div id="root"></div>
     
-    <button id="custom-notification-bell">
+    <!-- Botão que muda de cor e função -->
+    <button id="custom-notification-bell" class="bell-inactive">
         <i class="fas fa-bell"></i>
     </button>
 
@@ -99,7 +107,7 @@
                         });
                         
                         const isEnabled = await OneSignal.isPushNotificationsEnabled();
-                        this.toggleBell(isEnabled);
+                        this.updateBellUI(isEnabled);
                         
                         if (isEnabled) {
                             await this.getAndSaveSubscriptionId();
@@ -107,7 +115,7 @@
                         
                         OneSignal.on('subscriptionChange', async (isSubscribed) => {
                             console.log('📢 Mudança:', isSubscribed ? 'Inscrito' : 'Cancelou');
-                            this.toggleBell(isSubscribed);
+                            this.updateBellUI(isSubscribed);
                             
                             if (isSubscribed && this.currentUserId) {
                                 await this.getAndSaveSubscriptionId();
@@ -157,27 +165,45 @@
                 }
             },
             
-            toggleBell(show) {
+            updateBellUI(isSubscribed) {
                 const bell = document.getElementById('custom-notification-bell');
-                if (bell) {
-                    if (show) {
-                        bell.classList.add('hidden');
-                    } else {
-                        bell.classList.remove('hidden');
-                    }
+                if (!bell) return;
+                
+                if (isSubscribed) {
+                    // Está inscrito - botão VERDE e ícone de sino (para desativar)
+                    bell.className = 'bell-active';
+                    bell.innerHTML = '<i class="fas fa-bell-slash"></i>'; // Sino com risco
+                    bell.title = 'Desativar notificações';
+                } else {
+                    // Não está inscrito - botão VERMELHO e ícone de sino (para ativar)
+                    bell.className = 'bell-inactive';
+                    bell.innerHTML = '<i class="fas fa-bell"></i>'; // Sino normal
+                    bell.title = 'Ativar notificações';
                 }
             },
             
-            requestPermission() {
-                OneSignal.push(() => {
-                    OneSignal.registerForPushNotifications();
-                });
+            async toggleNotification() {
+                const isEnabled = await OneSignal.isPushNotificationsEnabled();
+                
+                if (isEnabled) {
+                    // Se está ativado, desativa
+                    console.log('🔕 Desativando notificações...');
+                    OneSignal.push(() => {
+                        OneSignal.setSubscription(false);
+                    });
+                } else {
+                    // Se está desativado, ativa
+                    console.log('🔔 Ativando notificações...');
+                    OneSignal.push(() => {
+                        OneSignal.registerForPushNotifications();
+                    });
+                }
             }
         };
         
-        // Clique no sino
+        // Clique no sino - agora faz ATIVAR ou DESATIVAR
         document.getElementById('custom-notification-bell').addEventListener('click', () => {
-            window.OneSignalManager.requestPermission();
+            window.OneSignalManager.toggleNotification();
         });
     </script>
 
