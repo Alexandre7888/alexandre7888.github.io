@@ -56,7 +56,7 @@ function Login({ onLogin }) {
 
             // Verifica se usuário já existe no Firebase
             const userSnapshot = await db.ref(`users/${userId}`).once('value');
-            
+
             if (!userSnapshot.exists()) {
                 // Usuário novo: mostra tela de upload de avatar
                 setTempUserData({
@@ -73,7 +73,7 @@ function Login({ onLogin }) {
                 // Usuário existente: carrega dados
                 const existingData = userSnapshot.val();
                 const avatar = existingData.avatar || null;
-                
+
                 const chatUserData = {
                     name: userName,
                     userKey: userkey,
@@ -88,6 +88,12 @@ function Login({ onLogin }) {
                 localStorage.setItem("userId", userId);
 
                 setStatus("Login realizado!");
+                
+                // 🔥 LINHA ADICIONADA: Inicia o OneSignal com o ID do usuário 🔥
+                if (window.OneSignalManager) {
+                    await window.OneSignalManager.init(userId);
+                }
+                
                 setTimeout(() => onLogin(chatUserData), 500);
             }
 
@@ -119,7 +125,7 @@ function Login({ onLogin }) {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64Avatar = reader.result;
-                
+
                 // Salvar no Firebase
                 await db.ref(`users/${tempUserData.id}`).set({
                     name: tempUserData.name,
@@ -146,6 +152,12 @@ function Login({ onLogin }) {
                 localStorage.setItem("userId", tempUserData.id);
 
                 setStatus("Login realizado!");
+                
+                // 🔥 LINHA ADICIONADA: Inicia o OneSignal 🔥
+                if (window.OneSignalManager) {
+                    await window.OneSignalManager.init(tempUserData.id);
+                }
+                
                 setTimeout(() => onLogin(chatUserData), 500);
             };
             reader.readAsDataURL(file);
@@ -159,7 +171,7 @@ function Login({ onLogin }) {
     const skipAvatar = async () => {
         setUploading(true);
         setStatus("Finalizando cadastro...");
-        
+
         try {
             // Salvar sem avatar (null)
             await db.ref(`users/${tempUserData.id}`).set({
@@ -187,6 +199,12 @@ function Login({ onLogin }) {
             localStorage.setItem("userId", tempUserData.id);
 
             setStatus("Login realizado!");
+            
+            // 🔥 LINHA ADICIONADA: Inicia o OneSignal 🔥
+            if (window.OneSignalManager) {
+                await window.OneSignalManager.init(tempUserData.id);
+            }
+            
             setTimeout(() => onLogin(chatUserData), 500);
         } catch (error) {
             console.error("Erro:", error);
@@ -238,7 +256,7 @@ function Login({ onLogin }) {
                         className="hidden" 
                         onChange={previewAvatar}
                     />
-                    
+
                     <button 
                         onClick={() => fileInputRef.current.click()}
                         className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-200 transition mb-3"
