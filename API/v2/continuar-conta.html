@@ -334,7 +334,7 @@
 
     function redirectToLogin() {
       if (appToken) {
-        window.location.href = https://alexandre7888.github.io/auth.html?token=${appToken}`;
+        window.location.href = `https://alexandre7888.github.io/auth.html?token=${appToken}`;
       } else {
         window.location.href = 'https://alexandre7888.github.io/auth.html';
       }
@@ -482,7 +482,7 @@
             // Redireciona APENAS com userKey (sem authToken na URL)
             const sep = redirectURL.includes('?') ? '&' : '?';
             let urlFinal = redirectURL + sep + `userKey=${encodeURIComponent(userKey)}`;
-            
+
             // REMOVIDO: userName e authToken do redirecionamento
             // Mantém apenas userKey como solicitado
 
