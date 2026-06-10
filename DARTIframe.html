@@ -1,152 +1,575 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Puter Hosting Manager</title>
-<style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; background-color: #121212; color: #e0e0e0; margin: 0; }
-    .container { max-width: 600px; margin: auto; }
-    h2 { color: #00e676; text-align: center; font-size: 1.2rem; }
-    .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; }
-    button { width: 100%; margin: 8px 0; padding: 12px; border: none; border-radius: 8px; 
-        background: #333; color: white; font-weight: bold; font-size: 14px; transition: 0.3s; }
-    button:active { transform: scale(0.98); background: #444; }
-    .btn-create { background: #2e7d32; }
-    .btn-list { background: #1565c0; }
-    .btn-update { background: #f57c00; }
-    .btn-delete { background: #c62828; }
-    .console { background: #000; color: #00ff00; padding: 15px; border-radius: 8px; 
-        height: 250px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px;
-        border: 1px solid #444; box-shadow: inset 0 0 10px #000; }
-    a { color: #4fc3f7; text-decoration: none; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Websim Ecosystem - Cliente</title>
+
+  <style>
+  :root{
+    --bg:#f7f7f7;
+    --panel:#fff;
+    --accent:#0b8;
+    --muted:#666;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:Inter,system-ui,Arial,sans-serif;
+    background:var(--bg);
+    color:#111;
+  }
+  .container{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    padding:10px;
+    gap:8px;
+  }
+  .top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .brand{font-weight:700}
+  .status .good{color:green}
+  .status .loading{color:orange}
+  
+  .grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+    align-items:start;
+  }
+  @media(min-width:820px){
+    .grid{grid-template-columns:1fr 360px 360px}
+  }
+  
+  .panel{
+    background:var(--panel);
+    padding:10px;
+    border-radius:8px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.05);
+  }
+  
+  .posts .new-post{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .posts input{flex:1;padding:8px;min-width:150px}
+  .new-post button, .new-post .upload{
+    padding:8px 10px;
+    background:#111;
+    color:#fff;
+    border-radius:6px;
+    border:none;
+    cursor:pointer;
+  }
+  .upload input{display:none}
+  
+  .posts-list{
+    margin-top:10px;
+    max-height:260px;
+    overflow:auto;
+  }
+  .post{
+    padding:8px;
+    border-bottom:1px solid #eee;
+  }
+  .post-img{
+    max-width:100%;
+    border-radius:6px;
+    margin-top:6px;
+  }
+  .meta{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:6px;
+  }
+  
+  .realtime .presence-canvas{
+    width:100%;
+    height:auto;
+    border:1px dashed #ddd;
+    border-radius:6px;
+    cursor:crosshair;
+    background:#fafafa;
+  }
+  .peers{
+    margin-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    max-height:200px;
+    overflow:auto;
+  }
+  .peer-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .avatar{
+    width:32px;
+    height:32px;
+    border-radius:50%;
+  }
+  .peer-info{flex:1;font-size:13px}
+  .peer-row button{
+    padding:6px 8px;
+    border-radius:6px;
+    border:none;
+    background:#e45;
+    color:#fff;
+    cursor:pointer;
+  }
+  
+  .comms .chat-history{
+    height:120px;
+    overflow:auto;
+    background:#f3f3f3;
+    padding:6px;
+    border-radius:6px;
+    margin-bottom:6px;
+  }
+  .chat-controls{
+    display:flex;
+    gap:5px;
+  }
+  .chat-controls input{
+    flex:1;
+    padding:8px;
+  }
+  
+  .ai-history.small{
+    height:90px;
+    overflow:auto;
+    background:#fafafa;
+    padding:6px;
+    border-radius:6px;
+    margin-bottom:6px;
+  }
+  .ai-controls{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .ai-controls input{flex:1;min-width:120px;padding:8px}
+  .ai-controls button{
+    padding:8px 10px;
+    background:#0b8;
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+  }
+  
+  .tts-row{margin-top:6px}
+  .gen-img{
+    max-width:100%;
+    margin-top:8px;
+    border-radius:6px;
+  }
+  .foot{
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+  }
+
+  /* RECEPTOR INVISÍVEL */
+  .receptor-invisivel{
+    position:fixed;
+    bottom:0;
+    right:0;
+    width:2px;
+    height:2px;
+    opacity:0;
+    pointer-events:none;
+    overflow:hidden;
+    z-index:-1;
+  }
+  .receptor-invisivel iframe{
+    width:100%;
+    height:100%;
+    border:none;
+  }
+  </style>
 </head>
 <body>
-<div class="container">
-    <h2>🚀 Puter Dashboard (Token)</h2>
-    
-    <div class="card">
-        <button class="btn-create" onclick="exec(createSite)">✨ Criar Novo Site (Completo)</button>
-        <button class="btn-list" onclick="exec(listSites)">📂 Listar Meus Sites</button>
-        <button class="btn-update" onclick="exec(updateSite)">🔄 Atualizar Pasta do Site</button>
-        <button class="btn-delete" onclick="exec(cleanupAll)">🗑️ Deletar Todos os Sites</button>
-    </div>
 
-    <div id="terminal" class="console">Sistema pronto. Aguardando comando...<br></div>
-</div>
+  <!-- RECEPTOR INVISÍVEL - MOTOR WEBSIM -->
+  <div class="receptor-invisivel">
+    <iframe id="receptor-frame" src="https://websim-ecosystem-demo--socialkoala6579904.on.websim.com/receptor.html" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+  </div>
 
-<script src="https://js.puter.com/v2/"></script>
-<script>
-const terminal = document.getElementById('terminal');
-let currentSubdomain = "";
+  <div id="app"></div>
 
-// Função para logar mensagens
-function log(msg, color = "#0f0") {
-    const span = document.createElement('span');
-    span.style.color = color;
-    span.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
-    terminal.appendChild(span);
-    terminal.scrollTop = terminal.scrollHeight;
-}
+  <script type="module">
+  import { h, render } from "https://esm.sh/preact@10.16.0";
+  import { useEffect, useState, useRef } from "https://esm.sh/preact@10.16.0/hooks";
+  import htm from "https://esm.sh/htm@3.1.1";
+  const html = htm.bind(h);
 
-// Espera a lib Puter carregar
-async function waitForPuter() {
-    while (!window.puter || !puter.fs || !puter.hosting || !puter.auth) {
-        await new Promise(r => setTimeout(r, 50));
+  function App() {
+    const [initialized, setInitialized] = useState(false);
+    const [clientId, setClientId] = useState("");
+    const [username, setUsername] = useState("");
+    const [posts, setPosts] = useState([]);
+    const [message, setMessage] = useState("");
+    const [fileUploading, setFileUploading] = useState(false);
+    const [peers, setPeers] = useState({});
+    const [presenceList, setPresenceList] = useState({});
+    const [chatMessages, setChatMessages] = useState([]);
+    const [aiMessages, setAiMessages] = useState([]);
+    const [aiInput, setAiInput] = useState("");
+    const [ttsUrl, setTtsUrl] = useState("");
+    const [generatedImage, setGeneratedImage] = useState("");
+    const canvasRef = useRef();
+    const receptorRef = useRef(null);
+
+    // Enviar comando para o receptor
+    function sendToReceptor(action, payload = {}) {
+      if (receptorRef.current && receptorRef.current.contentWindow) {
+        receptorRef.current.contentWindow.postMessage({
+          type: "INCORPORADOR_COMMAND",
+          action: action,
+          payload: payload
+        }, "*");
+      }
     }
-}
 
-// Executa função com tratamento de erro
-async function exec(func) {
-    try {
-        await waitForPuter();
-        await func();
-    } catch (error) {
-        log("ERRO: " + error.message, "#ff5252");
-        console.error(error);
-    }
-}
-
-// Pega token do endpoint e autentica Puter
-async function autenticarToken() {
-    await waitForPuter();
-    log("Buscando token do endpoint...", "#00e676");
-    try {
-        const resp = await fetch('https://code-hub-eta.vercel.app/api/app/a.js');
-        const data = await resp.json();
-        if(data.token) {
-            window.puter.authToken = data.token; // injetando o token
-            log("Token carregado com sucesso!", "#00e676");
-            // Tenta verificar usuário com token
-            const user = await puter.auth.getUser();
-            log(`Autenticado como: ${user.username}`, "#00e676");
-        } else {
-            log("Não foi possível obter token do endpoint", "#ff5252");
+    // Receber respostas do receptor
+    useEffect(() => {
+      receptorRef.current = document.getElementById('receptor-frame');
+      
+      function handleReceptorMessage(event) {
+        if (event.data && event.data.type === "RECEPTOR_RESPONSE") {
+          const { action, payload } = event.data;
+          
+          switch(action) {
+            case "INITIALIZED":
+              setInitialized(true);
+              setClientId(payload.clientId);
+              setUsername(payload.username);
+              break;
+              
+            case "POSTS_UPDATED":
+              setPosts(payload.posts || []);
+              break;
+              
+            case "POST_CREATED":
+              // Posts serão atualizados via POSTS_UPDATED
+              break;
+              
+            case "PRESENCE_UPDATED":
+              setPeers(payload.peers || {});
+              setPresenceList(payload.presence || {});
+              if (payload.clientId) setClientId(payload.clientId);
+              break;
+              
+            case "CHAT_RECEIVED":
+            case "CHAT_SENT":
+              setChatMessages(prev => [...prev, {
+                from: payload.from,
+                text: payload.text,
+                time: new Date(payload.timestamp).toLocaleTimeString()
+              }]);
+              break;
+              
+            case "POKE_RECEIVED":
+              setChatMessages(prev => [...prev, {
+                from: payload.from,
+                text: "👆 Te cutucou!",
+                time: new Date(payload.timestamp).toLocaleTimeString()
+              }]);
+              break;
+              
+            case "AI_RESPONSE":
+              setAiMessages(prev => [...prev, 
+                { from: "You", text: payload.prompt },
+                { from: "AI", text: payload.response }
+              ]);
+              break;
+              
+            case "TTS_READY":
+              setTtsUrl(payload.url);
+              // Auto-play
+              try {
+                const audio = new Audio(payload.url);
+                audio.play();
+              } catch(e) {}
+              break;
+              
+            case "IMAGE_GENERATED":
+              setGeneratedImage(payload.url);
+              break;
+              
+            case "UPLOAD_COMPLETE":
+              setFileUploading(false);
+              break;
+              
+            case "ERROR":
+              alert(payload.message);
+              setFileUploading(false);
+              break;
+              
+            case "LOG":
+              // Console do receptor (pode mostrar em algum lugar se quiser)
+              break;
+          }
         }
-    } catch(err) {
-        log("Erro ao buscar token: " + err.message, "#ff5252");
+      }
+      
+      window.addEventListener("message", handleReceptorMessage);
+      
+      // Inicializar receptor quando o iframe estiver carregado
+      receptorRef.current = document.getElementById('receptor-frame');
+      if (receptorRef.current) {
+        const onLoad = () => {
+          // garantir que a mensagem só vá quando o receptor estiver pronto
+          sendToReceptor("INIT", {});
+        };
+        receptorRef.current.addEventListener('load', onLoad);
+        // se já estiver carregado (cache), disparar imediatamente
+        if (receptorRef.current.contentWindow && receptorRef.current.contentDocument.readyState === 'complete') {
+          onLoad();
+        }
+        // cleanup
+        const cleanup = () => {
+          receptorRef.current && receptorRef.current.removeEventListener('load', onLoad);
+          window.removeEventListener("message", handleReceptorMessage);
+        };
+        return cleanup;
+      } else {
+        // fallback: remove listener
+        window.removeEventListener("message", handleReceptorMessage);
+        return () => {};
+      }
+    }, []);
+
+    // Desenhar presence no canvas
+    useEffect(() => {
+      const c = canvasRef.current;
+      if (!c) return;
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, c.width, c.height);
+      
+      Object.keys(presenceList || {}).forEach((id) => {
+        const p = presenceList[id];
+        const peer = peers[id] || {};
+        if (!p || typeof p.x !== "number") return;
+        
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = id === clientId ? "#0b8" : "#e45";
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(peer.username || "anon", p.x, p.y + 4);
+      });
+    }, [presenceList, peers, clientId]);
+
+    // Criar post
+    function createPost() {
+      if (!message.trim()) return;
+      sendToReceptor("CREATE_POST", { text: message.trim() });
+      setMessage("");
     }
-}
 
-// Criar site
-async function createSite() {
-    log("Criando diretório...", "#bbb");
-    let dirName = "site_" + puter.randName();
-    await puter.fs.mkdir(dirName);
-
-    log("Gravando index.html...");
-    await puter.fs.write(`${dirName}/index.html`, `<h1>Site de ${dirName}</h1><p>Criado via Puter API!</p>`);
-
-    let sub = puter.randName();
-    log(`Hospedando em: ${sub}...`);
-    const site = await puter.hosting.create({ subdomain: sub, folder: dirName });
-
-    currentSubdomain = site.subdomain;
-    log(`SUCESSO! Link: <a href="https://${site.subdomain}.puter.site" target="_blank">${site.subdomain}.puter.site</a>`);
-}
-
-// Listar sites
-async function listSites() {
-    log("Consultando API do Puter...", "#bbb");
-    const sites = await puter.hosting.list();
-    if (sites.length === 0) {
-        log("Nenhum site encontrado na sua conta.", "#ffb74d");
-    } else {
-        log("Sites ativos:", "#4fc3f7");
-        sites.forEach(s => log(`• ${s.subdomain}.puter.site`, "#4fc3f7"));
+    // Upload arquivo (from input/drop)
+    async function uploadFileFromObject(file) {
+      if (!file) return;
+      setFileUploading(true);
+      try {
+        const url = await websim.upload(file);
+        sendToReceptor("FILE_UPLOADED", { fileName: file.name, url });
+      } catch (err) {
+        console.error("Upload falhou:", err);
+        alert("Upload falhou");
+        setFileUploading(false);
+      }
     }
-}
 
-// Atualizar site
-async function updateSite() {
-    if (!currentSubdomain) {
-        log("Crie um site primeiro para poder atualizar!", "#ffb74d");
-        return;
+    // Click no canvas
+    function handleCanvasClick(e) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = Math.round((e.clientX - rect.left));
+      const y = Math.round((e.clientY - rect.top));
+      sendToReceptor("UPDATE_PRESENCE", { x, y });
     }
-    log(`Atualizando site: ${currentSubdomain}...`);
-    let newDir = "update_" + puter.randName();
-    await puter.fs.mkdir(newDir);
-    await puter.fs.write(`${newDir}/index.html`, `<h1>Site Atualizado!</h1><p>Nova pasta: ${newDir}</p>`);
 
-    const updated = await puter.hosting.update({ subdomain: currentSubdomain, folder: newDir });
-    log(`Pronto! O site ${updated.subdomain} agora aponta para ${newDir}`);
-}
-
-// Deletar todos os sites
-async function cleanupAll() {
-    log("Iniciando limpeza total...", "#ff5252");
-    const sites = await puter.hosting.list();
-    for (const site of sites) {
-        await puter.hosting.delete({ subdomain: site.subdomain });
-        log(`Deletado: ${site.subdomain}`);
+    // Chat
+    function sendChat(text) {
+      if (!text || !text.trim()) return;
+      sendToReceptor("SEND_CHAT", { text: text.trim() });
     }
-    currentSubdomain = "";
-    log("Todos os sites foram removidos.", "#0f0");
-}
 
-// Autentica automaticamente ao carregar
-document.addEventListener("DOMContentLoaded", autenticarToken);
-</script>
+    // Poke
+    function poke(clientId) {
+      sendToReceptor("POKE_PEER", { clientId });
+    }
+
+    // AI Chat
+    function sendAi() {
+      if (!aiInput.trim()) return;
+      sendToReceptor("AI_CHAT", { prompt: aiInput.trim() });
+      setAiInput("");
+    }
+
+    // TTS
+    function speak(text) {
+      if (!text || !text.trim()) return;
+      sendToReceptor("TEXT_TO_SPEECH", { text: text.trim() });
+    }
+
+    // Image gen
+    function genImage() {
+      sendToReceptor("GENERATE_IMAGE", { 
+        prompt: "A clean vector-style icon of a globe with nodes" 
+      });
+    }
+
+    return html`
+      <div class="container">
+        <header class="top">
+          <div class="brand">🌐 Websim Ecosystem Demo</div>
+          <div class="status">
+            ${initialized ? html`<span class="good">● Conectado (${username})</span>` : html`<span class="loading">◌ Conectando...</span>`}
+          </div>
+        </header>
+
+        <main class="grid">
+          <section class="panel posts">
+            <h3>📦 Banco de Dados (posts)</h3>
+            <div class="new-post">
+              <input placeholder="Escreva uma mensagem" value=${message} onInput=${(e) => setMessage(e.target.value)} onKeyDown=${(e) => e.key === "Enter" && createPost()} />
+              <button onClick=${createPost}>Enviar</button>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <div
+                  class="upload-drop"
+                  onDragOver=${(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; e.currentTarget.style.background = '#0f0f0f'; }}
+                  onDragLeave=${(e) => { e.currentTarget.style.background = ''; }}
+                  onDrop=${(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.background = '';
+                    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+                    if (f) uploadFileFromObject(f);
+                  }}
+                  style="flex:1;min-width:180px;padding:10px;border-radius:6px;border:2px dashed #ddd;background:#111;color:#fff;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none"
+                >
+                  <input id="fileInput" type="file" style="display:none" onChange=${(e) => { const f = e.target.files && e.target.files[0]; if (f) uploadFileFromObject(f); e.target.value = ""; }} />
+                  <span onClick=${() => document.getElementById('fileInput').click()} style="flex:1">
+                    ${fileUploading ? "⏳ Enviando..." : "📎 Clique ou arraste um arquivo aqui"}
+                  </span>
+                  <small style="color:#ccc;font-size:12px">Arraste para enviar</small>
+                </div>
+
+                <button onClick=${async () => {
+                  // create a small test file and upload
+                  setFileUploading(true);
+                  const blob = new Blob(["This is a test file."], { type: "text/plain" });
+                  const file = new File([blob], "test-file.txt", { type: "text/plain" });
+                  try {
+                    const url = await websim.upload(file);
+                    sendToReceptor("FILE_UPLOADED", { fileName: file.name, url });
+                  } catch(err) {
+                    console.error(err);
+                    alert("Upload falhou");
+                    setFileUploading(false);
+                  }
+                }} style="padding:8px 10px;border-radius:6px;border:none;background:#0b8;color:#fff;cursor:pointer;white-space:nowrap">
+                  📤 Enviar arquivo de teste
+                </button>
+              </div>
+            </div>
+            <div class="posts-list">
+              ${posts.length === 0 ? html`<p style="color:#999">Nenhum post ainda</p>` :
+                posts.map((p, idx) => html`
+                  <div class="post" key=${idx}>
+                    <div class="post-text">${p.text}</div>
+                    ${p.file_url ? html`<a href=${p.file_url} target="_blank" style="color:#0b8">📎 Abrir arquivo</a>` : null}
+                    ${p.image_url ? html`<img class="post-img" src=${p.image_url} alt="img"/>` : null}
+                    <div class="meta">por ${p.username || "anônimo"} • ${new Date(p.created_at).toLocaleString()}</div>
+                  </div>`
+                )
+              }
+            </div>
+          </section>
+
+          <section class="panel realtime">
+            <h3>📍 Realtime Presence</h3>
+            <canvas ref=${canvasRef} width="360" height="220" onClick=${handleCanvasClick} class="presence-canvas"></canvas>
+            <div class="peers">
+              ${Object.keys(peers).length === 0 ? html`<p style="color:#999">Nenhum peer conectado</p>` :
+                Object.keys(peers).map((id) => html`
+                  <div class="peer-row" key=${id}>
+                    <img class="avatar" src=${`https://images.websim.com/avatar/${peers[id].username}`} />
+                    <div class="peer-info">
+                      <div class="peer-name">${peers[id].username || "anônimo"}</div>
+                      <div class="peer-id">${id === clientId ? "👈 você" : id.substring(0,8)}</div>
+                    </div>
+                    ${id !== clientId ? html`<button onClick=${() => poke(id)}>👆 Poke</button>` : null}
+                  </div>`
+                )
+              }
+            </div>
+          </section>
+
+          <section class="panel comms">
+            <h3>💬 Chat & Eventos</h3>
+            <div class="chat">
+              <div class="chat-history">
+                ${chatMessages.length === 0 ? html`<p style="color:#999">Nenhuma mensagem</p>` :
+                  chatMessages.map((m, idx) => html`<div key=${idx}><strong>${m.from}:</strong> ${m.text} <small style="color:#999">${m.time}</small></div>`)
+                }
+              </div>
+              <div class="chat-controls">
+                <input id="chatInput" placeholder="Mensagem para todos..." onKeyDown=${(e) => e.key === "Enter" && (sendChat(e.target.value), e.target.value = "")} />
+                <button onClick=${() => {
+                  const inp = document.getElementById("chatInput");
+                  sendChat(inp.value);
+                  inp.value = "";
+                }}>Enviar</button>
+              </div>
+            </div>
+
+            <h4>🤖 AI Chat</h4>
+            <div class="ai">
+              <div class="ai-history small">
+                ${aiMessages.length === 0 ? html`<p style="color:#999">Pergunte algo para a AI</p>` :
+                  aiMessages.map((m, idx) => html`<div key=${idx}><strong>${m.from}:</strong> ${m.text}</div>`)
+                }
+              </div>
+              <div class="ai-controls">
+                <input value=${aiInput} onInput=${(e)=> setAiInput(e.target.value)} placeholder="Pergunte algo..." onKeyDown=${(e)=> e.key === "Enter" && sendAi()} />
+                <button onClick=${sendAi}>🤖 Perguntar</button>
+                <button onClick=${() => speak(aiInput || "Hello, testing TTS")}>🔊 TTS</button>
+              </div>
+            </div>
+
+            <div class="tts-row">
+              ${ttsUrl ? html`<audio controls src=${ttsUrl}></audio>` : null}
+            </div>
+
+            <h4>🎨 Image Gen</h4>
+            <div class="imagegen">
+              <button onClick=${genImage}>🖼️ Gerar Imagem</button>
+              ${generatedImage ? html`<img src=${generatedImage} class="gen-img" />` : null}
+            </div>
+          </section>
+        </main>
+
+        <footer class="foot">
+          <small>Motor Websim no receptor invisível • Cliente apenas exibe interface</small>
+        </footer>
+      </div>
+    `;
+  }
+
+  render(html`<${App} />`, document.getElementById("app"));
+  </script>
 </body>
 </html>
