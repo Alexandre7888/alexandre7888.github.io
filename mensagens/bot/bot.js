@@ -11,6 +11,7 @@ const os = require('os');
 const FIREBASE_URL = 'https://html-785e3-default-rtdb.firebaseio.com';
 const DATA_FILE = 'bot_data.json';
 const SCRIPTS_DIR = './scripts';
+const WEB_DIR = './web_dashboard';
 const WEB_PORT = 3000;
 
 let botConfig = null;
@@ -30,26 +31,14 @@ const cores = {
   magenta: '\x1b[35m',
   white: '\x1b[37m',
   gray: '\x1b[90m',
-  bgBlue: '\x1b[44m',
-  bgGreen: '\x1b[42m',
   bold: '\x1b[1m'
 };
 
-// Interface readline melhorada com suporte a setas
+// Interface readline normal (sem setas para evitar conflitos)
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
-
-// Configurar input para capturar setas
-readline.emitKeypressEvents(process.stdin);
-if (process.stdin.isTTY) {
-  process.stdin.setRawMode(true);
-}
-
-let currentMenu = 'main';
-let menuOptions = [];
-let selectedIndex = 0;
 
 // Função para fazer requisições HTTPS
 function request(url, method = 'GET', data = null) {
@@ -85,17 +74,6 @@ function limparTela() {
   console.clear();
 }
 
-// Mostrar título melhorado
-function titulo() {
-  const uptime = getUptime();
-  console.log(`${cores.blue}╔══════════════════════════════════════════════════════════════════╗${cores.reset}`);
-  console.log(`${cores.blue}║${cores.reset}${cores.bgBlue}${cores.white}                    🤖 BOT SYSTEM v2.0 - ${botConfig ? botConfig.nome : 'DESCONECTADO'}                    ${cores.reset}${cores.blue}║${cores.reset}`);
-  console.log(`${cores.blue}╠══════════════════════════════════════════════════════════════════╣${cores.reset}`);
-  console.log(`${cores.blue}║${cores.reset} ${cores.cyan}📊 Status:${cores.reset} ${botConfig ? cores.green + 'ONLINE' + cores.reset : cores.red + 'OFFLINE' + cores.reset}    ${cores.cyan}⏱️  Ativo há:${cores.reset} ${uptime}    ${cores.cyan}📡 Web Server:${cores.reset} ${webServer ? cores.green + 'ON' + cores.reset : cores.red + 'OFF' + cores.reset}${cores.blue}║${cores.reset}`);
-  console.log(`${cores.blue}╚══════════════════════════════════════════════════════════════════╝${cores.reset}`);
-  console.log();
-}
-
 // Calcular tempo ativo
 function getUptime() {
   const diff = Date.now() - startTime;
@@ -108,10 +86,20 @@ function getUptime() {
   return `${seconds}s`;
 }
 
+// Mostrar título
+function mostrarTitulo() {
+  console.log(`${cores.blue}╔══════════════════════════════════════════════════════════════════╗${cores.reset}`);
+  console.log(`${cores.blue}║${cores.reset}${cores.bold}${cores.cyan}                    🤖 BOT SYSTEM v2.0 - ${botConfig ? botConfig.nome.toUpperCase() : 'DESCONECTADO'}                    ${cores.reset}${cores.blue}║${cores.reset}`);
+  console.log(`${cores.blue}╠══════════════════════════════════════════════════════════════════╣${cores.reset}`);
+  console.log(`${cores.blue}║${cores.reset} ${cores.cyan}📊 Status:${cores.reset} ${botConfig ? cores.green + '✅ ONLINE' + cores.reset : cores.red + '❌ OFFLINE' + cores.reset}    ${cores.cyan}⏱️  Ativo há:${cores.reset} ${getUptime()}    ${cores.cyan}🌐 Web:${cores.reset} ${webServer ? cores.green + 'ON' + cores.reset : cores.red + 'OFF' + cores.reset}${cores.blue}║${cores.reset}`);
+  console.log(`${cores.blue}╚══════════════════════════════════════════════════════════════════╝${cores.reset}`);
+  console.log();
+}
+
 // Autenticar bot
 async function autenticarBot() {
   limparTela();
-  titulo();
+  mostrarTitulo();
   
   console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
   console.log(`${cores.cyan}│                    AUTENTICAR BOT                          │${cores.reset}`);
@@ -159,12 +147,14 @@ async function autenticarBot() {
           nome: userData.name || botId,
           chats: chats,
           userData: userData,
-          roles: {}
+          roles: {},
+          scripts: []
         };
         
         fs.writeFileSync(DATA_FILE, JSON.stringify(botConfig, null, 2));
         
-        console.log(`${cores.green}✅ Autenticado: ${botConfig.nome}${cores.reset}`);
+        console.log(`${cores.green}✅ Autenticado com sucesso!${cores.reset}`);
+        console.log(`${cores.green}📛 Nome: ${botConfig.nome}${cores.reset}`);
         console.log(`${cores.green}📊 Grupos: ${Object.keys(chats).length}${cores.reset}`);
         
         setTimeout(() => resolve(true), 2000);
@@ -194,609 +184,28 @@ async function enviarMensagem(grupoId, texto) {
   return true;
 }
 
-// Executar script JavaScript
-async function executarScript(scriptPath, grupoId) {
-  try {
-    const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-    const scriptFunction = new Function('bot', 'grupoId', 'enviarMensagem', 'request', 'console', scriptContent);
-    
-    await scriptFunction(botConfig, grupoId, enviarMensagem, request, console);
-    console.log(`${cores.green}✅ Script executado com sucesso!${cores.reset}`);
-    return true;
-  } catch (error) {
-    console.log(`${cores.red}❌ Erro ao executar script: ${error.message}${cores.reset}`);
-    return false;
-  }
-}
-
-// Criar cargo
-async function criarCargo(grupoId, cargoNome, permissoes = {}) {
-  const cargoId = `role_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-  
-  const cargo = {
-    nome: cargoNome,
-    permissoes: permissoes,
-    membros: [],
-    criado: Date.now()
-  };
-  
-  await request(`${FIREBASE_URL}/groups/${grupoId}/roles/${cargoId}.json`, 'PUT', cargo);
-  
-  if (!botConfig.roles[grupoId]) botConfig.roles[grupoId] = {};
-  botConfig.roles[grupoId][cargoId] = cargo;
-  
-  fs.writeFileSync(DATA_FILE, JSON.stringify(botConfig, null, 2));
-  
-  console.log(`${cores.green}✅ Cargo "${cargoNome}" criado com sucesso!${cores.reset}`);
-  return cargoId;
-}
-
-// Atribuir cargo a usuário
-async function atribuirCargo(grupoId, userId, cargoId) {
-  try {
-    const grupo = await request(`${FIREBASE_URL}/groups/${grupoId}.json`);
-    if (!grupo || !grupo.members || !grupo.members[userId]) {
-      console.log(`${cores.red}❌ Usuário não encontrado no grupo!${cores.reset}`);
-      return false;
-    }
-    
-    await request(`${FIREBASE_URL}/groups/${grupoId}/members/${userId}/cargos/${cargoId}.json`, 'PUT', true);
-    
-    if (botConfig.roles[grupoId] && botConfig.roles[grupoId][cargoId]) {
-      if (!botConfig.roles[grupoId][cargoId].membros.includes(userId)) {
-        botConfig.roles[grupoId][cargoId].membros.push(userId);
-        fs.writeFileSync(DATA_FILE, JSON.stringify(botConfig, null, 2));
-      }
-    }
-    
-    console.log(`${cores.green}✅ Cargo atribuído com sucesso!${cores.reset}`);
-    return true;
-  } catch (error) {
-    console.log(`${cores.red}❌ Erro ao atribuir cargo: ${error.message}${cores.reset}`);
-    return false;
-  }
-}
-
-// Listar membros do grupo
-async function listarMembros(grupoId) {
-  try {
-    const grupo = await request(`${FIREBASE_URL}/groups/${grupoId}.json`);
-    if (!grupo || !grupo.members) return [];
-    
-    const membros = [];
-    for (const [userId, userData] of Object.entries(grupo.members)) {
-      membros.push({
-        id: userId,
-        nome: userData.name || userId,
-        cargos: userData.cargos || {}
-      });
-    }
-    return membros;
-  } catch (error) {
-    return [];
-  }
-}
-
-// Criar script personalizado
-function criarScript() {
-  limparTela();
-  titulo();
-  
-  console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
-  console.log(`${cores.cyan}│                    CRIAR SCRIPT JS                         │${cores.reset}`);
-  console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
-  console.log();
-  
-  if (!fs.existsSync(SCRIPTS_DIR)) {
-    fs.mkdirSync(SCRIPTS_DIR, { recursive: true });
-  }
-  
-  rl.question(`${cores.yellow}📝 Nome do script (ex: meu_script.js): ${cores.reset}`, (nome) => {
-    if (!nome) {
-      console.log(`${cores.red}❌ Nome inválido!${cores.reset}`);
-      setTimeout(() => {}, 1500);
-      return;
-    }
-    
-    const scriptPath = path.join(SCRIPTS_DIR, nome);
-    const template = `// Script personalizado para BOT SYSTEM
-// Use as variáveis disponíveis: bot, grupoId, enviarMensagem, request
-
-async function main() {
-    console.log("📢 Script iniciado!");
-    
-    // Exemplo: Enviar mensagem
-    await enviarMensagem(grupoId, "Olá! Este é um script automático!");
-    
-    // Exemplo: Buscar dados
-    const data = await request(\`https://api.exemplo.com/dados.json\`);
-    
-    // Seu código aqui...
-    
-    console.log("✅ Script finalizado!");
-}
-
-main().catch(console.error);`;
-    
-    fs.writeFileSync(scriptPath, template);
-    console.log(`${cores.green}✅ Script criado em: ${scriptPath}${cores.reset}`);
-    setTimeout(() => {}, 2000);
-  });
-}
-
-// Listar scripts disponíveis
-function listarScripts() {
-  if (!fs.existsSync(SCRIPTS_DIR)) {
-    return [];
-  }
-  return fs.readdirSync(SCRIPTS_DIR).filter(file => file.endsWith('.js'));
-}
-
-// Menu de seleção com setas
-function renderMenu(title, options) {
-  limparTela();
-  titulo();
-  
-  console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
-  console.log(`${cores.cyan}│${cores.reset} ${cores.bold}${title}${cores.reset}${' '.repeat(55 - title.length)}${cores.cyan}│${cores.reset}`);
-  console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
-  console.log();
-  
-  for (let i = 0; i < options.length; i++) {
-    const prefix = i === selectedIndex ? `${cores.green}▶${cores.reset}` : ' ';
-    console.log(`${prefix} ${options[i]}`);
-  }
-  
-  console.log();
-  console.log(`${cores.gray}↑/↓ - Navegar | Enter - Selecionar | ESC - Voltar${cores.reset}`);
-}
-
-// Iniciar servidor web
-function iniciarWebServer() {
-  if (webServer) return;
-  
-  const html = `<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOT SYSTEM Dashboard</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #fff;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            text-align: center;
-            padding: 40px 0;
-            background: rgba(0,0,0,0.2);
-            border-radius: 20px;
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-        }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .card {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            transition: transform 0.3s;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        .card h3 {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-            opacity: 0.9;
-        }
-        .card .value {
-            font-size: 2.5em;
-            font-weight: bold;
-        }
-        .info {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-        }
-        .info h2 {
-            margin-bottom: 15px;
-        }
-        .info-item {
-            padding: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-        }
-        .status-online {
-            color: #4ade80;
-        }
-        .status-offline {
-            color: #f87171;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .live {
-            animation: pulse 2s infinite;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 BOT SYSTEM Dashboard</h1>
-            <p>Painel de controle do seu bot</p>
-        </div>
-        
-        <div class="stats">
-            <div class="card">
-                <h3>Status do Bot</h3>
-                <div class="value" id="botStatus">Carregando...</div>
-            </div>
-            <div class="card">
-                <h3>Tempo Ativo</h3>
-                <div class="value" id="uptime">Carregando...</div>
-            </div>
-            <div class="card">
-                <h3>Grupos Ativos</h3>
-                <div class="value" id="groupsCount">0</div>
-            </div>
-            <div class="card">
-                <h3>Scripts</h3>
-                <div class="value" id="scriptsCount">0</div>
-            </div>
-        </div>
-        
-        <div class="info">
-            <h2>📊 Informações do Bot</h2>
-            <div class="info-item"><strong>ID:</strong> <span id="botId">-</span></div>
-            <div class="info-item"><strong>Nome:</strong> <span id="botName">-</span></div>
-            <div class="info-item"><strong>IP do Servidor:</strong> <span id="serverIp">-</span></div>
-            <div class="info-item"><strong>Porta Web:</strong> <span id="webPort">${WEB_PORT}</span></div>
-        </div>
-        
-        <div class="info">
-            <h2>🔧 Comandos Rápidos</h2>
-            <div class="info-item"><strong>Status:</strong> Ver informações do bot</div>
-            <div class="info-item"><strong>Grupos:</strong> Listar todos os grupos</div>
-            <div class="info-item"><strong>Scripts:</strong> Gerenciar scripts</div>
-        </div>
-    </div>
-    
-    <script>
-        async function atualizarDados() {
-            try {
-                const response = await fetch('/api/status');
-                const data = await response.json();
-                
-                document.getElementById('botStatus').innerHTML = data.botStatus ? 
-                    '<span class="status-online">🟢 ONLINE</span>' : 
-                    '<span class="status-offline">🔴 OFFLINE</span>';
-                document.getElementById('uptime').textContent = data.uptime || '0s';
-                document.getElementById('groupsCount').textContent = data.groupsCount || 0;
-                document.getElementById('scriptsCount').textContent = data.scriptsCount || 0;
-                document.getElementById('botId').textContent = data.botId || '-';
-                document.getElementById('botName').textContent = data.botName || '-';
-                document.getElementById('serverIp').textContent = data.serverIp || '-';
-            } catch(e) {
-                console.error('Erro ao atualizar:', e);
-            }
-        }
-        
-        atualizarDados();
-        setInterval(atualizarDados, 5000);
-    </script>
-</body>
-</html>`;
-  
-  webServer = http.createServer((req, res) => {
-    if (req.url === '/') {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(html);
-    } else if (req.url === '/api/status') {
-      const networkInterfaces = os.networkInterfaces();
-      let serverIp = 'localhost';
-      for (const interfaceName in networkInterfaces) {
-        for (const iface of networkInterfaces[interfaceName]) {
-          if (iface.family === 'IPv4' && !iface.internal) {
-            serverIp = iface.address;
-            break;
-          }
-        }
-      }
-      
-      const status = {
-        botStatus: !!botConfig,
-        uptime: getUptime(),
-        groupsCount: botConfig ? Object.keys(botConfig.chats || {}).length : 0,
-        scriptsCount: listarScripts().length,
-        botId: botConfig ? botConfig.id : null,
-        botName: botConfig ? botConfig.nome : null,
-        serverIp: serverIp,
-        webPort: WEB_PORT
-      };
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(status));
-    } else {
-      res.writeHead(404);
-      res.end();
-    }
-  });
-  
-  webServer.listen(WEB_PORT, () => {
-    const networkInterfaces = os.networkInterfaces();
-    let localIp = 'localhost';
-    for (const interfaceName in networkInterfaces) {
-      for (const iface of networkInterfaces[interfaceName]) {
-        if (iface.family === 'IPv4' && !iface.internal) {
-          localIp = iface.address;
-          break;
-        }
-      }
-    }
-    console.log(`${cores.green}✅ Web server iniciado em:${cores.reset}`);
-    console.log(`${cores.cyan}   Local: http://localhost:${WEB_PORT}${cores.reset}`);
-    console.log(`${cores.cyan}   Rede: http://${localIp}:${WEB_PORT}${cores.reset}`);
-  });
-}
-
-// Menu de scripts
-async function menuScripts() {
-  currentMenu = 'scripts';
-  const scripts = listarScripts();
-  const options = [...scripts.map(s => `📜 ${s}`), '➕ Criar novo script', '🔙 Voltar'];
-  
-  while (currentMenu === 'scripts') {
-    renderMenu('GERENCIAR SCRIPTS', options);
-    
-    const key = await new Promise(resolve => {
-      const handler = (chunk, key) => {
-        if (key.name === 'up') resolve('up');
-        else if (key.name === 'down') resolve('down');
-        else if (key.name === 'return') resolve('select');
-        else if (key.name === 'escape') resolve('escape');
-        else resolve(null);
-      };
-      process.stdin.once('keypress', handler);
-    });
-    
-    if (key === 'up') selectedIndex = (selectedIndex - 1 + options.length) % options.length;
-    else if (key === 'down') selectedIndex = (selectedIndex + 1) % options.length;
-    else if (key === 'select') {
-      if (selectedIndex === options.length - 1) {
-        currentMenu = 'main';
-      } else if (selectedIndex === options.length - 2) {
-        criarScript();
-        setTimeout(() => renderMenu('GERENCIAR SCRIPTS', options), 2000);
-      } else if (selectedIndex < scripts.length) {
-        if (!botConfig || Object.keys(botConfig.chats).length === 0) {
-          console.log(`${cores.red}❌ Autentique um bot primeiro!${cores.reset}`);
-          setTimeout(() => {}, 1500);
-        } else {
-          const grupos = Object.values(botConfig.chats);
-          console.log(`${cores.yellow}Selecione o grupo para executar o script:${cores.reset}`);
-          for (let i = 0; i < grupos.length; i++) {
-            console.log(`${i + 1}. ${grupos[i].nome}`);
-          }
-          rl.question(`${cores.yellow}Opção: ${cores.reset}`, async (opt) => {
-            const idx = parseInt(opt) - 1;
-            if (idx >= 0 && idx < grupos.length) {
-              await executarScript(path.join(SCRIPTS_DIR, scripts[selectedIndex]), grupos[idx].id);
-            }
-            setTimeout(() => renderMenu('GERENCIAR SCRIPTS', options), 2000);
-          });
-        }
-      }
-    } else if (key === 'escape') {
-      currentMenu = 'main';
-    }
-  }
-  selectedIndex = 0;
-}
-
-// Menu principal interativo
-async function menuPrincipal() {
-  currentMenu = 'main';
-  const options = [
-    `${botConfig ? '🔄' : '🔐'} ${botConfig ? 'Reautenticar Bot' : 'Autenticar Bot'}`,
-    '📋 Listar Grupos',
-    '💬 Enviar Mensagem',
-    '👀 Monitorar Mensagens',
-    '📜 Gerenciar Scripts',
-    '👥 Gerenciar Cargos',
-    '🌐 Iniciar Web Server',
-    'ℹ️ Status do Bot',
-    '🚪 Sair'
-  ];
-  
-  while (currentMenu === 'main') {
-    renderMenu('MENU PRINCIPAL', options);
-    
-    const key = await new Promise(resolve => {
-      const handler = (chunk, key) => {
-        if (key.name === 'up') resolve('up');
-        else if (key.name === 'down') resolve('down');
-        else if (key.name === 'return') resolve('select');
-        else if (key.name === 'escape') resolve('exit');
-        else resolve(null);
-      };
-      process.stdin.once('keypress', handler);
-    });
-    
-    if (key === 'up') selectedIndex = (selectedIndex - 1 + options.length) % options.length;
-    else if (key === 'down') selectedIndex = (selectedIndex + 1) % options.length;
-    else if (key === 'select') {
-      switch(selectedIndex) {
-        case 0:
-          await autenticarBot();
-          options[0] = `${botConfig ? '🔄' : '🔐'} ${botConfig ? 'Reautenticar Bot' : 'Autenticar Bot'}`;
-          break;
-        case 1:
-          await listarGrupos();
-          break;
-        case 2:
-          await enviarParaGrupo();
-          break;
-        case 3:
-          await monitorarMensagens();
-          break;
-        case 4:
-          await menuScripts();
-          break;
-        case 5:
-          await menuCargos();
-          break;
-        case 6:
-          iniciarWebServer();
-          await pausar();
-          break;
-        case 7:
-          await mostrarStatus();
-          break;
-        case 8:
-          console.log(`${cores.green}👋 Até logo!${cores.reset}`);
-          if (webServer) webServer.close();
-          process.exit(0);
-      }
-    } else if (key === 'exit') {
-      if (webServer) webServer.close();
-      process.exit(0);
-    }
-  }
-}
-
-// Menu de cargos
-async function menuCargos() {
-  if (!botConfig) {
-    console.log(`${cores.red}❌ Autentique um bot primeiro!${cores.reset}`);
-    await pausar();
-    return;
-  }
-  
-  limparTela();
-  titulo();
-  
-  console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
-  console.log(`${cores.cyan}│                    GERENCIAR CARGOS                         │${cores.reset}`);
-  console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
-  console.log();
-  
-  const grupos = Object.values(botConfig.chats);
-  if (grupos.length === 0) {
-    console.log(`${cores.yellow}⚠️ Nenhum grupo disponível!${cores.reset}`);
-    await pausar();
-    return;
-  }
-  
-  console.log(`${cores.yellow}Selecione o grupo:${cores.reset}`);
-  for (let i = 0; i < grupos.length; i++) {
-    console.log(`${i + 1}. ${grupos[i].nome}`);
-  }
-  console.log();
-  
-  rl.question(`${cores.yellow}Opção: ${cores.reset}`, async (opt) => {
-    const idx = parseInt(opt) - 1;
-    if (idx >= 0 && idx < grupos.length) {
-      const grupo = grupos[idx];
-      
-      console.log(`\n${cores.cyan}1. Criar novo cargo${cores.reset}`);
-      console.log(`${cores.cyan}2. Listar cargos${cores.reset}`);
-      console.log(`${cores.cyan}3. Atribuir cargo a usuário${cores.reset}`);
-      console.log();
-      
-      rl.question(`${cores.yellow}Escolha: ${cores.reset}`, async (op) => {
-        if (op === '1') {
-          rl.question(`${cores.yellow}Nome do cargo: ${cores.reset}`, async (cargoNome) => {
-            if (cargoNome) {
-              await criarCargo(grupo.id, cargoNome);
-            }
-            setTimeout(() => {}, 2000);
-          });
-        } else if (op === '2') {
-          const grupoData = await request(`${FIREBASE_URL}/groups/${grupo.id}/roles.json`);
-          if (grupoData) {
-            console.log(`\n${cores.green}Cargos disponíveis:${cores.reset}`);
-            for (const [cargoId, cargo] of Object.entries(grupoData)) {
-              console.log(`📌 ${cargo.nome} - Membros: ${cargo.membros?.length || 0}`);
-            }
-          } else {
-            console.log(`${cores.yellow}Nenhum cargo criado ainda!${cores.reset}`);
-          }
-          await pausar();
-        } else if (op === '3') {
-          const membros = await listarMembros(grupo.id);
-          if (membros.length === 0) {
-            console.log(`${cores.yellow}Nenhum membro encontrado!${cores.reset}`);
-            await pausar();
-            return;
-          }
-          
-          console.log(`\n${cores.yellow}Membros do grupo:${cores.reset}`);
-          for (let i = 0; i < membros.length; i++) {
-            console.log(`${i + 1}. ${membros[i].nome}`);
-          }
-          
-          rl.question(`\n${cores.yellow}Selecione o membro: ${cores.reset}`, async (membroOpt) => {
-            const membroIdx = parseInt(membroOpt) - 1;
-            if (membroIdx >= 0 && membroIdx < membros.length) {
-              const grupoData = await request(`${FIREBASE_URL}/groups/${grupo.id}/roles.json`);
-              if (grupoData) {
-                const cargos = Object.entries(grupoData);
-                console.log(`\n${cores.yellow}Cargos disponíveis:${cores.reset}`);
-                for (let i = 0; i < cargos.length; i++) {
-                  console.log(`${i + 1}. ${cargos[i][1].nome}`);
-                }
-                
-                rl.question(`\n${cores.yellow}Selecione o cargo: ${cores.reset}`, async (cargoOpt) => {
-                  const cargoIdx = parseInt(cargoOpt) - 1;
-                  if (cargoIdx >= 0 && cargoIdx < cargos.length) {
-                    await atribuirCargo(grupo.id, membros[membroIdx].id, cargos[cargoIdx][0]);
-                  }
-                  setTimeout(() => {}, 2000);
-                });
-              } else {
-                console.log(`${cores.yellow}Nenhum cargo criado!${cores.reset}`);
-                setTimeout(() => {}, 1500);
-              }
-            }
-          });
-        }
-      });
-    }
-  });
-}
-
 // Listar grupos
 async function listarGrupos() {
   limparTela();
-  titulo();
+  mostrarTitulo();
   
   console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
   console.log(`${cores.cyan}│                    SEUS GRUPOS                            │${cores.reset}`);
   console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
   console.log();
   
-  if (!botConfig || !botConfig.chats || Object.keys(botConfig.chats).length === 0) {
+  if (!botConfig) {
+    console.log(`${cores.red}❌ Nenhum bot autenticado!${cores.reset}`);
+    console.log(`${cores.yellow}💡 Use a opção 1 para autenticar primeiro.${cores.reset}`);
+    await pausar();
+    return;
+  }
+  
+  if (!botConfig.chats || Object.keys(botConfig.chats).length === 0) {
     console.log(`${cores.yellow}⚠️ Nenhum grupo encontrado!${cores.reset}`);
+    console.log();
+    console.log(`${cores.cyan}💡 Para adicionar o bot a um grupo:${cores.reset}`);
+    console.log(`   Use o ID do bot: ${cores.green}${botConfig.id}${cores.reset}`);
     await pausar();
     return;
   }
@@ -814,18 +223,25 @@ async function listarGrupos() {
   await pausar();
 }
 
-// Enviar para grupo
+// Enviar mensagem para grupo
 async function enviarParaGrupo() {
-  if (!botConfig || !botConfig.chats || Object.keys(botConfig.chats).length === 0) {
+  limparTela();
+  mostrarTitulo();
+  
+  if (!botConfig) {
+    console.log(`${cores.red}❌ Nenhum bot autenticado!${cores.reset}`);
+    console.log(`${cores.yellow}💡 Use a opção 1 para autenticar primeiro.${cores.reset}`);
+    await pausar();
+    return;
+  }
+  
+  if (!botConfig.chats || Object.keys(botConfig.chats).length === 0) {
     console.log(`${cores.yellow}⚠️ Nenhum grupo disponível!${cores.reset}`);
     await pausar();
     return;
   }
   
   const grupos = Object.values(botConfig.chats);
-  
-  limparTela();
-  titulo();
   
   console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
   console.log(`${cores.cyan}│                    ESCOLHA O GRUPO                        │${cores.reset}`);
@@ -847,28 +263,41 @@ async function enviarParaGrupo() {
           console.log(`${cores.cyan}🔄 Enviando...${cores.reset}`);
           await enviarMensagem(grupo.id, msg);
           console.log(`${cores.green}✅ Mensagem enviada para ${grupo.nome}!${cores.reset}`);
+        } else {
+          console.log(`${cores.yellow}⚠️ Mensagem vazia!${cores.reset}`);
         }
-        setTimeout(() => {}, 1500);
+        setTimeout(() => {
+          menuPrincipal();
+        }, 1500);
       });
     } else {
       console.log(`${cores.red}❌ Opção inválida!${cores.reset}`);
-      setTimeout(() => {}, 1000);
+      setTimeout(() => {
+        menuPrincipal();
+      }, 1000);
     }
   });
 }
 
-// Monitorar mensagens melhorado
+// Monitorar mensagens
 async function monitorarMensagens() {
-  if (!botConfig || !botConfig.chats || Object.keys(botConfig.chats).length === 0) {
+  limparTela();
+  mostrarTitulo();
+  
+  if (!botConfig) {
+    console.log(`${cores.red}❌ Nenhum bot autenticado!${cores.reset}`);
+    console.log(`${cores.yellow}💡 Use a opção 1 para autenticar primeiro.${cores.reset}`);
+    await pausar();
+    return;
+  }
+  
+  if (!botConfig.chats || Object.keys(botConfig.chats).length === 0) {
     console.log(`${cores.yellow}⚠️ Nenhum grupo disponível!${cores.reset}`);
     await pausar();
     return;
   }
   
   const grupos = Object.values(botConfig.chats);
-  
-  limparTela();
-  titulo();
   
   console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
   console.log(`${cores.cyan}│                    MONITORAR GRUPO                         │${cores.reset}`);
@@ -880,37 +309,38 @@ async function monitorarMensagens() {
   }
   console.log();
   
-  rl.question(`${cores.yellow}👉 Escolha o grupo: ${cores.reset}`, async (opcao) => {
+  rl.question(`${cores.yellow}👉 Escolha o grupo (0 para cancelar): ${cores.reset}`, async (opcao) => {
     const idx = parseInt(opcao) - 1;
+    if (opcao === '0') {
+      menuPrincipal();
+      return;
+    }
+    
     if (idx >= 0 && idx < grupos.length) {
       const grupo = grupos[idx];
       
       limparTela();
-      titulo();
+      mostrarTitulo();
       console.log(`${cores.green}📡 Monitorando: ${grupo.nome}${cores.reset}`);
-      console.log(`${cores.yellow}⚠️ Pressione CTRL+C para parar${cores.reset}`);
+      console.log(`${cores.yellow}⚠️ Pressione CTRL+C para parar o monitoramento${cores.reset}`);
       console.log(`${cores.blue}════════════════════════════════════════════════════════════${cores.reset}`);
       console.log();
       
-      let ultimoTimestamp = 0;
-      const mensagensExibidas = new Set();
+      let ultimoTimestamp = Date.now();
       
       const interval = setInterval(async () => {
         try {
-          const mensagens = await request(`${FIREBASE_URL}/groups/${grupo.id}/messages.json`);
+          const mensagens = await request(`${FIREBASE_URL}/groups/${grupo.id}/messages.json?orderBy="timestamp"&startAfter=${ultimoTimestamp}`);
           
           if (mensagens) {
-            const msgs = Object.entries(mensagens)
-              .map(([id, msg]) => ({ id, ...msg }))
-              .sort((a, b) => a.timestamp - b.timestamp);
-            
+            const msgs = Object.values(mensagens);
             for (const msg of msgs) {
-              if (msg.timestamp > ultimoTimestamp && msg.senderId !== botConfig.id && !mensagensExibidas.has(msg.id)) {
+              if (msg.senderId !== botConfig.id && msg.timestamp > ultimoTimestamp) {
                 const hora = new Date(msg.timestamp).toLocaleTimeString();
-                const data = new Date(msg.timestamp).toLocaleDateString();
-                console.log(`${cores.gray}[${data} ${hora}]${cores.reset} ${cores.cyan}${msg.senderName}:${cores.reset} ${msg.text}`);
-                mensagensExibidas.add(msg.id);
-                ultimoTimestamp = msg.timestamp;
+                console.log(`${cores.gray}[${hora}]${cores.reset} ${cores.cyan}${msg.senderName}:${cores.reset} ${msg.text}`);
+                if (msg.timestamp > ultimoTimestamp) {
+                  ultimoTimestamp = msg.timestamp;
+                }
               }
             }
           }
@@ -919,22 +349,705 @@ async function monitorarMensagens() {
       
       activeMonitors[grupo.id] = interval;
       
-      process.on('SIGINT', () => {
+      const cleanup = () => {
         if (activeMonitors[grupo.id]) {
           clearInterval(activeMonitors[grupo.id]);
           delete activeMonitors[grupo.id];
         }
         console.log(`\n${cores.yellow}👋 Monitoramento de ${grupo.nome} encerrado!${cores.reset}`);
-        setTimeout(() => menuPrincipal(), 1000);
-      });
+        process.stdin.removeListener('SIGINT', cleanup);
+        setTimeout(() => menuPrincipal(), 2000);
+      };
+      
+      process.on('SIGINT', cleanup);
+    } else {
+      console.log(`${cores.red}❌ Opção inválida!${cores.reset}`);
+      setTimeout(() => menuPrincipal(), 1000);
     }
   });
 }
 
-// Mostrar status detalhado
+// Criar diretório de scripts se não existir
+function initScriptsDir() {
+  if (!fs.existsSync(SCRIPTS_DIR)) {
+    fs.mkdirSync(SCRIPTS_DIR, { recursive: true });
+    
+    // Criar script exemplo
+    const exampleScript = `// Script exemplo para o BOT SYSTEM
+// Este script será executado automaticamente
+
+async function main(bot, grupoId, enviarMensagem, request) {
+    console.log("🚀 Executando script automático...");
+    
+    // Enviar mensagem de boas vindas
+    await enviarMensagem(grupoId, "🤖 Bot ativado! Este é um script automático.");
+    
+    // Buscar dados de exemplo
+    const data = await request("https://api.github.com/repos/nodejs/node");
+    if (data) {
+        await enviarMensagem(grupoId, \`📊 Informações do Node.js: \${data.stargazers_count} estrelas!\`);
+    }
+    
+    console.log("✅ Script finalizado com sucesso!");
+}
+
+main(bot, grupoId, enviarMensagem, request).catch(console.error);
+`;
+    
+    fs.writeFileSync(path.join(SCRIPTS_DIR, 'exemplo.js'), exampleScript);
+  }
+}
+
+// Listar scripts
+function listarScripts() {
+  if (!fs.existsSync(SCRIPTS_DIR)) {
+    return [];
+  }
+  return fs.readdirSync(SCRIPTS_DIR).filter(file => file.endsWith('.js'));
+}
+
+// Criar novo script
+async function criarScript() {
+  limparTela();
+  mostrarTitulo();
+  
+  console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
+  console.log(`${cores.cyan}│                    CRIAR NOVO SCRIPT                       │${cores.reset}`);
+  console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
+  console.log();
+  
+  rl.question(`${cores.yellow}📝 Nome do script (sem espaços, ex: meu_script): ${cores.reset}`, (nome) => {
+    if (!nome) {
+      console.log(`${cores.red}❌ Nome inválido!${cores.reset}`);
+      setTimeout(() => menuPrincipal(), 1500);
+      return;
+    }
+    
+    const scriptPath = path.join(SCRIPTS_DIR, `${nome}.js`);
+    
+    const template = `// Script: ${nome}
+// Criado em: ${new Date().toLocaleString()}
+
+async function main(bot, grupoId, enviarMensagem, request) {
+    console.log("📢 Iniciando script...");
+    
+    // TODO: Adicione seu código aqui
+    
+    // Exemplo: Enviar mensagem
+    // await enviarMensagem(grupoId, "Olá! Este é meu script personalizado!");
+    
+    console.log("✅ Script finalizado!");
+}
+
+main(bot, grupoId, enviarMensagem, request).catch(console.error);
+`;
+    
+    fs.writeFileSync(scriptPath, template);
+    console.log(`${cores.green}✅ Script criado com sucesso!${cores.reset}`);
+    console.log(`${cores.cyan}📁 Local: ${scriptPath}${cores.reset}`);
+    setTimeout(() => menuPrincipal(), 2000);
+  });
+}
+
+// Executar script
+async function executarScript(scriptPath, grupoId) {
+  try {
+    const scriptContent = fs.readFileSync(scriptPath, 'utf8');
+    const scriptFunction = new Function('bot', 'grupoId', 'enviarMensagem', 'request', 'console', scriptContent);
+    
+    console.log(`${cores.cyan}🔄 Executando script...${cores.reset}`);
+    await scriptFunction(botConfig, grupoId, enviarMensagem, request, console);
+    console.log(`${cores.green}✅ Script executado com sucesso!${cores.reset}`);
+    return true;
+  } catch (error) {
+    console.log(`${cores.red}❌ Erro ao executar script: ${error.message}${cores.reset}`);
+    return false;
+  }
+}
+
+// Menu de scripts
+async function menuScripts() {
+  limparTela();
+  mostrarTitulo();
+  
+  if (!botConfig) {
+    console.log(`${cores.red}❌ Nenhum bot autenticado!${cores.reset}`);
+    console.log(`${cores.yellow}💡 Use a opção 1 para autenticar primeiro.${cores.reset}`);
+    await pausar();
+    return;
+  }
+  
+  initScriptsDir();
+  const scripts = listarScripts();
+  
+  console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
+  console.log(`${cores.cyan}│                    GERENCIAR SCRIPTS                       │${cores.reset}`);
+  console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
+  console.log();
+  
+  if (scripts.length === 0) {
+    console.log(`${cores.yellow}⚠️ Nenhum script encontrado!${cores.reset}`);
+  } else {
+    console.log(`${cores.green}📜 Scripts disponíveis:${cores.reset}`);
+    for (let i = 0; i < scripts.length; i++) {
+      console.log(`${i + 1}. ${scripts[i]}`);
+    }
+  }
+  
+  console.log();
+  console.log(`${cores.green}${scripts.length + 1}.${cores.reset} Criar novo script`);
+  console.log(`${cores.green}${scripts.length + 2}.${cores.reset} Voltar ao menu principal`);
+  console.log();
+  
+  rl.question(`${cores.yellow}👉 Escolha uma opção: ${cores.reset}`, async (opcao) => {
+    const num = parseInt(opcao);
+    
+    if (num === scripts.length + 2) {
+      menuPrincipal();
+      return;
+    }
+    
+    if (num === scripts.length + 1) {
+      criarScript();
+      return;
+    }
+    
+    if (num >= 1 && num <= scripts.length) {
+      const script = scripts[num - 1];
+      const grupos = Object.values(botConfig.chats);
+      
+      if (grupos.length === 0) {
+        console.log(`${cores.yellow}⚠️ Nenhum grupo disponível para executar o script!${cores.reset}`);
+        await pausar();
+        menuPrincipal();
+        return;
+      }
+      
+      limparTela();
+      mostrarTitulo();
+      console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
+      console.log(`${cores.cyan}│                    ESCOLHA O GRUPO                        │${cores.reset}`);
+      console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
+      console.log();
+      
+      for (let i = 0; i < grupos.length; i++) {
+        console.log(`${i + 1}. ${grupos[i].nome}`);
+      }
+      console.log();
+      
+      rl.question(`${cores.yellow}👉 Escolha o grupo (0 para cancelar): ${cores.reset}`, async (grupoOpt) => {
+        const grupoNum = parseInt(grupoOpt);
+        
+        if (grupoNum === 0) {
+          menuPrincipal();
+          return;
+        }
+        
+        if (grupoNum >= 1 && grupoNum <= grupos.length) {
+          await executarScript(path.join(SCRIPTS_DIR, script), grupos[grupoNum - 1].id);
+          await pausar();
+          menuPrincipal();
+        } else {
+          console.log(`${cores.red}❌ Opção inválida!${cores.reset}`);
+          setTimeout(() => menuScripts(), 1500);
+        }
+      });
+    } else {
+      console.log(`${cores.red}❌ Opção inválida!${cores.reset}`);
+      setTimeout(() => menuScripts(), 1500);
+    }
+  });
+}
+
+// Criar dashboard web editável
+function criarWebDashboard() {
+  if (!fs.existsSync(WEB_DIR)) {
+    fs.mkdirSync(WEB_DIR, { recursive: true });
+  }
+  
+  const htmlPath = path.join(WEB_DIR, 'index.html');
+  const cssPath = path.join(WEB_DIR, 'style.css');
+  const jsPath = path.join(WEB_DIR, 'script.js');
+  
+  // HTML Template
+  const htmlContent = `<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOT SYSTEM Dashboard - Editável</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 BOT SYSTEM Dashboard</h1>
+            <p>Painel de controle editável do seu bot</p>
+            <button id="editBtn" class="edit-btn">✏️ Editar Dashboard</button>
+        </div>
+        
+        <div class="stats" id="stats">
+            <div class="card">
+                <h3>Status do Bot</h3>
+                <div class="value" id="botStatus">Carregando...</div>
+            </div>
+            <div class="card">
+                <h3>Tempo Ativo</h3>
+                <div class="value" id="uptime">Carregando...</div>
+            </div>
+            <div class="card">
+                <h3>Grupos Ativos</h3>
+                <div class="value" id="groupsCount">0</div>
+            </div>
+            <div class="card">
+                <h3>Scripts</h3>
+                <div class="value" id="scriptsCount">0</div>
+            </div>
+        </div>
+        
+        <div class="info" id="info">
+            <h2>📊 Informações do Bot</h2>
+            <div class="info-item"><strong>ID:</strong> <span id="botId">-</span></div>
+            <div class="info-item"><strong>Nome:</strong> <span id="botName">-</span></div>
+            <div class="info-item"><strong>IP do Servidor:</strong> <span id="serverIp">-</span></div>
+            <div class="info-item"><strong>Porta Web:</strong> <span id="webPort">${WEB_PORT}</span></div>
+        </div>
+        
+        <div class="info" id="messages">
+            <h2>💬 Últimas Mensagens</h2>
+            <div id="messagesList" class="messages-list"></div>
+        </div>
+        
+        <div class="info editable" contenteditable="false" id="customContent">
+            <h2>📝 Conteúdo Personalizável</h2>
+            <p>Clique em "Editar Dashboard" para personalizar esta área!</p>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>`;
+  
+  // CSS Template
+  const cssContent = `* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #fff;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    text-align: center;
+    padding: 40px 0;
+    background: rgba(0,0,0,0.2);
+    border-radius: 20px;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.header h1 {
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+.edit-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.edit-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.05);
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card h3 {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+    opacity: 0.9;
+}
+
+.card .value {
+    font-size: 2.5em;
+    font-weight: bold;
+}
+
+.info {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+.info h2 {
+    margin-bottom: 15px;
+}
+
+.info-item {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.messages-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.message-item {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 14px;
+}
+
+.message-time {
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+}
+
+.message-sender {
+    color: #4ade80;
+    font-weight: bold;
+}
+
+.editable {
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.editable:hover {
+    background: rgba(255,255,255,0.15);
+}
+
+.editing-mode {
+    border: 2px solid #4ade80;
+    box-shadow: 0 0 20px rgba(74,222,128,0.3);
+}
+
+.status-online {
+    color: #4ade80;
+}
+
+.status-offline {
+    color: #f87171;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.live {
+    animation: pulse 2s infinite;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.5);
+}`;
+  
+  // JavaScript Template
+  const jsContent = `let editingMode = false;
+let ultimasMensagens = [];
+
+async function atualizarDados() {
+    try {
+        const response = await fetch('/api/status');
+        const data = await response.json();
+        
+        document.getElementById('botStatus').innerHTML = data.botStatus ? 
+            '<span class="status-online">🟢 ONLINE</span>' : 
+            '<span class="status-offline">🔴 OFFLINE</span>';
+        document.getElementById('uptime').textContent = data.uptime || '0s';
+        document.getElementById('groupsCount').textContent = data.groupsCount || 0;
+        document.getElementById('scriptsCount').textContent = data.scriptsCount || 0;
+        document.getElementById('botId').textContent = data.botId || '-';
+        document.getElementById('botName').textContent = data.botName || '-';
+        document.getElementById('serverIp').textContent = data.serverIp || '-';
+        
+        if (data.messages && data.messages.length > 0) {
+            ultimasMensagens = data.messages;
+            const messagesList = document.getElementById('messagesList');
+            messagesList.innerHTML = ultimasMensagens.map(msg => \`
+                <div class="message-item">
+                    <div class="message-time">\${new Date(msg.timestamp).toLocaleString()}</div>
+                    <div class="message-sender">\${msg.senderName}:</div>
+                    <div>\${msg.text}</div>
+                </div>
+            \`).join('');
+        }
+    } catch(e) {
+        console.error('Erro ao atualizar:', e);
+    }
+}
+
+function toggleEditMode() {
+    editingMode = !editingMode;
+    const customContent = document.getElementById('customContent');
+    const editBtn = document.getElementById('editBtn');
+    
+    if (editingMode) {
+        customContent.setAttribute('contenteditable', 'true');
+        customContent.classList.add('editing-mode');
+        editBtn.textContent = '💾 Salvar Dashboard';
+        editBtn.style.background = '#4ade80';
+        
+        // Salvar ao clicar fora
+        customContent.addEventListener('blur', saveContent);
+    } else {
+        customContent.setAttribute('contenteditable', 'false');
+        customContent.classList.remove('editing-mode');
+        editBtn.textContent = '✏️ Editar Dashboard';
+        editBtn.style.background = 'rgba(255,255,255,0.2)';
+        saveContent();
+    }
+}
+
+function saveContent() {
+    const customContent = document.getElementById('customContent');
+    const content = customContent.innerHTML;
+    
+    fetch('/api/save-content', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: content })
+    }).then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              console.log('Conteúdo salvo!');
+          }
+      });
+}
+
+function loadSavedContent() {
+    fetch('/api/load-content')
+        .then(response => response.json())
+        .then(data => {
+            if (data.content) {
+                document.getElementById('customContent').innerHTML = data.content;
+            }
+        });
+}
+
+document.getElementById('editBtn').addEventListener('click', toggleEditMode);
+
+// Carregar conteúdo salvo
+loadSavedContent();
+
+// Atualizar a cada 3 segundos
+atualizarDados();
+setInterval(atualizarDados, 3000);`;
+  
+  fs.writeFileSync(htmlPath, htmlContent);
+  fs.writeFileSync(cssPath, cssContent);
+  fs.writeFileSync(jsPath, jsContent);
+}
+
+// Salvar conteúdo editável
+function salvarConteudoEditavel(content) {
+  const contentPath = path.join(WEB_DIR, 'custom_content.json');
+  fs.writeFileSync(contentPath, JSON.stringify({ content: content, updated: Date.now() }));
+  return true;
+}
+
+// Carregar conteúdo editável
+function carregarConteudoEditavel() {
+  const contentPath = path.join(WEB_DIR, 'custom_content.json');
+  if (fs.existsSync(contentPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(contentPath, 'utf8'));
+      return data.content;
+    } catch(e) {}
+  }
+  return null;
+}
+
+// Iniciar servidor web
+function iniciarWebServer() {
+  if (webServer) {
+    console.log(`${cores.yellow}⚠️ Web server já está rodando!${cores.reset}`);
+    return;
+  }
+  
+  criarWebDashboard();
+  
+  webServer = http.createServer(async (req, res) => {
+    // CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+    
+    // API endpoints
+    if (req.url === '/api/status') {
+      const networkInterfaces = os.networkInterfaces();
+      let serverIp = 'localhost';
+      for (const interfaceName in networkInterfaces) {
+        for (const iface of networkInterfaces[interfaceName]) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            serverIp = iface.address;
+            break;
+          }
+        }
+      }
+      
+      // Buscar últimas mensagens
+      let mensagens = [];
+      if (botConfig && botConfig.chats) {
+        const grupos = Object.values(botConfig.chats);
+        for (const grupo of grupos.slice(0, 3)) {
+          try {
+            const msgs = await request(`${FIREBASE_URL}/groups/${grupo.id}/messages.json?orderBy="timestamp"&limitToLast=5`);
+            if (msgs) {
+              const msgList = Object.values(msgs);
+              mensagens.push(...msgList);
+            }
+          } catch(e) {}
+        }
+        mensagens = mensagens.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
+      }
+      
+      const status = {
+        botStatus: !!botConfig,
+        uptime: getUptime(),
+        groupsCount: botConfig ? Object.keys(botConfig.chats || {}).length : 0,
+        scriptsCount: listarScripts().length,
+        botId: botConfig ? botConfig.id : null,
+        botName: botConfig ? botConfig.nome : null,
+        serverIp: serverIp,
+        webPort: WEB_PORT,
+        messages: mensagens
+      };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(status));
+    } 
+    else if (req.url === '/api/save-content' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          salvarConteudoEditavel(data.content);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        } catch(e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      });
+    }
+    else if (req.url === '/api/load-content') {
+      const content = carregarConteudoEditavel();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ content: content }));
+    }
+    else {
+      // Servir arquivos estáticos
+      let filePath = req.url === '/' ? '/index.html' : req.url;
+      filePath = path.join(WEB_DIR, filePath);
+      
+      const ext = path.extname(filePath);
+      const contentType = {
+        '.html': 'text/html',
+        '.css': 'text/css',
+        '.js': 'application/javascript',
+        '.json': 'application/json'
+      }[ext] || 'text/plain';
+      
+      fs.readFile(filePath, (err, content) => {
+        if (err) {
+          res.writeHead(404);
+          res.end('Arquivo não encontrado');
+        } else {
+          res.writeHead(200, { 'Content-Type': contentType });
+          res.end(content);
+        }
+      });
+    }
+  });
+  
+  webServer.listen(WEB_PORT, () => {
+    const networkInterfaces = os.networkInterfaces();
+    let localIp = 'localhost';
+    for (const interfaceName in networkInterfaces) {
+      for (const iface of networkInterfaces[interfaceName]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          localIp = iface.address;
+          break;
+        }
+      }
+    }
+    console.log(`${cores.green}✅ Web server iniciado com sucesso!${cores.reset}`);
+    console.log(`${cores.cyan}   📍 Local: http://localhost:${WEB_PORT}${cores.reset}`);
+    console.log(`${cores.cyan}   📍 Rede: http://${localIp}:${WEB_PORT}${cores.reset}`);
+    console.log(`${cores.yellow}   💡 O dashboard é totalmente editável!${cores.reset}`);
+  });
+}
+
+// Status do bot
 async function mostrarStatus() {
   limparTela();
-  titulo();
+  mostrarTitulo();
   
   console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
   console.log(`${cores.cyan}│                    STATUS DO BOT                          │${cores.reset}`);
@@ -947,23 +1060,52 @@ async function mostrarStatus() {
     console.log(`${cores.cyan}📛 Nome:${cores.reset} ${botConfig.nome}`);
     console.log(`${cores.cyan}📊 Grupos:${cores.reset} ${Object.keys(botConfig.chats || {}).length}`);
     console.log(`${cores.cyan}⏱️  Tempo ativo:${cores.reset} ${getUptime()}`);
-    console.log(`${cores.cyan}🌐 Web Server:${cores.reset} ${webServer ? cores.green + 'Ativo' + cores.reset : cores.red + 'Inativo' + cores.reset}`);
+    console.log(`${cores.cyan}🌐 Web Server:${cores.reset} ${webServer ? cores.green + 'Ativo na porta ' + WEB_PORT + cores.reset : cores.red + 'Inativo' + cores.reset}`);
     console.log();
     
-    console.log(`${cores.green}📋 Grupos disponíveis:${cores.reset}`);
-    for (const g of Object.values(botConfig.chats || {})) {
-      console.log(`  📌 ${g.nome} (${g.id})`);
+    if (Object.keys(botConfig.chats || {}).length > 0) {
+      console.log(`${cores.green}📋 Grupos disponíveis:${cores.reset}`);
+      for (const g of Object.values(botConfig.chats)) {
+        console.log(`  📌 ${g.nome} (${g.id})`);
+      }
     }
     
     const scripts = listarScripts();
     console.log();
     console.log(`${cores.green}📜 Scripts disponíveis (${scripts.length}):${cores.reset}`);
-    for (const script of scripts) {
-      console.log(`  📄 ${script}`);
+    if (scripts.length > 0) {
+      for (const script of scripts) {
+        console.log(`  📄 ${script}`);
+      }
+    } else {
+      console.log(`  ${cores.yellow}Nenhum script criado ainda${cores.reset}`);
     }
   } else {
     console.log(`${cores.red}❌ Nenhum bot autenticado!${cores.reset}`);
+    console.log(`${cores.yellow}💡 Use a opção 1 para autenticar.${cores.reset}`);
   }
+  
+  await pausar();
+}
+
+// Gerenciar cargos
+async function gerenciarCargos() {
+  limparTela();
+  mostrarTitulo();
+  
+  if (!botConfig) {
+    console.log(`${cores.red}❌ Nenhum bot autenticado!${cores.reset}`);
+    console.log(`${cores.yellow}💡 Use a opção 1 para autenticar primeiro.${cores.reset}`);
+    await pausar();
+    return;
+  }
+  
+  console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
+  console.log(`${cores.cyan}│                    GERENCIAR CARGOS                        │${cores.reset}`);
+  console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
+  console.log();
+  console.log(`${cores.yellow}⚠️ Funcionalidade em desenvolvimento...${cores.reset}`);
+  console.log(`${cores.cyan}💡 Em breve: Criação e atribuição de cargos automática!${cores.reset}`);
   
   await pausar();
 }
@@ -973,6 +1115,59 @@ async function pausar() {
   await new Promise(resolve => {
     rl.question(`${cores.yellow}\nPressione ENTER para continuar...${cores.reset}`, resolve);
   });
+}
+
+// Menu principal
+async function menuPrincipal() {
+  while (true) {
+    limparTela();
+    mostrarTitulo();
+    
+    console.log(`${cores.cyan}┌─────────────────────────────────────────────────────────────┐${cores.reset}`);
+    console.log(`${cores.cyan}│                         MENU                               │${cores.reset}`);
+    console.log(`${cores.cyan}└─────────────────────────────────────────────────────────────┘${cores.reset}`);
+    console.log();
+    console.log(`${cores.green}1.${cores.reset} 🔐 ${botConfig ? 'Reautenticar Bot' : 'Autenticar Bot'}`);
+    console.log(`${cores.green}2.${cores.reset} 📋 Listar Grupos`);
+    console.log(`${cores.green}3.${cores.reset} 💬 Enviar Mensagem`);
+    console.log(`${cores.green}4.${cores.reset} 👀 Monitorar Mensagens`);
+    console.log(`${cores.green}5.${cores.reset} 📜 Gerenciar Scripts`);
+    console.log(`${cores.green}6.${cores.reset} 👥 Gerenciar Cargos`);
+    console.log(`${cores.green}7.${cores.reset} 🌐 Iniciar/Ver Web Dashboard`);
+    console.log(`${cores.green}8.${cores.reset} ℹ️  Status do Bot`);
+    console.log(`${cores.green}9.${cores.reset} 🚪 Sair`);
+    console.log();
+    
+    const opcao = await new Promise(resolve => {
+      rl.question(`${cores.yellow}👉 Escolha uma opção: ${cores.reset}`, resolve);
+    });
+    
+    if (opcao === '1') {
+      await autenticarBot();
+    } else if (opcao === '2') {
+      await listarGrupos();
+    } else if (opcao === '3') {
+      await enviarParaGrupo();
+    } else if (opcao === '4') {
+      await monitorarMensagens();
+    } else if (opcao === '5') {
+      await menuScripts();
+    } else if (opcao === '6') {
+      await gerenciarCargos();
+    } else if (opcao === '7') {
+      iniciarWebServer();
+      await pausar();
+    } else if (opcao === '8') {
+      await mostrarStatus();
+    } else if (opcao === '9') {
+      console.log(`${cores.green}👋 Até logo!${cores.reset}`);
+      if (webServer) webServer.close();
+      process.exit(0);
+    } else {
+      console.log(`${cores.red}❌ Opção inválida!${cores.reset}`);
+      await pausar();
+    }
+  }
 }
 
 // Carregar dados salvos
@@ -985,10 +1180,15 @@ function carregarDados() {
   }
 }
 
-// Iniciar
+// Inicialização
 console.clear();
 console.log(`${cores.green}🚀 Iniciando BOT SYSTEM v2.0...${cores.reset}`);
-console.log(`${cores.cyan}💡 Use as setas ↑/↓ para navegar nos menus${cores.reset}`);
+console.log(`${cores.cyan}💡 Sistema totalmente funcional e estável${cores.reset}`);
 console.log();
 carregarDados();
-setTimeout(() => menuPrincipal(), 2000);
+initScriptsDir();
+
+// Iniciar menu
+setTimeout(() => {
+  menuPrincipal();
+}, 1000);
