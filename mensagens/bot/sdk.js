@@ -1,5 +1,5 @@
-// sdk.js - SDK COMPLETO COM CARGOS FUNCIONANDO
-// versão 2.1.0
+// sdk.js - SDK COMPLETO CORRIGIDO
+// versão 2.2.0
 // Hospedar em: https://alexandre7888.github.io/mensagens/bot/sdk.js
 
 const https = require('https');
@@ -15,7 +15,7 @@ class MessageSDK {
         this.eventos = new Map();
         this.monitores = new Map();
         this.ultimosProcessados = new Set();
-        this.versao = '2.1.0';
+        this.versao = '2.2.0';
     }
 
     getVersao() {
@@ -159,16 +159,10 @@ class MessageSDK {
         return { success: true };
     }
 
-    // ==================== MENSAGENS ====================
+    // ==================== MENSAGENS (SEM VERIFICAÇÃO DE PERMISSÃO) ====================
     
     async enviarMensagem(grupoId, texto, options = {}) {
         if (!this.conectado) throw new Error('SDK não inicializado');
-        
-        // Verificar permissão
-        const podeEnviar = await this.verificarPermissao(grupoId, this.botId, 'enviar_mensagem');
-        if (!podeEnviar) {
-            throw new Error('Bot não tem permissão para enviar mensagens neste grupo');
-        }
         
         const timestamp = Date.now();
         const msgId = `msg_${timestamp}_${Math.random().toString(36).substr(2, 6)}`;
@@ -229,12 +223,10 @@ class MessageSDK {
         const mensagem = await this.getMensagem(grupoId, mensagemId);
         
         if (mensagem?.senderId === this.botId) {
-            // Bot pode apagar suas próprias mensagens
             await this._request(`/groups/${grupoId}/messages/${mensagemId}.json`, 'DELETE');
             return { success: true };
         }
         
-        // Verificar se tem permissão para apagar mensagens de outros
         const podeApagar = await this.verificarPermissao(grupoId, this.botId, 'apagar_mensagem');
         if (!podeApagar) {
             throw new Error('Sem permissão para apagar esta mensagem');
@@ -324,12 +316,11 @@ class MessageSDK {
         return { success: true };
     }
 
-    // ==================== CARGOS (CORRIGIDO) ====================
+    // ==================== CARGOS ====================
     
     async criarCargo(grupoId, nome, cor = '#ffffff', permissoes = []) {
         const grupo = await this._request(`/groups/${grupoId}.json`);
         
-        // Verificar se é dono do grupo
         if (grupo?.owner !== this.botId) {
             const podeCriar = await this.verificarPermissao(grupoId, this.botId, 'criar_cargo');
             if (!podeCriar) {
@@ -337,12 +328,10 @@ class MessageSDK {
             }
         }
         
-        // Buscar cargos existentes
         let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
         if (!cargos) cargos = { cargos_personalizados: {} };
         if (!cargos.cargos_personalizados) cargos.cargos_personalizados = {};
         
-        // Criar novo cargo
         cargos.cargos_personalizados[nome] = {
             cor: cor,
             membros: [],
@@ -373,13 +362,11 @@ class MessageSDK {
             throw new Error('Bot não tem permissão para atribuir cargos');
         }
         
-        // Buscar cargos
         let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
         if (!cargos || !cargos.cargos_personalizados || !cargos.cargos_personalizados[cargoNome]) {
             throw new Error(`Cargo "${cargoNome}" não encontrado`);
         }
         
-        // Adicionar membro ao cargo
         if (!cargos.cargos_personalizados[cargoNome].membros) {
             cargos.cargos_personalizados[cargoNome].membros = [];
         }
@@ -390,7 +377,6 @@ class MessageSDK {
         
         await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
         
-        // Adicionar cargo ao membro
         const membro = await this.getMembro(grupoId, userId);
         if (membro) {
             if (!membro.cargos) membro.cargos = [];
@@ -409,20 +395,17 @@ class MessageSDK {
             throw new Error('Bot não tem permissão para remover cargos');
         }
         
-        // Buscar cargos
         let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
         if (!cargos || !cargos.cargos_personalizados || !cargos.cargos_personalizados[cargoNome]) {
             throw new Error(`Cargo "${cargoNome}" não encontrado`);
         }
         
-        // Remover membro do cargo
         if (cargos.cargos_personalizados[cargoNome].membros) {
             cargos.cargos_personalizados[cargoNome].membros = cargos.cargos_personalizados[cargoNome].membros.filter(id => id !== userId);
         }
         
         await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
         
-        // Remover cargo do membro
         const membro = await this.getMembro(grupoId, userId);
         if (membro && membro.cargos) {
             membro.cargos = membro.cargos.filter(c => c !== cargoNome);
@@ -455,26 +438,22 @@ class MessageSDK {
         return membro?.cargos || [];
     }
 
-    // ==================== PERMISSÕES (CORRIGIDO) ====================
+    // ==================== PERMISSÕES (APENAS PARA AÇÕES ADMIN) ====================
     
     async verificarPermissao(grupoId, userId, permissao) {
         const grupo = await this._request(`/groups/${grupoId}.json`);
         
-        // Dono tem todas as permissões
         if (grupo?.owner === userId) return true;
         
-        // Buscar cargos do usuário
         const membro = await this.getMembro(grupoId, userId);
         const cargosUsuario = membro?.cargos || [];
         
         if (cargosUsuario.length === 0) return false;
         
-        // Buscar todos os cargos do grupo
         const cargos = await this._request(`/groups/${grupoId}/cargos.json`);
         
         if (!cargos || !cargos.cargos_personalizados) return false;
         
-        // Verificar se algum cargo do usuário tem a permissão
         for (const cargoNome of cargosUsuario) {
             const cargo = cargos.cargos_personalizados[cargoNome];
             if (cargo && cargo.permissoes && cargo.permissoes.includes(permissao)) {
@@ -489,7 +468,7 @@ class MessageSDK {
     
     registrarComando(nome, callback, descricao = '') {
         this.comandos.set(nome, { callback, descricao });
-        console.log(`✅ Comando registrado: ${nome} - ${descricao}`);
+        console.log(`✅ Comando registrado: ${nome}`);
         return this;
     }
 
