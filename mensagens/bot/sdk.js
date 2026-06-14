@@ -1,4 +1,5 @@
-// sdk.js - SDK COMPLETO com todas as funções
+// sdk.js - SDK COMPLETO COM CARGOS FUNCIONANDO
+// versão 2.1.0
 // Hospedar em: https://alexandre7888.github.io/mensagens/bot/sdk.js
 
 const https = require('https');
@@ -14,11 +15,13 @@ class MessageSDK {
         this.eventos = new Map();
         this.monitores = new Map();
         this.ultimosProcessados = new Set();
-        this.cache = new Map();
+        this.versao = '2.1.0';
     }
 
-    // ==================== REQUISIÇÕES ====================
-    
+    getVersao() {
+        return this.versao;
+    }
+
     async _request(path, method = 'GET', data = null) {
         const url = `${this.FIREBASE_URL}${path}`;
         
@@ -49,13 +52,11 @@ class MessageSDK {
         });
     }
 
-    // ==================== INICIALIZAÇÃO ====================
-    
     async iniciar(config) {
         this.botId = config.botId;
         this.botNome = config.botNome || config.botId;
         
-        console.log(`🤖 SDK Iniciado - Bot: ${this.botNome}`);
+        console.log(`🤖 SDK v${this.versao} - Bot: ${this.botNome}`);
         
         const userData = await this._request(`/users/${this.botId}.json`);
         
@@ -86,8 +87,7 @@ class MessageSDK {
                     tipo: chatData.type || 'group',
                     membros: grupo?.members ? Object.keys(grupo.members).length : 0,
                     dono: grupo?.owner || null,
-                    criado: grupo?.criado || null,
-                    descricao: grupo?.descricao || ''
+                    criado: grupo?.criado || null
                 });
             }
         }
@@ -95,12 +95,10 @@ class MessageSDK {
         return grupos;
     }
 
-    async getGrupo(grupoId) {
-        return await this._request(`/groups/${grupoId}.json`);
-    }
-
     async getInfoGrupo(grupoId) {
         const grupo = await this._request(`/groups/${grupoId}.json`);
+        const cargos = await this.listarCargos(grupoId);
+        
         return {
             id: grupoId,
             nome: grupo?.nome || grupoId,
@@ -108,12 +106,11 @@ class MessageSDK {
             dono: grupo?.owner || null,
             totalMembros: grupo?.members ? Object.keys(grupo.members).length : 0,
             criado: grupo?.criado || null,
-            cargos: grupo?.roles ? Object.keys(grupo.roles).length : 0,
-            canais: grupo?.channels || []
+            totalCargos: cargos.length
         };
     }
 
-    async criarGrupo(nome, descricao = '', membros = []) {
+    async criarGrupo(nome, descricao = '') {
         const grupoId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
         
         const grupo = {
@@ -122,24 +119,9 @@ class MessageSDK {
             descricao: descricao,
             owner: this.botId,
             criado: Date.now(),
-            members: { [this.botId]: { name: this.botNome, joined: Date.now(), cargos: {} } },
-            messages: {},
-            roles: {
-                [`${grupoId}_admin`]: {
-                    nome: 'Admin',
-                    cor: '#ff0000',
-                    permissoes: ['*'],
-                    membros: [this.botId]
-                }
-            },
-            channels: [
-                { id: `${grupoId}_general`, nome: 'geral', tipo: 'text' }
-            ]
+            members: { [this.botId]: { name: this.botNome, joined: Date.now(), cargos: [] } },
+            messages: {}
         };
-        
-        for (const membro of membros) {
-            grupo.members[membro] = { name: membro, joined: Date.now(), cargos: {} };
-        }
         
         await this._request(`/groups/${grupoId}.json`, 'PUT', grupo);
         
@@ -149,7 +131,7 @@ class MessageSDK {
             joined: Date.now()
         });
         
-        return { success: true, grupoId: grupoId, grupo: grupo };
+        return { success: true, grupoId: grupoId };
     }
 
     async entrarGrupo(grupoId) {
@@ -159,7 +141,7 @@ class MessageSDK {
         await this._request(`/groups/${grupoId}/members/${this.botId}.json`, 'PUT', {
             name: this.botNome,
             joined: Date.now(),
-            cargos: {}
+            cargos: []
         });
         
         await this._request(`/users/${this.botId}/chats/${grupoId}.json`, 'PUT', {
@@ -177,29 +159,16 @@ class MessageSDK {
         return { success: true };
     }
 
-    async deletarGrupo(grupoId) {
-        const grupo = await this._request(`/groups/${grupoId}.json`);
-        if (grupo?.owner !== this.botId) {
-            throw new Error('Apenas o dono pode deletar o grupo');
-        }
-        
-        await this._request(`/groups/${grupoId}.json`, 'DELETE');
-        await this._request(`/users/${this.botId}/chats/${grupoId}.json`, 'DELETE');
-        
-        return { success: true };
-    }
-
-    async atualizarGrupo(grupoId, dados) {
-        const grupo = await this._request(`/groups/${grupoId}.json`);
-        const atualizado = { ...grupo, ...dados };
-        await this._request(`/groups/${grupoId}.json`, 'PUT', atualizado);
-        return { success: true };
-    }
-
     // ==================== MENSAGENS ====================
     
     async enviarMensagem(grupoId, texto, options = {}) {
         if (!this.conectado) throw new Error('SDK não inicializado');
+        
+        // Verificar permissão
+        const podeEnviar = await this.verificarPermissao(grupoId, this.botId, 'enviar_mensagem');
+        if (!podeEnviar) {
+            throw new Error('Bot não tem permissão para enviar mensagens neste grupo');
+        }
         
         const timestamp = Date.now();
         const msgId = `msg_${timestamp}_${Math.random().toString(36).substr(2, 6)}`;
@@ -212,8 +181,7 @@ class MessageSDK {
             timestamp: timestamp,
             type: options.type || 'text',
             mencionados: options.mencionados || [],
-            replyTo: options.replyTo || null,
-            editado: null
+            replyTo: options.replyTo || null
         };
         
         if (options.embed) {
@@ -228,7 +196,7 @@ class MessageSDK {
         
         await this._request(`/groups/${grupoId}/messages/${msgId}.json`, 'PUT', mensagem);
         
-        return { success: true, messageId: msgId, timestamp: timestamp };
+        return { success: true, messageId: msgId };
     }
 
     async enviarEmbed(grupoId, embed) {
@@ -243,12 +211,8 @@ class MessageSDK {
         return await this.enviarMensagem(grupoId, resposta, { replyTo: mensagemId });
     }
 
-    async lerMensagens(grupoId, limite = 50, antes = null, depois = null) {
-        let url = `/groups/${grupoId}/messages.json?orderBy="timestamp"&limitToLast=${limite}`;
-        if (antes) url += `&endAt=${antes}`;
-        if (depois) url += `&startAt=${depois}`;
-        
-        const mensagens = await this._request(url);
+    async lerMensagens(grupoId, limite = 50) {
+        const mensagens = await this._request(`/groups/${grupoId}/messages.json?orderBy="timestamp"&limitToLast=${limite}`);
         
         if (!mensagens) return [];
         
@@ -257,24 +221,33 @@ class MessageSDK {
             .sort((a, b) => a.timestamp - b.timestamp);
     }
 
-    async lerUltimasMensagens(grupoId, limite = 10) {
-        return await this.lerMensagens(grupoId, limite);
-    }
-
     async getMensagem(grupoId, mensagemId) {
         return await this._request(`/groups/${grupoId}/messages/${mensagemId}.json`);
     }
 
     async deletarMensagem(grupoId, mensagemId) {
+        const mensagem = await this.getMensagem(grupoId, mensagemId);
+        
+        if (mensagem?.senderId === this.botId) {
+            // Bot pode apagar suas próprias mensagens
+            await this._request(`/groups/${grupoId}/messages/${mensagemId}.json`, 'DELETE');
+            return { success: true };
+        }
+        
+        // Verificar se tem permissão para apagar mensagens de outros
+        const podeApagar = await this.verificarPermissao(grupoId, this.botId, 'apagar_mensagem');
+        if (!podeApagar) {
+            throw new Error('Sem permissão para apagar esta mensagem');
+        }
+        
         await this._request(`/groups/${grupoId}/messages/${mensagemId}.json`, 'DELETE');
         return { success: true };
     }
 
     async editarMensagem(grupoId, mensagemId, novoTexto) {
-        const mensagem = await this._request(`/groups/${grupoId}/messages/${mensagemId}.json`);
-        if (!mensagem) throw new Error('Mensagem não encontrada');
+        const mensagem = await this.getMensagem(grupoId, mensagemId);
         
-        if (mensagem.senderId !== this.botId) {
+        if (mensagem?.senderId !== this.botId) {
             throw new Error('Você só pode editar suas próprias mensagens');
         }
         
@@ -283,18 +256,6 @@ class MessageSDK {
         
         await this._request(`/groups/${grupoId}/messages/${mensagemId}.json`, 'PUT', mensagem);
         return { success: true };
-    }
-
-    async apagarTodasMensagens(grupoId) {
-        const mensagens = await this.lerMensagens(grupoId, 1000);
-        
-        for (const msg of mensagens) {
-            if (msg.senderId === this.botId) {
-                await this.deletarMensagem(grupoId, msg.id);
-            }
-        }
-        
-        return { success: true, apagadas: mensagens.filter(m => m.senderId === this.botId).length };
     }
 
     // ==================== MEMBROS ====================
@@ -310,7 +271,7 @@ class MessageSDK {
                 id: userId,
                 nome: userData.name || userId,
                 entrou: userData.joined,
-                cargos: userData.cargos || {}
+                cargos: userData.cargos || []
             });
         }
         
@@ -322,10 +283,15 @@ class MessageSDK {
     }
 
     async adicionarMembro(grupoId, userId, nome = null) {
+        const podeAdicionar = await this.verificarPermissao(grupoId, this.botId, 'adicionar_membro');
+        if (!podeAdicionar) {
+            throw new Error('Bot não tem permissão para adicionar membros');
+        }
+        
         const memberData = {
             name: nome || userId,
             joined: Date.now(),
-            cargos: {}
+            cargos: []
         };
         
         await this._request(`/groups/${grupoId}/members/${userId}.json`, 'PUT', memberData);
@@ -347,119 +313,149 @@ class MessageSDK {
             throw new Error('Não é possível remover o dono do grupo');
         }
         
+        const podeRemover = await this.verificarPermissao(grupoId, this.botId, 'remover_membro');
+        if (!podeRemover) {
+            throw new Error('Bot não tem permissão para remover membros');
+        }
+        
         await this._request(`/groups/${grupoId}/members/${userId}.json`, 'DELETE');
         await this._request(`/users/${userId}/chats/${grupoId}.json`, 'DELETE');
         
         return { success: true };
     }
 
-    async banirMembro(grupoId, userId) {
-        await this.removerMembro(grupoId, userId);
-        await this._request(`/groups/${grupoId}/bans/${userId}.json`, 'PUT', {
-            bannedAt: Date.now(),
-            bannedBy: this.botId
-        });
-        
-        return { success: true };
-    }
-
-    async desbanirMembro(grupoId, userId) {
-        await this._request(`/groups/${grupoId}/bans/${userId}.json`, 'DELETE');
-        return { success: true };
-    }
-
-    async listarBanidos(grupoId) {
-        const bans = await this._request(`/groups/${grupoId}/bans.json`);
-        if (!bans) return [];
-        
-        return Object.entries(bans).map(([id, data]) => ({ id, ...data }));
-    }
-
-    async transferirDono(grupoId, novoDonoId) {
-        const grupo = await this._request(`/groups/${grupoId}.json`);
-        
-        if (grupo?.owner !== this.botId) {
-            throw new Error('Apenas o dono pode transferir o grupo');
-        }
-        
-        grupo.owner = novoDonoId;
-        await this._request(`/groups/${grupoId}.json`, 'PUT', grupo);
-        
-        return { success: true };
-    }
-
-    // ==================== CARGOS ====================
+    // ==================== CARGOS (CORRIGIDO) ====================
     
     async criarCargo(grupoId, nome, cor = '#ffffff', permissoes = []) {
-        const cargoId = `role_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+        const grupo = await this._request(`/groups/${grupoId}.json`);
         
-        const cargo = {
-            id: cargoId,
-            nome: nome,
+        // Verificar se é dono do grupo
+        if (grupo?.owner !== this.botId) {
+            const podeCriar = await this.verificarPermissao(grupoId, this.botId, 'criar_cargo');
+            if (!podeCriar) {
+                throw new Error('Sem permissão para criar cargos');
+            }
+        }
+        
+        // Buscar cargos existentes
+        let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
+        if (!cargos) cargos = { cargos_personalizados: {} };
+        if (!cargos.cargos_personalizados) cargos.cargos_personalizados = {};
+        
+        // Criar novo cargo
+        cargos.cargos_personalizados[nome] = {
             cor: cor,
-            permissoes: permissoes,
-            criado: Date.now(),
-            membros: []
+            membros: [],
+            permissoes: permissoes
         };
         
-        await this._request(`/groups/${grupoId}/roles/${cargoId}.json`, 'PUT', cargo);
+        await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
         
-        return { success: true, cargoId: cargoId, cargo: cargo };
+        return { success: true, nome: nome };
     }
 
     async listarCargos(grupoId) {
-        const cargos = await this._request(`/groups/${grupoId}/roles.json`);
+        const cargos = await this._request(`/groups/${grupoId}/cargos.json`);
         
-        if (!cargos) return [];
+        if (!cargos || !cargos.cargos_personalizados) return [];
         
-        return Object.entries(cargos).map(([id, cargo]) => ({
-            id: id,
-            ...cargo
+        return Object.entries(cargos.cargos_personalizados).map(([nome, dados]) => ({
+            nome: nome,
+            cor: dados.cor,
+            permissoes: dados.permissoes || [],
+            membros: dados.membros || []
         }));
     }
 
-    async getCargo(grupoId, cargoId) {
-        return await this._request(`/groups/${grupoId}/roles/${cargoId}.json`);
-    }
-
-    async atribuirCargo(grupoId, userId, cargoId) {
-        const cargo = await this._request(`/groups/${grupoId}/roles/${cargoId}.json`);
-        if (!cargo) throw new Error('Cargo não encontrado');
+    async atribuirCargo(grupoId, userId, cargoNome) {
+        const podeAtribuir = await this.verificarPermissao(grupoId, this.botId, 'atribuir_cargo');
+        if (!podeAtribuir) {
+            throw new Error('Bot não tem permissão para atribuir cargos');
+        }
         
-        await this._request(`/groups/${grupoId}/members/${userId}/cargos/${cargoId}.json`, 'PUT', true);
+        // Buscar cargos
+        let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
+        if (!cargos || !cargos.cargos_personalizados || !cargos.cargos_personalizados[cargoNome]) {
+            throw new Error(`Cargo "${cargoNome}" não encontrado`);
+        }
         
-        if (!cargo.membros) cargo.membros = [];
-        if (!cargo.membros.includes(userId)) {
-            cargo.membros.push(userId);
-            await this._request(`/groups/${grupoId}/roles/${cargoId}.json`, 'PUT', cargo);
+        // Adicionar membro ao cargo
+        if (!cargos.cargos_personalizados[cargoNome].membros) {
+            cargos.cargos_personalizados[cargoNome].membros = [];
+        }
+        
+        if (!cargos.cargos_personalizados[cargoNome].membros.includes(userId)) {
+            cargos.cargos_personalizados[cargoNome].membros.push(userId);
+        }
+        
+        await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
+        
+        // Adicionar cargo ao membro
+        const membro = await this.getMembro(grupoId, userId);
+        if (membro) {
+            if (!membro.cargos) membro.cargos = [];
+            if (!membro.cargos.includes(cargoNome)) {
+                membro.cargos.push(cargoNome);
+                await this._request(`/groups/${grupoId}/members/${userId}.json`, 'PUT', membro);
+            }
         }
         
         return { success: true };
     }
 
-    async removerCargo(grupoId, userId, cargoId) {
-        await this._request(`/groups/${grupoId}/members/${userId}/cargos/${cargoId}.json`, 'DELETE');
-        
-        const cargo = await this._request(`/groups/${grupoId}/roles/${cargoId}.json`);
-        if (cargo && cargo.membros) {
-            cargo.membros = cargo.membros.filter(id => id !== userId);
-            await this._request(`/groups/${grupoId}/roles/${cargoId}.json`, 'PUT', cargo);
+    async removerCargo(grupoId, userId, cargoNome) {
+        const podeRemover = await this.verificarPermissao(grupoId, this.botId, 'remover_cargo');
+        if (!podeRemover) {
+            throw new Error('Bot não tem permissão para remover cargos');
         }
+        
+        // Buscar cargos
+        let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
+        if (!cargos || !cargos.cargos_personalizados || !cargos.cargos_personalizados[cargoNome]) {
+            throw new Error(`Cargo "${cargoNome}" não encontrado`);
+        }
+        
+        // Remover membro do cargo
+        if (cargos.cargos_personalizados[cargoNome].membros) {
+            cargos.cargos_personalizados[cargoNome].membros = cargos.cargos_personalizados[cargoNome].membros.filter(id => id !== userId);
+        }
+        
+        await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
+        
+        // Remover cargo do membro
+        const membro = await this.getMembro(grupoId, userId);
+        if (membro && membro.cargos) {
+            membro.cargos = membro.cargos.filter(c => c !== cargoNome);
+            await this._request(`/groups/${grupoId}/members/${userId}.json`, 'PUT', membro);
+        }
+        
+        return { success: true };
+    }
+
+    async deletarCargo(grupoId, cargoNome) {
+        const grupo = await this._request(`/groups/${grupoId}.json`);
+        
+        if (grupo?.owner !== this.botId) {
+            throw new Error('Apenas o dono do grupo pode deletar cargos');
+        }
+        
+        let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
+        if (!cargos || !cargos.cargos_personalizados || !cargos.cargos_personalizados[cargoNome]) {
+            throw new Error(`Cargo "${cargoNome}" não encontrado`);
+        }
+        
+        delete cargos.cargos_personalizados[cargoNome];
+        await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
         
         return { success: true };
     }
 
     async getCargosUsuario(grupoId, userId) {
-        const userData = await this._request(`/groups/${grupoId}/members/${userId}.json`);
-        return userData?.cargos || {};
+        const membro = await this.getMembro(grupoId, userId);
+        return membro?.cargos || [];
     }
 
-    async deletarCargo(grupoId, cargoId) {
-        await this._request(`/groups/${grupoId}/roles/${cargoId}.json`, 'DELETE');
-        return { success: true };
-    }
-
-    // ==================== PERMISSÕES ====================
+    // ==================== PERMISSÕES (CORRIGIDO) ====================
     
     async verificarPermissao(grupoId, userId, permissao) {
         const grupo = await this._request(`/groups/${grupoId}.json`);
@@ -467,75 +463,26 @@ class MessageSDK {
         // Dono tem todas as permissões
         if (grupo?.owner === userId) return true;
         
-        const cargos = await this.getCargosUsuario(grupoId, userId);
-        const listaCargos = await this.listarCargos(grupoId);
+        // Buscar cargos do usuário
+        const membro = await this.getMembro(grupoId, userId);
+        const cargosUsuario = membro?.cargos || [];
         
-        for (const [cargoId, temCargo] of Object.entries(cargos)) {
-            if (temCargo) {
-                const cargo = listaCargos.find(c => c.id === cargoId);
-                if (cargo && (cargo.permissoes.includes('*') || cargo.permissoes.includes(permissao))) {
-                    return true;
-                }
+        if (cargosUsuario.length === 0) return false;
+        
+        // Buscar todos os cargos do grupo
+        const cargos = await this._request(`/groups/${grupoId}/cargos.json`);
+        
+        if (!cargos || !cargos.cargos_personalizados) return false;
+        
+        // Verificar se algum cargo do usuário tem a permissão
+        for (const cargoNome of cargosUsuario) {
+            const cargo = cargos.cargos_personalizados[cargoNome];
+            if (cargo && cargo.permissoes && cargo.permissoes.includes(permissao)) {
+                return true;
             }
         }
         
         return false;
-    }
-
-    // ==================== CANAIS ====================
-    
-    async criarCanal(grupoId, nome, tipo = 'text') {
-        const canalId = `channel_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-        
-        const canal = {
-            id: canalId,
-            nome: nome,
-            tipo: tipo,
-            criado: Date.now()
-        };
-        
-        const grupo = await this._request(`/groups/${grupoId}.json`);
-        if (!grupo.channels) grupo.channels = [];
-        grupo.channels.push(canal);
-        
-        await this._request(`/groups/${grupoId}.json`, 'PUT', grupo);
-        
-        return { success: true, canalId: canalId, canal: canal };
-    }
-
-    async listarCanais(grupoId) {
-        const grupo = await this._request(`/groups/${grupoId}.json`);
-        return grupo?.channels || [];
-    }
-
-    async deletarCanal(grupoId, canalId) {
-        const grupo = await this._request(`/groups/${grupoId}.json`);
-        grupo.channels = grupo.channels.filter(c => c.id !== canalId);
-        await this._request(`/groups/${grupoId}.json`, 'PUT', grupo);
-        return { success: true };
-    }
-
-    // ==================== USUÁRIOS ====================
-    
-    async getUsuario(userId) {
-        return await this._request(`/users/${userId}.json`);
-    }
-
-    async atualizarPerfil(dados) {
-        const userData = await this._request(`/users/${this.botId}.json`);
-        const novoPerfil = { ...userData, ...dados, atualizado: Date.now() };
-        await this._request(`/users/${this.botId}.json`, 'PUT', novoPerfil);
-        return { success: true };
-    }
-
-    async getStatus(userId) {
-        const user = await this._request(`/users/${userId}.json`);
-        return user?.status || 'offline';
-    }
-
-    async setStatus(status) {
-        await this.atualizarPerfil({ status: status });
-        return { success: true };
     }
 
     // ==================== COMANDOS ====================
@@ -546,35 +493,17 @@ class MessageSDK {
         return this;
     }
 
-    async removerComando(nome) {
-        this.comandos.delete(nome);
-        return { success: true };
-    }
-
     listarComandos() {
         return Array.from(this.comandos.keys());
-    }
-
-    async executarComando(nome, args, contexto) {
-        if (this.comandos.has(nome)) {
-            const cmd = this.comandos.get(nome);
-            return await cmd.callback(args, contexto);
-        }
-        return null;
     }
 
     // ==================== MONITORAMENTO ====================
     
     async iniciarMonitoramento(grupoId, callback = null) {
-        if (this.monitores.has(grupoId)) {
-            console.log(`⚠️ Monitoramento já ativo para ${grupoId}`);
-            return;
-        }
+        if (this.monitores.has(grupoId)) return;
         
         let ultimoTimestamp = Date.now();
         let processando = false;
-        
-        console.log(`🔍 Monitorando grupo: ${grupoId}`);
         
         const interval = setInterval(async () => {
             if (processando) return;
@@ -586,17 +515,14 @@ class MessageSDK {
                 if (mensagens) {
                     const msgs = Object.entries(mensagens)
                         .map(([id, msg]) => ({ id, ...msg }))
-                        .filter(msg => msg.timestamp > ultimoTimestamp && msg.senderId !== this.botId)
-                        .sort((a, b) => a.timestamp - b.timestamp);
+                        .filter(msg => msg.timestamp > ultimoTimestamp && msg.senderId !== this.botId);
                     
                     for (const msg of msgs) {
                         const msgKey = `${grupoId}_${msg.id}`;
                         if (this.ultimosProcessados.has(msgKey)) continue;
                         this.ultimosProcessados.add(msgKey);
                         
-                        if (callback) {
-                            await callback(msg);
-                        }
+                        if (callback) await callback(msg);
                         
                         if (msg.text && msg.text.startsWith('!')) {
                             await this._processarComando(grupoId, msg);
@@ -606,11 +532,6 @@ class MessageSDK {
                         
                         if (msg.timestamp > ultimoTimestamp) {
                             ultimoTimestamp = msg.timestamp;
-                        }
-                        
-                        if (this.ultimosProcessados.size > 500) {
-                            const first = this.ultimosProcessados.values().next().value;
-                            this.ultimosProcessados.delete(first);
                         }
                     }
                 }
@@ -645,7 +566,7 @@ class MessageSDK {
                 console.log(`🎯 Comando executado: ${nome} por ${msg.senderName}`);
             } catch(error) {
                 console.error(`❌ Erro no comando ${nome}:`, error.message);
-                await this.enviarMensagem(grupoId, `❌ Erro ao executar ${nome}: ${error.message}`);
+                await this.enviarMensagem(grupoId, `❌ Erro: ${error.message}`);
             }
         }
     }
@@ -656,14 +577,6 @@ class MessageSDK {
             this.monitores.delete(grupoId);
             console.log(`🛑 Monitoramento parado: ${grupoId}`);
         }
-    }
-
-    pararTodosMonitoramentos() {
-        for (const [grupoId, interval] of this.monitores) {
-            clearInterval(interval);
-            console.log(`🛑 Monitoramento parado: ${grupoId}`);
-        }
-        this.monitores.clear();
     }
 
     // ==================== EVENTOS ====================
@@ -708,10 +621,6 @@ class MessageSDK {
 
     // ==================== UTILIDADES ====================
     
-    async delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
     getBotId() {
         return this.botId;
     }
@@ -724,36 +633,8 @@ class MessageSDK {
         return this.conectado;
     }
 
-    async limparCache() {
-        this.cache.clear();
-        this.ultimosProcessados.clear();
-        return { success: true };
-    }
-
-    log(mensagem, tipo = 'info') {
-        const cores = {
-            info: '\x1b[36m',
-            success: '\x1b[32m',
-            error: '\x1b[31m',
-            warn: '\x1b[33m'
-        };
-        console.log(`${cores[tipo]}[SDK] ${mensagem}\x1b[0m`);
-    }
-
-    // ==================== BACKUP ====================
-    
-    async fazerBackup(grupoId) {
-        const grupo = await this._request(`/groups/${grupoId}.json`);
-        const backup = {
-            data: Date.now(),
-            grupo: grupo,
-            mensagens: await this.lerMensagens(grupoId, 10000)
-        };
-        
-        const backupId = `backup_${Date.now()}`;
-        await this._request(`/backups/${backupId}.json`, 'PUT', backup);
-        
-        return { success: true, backupId: backupId };
+    async delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 
