@@ -1,1 +1,51 @@
-<!DOCTYPE html><html><head>  <meta charset="UTF-8">  <title>MúsicaHUB</title>  <style>    body { font-family: Arial; padding: 20px; background: #f2f2f2; }    h1 { color: #111; }    input { padding: 8px; width: 260px; }    button { padding: 8px 12px; cursor: pointer; }    #results img { width: 60px; border-radius: 6px; }    .track {         display: flex;         gap: 10px;         margin: 10px 0;         cursor: pointer;         background: #fff;         padding: 10px;         border-radius: 8px;        box-shadow: 0 0 5px rgba(0,0,0,0.1);    }  </style></head><body><h1 contenteditable="true">MúsicaHUB</h1><!-- CAMPO DE PESQUISA --><input id="search" placeholder="Buscar música..."><button onclick="searchMusic()">Buscar</button><h3 contenteditable="true">Resultados da busca:</h3><div id="results" contenteditable="true"></div><!-- PLAYER --><h3 contenteditable="true">Player:</h3><iframe id="ytplayer" width="360" height="200" allowfullscreen=""></iframe><!-- MÚSICA TOCANDO --><h3 contenteditable="true">Música tocando no seu Spotify:</h3><button onclick="getCurrent()">Ver música tocando</button><div id="current" contenteditable="true"></div><script>// ===============================// CONFIGURAÇÕES IMPORTANTES// ===============================// COLOQUE SUA API KEY DO YOUTUBE AQUI:const YT_KEY = "457641132331-bfa4bhlcn9out9gnrop5hodijd96030a.apps.googleusercontent.com";// COLOQUE SEU CLIENT ID DO SPOTIFY AQUI:const SPOTIFY_CLIENT_ID = "66ec7b6fad70470595619345176e3bd3";// COLOQUE O REDIRECT DO SEU SITE:const REDIRECT_URI = "https://code.codehub2025.ct.ws/musicaHUB.html";// TOKEN do Spotify depois do loginlet spotifyToken = "";// ===============================// LOGIN AUTOMÁTICO SPOTIFY// ===============================function loginSpotify() {    const url =      "https://accounts.spotify.com/authorize" +      "?response_type=token" +      "&client_id=" + SPOTIFY_CLIENT_ID +      "&redirect_uri=" + encodeURIComponent(REDIRECT_URI) +      "&scope=user-read-playback-state";    window.location = url;}// Quando voltar do Spotify com tokenif (window.location.hash.includes("access_token")) {    spotifyToken = window.location.hash.split("access_token=")[1].split("&")[0];}// ===============================// BUSCAR MÚSICA NO SPOTIFY// ===============================async function searchMusic() {    const q = document.getElementById("search").value;    if (!q) return;    if (!spotifyToken) {        alert("Clique OK para fazer login no Spotify");        return loginSpotify();    }    const res = await fetch(      "https://api.spotify.com/v1/search?q=" + encodeURIComponent(q) + "&type=track",      { headers: { Authorization: "Bearer " + spotifyToken } }    );    const data = await res.json();    const tracks = data.tracks.items;    const div = document.getElementById("results");    div.innerHTML = "";    tracks.forEach(t => {        const el = document.createElement("div");        el.className = "track";        el.innerHTML = `            <img src="${t.album.images[2].url}">            <div>                <b>${t.name}</b><br>                ${t.artists[0].name}            </div>        `;        el.onclick = () => searchYouTube(t.name + " " + t.artists[0].name);        div.appendChild(el);    });}// ===============================// BUSCAR VÍDEO NO YOUTUBE// ===============================async function searchYouTube(query) {    const url =      `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=${YT_KEY}`;    const res = await fetch(url);    const data = await res.json();    const videoId = data.items[0].id.videoId;    document.getElementById("ytplayer").src =      "https://www.youtube.com/embed/" + videoId;}// ===============================// VER MÚSICA TOCANDO NO SPOTIFY// ===============================async function getCurrent() {    if (!spotifyToken) {        alert("Clique OK para fazer login no Spotify");        return loginSpotify();    }    const res = await fetch(      "https://api.spotify.com/v1/me/player/currently-playing",      { headers: { Authorization: "Bearer " + spotifyToken } }    );    const data = await res.json();    if (!data || !data.item) {        document.getElementById("current").innerHTML = "Nenhuma música tocando.";        return;    }    document.getElementById("current").innerHTML = `        <b>${data.item.name}</b><br>        ${data.item.artists[0].name}<br>        <img src="${data.item.album.images[2].url}" width="80">    `;}</script></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload Catbox</title>
+</head>
+<body>
+
+<input type="file" id="arquivo">
+<button onclick="enviar()">Enviar</button>
+
+<p id="status"></p>
+
+<script>
+async function enviar() {
+    const file = document.getElementById("arquivo").files[0];
+
+    if (!file) {
+        alert("Selecione um arquivo");
+        return;
+    }
+
+    const form = new FormData();
+    form.append("reqtype", "fileupload");
+    form.append("fileToUpload", file);
+
+    document.getElementById("status").textContent = "Enviando...";
+
+    try {
+        const resposta = await fetch(
+            "https://corsproxy.io/?https://catbox.moe/user/api.php",
+            {
+                method: "POST",
+                body: form
+            }
+        );
+
+        const link = await resposta.text();
+
+        document.getElementById("status").innerHTML =
+            `<a href="${link}" target="_blank">${link}</a>`;
+    } catch (erro) {
+        document.getElementById("status").textContent =
+            "Erro: " + erro.message;
+    }
+}
+</script>
+
+</body>
+</html>
