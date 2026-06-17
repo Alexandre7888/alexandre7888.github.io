@@ -1,5 +1,5 @@
-// sdk.js - SDK COMPLETO (APENAS ENTRAR EM CHAMADAS)
-// versão 4.0.0
+// sdk.js - SDK COMPLETO FUNCIONAL
+// versão 5.0.0
 // Hospedar em: https://alexandre7888.github.io/mensagens/bot/sdk.js
 
 const https = require('https');
@@ -15,49 +15,37 @@ class MessageSDK {
         this.conectado = false;
         this.comandos = new Map();
         this.eventos = new Map();
-        this.monitores = new Map();
-        this.ultimosProcessados = new Set();
-        this.versao = '4.0.0';
+        this.versao = '5.0.0';
         
-        // ========== SISTEMA DE CHAMADAS P2P ==========
+        // Monitoramento
+        this.monitorInterval = null;
+        this.ultimoTimestamp = {};
+        this.processando = {};
+        
+        // Chamadas
         this.peer = null;
         this.peerId = null;
         this.localStream = null;
         this.calls = new Map();
         this.isInCall = false;
         this.currentCallId = null;
-        this.audioStreams = [];
-        
-        // ========== GRAVAÇÃO ==========
         this.audioDir = path.join(process.cwd(), 'chamadas_audio');
-        this.recording = null;
-        this.audioChunks = [];
-        this.participantAudio = new Map();
         
         // Criar pasta de áudio
         if (!fs.existsSync(this.audioDir)) {
             fs.mkdirSync(this.audioDir, { recursive: true });
         }
         
-        // ========== PEERJS (carregar dinamicamente) ==========
-        this.Peer = null;
-        this._loadPeerJS();
+        // Carregar PeerJS
+        try {
+            this.Peer = require('peerjs');
+        } catch(e) {
+            this.Peer = null;
+        }
     }
 
     getVersao() {
         return this.versao;
-    }
-
-    // ==================== CARREGAR PEERJS ====================
-    
-    async _loadPeerJS() {
-        try {
-            this.Peer = require('peerjs');
-            console.log('✅ PeerJS carregado com sucesso');
-        } catch(e) {
-            console.log('⚠️ PeerJS não encontrado. Instale: npm install peerjs');
-            console.log('💡 O SDK funcionará apenas para gerenciamento de chamadas sem áudio');
-        }
     }
 
     // ==================== REQUISIÇÕES ====================
@@ -139,23 +127,285 @@ class MessageSDK {
 
     async getInfoGrupo(grupoId) {
         const grupo = await this._request(`/groups/${grupoId}.json`);
-        const chamada = await this.getStatusChamada(grupoId);
-
         return {
             id: grupoId,
             nome: grupo?.nome || grupoId,
             descricao: grupo?.descricao || '',
             dono: grupo?.owner || null,
             totalMembros: grupo?.members ? Object.keys(grupo.members).length : 0,
-            criado: grupo?.criado || null,
-            chamadaAtiva: chamada.active,
-            participantesChamada: chamada.active ? chamada.totalParticipants : 0
+            criado: grupo?.criado || null
         };
     }
 
-    // ==================== SISTEMA DE CHAMADAS P2P ====================
+    async criarGrupo(nome, descricao = '') {
+        const grupoId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
-    // Verificar se existe chamada ativa
+        const grupo = {
+            id: grupoId,
+            nome: nome,
+            descricao: descricao,
+            owner: this.botId,
+            criado: Date.now(),
+            members: { [this.botId]: { name: this.botNome, joined: Date.now(), cargos: [] } },
+            messages: {}
+        };
+
+        await this._request(`/groups/${grupoId}.json`, 'PUT', grupo);
+        await this._request(`/users/${this.botId}/chats/${grupoId}.json`, 'PUT', {
+            name: nome,
+            type: 'group',
+            joined: Date.now()
+        });
+
+        return { success: true, grupoId: grupoId };
+    }
+
+    async entrarGrupo(grupoId) {
+        const grupo = await this._request(`/groups/${grupoId}.json`);
+        if (!grupo) throw new Error('Grupo não encontrado');
+
+        await this._request(`/groups/${grupoId}/members/${this.botId}.json`, 'PUT', {
+            name: this.botNome,
+            joined: Date.now(),
+            cargos: []
+        });
+
+        await this._request(`/users/${this.botId}/chats/${grupoId}.json`, 'PUT', {
+            name: grupo.nome || grupoId,
+            type: 'group',
+            joined: Date.now()
+        });
+
+        return { success: true };
+    }
+
+    async sairGrupo(grupoId) {
+        await this._request(`/groups/${grupoId}/members/${this.botId}.json`, 'DELETE');
+        await this._request(`/users/${this.botId}/chats/${grupoId}.json`, 'DELETE');
+        return { success: true };
+    }
+
+    // ==================== MENSAGENS ====================
+
+    async enviarMensagem(grupoId, texto, options = {}) {
+        if (!this.conectado) throw new Error('SDK não inicializado');
+
+        const timestamp = Date.now();
+        const msgId = `msg_${timestamp}_${Math.random().toString(36).substr(2, 6)}`;
+
+        const mensagem = {
+            id: msgId,
+            senderId: this.botId,
+            senderName: this.botNome,
+            text: texto,
+            timestamp: timestamp,
+            type: options.type || 'text',
+            mencionados: options.mencionados || [],
+            replyTo: options.replyTo || null
+        };
+
+        if (options.embed) {
+            mensagem.embed = options.embed;
+            mensagem.type = 'embed';
+        }
+
+        if (options.imagem) {
+            mensagem.imagem = options.imagem;
+            mensagem.type = 'image';
+        }
+
+        await this._request(`/groups/${grupoId}/messages/${msgId}.json`, 'PUT', mensagem);
+
+        return { success: true, messageId: msgId };
+    }
+
+    async lerMensagens(grupoId, limite = 50) {
+        const mensagens = await this._request(`/groups/${grupoId}/messages.json?orderBy="timestamp"&limitToLast=${limite}`);
+        if (!mensagens) return [];
+        
+        return Object.entries(mensagens)
+            .map(([id, msg]) => ({ id, ...msg }))
+            .sort((a, b) => a.timestamp - b.timestamp);
+    }
+
+    async deletarMensagem(grupoId, mensagemId) {
+        await this._request(`/groups/${grupoId}/messages/${mensagemId}.json`, 'DELETE');
+        return { success: true };
+    }
+
+    // ==================== MEMBROS ====================
+
+    async listarMembros(grupoId) {
+        const grupo = await this._request(`/groups/${grupoId}.json`);
+        if (!grupo || !grupo.members) return [];
+
+        const membros = [];
+        for (const [userId, userData] of Object.entries(grupo.members)) {
+            membros.push({
+                id: userId,
+                nome: userData.name || userId,
+                entrou: userData.joined,
+                cargos: userData.cargos || []
+            });
+        }
+        return membros;
+    }
+
+    async adicionarMembro(grupoId, userId, nome = null) {
+        const memberData = {
+            name: nome || userId,
+            joined: Date.now(),
+            cargos: []
+        };
+
+        await this._request(`/groups/${grupoId}/members/${userId}.json`, 'PUT', memberData);
+        return { success: true };
+    }
+
+    async removerMembro(grupoId, userId) {
+        await this._request(`/groups/${grupoId}/members/${userId}.json`, 'DELETE');
+        return { success: true };
+    }
+
+    // ==================== CARGOS ====================
+
+    async criarCargo(grupoId, nome, cor = '#ffffff', permissoes = []) {
+        let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
+        if (!cargos) cargos = { cargos_personalizados: {} };
+        if (!cargos.cargos_personalizados) cargos.cargos_personalizados = {};
+
+        cargos.cargos_personalizados[nome] = {
+            cor: cor,
+            membros: [],
+            permissoes: permissoes
+        };
+
+        await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
+        return { success: true, nome: nome };
+    }
+
+    async listarCargos(grupoId) {
+        const cargos = await this._request(`/groups/${grupoId}/cargos.json`);
+        if (!cargos || !cargos.cargos_personalizados) return [];
+
+        return Object.entries(cargos.cargos_personalizados).map(([nome, dados]) => ({
+            nome: nome,
+            cor: dados.cor,
+            permissoes: dados.permissoes || [],
+            membros: dados.membros || []
+        }));
+    }
+
+    async atribuirCargo(grupoId, userId, cargoNome) {
+        let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
+        if (!cargos || !cargos.cargos_personalizados || !cargos.cargos_personalizados[cargoNome]) {
+            throw new Error(`Cargo "${cargoNome}" não encontrado`);
+        }
+
+        if (!cargos.cargos_personalizados[cargoNome].membros) {
+            cargos.cargos_personalizados[cargoNome].membros = [];
+        }
+
+        if (!cargos.cargos_personalizados[cargoNome].membros.includes(userId)) {
+            cargos.cargos_personalizados[cargoNome].membros.push(userId);
+        }
+
+        await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
+        return { success: true };
+    }
+
+    // ==================== COMANDOS ====================
+
+    registrarComando(nome, callback, descricao = '') {
+        this.comandos.set(nome, { callback, descricao });
+        console.log(`✅ Comando registrado: ${nome}`);
+        return this;
+    }
+
+    // ==================== MONITORAMENTO (FUNCIONAL) ====================
+
+    async monitorarGrupo(grupoId, callback = null) {
+        if (this.monitorInterval) {
+            clearInterval(this.monitorInterval);
+        }
+
+        if (!this.ultimoTimestamp[grupoId]) {
+            this.ultimoTimestamp[grupoId] = Date.now();
+        }
+
+        console.log(`🔍 Monitorando grupo: ${grupoId}`);
+
+        this.monitorInterval = setInterval(async () => {
+            if (this.processando[grupoId]) return;
+            this.processando[grupoId] = true;
+
+            try {
+                const mensagens = await this._request(`/groups/${grupoId}/messages.json`);
+                
+                if (mensagens) {
+                    const msgs = Object.entries(mensagens)
+                        .map(([id, msg]) => ({ id, ...msg }))
+                        .filter(msg => msg.timestamp > this.ultimoTimestamp[grupoId] && msg.senderId !== this.botId)
+                        .sort((a, b) => a.timestamp - b.timestamp);
+
+                    for (const msg of msgs) {
+                        // Chamar callback
+                        if (callback) {
+                            await callback(msg);
+                        }
+
+                        // Emitir evento
+                        this.emit('mensagem', msg);
+
+                        // Processar comandos
+                        if (msg.text && msg.text.startsWith('!')) {
+                            const [comando, ...args] = msg.text.slice(1).split(' ');
+                            if (this.comandos.has(comando)) {
+                                const cmd = this.comandos.get(comando);
+                                const ctx = {
+                                    grupoId: grupoId,
+                                    autorId: msg.senderId,
+                                    autorNome: msg.senderName,
+                                    mensagemId: msg.id,
+                                    enviarMsg: (texto) => this.enviarMensagem(grupoId, texto),
+                                    responder: (texto) => this.enviarMensagem(grupoId, texto, { replyTo: msg.id })
+                                };
+                                try {
+                                    await cmd.callback(args, ctx);
+                                    console.log(`🎯 Comando executado: ${comando} por ${msg.senderName}`);
+                                } catch(e) {
+                                    console.error(`❌ Erro no comando ${comando}:`, e.message);
+                                    await this.enviarMensagem(grupoId, `❌ Erro: ${e.message}`);
+                                }
+                            }
+                        }
+
+                        // Atualizar timestamp
+                        if (msg.timestamp > this.ultimoTimestamp[grupoId]) {
+                            this.ultimoTimestamp[grupoId] = msg.timestamp;
+                        }
+                    }
+                }
+            } catch(e) {
+                // Silencia erros
+            }
+
+            this.processando[grupoId] = false;
+        }, 2000);
+
+        return this.monitorInterval;
+    }
+
+    pararMonitoramento() {
+        if (this.monitorInterval) {
+            clearInterval(this.monitorInterval);
+            this.monitorInterval = null;
+            console.log('🛑 Monitoramento parado');
+        }
+    }
+
+    // ==================== SISTEMA DE CHAMADAS ====================
+
     async getStatusChamada(grupoId) {
         const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
         
@@ -177,253 +427,51 @@ class MessageSDK {
         };
     }
 
-    // ========== ENTRAR EM CHAMADA EXISTENTE ==========
-    
     async entrarChamada(grupoId) {
-        // Verificar se PeerJS está disponível
-        if (!this.Peer) {
-            throw new Error('PeerJS não disponível. Instale: npm install peerjs');
-        }
-
-        // Verificar se já está em uma chamada
         if (this.isInCall) {
             throw new Error('Já está em uma chamada');
         }
 
-        // Verificar se existe chamada ativa
         const status = await this.getStatusChamada(grupoId);
         if (!status.active) {
             throw new Error('Nenhuma chamada ativa neste grupo');
         }
 
-        console.log(`📞 Entrando na chamada do grupo ${grupoId}...`);
-
-        try {
-            // 1. Inicializar PeerJS
-            this.peerId = `peer_${this.botId}_${Date.now()}`;
-            this.peer = new this.Peer(this.peerId, {
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
-                }
-            });
-
-            // 2. Obter stream de áudio local
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: false
-            });
-            this.localStream = stream;
-
-            // 3. Adicionar bot aos participantes no Firebase
-            const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
-            if (!chamada.participants) chamada.participants = {};
-            
-            chamada.participants[this.botId] = {
-                peerId: this.peerId,
-                name: this.botNome,
-                joinedAt: Date.now(),
-                isMuted: false
-            };
-
-            await this._request(`/groups/${grupoId}/active_call.json`, 'PUT', chamada);
-
-            this.isInCall = true;
-            this.currentCallId = grupoId;
-
-            // 4. Escutar chamadas recebidas
-            this.peer.on('call', (call) => {
-                console.log(`📞 Recebendo chamada de ${call.peer}`);
-                call.answer(this.localStream);
-                
-                call.on('stream', (remoteStream) => {
-                    console.log(`🔊 Áudio recebido de ${call.peer}`);
-                    this._addAudioStream(call.peer, remoteStream);
-                });
-
-                this.calls.set(call.peer, call);
-            });
-
-            // 5. Conectar com participantes existentes
-            const participantes = Object.entries(chamada.participants || {});
-            for (const [userId, data] of participantes) {
-                if (userId === this.botId) continue; // Pular a si mesmo
-                
-                console.log(`🔗 Conectando com ${data.name} (${data.peerId})...`);
-                
-                const call = this.peer.call(data.peerId, this.localStream);
-                
-                call.on('stream', (remoteStream) => {
-                    console.log(`🔊 Áudio recebido de ${data.name}`);
-                    this._addAudioStream(data.peerId, remoteStream);
-                });
-
-                this.calls.set(data.peerId, call);
-            }
-
-            // 6. Emitir evento de entrada
-            this.emit('call.joined', {
-                callId: chamada.id,
-                groupId: grupoId,
-                participantId: this.botId,
-                participantName: this.botNome,
-                peerId: this.peerId,
-                participants: Object.keys(chamada.participants)
-            });
-
-            // 7. Iniciar gravação
-            this._iniciarGravacao(grupoId, chamada.id);
-
-            console.log(`✅ Entrou na chamada! Peer ID: ${this.peerId}`);
-            console.log(`👥 Participantes: ${Object.keys(chamada.participants).length}`);
-
-            return {
-                success: true,
-                callId: chamada.id,
-                peerId: this.peerId,
-                participants: Object.keys(chamada.participants)
-            };
-
-        } catch (error) {
-            console.error('❌ Erro ao entrar na chamada:', error);
-            throw error;
-        }
-    }
-
-    // ========== ADICIONAR STREAM DE ÁUDIO ==========
-    
-    _addAudioStream(peerId, stream) {
-        this.participantAudio.set(peerId, {
-            stream: stream,
-            startedAt: Date.now(),
-            chunks: []
-        });
-
-        // Salvar áudio do participante
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioContext.createMediaStreamSource(stream);
-        const destination = audioContext.createMediaStreamDestination();
-        source.connect(destination);
-
-        const mediaRecorder = new MediaRecorder(destination.stream);
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                const participantData = this.participantAudio.get(peerId);
-                if (participantData) {
-                    participantData.chunks.push(event.data);
-                }
-            }
-        };
-        mediaRecorder.start();
-
-        this.participantAudio.get(peerId).recorder = mediaRecorder;
-
-        // Emitir evento
-        this.emit('call.audio.stream', {
-            peerId: peerId,
-            stream: stream,
-            timestamp: Date.now()
-        });
-    }
-
-    // ========== GRAVAÇÃO DA CHAMADA ==========
-    
-    async _iniciarGravacao(grupoId, callId) {
-        const timestamp = Date.now();
-        const fileName = `chamada_${grupoId}_${callId}_${timestamp}`;
-        const filePath = path.join(this.audioDir, `${fileName}.wav`);
-
-        this.recording = {
-            callId: callId,
-            grupoId: grupoId,
-            fileName: fileName,
-            filePath: filePath,
-            startedAt: timestamp,
-            chunks: []
+        // Adicionar bot aos participantes
+        const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
+        if (!chamada.participants) chamada.participants = {};
+        
+        chamada.participants[this.botId] = {
+            name: this.botNome,
+            joinedAt: Date.now(),
+            isMuted: false
         };
 
-        console.log(`🎙️ Gravação iniciada: ${fileName}`);
+        await this._request(`/groups/${grupoId}/active_call.json`, 'PUT', chamada);
 
-        // Emitir evento
-        this.emit('call.recording.started', {
-            callId: callId,
+        this.isInCall = true;
+        this.currentCallId = grupoId;
+
+        this.emit('call.joined', {
+            callId: chamada.id,
             groupId: grupoId,
-            fileName: fileName,
-            startedAt: timestamp
+            participantId: this.botId
         });
 
-        return this.recording;
+        return { success: true, callId: chamada.id };
     }
 
-    async _finalizarGravacao() {
-        if (!this.recording) return;
-
-        // Parar gravações dos participantes
-        for (const [peerId, data] of this.participantAudio) {
-            if (data.recorder && data.recorder.state !== 'inactive') {
-                data.recorder.stop();
-            }
-        }
-
-        // Salvar áudio do participante
-        for (const [peerId, data] of this.participantAudio) {
-            if (data.chunks.length > 0) {
-                const blob = new Blob(data.chunks, { type: 'audio/webm' });
-                const buffer = await blob.arrayBuffer();
-                const participantFile = path.join(
-                    this.audioDir,
-                    `participante_${peerId}_${this.recording.fileName}.webm`
-                );
-                fs.writeFileSync(participantFile, Buffer.from(buffer));
-                
-                this.emit('call.recording.participant', {
-                    callId: this.recording.callId,
-                    peerId: peerId,
-                    filePath: participantFile,
-                    url: `http://localhost:3001/${path.basename(participantFile)}`,
-                    size: buffer.byteLength
-                });
-            }
-        }
-
-        // Salvar áudio completo (mixado)
-        // Nota: Para mixar áudio corretamente, seria necessário usar ffmpeg
-        // Esta é uma versão simplificada que salva o áudio local
-
-        const recording = this.recording;
-        this.recording = null;
-        this.participantAudio.clear();
-
-        // Emitir evento
-        this.emit('call.recording.finished', {
-            callId: recording.callId,
-            groupId: recording.grupoId,
-            fileName: recording.fileName,
-            filePath: recording.filePath,
-            url: `http://localhost:3001/${path.basename(recording.filePath)}`,
-            duration: Date.now() - recording.startedAt
-        });
-
-        console.log(`✅ Gravação finalizada: ${recording.fileName}`);
-    }
-
-    // ========== SAIR DA CHAMADA ==========
-    
     async sairChamada() {
         if (!this.isInCall || !this.currentCallId) {
             throw new Error('Não está em uma chamada');
         }
 
         const grupoId = this.currentCallId;
-
-        // Remover bot dos participantes
         const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
+        
         if (chamada && chamada.participants) {
             delete chamada.participants[this.botId];
             
-            // Se não houver mais participantes, encerrar chamada
             if (Object.keys(chamada.participants).length === 0) {
                 await this._request(`/groups/${grupoId}/active_call.json`, 'DELETE');
             } else {
@@ -431,60 +479,29 @@ class MessageSDK {
             }
         }
 
-        // Finalizar gravação
-        await this._finalizarGravacao();
-
-        // Fechar conexões P2P
-        for (const [peerId, call] of this.calls) {
-            call.close();
-        }
-        this.calls.clear();
-
-        // Fechar PeerJS
-        if (this.peer) {
-            this.peer.destroy();
-            this.peer = null;
-        }
-
-        // Parar streams locais
-        if (this.localStream) {
-            this.localStream.getTracks().forEach(track => track.stop());
-            this.localStream = null;
-        }
-
         this.isInCall = false;
         this.currentCallId = null;
-        this.peerId = null;
 
         this.emit('call.left', {
             groupId: grupoId,
             participantId: this.botId
         });
 
-        console.log('👋 Saiu da chamada');
-
         return { success: true };
     }
 
-    // ========== MUTAR/DESMUTAR ==========
-    
     async alternarMudo() {
-        if (!this.isInCall || !this.localStream) {
+        if (!this.isInCall || !this.currentCallId) {
             throw new Error('Não está em uma chamada');
         }
 
-        const audioTrack = this.localStream.getAudioTracks()[0];
-        if (audioTrack) {
-            audioTrack.enabled = !audioTrack.enabled;
-            const isMuted = !audioTrack.enabled;
+        const chamada = await this._request(`/groups/${this.currentCallId}/active_call.json`);
+        if (chamada && chamada.participants && chamada.participants[this.botId]) {
+            chamada.participants[this.botId].isMuted = !chamada.participants[this.botId].isMuted;
+            const isMuted = chamada.participants[this.botId].isMuted;
             
-            // Atualizar no Firebase
-            const chamada = await this._request(`/groups/${this.currentCallId}/active_call.json`);
-            if (chamada && chamada.participants && chamada.participants[this.botId]) {
-                chamada.participants[this.botId].isMuted = isMuted;
-                await this._request(`/groups/${this.currentCallId}/active_call.json`, 'PUT', chamada);
-            }
-
+            await this._request(`/groups/${this.currentCallId}/active_call.json`, 'PUT', chamada);
+            
             this.emit(isMuted ? 'call.muted' : 'call.unmuted', {
                 groupId: this.currentCallId,
                 participantId: this.botId
@@ -493,56 +510,10 @@ class MessageSDK {
             return { success: true, isMuted: isMuted };
         }
 
-        return { success: false, error: 'Nenhum track de áudio encontrado' };
+        return { success: false, error: 'Participante não encontrado' };
     }
 
-    // ========== MONITORAMENTO DE CHAMADAS ==========
-
-    async iniciarMonitoramentoChamadas(grupoId, callback = null) {
-        let ultimoStatus = null;
-
-        const interval = setInterval(async () => {
-            try {
-                const status = await this.getStatusChamada(grupoId);
-                
-                if (status.active && !ultimoStatus) {
-                    // Chamada iniciou
-                    this.emit('call.incoming', {
-                        callId: status.callId,
-                        groupId: grupoId,
-                        owner: status.owner,
-                        participants: status.participants,
-                        startedAt: status.startedAt
-                    });
-                    if (callback) callback('incoming', status);
-                }
-                
-                if (!status.active && ultimoStatus) {
-                    // Chamada terminou
-                    this.emit('call.ended', {
-                        groupId: grupoId,
-                        callId: ultimoStatus.callId
-                    });
-                    if (callback) callback('ended', status);
-                }
-                
-                ultimoStatus = status.active ? status : null;
-                
-            } catch(e) {}
-        }, 3000);
-
-        return { parar: () => clearInterval(interval) };
-    }
-
-    // ========== COMANDOS ==========
-
-    registrarComando(nome, callback, descricao = '') {
-        this.comandos.set(nome, { callback, descricao });
-        console.log(`✅ Comando registrado: ${nome}`);
-        return this;
-    }
-
-    // ========== EVENTOS ==========
+    // ==================== EVENTOS ====================
 
     on(evento, callback) {
         if (!this.eventos.has(evento)) {
