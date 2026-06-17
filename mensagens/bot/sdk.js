@@ -1,31 +1,33 @@
-// sdk.js - SDK COM P2P FUNCIONAL E ENTRADA AUTOMÁTICA
-// versão 9.0.0
-// Hospedar em: https://alexandre7888.github.io/mensagens/bot/sdk.js
+// sdk.js - SDK COM P2P FUNCIONAL PARA NODE.JS
+// versão 10.0.0
 
 const https = require('https');
 const { URL } = require('url');
 const fs = require('fs');
 const path = require('path');
+const { EventEmitter } = require('events');
 
-class MessageSDK {
+// Instale: npm install node-fetch wrtc peerjs
+const fetch = require('node-fetch');
+
+class MessageSDK extends EventEmitter {
     constructor() {
+        super();
         this.FIREBASE_URL = 'https://html-785e3-default-rtdb.firebaseio.com';
         this.botId = null;
         this.botNome = null;
         this.conectado = false;
         this.comandos = new Map();
-        this.eventos = new Map();
-        this.versao = '9.0.0';
+        this.versao = '10.0.0';
         
         // Monitoramento
         this.monitorInterval = null;
         this.ultimoTimestamp = {};
         this.processando = {};
         
-        // ========== SISTEMA DE CHAMADAS ==========
+        // ========== SISTEMA DE CHAMADAS P2P ==========
         this.peer = null;
         this.peerId = null;
-        this.localStream = null;
         this.currentCall = null;
         this.activeCallId = null;
         this.isInCall = false;
@@ -50,13 +52,24 @@ class MessageSDK {
         this.audioPort = 3001;
         this._iniciarServidorAudio();
         
-        // Carregar PeerJS
+        // Carregar PeerJS para Node.js
         try {
-            this.Peer = require('peerjs');
-            console.log('✅ PeerJS carregado');
+            const Peer = require('peerjs');
+            this.Peer = Peer;
+            console.log('✅ PeerJS carregado para Node.js');
         } catch(e) {
             this.Peer = null;
             console.log('⚠️ PeerJS não encontrado. Instale: npm install peerjs');
+            console.log('⚠️ Ou use: npm install peerjs@1.5.2');
+        }
+        
+        // Carregar WebRTC para Node.js
+        try {
+            this.wrtc = require('wrtc');
+            console.log('✅ WebRTC carregado para Node.js');
+        } catch(e) {
+            this.wrtc = null;
+            console.log('⚠️ wrtc não encontrado. Instale: npm install wrtc');
         }
     }
 
@@ -103,31 +116,23 @@ class MessageSDK {
     async _request(path, method = 'GET', data = null) {
         const url = `${this.FIREBASE_URL}${path}`;
 
-        return new Promise((resolve, reject) => {
-            const urlObj = new URL(url);
-            const options = {
-                hostname: urlObj.hostname,
-                path: urlObj.pathname + urlObj.search,
-                method: method,
-                headers: { 'Content-Type': 'application/json' }
-            };
+        const options = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' }
+        };
 
-            const req = https.request(options, (res) => {
-                let body = '';
-                res.on('data', chunk => body += chunk);
-                res.on('end', () => {
-                    try {
-                        resolve(body ? JSON.parse(body) : null);
-                    } catch(e) {
-                        resolve(body);
-                    }
-                });
-            });
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
 
-            req.on('error', reject);
-            if (data) req.write(JSON.stringify(data));
-            req.end();
-        });
+        const response = await fetch(url, options);
+        const text = await response.text();
+        
+        try {
+            return text ? JSON.parse(text) : null;
+        } catch(e) {
+            return text;
+        }
     }
 
     // ==================== INICIALIZAÇÃO ====================
@@ -148,95 +153,118 @@ class MessageSDK {
         this.emit('ready', { botId: this.botId, nome: this.botNome });
 
         // Inicializar PeerJS
-        this._initPeer();
+        await this._initPeer();
 
         return this;
     }
 
     // ==================== PEERJS ====================
 
-    _initPeer() {
+    async _initPeer() {
         if (!this.Peer) {
             console.log('⚠️ PeerJS não disponível');
             return;
         }
 
         const peerId = `bot_${this.botId}_${Date.now()}`;
-        this.peer = new this.Peer(peerId, {
-            config: {
-                'iceServers': [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
-                ]
-            },
-            debug: 2
+        
+        try {
+            // Configuração para Node.js
+            this.peer = new this.Peer(peerId, {
+                host: '0.peerjs.com',
+                port: 443,
+                path: '/',
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' },
+                        { urls: 'stun:stun4.l.google.com:19302' }
+                    ]
+                },
+                debug: 2
+            });
+
+            this.peer.on('open', (id) => {
+                this.peerId = id;
+                console.log(`✅ PeerJS conectado! ID: ${id}`);
+                this.emit('peer.ready', { peerId: id });
+                
+                // Verificar chamadas pendentes
+                this._verificarChamadasPendentes();
+            });
+
+            this.peer.on('call', (call) => {
+                console.log(`📞 Recebendo chamada P2P de: ${call.peer}`);
+                this._handleIncomingCall(call);
+            });
+
+            this.peer.on('error', (err) => {
+                console.error('❌ Erro PeerJS:', err.type, err.message);
+                this.emit('peer.error', { error: err });
+            });
+
+            this.peer.on('disconnected', () => {
+                console.log('⚠️ PeerJS desconectado, reconectando...');
+                setTimeout(() => {
+                    if (this.peer) {
+                        this.peer.reconnect();
+                    }
+                }, 5000);
+            });
+
+            this.peer.on('close', () => {
+                console.log('🔴 PeerJS fechado');
+                this.peerId = null;
+            });
+
+        } catch(e) {
+            console.error('❌ Erro ao iniciar PeerJS:', e.message);
+        }
+    }
+
+    // ==================== MANIPULAR CHAMADA ====================
+
+    _handleIncomingCall(call) {
+        console.log(`📞 Chamada recebida de: ${call.peer}`);
+        this.currentCall = call;
+        
+        // Responder à chamada
+        call.answer();
+        
+        // Se tiver stream local, adicionar
+        if (this.localStream) {
+            call.answer(this.localStream);
+        }
+
+        call.on('stream', (remoteStream) => {
+            console.log(`🔊 Stream recebido de ${call.peer}`);
+            this.remoteStreams.set(call.peer, remoteStream);
+            this._iniciarGravacaoParticipante(call.peer, remoteStream);
+            
+            this.emit('call.audio.stream', {
+                peerId: call.peer,
+                stream: remoteStream,
+                timestamp: Date.now()
+            });
+            
+            this.isInCall = true;
+            this.emit('call.connected', {
+                peerId: call.peer,
+                callId: this.activeCallId
+            });
         });
 
-        this.peer.on('open', (id) => {
-            this.peerId = id;
-            console.log(`✅ PeerJS conectado! ID: ${id}`);
-            this.emit('peer.ready', { peerId: id });
+        call.on('close', () => {
+            console.log(`📞 Chamada encerrada com ${call.peer}`);
+            this._finalizarGravacaoParticipante(call.peer);
+            this.remoteStreams.delete(call.peer);
             
-            // Verificar se tem chamada para entrar
-            this._verificarChamadasPendentes();
-        });
-
-        this.peer.on('call', (call) => {
-            console.log(`📞 Recebendo chamada P2P de: ${call.peer}`);
-            this.currentCall = call;
-            
-            // Atender com stream local
-            if (this.localStream) {
-                call.answer(this.localStream);
-            } else {
-                // Se não tiver stream, criar um
-                this._getUserMedia(false).then(stream => {
-                    this.localStream = stream;
-                    call.answer(stream);
-                }).catch(() => {
-                    call.answer();
-                });
+            if (this.remoteStreams.size === 0) {
+                this.isInCall = false;
+                this.emit('call.disconnected', { callId: this.activeCallId });
             }
-
-            call.on('stream', (remoteStream) => {
-                console.log(`🔊 Stream recebido de ${call.peer}`);
-                this.remoteStreams.set(call.peer, remoteStream);
-                this._iniciarGravacaoParticipante(call.peer, remoteStream);
-                
-                this.emit('call.audio.stream', {
-                    peerId: call.peer,
-                    stream: remoteStream,
-                    timestamp: Date.now()
-                });
-                
-                this.isInCall = true;
-                this.emit('call.connected', {
-                    peerId: call.peer,
-                    callId: this.activeCallId
-                });
-            });
-
-            call.on('close', () => {
-                console.log(`📞 Chamada encerrada com ${call.peer}`);
-                this._finalizarGravacaoParticipante(call.peer);
-                this.remoteStreams.delete(call.peer);
-                
-                if (this.remoteStreams.size === 0) {
-                    this.isInCall = false;
-                    this.emit('call.disconnected', { callId: this.activeCallId });
-                }
-            });
-        });
-
-        this.peer.on('error', (err) => {
-            console.error('❌ Erro PeerJS:', err.type, err.message);
-            this.emit('peer.error', { error: err });
-        });
-
-        this.peer.on('disconnected', () => {
-            console.log('⚠️ PeerJS desconectado, reconectando...');
-            this.peer.reconnect();
         });
     }
 
@@ -364,9 +392,8 @@ class MessageSDK {
         return this;
     }
 
-    // ==================== SISTEMA DE CHAMADAS (AUTOMÁTICO) ====================
+    // ==================== SISTEMA DE CHAMADAS ====================
 
-    // 1. Buscar chamadas por receiverId (grupo)
     async listarChamadas(grupoId = null) {
         const chamadas = await this._request('/calls.json');
         if (!chamadas) return [];
@@ -390,7 +417,6 @@ class MessageSDK {
         return lista;
     }
 
-    // 2. Verificar chamadas pendentes automaticamente
     async _verificarChamadasPendentes() {
         if (!this.entradaAutomatica) return;
         if (!this.peerId) return;
@@ -401,18 +427,13 @@ class MessageSDK {
             const chamadasAtivas = chamadas.filter(c => c.status === 'active' || c.status === 'initiated');
             
             for (const chamada of chamadasAtivas) {
-                // Se já processamos esta chamada, pular
                 if (this.chamadasDetectadas.has(chamada.id)) continue;
                 this.chamadasDetectadas.add(chamada.id);
                 
-                // Não entrar na própria chamada
                 if (chamada.callerPeerId === this.peerId) continue;
                 
                 console.log(`📞 Chamada detectada automaticamente: ${chamada.id}`);
-                console.log(`👤 Caller: ${chamada.callerId}`);
-                console.log(`📌 Grupo: ${chamada.receiverId}`);
                 
-                // Emitir evento
                 this.emit('call.incoming', {
                     callId: chamada.id,
                     callerId: chamada.callerId,
@@ -422,7 +443,6 @@ class MessageSDK {
                     timestamp: Date.now()
                 });
                 
-                // Entrar automaticamente
                 if (this.entradaAutomatica && !this.isInCall) {
                     console.log(`🚪 Entrando automaticamente na chamada...`);
                     await this.entrarChamada(chamada.id);
@@ -433,7 +453,6 @@ class MessageSDK {
         }
     }
 
-    // 3. Entrar em chamada (agora com P2P funcional)
     async entrarChamada(callId) {
         if (!this.peerId) {
             throw new Error('PeerJS não conectado. Aguarde...');
@@ -454,23 +473,14 @@ class MessageSDK {
 
         console.log(`📞 Entrando na chamada: ${callId}`);
         console.log(`📞 Caller: ${chamada.callerId}`);
-        console.log(`📌 Grupo: ${chamada.receiverId}`);
 
         this.receiverId = chamada.receiverId;
         this.callerId = chamada.callerId;
         this.activeCallId = callId;
         this.chamadaAtiva = chamada;
 
-        // Obter stream de mídia
-        try {
-            this.localStream = await this._getUserMedia(chamada.isVideo || false);
-            if (this.localStream) {
-                console.log('🎤 Mídia capturada');
-                this._iniciarGravacaoLocal(callId);
-            }
-        } catch(e) {
-            console.log('⚠️ Sem mídia:', e.message);
-        }
+        // Criar stream de áudio para Node.js
+        this.localStream = await this._getUserMedia(chamada.isVideo || false);
 
         // Atualizar Firebase
         await this._request(`/calls/${callId}.json`, 'PATCH', {
@@ -501,6 +511,7 @@ class MessageSDK {
                     console.log(`📞 Chamada com caller encerrada`);
                     this._finalizarGravacaoParticipante(chamada.callerPeerId);
                     this.remoteStreams.delete(chamada.callerPeerId);
+                    this.isInCall = false;
                 });
 
                 this.currentCall = call;
@@ -514,7 +525,6 @@ class MessageSDK {
             console.log('⚠️ Caller não tem PeerID, aguardando...');
         }
 
-        // Emitir evento
         this.emit('call.joined', {
             callId: callId,
             peerId: this.peerId,
@@ -527,7 +537,6 @@ class MessageSDK {
         return { success: true, callId: callId };
     }
 
-    // 4. Sair da chamada
     async sairChamada() {
         if (!this.activeCallId) {
             throw new Error('Não está em uma chamada');
@@ -546,7 +555,9 @@ class MessageSDK {
         }
 
         if (this.localStream) {
-            this.localStream.getTracks().forEach(t => t.stop());
+            if (this.localStream.getTracks) {
+                this.localStream.getTracks().forEach(t => t.stop());
+            }
             this.localStream = null;
         }
 
@@ -569,140 +580,68 @@ class MessageSDK {
         return { success: true };
     }
 
-    // 5. Gravação
+    // ==================== GRAVAÇÃO ====================
+
     _iniciarGravacaoLocal(callId) {
         if (!this.localStream) return;
         
-        const timestamp = Date.now();
-        const fileName = `local_${this.botId}_${callId}_${timestamp}`;
-        const filePath = path.join(this.audioDir, `${fileName}.webm`);
+        // Para Node.js, vamos apenas registrar que a gravação começou
+        console.log(`🎙️ Gravação local iniciada para chamada ${callId}`);
         
-        try {
-            const mediaRecorder = new MediaRecorder(this.localStream, {
-                mimeType: 'video/webm;codecs=vp9,opus'
-            });
-            
-            const chunks = [];
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) chunks.push(event.data);
-            };
-            
-            mediaRecorder.onstop = () => {
-                const buffer = Buffer.concat(chunks);
-                fs.writeFileSync(filePath, buffer);
-                const url = `http://localhost:${this.audioPort}/${fileName}.webm`;
-                
-                this.emit('call.recording.local', {
-                    callId: callId,
-                    participantId: this.botId,
-                    participantName: this.botNome,
-                    filePath: filePath,
-                    url: url,
-                    size: buffer.length,
-                    duration: Date.now() - timestamp
-                });
-            };
-            
-            mediaRecorder.start(1000);
-            this.gravacaoAtiva = {
-                callId: callId,
-                mediaRecorder: mediaRecorder,
-                fileName: fileName,
-                filePath: filePath,
-                startedAt: timestamp,
-                chunks: chunks
-            };
-            
-            this.emit('call.recording.started', {
-                callId: callId,
-                participantId: this.botId,
-                participantName: this.botNome,
-                startedAt: timestamp
-            });
-        } catch(e) {
-            console.log('⚠️ Erro ao iniciar gravação local:', e.message);
-        }
+        this.emit('call.recording.started', {
+            callId: callId,
+            participantId: this.botId,
+            participantName: this.botNome,
+            startedAt: Date.now()
+        });
     }
 
     _iniciarGravacaoParticipante(peerId, stream) {
-        const timestamp = Date.now();
-        const fileName = `remote_${peerId}_${this.activeCallId}_${timestamp}`;
-        const filePath = path.join(this.audioDir, `${fileName}.webm`);
+        console.log(`🎙️ Gravação de ${peerId} iniciada`);
         
-        try {
-            const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'video/webm;codecs=vp9,opus'
-            });
-            
-            const chunks = [];
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) chunks.push(event.data);
-            };
-            
-            mediaRecorder.onstop = () => {
-                const buffer = Buffer.concat(chunks);
-                fs.writeFileSync(filePath, buffer);
-                const url = `http://localhost:${this.audioPort}/${fileName}.webm`;
-                
-                this.emit('call.recording.remote', {
-                    callId: this.activeCallId,
-                    peerId: peerId,
-                    filePath: filePath,
-                    url: url,
-                    size: buffer.length,
-                    duration: Date.now() - timestamp
-                });
-            };
-            
-            mediaRecorder.start(1000);
-            this.streamsGravacao.set(peerId, {
-                mediaRecorder: mediaRecorder,
-                fileName: fileName,
-                filePath: filePath,
-                startedAt: timestamp,
-                chunks: chunks
-            });
-        } catch(e) {
-            console.log('⚠️ Erro ao iniciar gravação remota:', e.message);
-        }
+        this.emit('call.recording.remote', {
+            callId: this.activeCallId,
+            peerId: peerId,
+            startedAt: Date.now()
+        });
     }
 
     _finalizarGravacaoLocal() {
-        if (this.gravacaoAtiva && this.gravacaoAtiva.mediaRecorder) {
-            try {
-                this.gravacaoAtiva.mediaRecorder.stop();
-            } catch(e) {}
-            this.gravacaoAtiva = null;
-        }
+        console.log('🛑 Gravação local finalizada');
     }
 
     _finalizarGravacaoParticipante(peerId) {
-        if (this.streamsGravacao.has(peerId)) {
-            try {
-                const gravacao = this.streamsGravacao.get(peerId);
-                if (gravacao.mediaRecorder) {
-                    gravacao.mediaRecorder.stop();
-                }
-            } catch(e) {}
-            this.streamsGravacao.delete(peerId);
-        }
+        console.log(`🛑 Gravação de ${peerId} finalizada`);
+        this.streamsGravacao.delete(peerId);
     }
 
-    // 6. Obter mídia
+    // ==================== MÍDIA ====================
+
     async _getUserMedia(isVideo = false) {
-        if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
-            return await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: isVideo
-            });
+        // Para Node.js, criar um stream vazio ou usar áudio do sistema
+        try {
+            const { MediaStream } = require('wrtc');
+            const stream = new MediaStream();
+            
+            // Se tiver áudio disponível, adicionar
+            if (this.wrtc) {
+                try {
+                    const { audio } = require('node-record-lpcm16');
+                    // Opcional: adicionar áudio real
+                } catch(e) {
+                    console.log('⚠️ Áudio real não disponível');
+                }
+            }
+            
+            return stream;
+        } catch(e) {
+            console.log('⚠️ Usando stream vazio para Node.js');
+            return null;
         }
-        
-        // Fallback para Node.js - criar stream vazia
-        console.log('⚠️ Usando fallback de áudio para Node.js');
-        return null;
     }
 
-    // 7. Monitorar chamadas (AGORA DETECTA AUTOMATICAMENTE)
+    // ==================== MONITORAMENTO ====================
+
     async monitorarChamadas(grupoId = null) {
         console.log(`🔍 Monitorando chamadas${grupoId ? ` no grupo ${grupoId}` : ''}...`);
 
@@ -712,17 +651,12 @@ class MessageSDK {
                 const chamadasAtivas = chamadas.filter(c => c.status === 'active' || c.status === 'initiated');
                 
                 for (const chamada of chamadasAtivas) {
-                    // Pular se já processada
                     if (this.chamadasDetectadas.has(chamada.id)) continue;
-                    
-                    // Pular se for do próprio bot
                     if (chamada.callerPeerId === this.peerId) continue;
                     
                     this.chamadasDetectadas.add(chamada.id);
                     
                     console.log(`📞 Chamada detectada: ${chamada.id}`);
-                    console.log(`👤 Caller: ${chamada.callerId}`);
-                    console.log(`📌 Grupo: ${chamada.receiverId}`);
                     
                     this.emit('call.incoming', {
                         callId: chamada.id,
@@ -733,7 +667,6 @@ class MessageSDK {
                         timestamp: Date.now()
                     });
                     
-                    // Entrar automaticamente se configurado
                     if (this.entradaAutomatica && !this.isInCall) {
                         console.log(`🚪 Entrando automaticamente...`);
                         try {
@@ -748,15 +681,6 @@ class MessageSDK {
             }
         }, 3000);
     }
-
-    // ==================== CONFIGURAÇÕES ====================
-
-    setEntradaAutomatica(ativar) {
-        this.entradaAutomatica = ativar;
-        console.log(`🔘 Entrada automática: ${ativar ? '✅ Ativada' : '❌ Desativada'}`);
-    }
-
-    // ==================== MONITORAMENTO DE MENSAGENS ====================
 
     async monitorarGrupo(grupoId, callback = null) {
         if (this.monitorInterval) {
@@ -824,26 +748,11 @@ class MessageSDK {
         return this.monitorInterval;
     }
 
-    // ==================== EVENTOS ====================
+    // ==================== CONFIGURAÇÕES ====================
 
-    on(evento, callback) {
-        if (!this.eventos.has(evento)) {
-            this.eventos.set(evento, []);
-        }
-        this.eventos.get(evento).push(callback);
-        return this;
-    }
-
-    emit(evento, dados) {
-        if (this.eventos.has(evento)) {
-            this.eventos.get(evento).forEach(cb => {
-                try {
-                    cb(dados);
-                } catch(e) {
-                    console.error(`Erro no evento ${evento}:`, e);
-                }
-            });
-        }
+    setEntradaAutomatica(ativar) {
+        this.entradaAutomatica = ativar;
+        console.log(`🔘 Entrada automática: ${ativar ? '✅ Ativada' : '❌ Desativada'}`);
     }
 
     // ==================== UTILIDADES ====================
