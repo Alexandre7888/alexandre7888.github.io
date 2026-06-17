@@ -1,11 +1,12 @@
-// sdk.js - SDK COMPLETO COM FLUXO DE CHAMADAS (v7)
-// versão 7.0.0
+// sdk.js - SDK COMPLETO COM GRAVAÇÃO DE CHAMADAS
+// versão 8.0.0
 // Hospedar em: https://alexandre7888.github.io/mensagens/bot/sdk.js
 
 const https = require('https');
 const { URL } = require('url');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 class MessageSDK {
     constructor() {
@@ -15,40 +16,99 @@ class MessageSDK {
         this.conectado = false;
         this.comandos = new Map();
         this.eventos = new Map();
-        this.versao = '7.0.0';
+        this.versao = '8.0.0';
         
         // Monitoramento
         this.monitorInterval = null;
         this.ultimoTimestamp = {};
         this.processando = {};
         
-        // ========== SISTEMA DE CHAMADAS (FLUXO CORRETO) ==========
+        // ========== SISTEMA DE CHAMADAS ==========
         this.peer = null;
         this.peerId = null;
         this.localStream = null;
         this.currentCall = null;
         this.activeCallId = null;
         this.isInCall = false;
-        this.remoteStream = null;
+        this.remoteStreams = new Map();
         this.callerId = null;
-        this.callbacks = new Map();
+        this.receiverId = null;
+        this.chamadaAtiva = null;
         
-        // Áudio
+        // ========== GRAVAÇÃO ==========
         this.audioDir = path.join(process.cwd(), 'chamadas_audio');
+        this.gravacoes = new Map();
+        this.gravacaoAtiva = null;
+        this.streamsGravacao = new Map();
+        
+        // Criar pasta de áudio
         if (!fs.existsSync(this.audioDir)) {
             fs.mkdirSync(this.audioDir, { recursive: true });
         }
+        
+        // ========== SERVIDOR DE ÁUDIO ==========
+        this.audioServer = null;
+        this.audioPort = 3001;
+        this._iniciarServidorAudio();
         
         // Carregar PeerJS
         try {
             this.Peer = require('peerjs');
         } catch(e) {
             this.Peer = null;
+            console.log('⚠️ PeerJS não encontrado. Instale: npm install peerjs');
         }
     }
 
     getVersao() {
         return this.versao;
+    }
+
+    // ==================== SERVIDOR DE ÁUDIO ====================
+    
+    _iniciarServidorAudio() {
+        const http = require('http');
+        
+        this.audioServer = http.createServer((req, res) => {
+            const url = new URL(req.url, `http://localhost:${this.audioPort}`);
+            const filePath = path.join(this.audioDir, url.pathname);
+            
+            // Segurança: evitar path traversal
+            if (!filePath.startsWith(this.audioDir)) {
+                res.writeHead(403);
+                res.end('Acesso negado');
+                return;
+            }
+            
+            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                const stat = fs.statSync(filePath);
+                res.writeHead(200, {
+                    'Content-Type': this._getContentType(filePath),
+                    'Content-Length': stat.size,
+                    'Access-Control-Allow-Origin': '*'
+                });
+                fs.createReadStream(filePath).pipe(res);
+            } else {
+                res.writeHead(404);
+                res.end('Áudio não encontrado');
+            }
+        });
+        
+        this.audioServer.listen(this.audioPort, '0.0.0.0', () => {
+            console.log(`🎵 Servidor de áudio em: http://localhost:${this.audioPort}`);
+        });
+    }
+
+    _getContentType(filePath) {
+        const ext = path.extname(filePath).toLowerCase();
+        const types = {
+            '.mp3': 'audio/mpeg',
+            '.wav': 'audio/wav',
+            '.webm': 'audio/webm',
+            '.mp4': 'video/mp4',
+            '.ogg': 'audio/ogg'
+        };
+        return types[ext] || 'application/octet-stream';
     }
 
     // ==================== REQUISIÇÕES ====================
@@ -110,7 +170,7 @@ class MessageSDK {
 
     _initPeer() {
         if (!this.Peer) {
-            console.log('⚠️ PeerJS não disponível. Instale: npm install peerjs');
+            console.log('⚠️ PeerJS não disponível');
             return;
         }
 
@@ -134,7 +194,6 @@ class MessageSDK {
             console.log(`📞 Recebendo chamada P2P de: ${call.peer}`);
             this.currentCall = call;
             
-            // Atender com stream local se disponível
             if (this.localStream) {
                 call.answer(this.localStream);
             } else {
@@ -142,8 +201,12 @@ class MessageSDK {
             }
 
             call.on('stream', (remoteStream) => {
-                console.log('🔊 Stream remoto recebido!');
-                this.remoteStream = remoteStream;
+                console.log('🔊 Stream recebido!');
+                this.remoteStreams.set(call.peer, remoteStream);
+                
+                // Iniciar gravação do participante
+                this._iniciarGravacaoParticipante(call.peer, remoteStream);
+                
                 this.emit('call.audio.stream', {
                     peerId: call.peer,
                     stream: remoteStream,
@@ -153,7 +216,8 @@ class MessageSDK {
 
             call.on('close', () => {
                 console.log('📞 Chamada encerrada');
-                this._encerrarChamadaLocal();
+                this._finalizarGravacaoParticipante(call.peer);
+                this.remoteStreams.delete(call.peer);
             });
 
             this.isInCall = true;
@@ -293,24 +357,31 @@ class MessageSDK {
         return this;
     }
 
-    // ==================== SISTEMA DE CHAMADAS (FLUXO CORRETO) ====================
+    // ==================== SISTEMA DE CHAMADAS (CORRIGIDO) ====================
 
-    // 1. Verificar chamadas no Firebase
-    async listarChamadas() {
+    // 1. Buscar chamadas por receiverId (grupo)
+    async listarChamadas(grupoId = null) {
         const chamadas = await this._request('/calls.json');
         if (!chamadas) return [];
         
-        return Object.entries(chamadas)
+        let lista = Object.entries(chamadas)
             .filter(([id, data]) => data.status !== 'ended')
             .map(([id, data]) => ({
                 id: id,
                 callerId: data.callerId,
-                receiverId: data.receiverId,
+                callerPeerId: data.callerPeerId || null,
+                receiverId: data.receiverId || null,
                 isVideo: data.isVideo || false,
                 status: data.status || 'initiated',
-                timestamp: data.timestamp,
-                receiverPeerId: data.receiverPeerId || null
+                timestamp: data.timestamp || 0
             }));
+        
+        // Filtrar por grupo se especificado
+        if (grupoId) {
+            lista = lista.filter(c => c.receiverId === grupoId);
+        }
+        
+        return lista;
     }
 
     async getStatusChamada(callId) {
@@ -320,21 +391,20 @@ class MessageSDK {
         return {
             id: callId,
             callerId: chamada.callerId,
-            receiverId: chamada.receiverId,
+            callerPeerId: chamada.callerPeerId || null,
+            receiverId: chamada.receiverId || null,
             isVideo: chamada.isVideo || false,
             status: chamada.status || 'initiated',
-            timestamp: chamada.timestamp,
-            receiverPeerId: chamada.receiverPeerId || null
+            timestamp: chamada.timestamp || 0
         };
     }
 
-    // 2. Entrar em chamada (igual ao HTML)
+    // 2. Entrar em chamada
     async entrarChamada(callId) {
         if (!this.peerId) {
             throw new Error('PeerJS não conectado. Aguarde...');
         }
 
-        // Verificar se chamada existe
         const chamada = await this.getStatusChamada(callId);
         if (!chamada) {
             throw new Error('Chamada não encontrada');
@@ -346,31 +416,47 @@ class MessageSDK {
 
         console.log(`📞 Entrando na chamada: ${callId}`);
         console.log(`📞 Caller: ${chamada.callerId}`);
+        console.log(`📞 Grupo: ${chamada.receiverId}`);
 
-        // Solicitar áudio
+        this.receiverId = chamada.receiverId;
+        this.callerId = chamada.callerId;
+        this.activeCallId = callId;
+        this.chamadaAtiva = chamada;
+
+        // Solicitar áudio/vídeo
         try {
-            this.localStream = await this._getUserMedia();
-            console.log('🎤 Microfone capturado');
+            this.localStream = await this._getUserMedia(chamada.isVideo);
+            console.log('🎤 Mídia capturada');
+            
+            // Iniciar gravação local
+            this._iniciarGravacaoLocal(callId);
+            
         } catch(e) {
-            console.log('⚠️ Sem áudio:', e.message);
+            console.log('⚠️ Sem mídia:', e.message);
         }
 
-        this.activeCallId = callId;
-
-        // Atualizar Firebase com PeerID (igual ao HTML)
+        // Atualizar Firebase com PeerID
         await this._request(`/calls/${callId}.json`, 'PATCH', {
             status: 'active',
-            receiverPeerId: this.peerId
+            receiverPeerId: this.peerId,
+            receiverId: chamada.receiverId
         });
 
-        console.log(`✅ Chamada ativa! Aguardando conexão P2P...`);
+        // Emitir evento com URL da chamada
+        const urlChamada = this._gerarUrlChamada(callId);
         this.emit('call.joined', {
             callId: callId,
             peerId: this.peerId,
-            callerId: chamada.callerId
+            callerId: chamada.callerId,
+            receiverId: chamada.receiverId,
+            url: urlChamada,
+            timestamp: Date.now()
         });
 
-        return { success: true, callId: callId };
+        console.log(`✅ Chamada ativa! URL: ${urlChamada}`);
+        this.isInCall = true;
+
+        return { success: true, callId: callId, url: urlChamada };
     }
 
     // 3. Sair da chamada
@@ -379,28 +465,18 @@ class MessageSDK {
             throw new Error('Não está em uma chamada');
         }
 
-        this._encerrarChamadaLocal();
+        const callId = this.activeCallId;
+        
+        // Finalizar gravações
+        this._finalizarGravacaoLocal();
+        for (const [peerId, _] of this.remoteStreams) {
+            this._finalizarGravacaoParticipante(peerId);
+        }
 
-        // Atualizar Firebase
-        await this._request(`/calls/${this.activeCallId}.json`, 'PATCH', {
-            status: 'ended'
-        });
-
-        console.log('👋 Chamada encerrada');
-        this.emit('call.ended', { callId: this.activeCallId });
-
-        return { success: true };
-    }
-
-    _encerrarChamadaLocal() {
+        // Fechar conexões
         if (this.currentCall) {
             this.currentCall.close();
             this.currentCall = null;
-        }
-
-        if (this.remoteStream) {
-            this.remoteStream.getTracks().forEach(t => t.stop());
-            this.remoteStream = null;
         }
 
         if (this.localStream) {
@@ -408,41 +484,182 @@ class MessageSDK {
             this.localStream = null;
         }
 
+        this.remoteStreams.clear();
+
+        // Atualizar Firebase
+        await this._request(`/calls/${callId}.json`, 'PATCH', {
+            status: 'ended'
+        });
+
+        const callData = this.chamadaAtiva;
         this.isInCall = false;
         this.activeCallId = null;
+        this.chamadaAtiva = null;
+
+        console.log('👋 Chamada encerrada');
+        this.emit('call.ended', {
+            callId: callId,
+            receiverId: this.receiverId,
+            timestamp: Date.now()
+        });
+
+        return { success: true };
     }
 
-    // 4. Obter stream de áudio
-    async _getUserMedia() {
-        // Usar navigator.mediaDevices se disponível (cliente web)
+    // 4. Gravação de áudio/vídeo
+    _iniciarGravacaoLocal(callId) {
+        if (!this.localStream) return;
+        
+        const timestamp = Date.now();
+        const fileName = `local_${this.botId}_${callId}_${timestamp}`;
+        const filePath = path.join(this.audioDir, `${fileName}.webm`);
+        
+        const mediaRecorder = new MediaRecorder(this.localStream, {
+            mimeType: 'video/webm;codecs=vp9,opus'
+        });
+        
+        const chunks = [];
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                chunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = () => {
+            const buffer = Buffer.concat(chunks);
+            fs.writeFileSync(filePath, buffer);
+            
+            const url = `http://localhost:${this.audioPort}/${fileName}.webm`;
+            this.emit('call.recording.local', {
+                callId: callId,
+                participantId: this.botId,
+                participantName: this.botNome,
+                filePath: filePath,
+                url: url,
+                size: buffer.length,
+                duration: Date.now() - timestamp
+            });
+            
+            console.log(`✅ Áudio local salvo: ${url}`);
+        };
+        
+        mediaRecorder.start(1000); // Gravar em chunks de 1s
+        this.gravacaoAtiva = {
+            callId: callId,
+            mediaRecorder: mediaRecorder,
+            fileName: fileName,
+            filePath: filePath,
+            startedAt: timestamp,
+            chunks: chunks
+        };
+        
+        this.emit('call.recording.started', {
+            callId: callId,
+            participantId: this.botId,
+            participantName: this.botNome,
+            startedAt: timestamp
+        });
+    }
+
+    _iniciarGravacaoParticipante(peerId, stream) {
+        const timestamp = Date.now();
+        const fileName = `remote_${peerId}_${this.activeCallId}_${timestamp}`;
+        const filePath = path.join(this.audioDir, `${fileName}.webm`);
+        
+        const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp9,opus'
+        });
+        
+        const chunks = [];
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                chunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = () => {
+            const buffer = Buffer.concat(chunks);
+            fs.writeFileSync(filePath, buffer);
+            
+            const url = `http://localhost:${this.audioPort}/${fileName}.webm`;
+            this.emit('call.recording.remote', {
+                callId: this.activeCallId,
+                peerId: peerId,
+                filePath: filePath,
+                url: url,
+                size: buffer.length,
+                duration: Date.now() - timestamp
+            });
+            
+            console.log(`✅ Áudio remoto salvo: ${url}`);
+        };
+        
+        mediaRecorder.start(1000);
+        this.streamsGravacao.set(peerId, {
+            mediaRecorder: mediaRecorder,
+            fileName: fileName,
+            filePath: filePath,
+            startedAt: timestamp,
+            chunks: chunks
+        });
+    }
+
+    _finalizarGravacaoLocal() {
+        if (this.gravacaoAtiva && this.gravacaoAtiva.mediaRecorder) {
+            this.gravacaoAtiva.mediaRecorder.stop();
+            this.gravacaoAtiva = null;
+        }
+    }
+
+    _finalizarGravacaoParticipante(peerId) {
+        if (this.streamsGravacao.has(peerId)) {
+            const gravacao = this.streamsGravacao.get(peerId);
+            if (gravacao.mediaRecorder) {
+                gravacao.mediaRecorder.stop();
+            }
+            this.streamsGravacao.delete(peerId);
+        }
+    }
+
+    // 5. Gerar URL da chamada
+    _gerarUrlChamada(callId) {
+        return `http://localhost:${this.audioPort}/chamada_${callId}.webm`;
+    }
+
+    // 6. Obter mídia
+    async _getUserMedia(isVideo = false) {
         if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
             return await navigator.mediaDevices.getUserMedia({
                 audio: true,
-                video: false
+                video: isVideo
             });
         }
         
-        // Fallback para Node.js (usando arecord ou similar)
-        console.log('⚠️ Usando fallback de áudio para Node.js');
+        console.log('⚠️ Fallback: simulando stream de áudio para Node.js');
         return null;
     }
 
-    // 5. Monitorar chamadas (igual ao HTML)
-    async monitorarChamadas(callback = null) {
-        console.log('🔍 Monitorando chamadas...');
+    // 7. Monitorar chamadas
+    async monitorarChamadas(grupoId = null, callback = null) {
+        console.log(`🔍 Monitorando chamadas${grupoId ? ` no grupo ${grupoId}` : ''}...`);
 
         setInterval(async () => {
             try {
-                const chamadas = await this.listarChamadas();
+                const chamadas = await this.listarChamadas(grupoId);
                 
                 for (const chamada of chamadas) {
                     // Se chamada está ativa e não estamos nela
-                    if (chamada.status === 'active' && chamada.receiverPeerId !== this.peerId) {
+                    if (chamada.status === 'active' && chamada.callerPeerId !== this.peerId) {
                         console.log(`📞 Chamada ativa detectada: ${chamada.id}`);
+                        
+                        const url = this._gerarUrlChamada(chamada.id);
                         this.emit('call.incoming', {
                             callId: chamada.id,
                             callerId: chamada.callerId,
-                            isVideo: chamada.isVideo
+                            receiverId: chamada.receiverId,
+                            isVideo: chamada.isVideo,
+                            url: url,
+                            timestamp: Date.now()
                         });
 
                         if (callback) {
