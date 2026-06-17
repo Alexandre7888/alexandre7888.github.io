@@ -1,14 +1,13 @@
-// sdk.js - SDK COM P2P FUNCIONAL PARA NODE.JS
-// versão 10.0.0
+// sdk.js - SDK COM INSTALAÇÃO AUTOMÁTICA
+// versão 12.0.0
+// Hospedar em: https://alexandre7888.github.io/mensagens/bot/sdk.js
 
 const https = require('https');
 const { URL } = require('url');
 const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
-
-// Instale: npm install node-fetch wrtc peerjs
-const fetch = require('node-fetch');
+const { execSync } = require('child_process');
 
 class MessageSDK extends EventEmitter {
     constructor() {
@@ -18,7 +17,7 @@ class MessageSDK extends EventEmitter {
         this.botNome = null;
         this.conectado = false;
         this.comandos = new Map();
-        this.versao = '10.0.0';
+        this.versao = '12.0.0';
         
         // Monitoramento
         this.monitorInterval = null;
@@ -52,29 +51,66 @@ class MessageSDK extends EventEmitter {
         this.audioPort = 3001;
         this._iniciarServidorAudio();
         
-        // Carregar PeerJS para Node.js
+        // ========== INSTALAR DEPENDÊNCIAS AUTOMATICAMENTE ==========
+        this._instalarDependencias();
+        
+        // Carregar PeerJS
         try {
             const Peer = require('peerjs');
             this.Peer = Peer;
-            console.log('✅ PeerJS carregado para Node.js');
+            console.log('✅ PeerJS carregado');
         } catch(e) {
             this.Peer = null;
-            console.log('⚠️ PeerJS não encontrado. Instale: npm install peerjs');
-            console.log('⚠️ Ou use: npm install peerjs@1.5.2');
+            console.log('⚠️ PeerJS não encontrado. Instalando...');
+            this._instalarPacote('peerjs');
         }
         
-        // Carregar WebRTC para Node.js
+        // Carregar WebRTC
         try {
             this.wrtc = require('wrtc');
-            console.log('✅ WebRTC carregado para Node.js');
+            console.log('✅ WebRTC carregado');
         } catch(e) {
             this.wrtc = null;
-            console.log('⚠️ wrtc não encontrado. Instale: npm install wrtc');
+            console.log('⚠️ wrtc não encontrado. Instalando...');
+            this._instalarPacote('wrtc');
         }
     }
 
     getVersao() {
         return this.versao;
+    }
+
+    // ==================== INSTALAÇÃO AUTOMÁTICA ====================
+    
+    _instalarDependencias() {
+        try {
+            // Verificar se o package.json existe
+            if (!fs.existsSync(path.join(process.cwd(), 'package.json'))) {
+                console.log('📦 Criando package.json...');
+                execSync('npm init -y', { stdio: 'ignore' });
+            }
+        } catch(e) {
+            console.log('⚠️ Erro ao criar package.json:', e.message);
+        }
+    }
+
+    _instalarPacote(pacote) {
+        try {
+            console.log(`📦 Instalando ${pacote}...`);
+            execSync(`npm install ${pacote}`, { stdio: 'inherit' });
+            console.log(`✅ ${pacote} instalado!`);
+            
+            // Recarregar o módulo
+            delete require.cache[require.resolve(pacote)];
+            if (pacote === 'peerjs') {
+                this.Peer = require('peerjs');
+            } else if (pacote === 'wrtc') {
+                this.wrtc = require('wrtc');
+            }
+        } catch(e) {
+            console.log(`❌ Erro ao instalar ${pacote}:`, e.message);
+            console.log(`💡 Instale manualmente: npm install ${pacote}`);
+        }
     }
 
     // ==================== SERVIDOR DE ÁUDIO ====================
@@ -106,9 +142,13 @@ class MessageSDK extends EventEmitter {
             }
         });
         
-        this.audioServer.listen(this.audioPort, '0.0.0.0', () => {
-            console.log(`🎵 Servidor de áudio: http://localhost:${this.audioPort}`);
-        });
+        try {
+            this.audioServer.listen(this.audioPort, '0.0.0.0', () => {
+                console.log(`🎵 Servidor de áudio: http://localhost:${this.audioPort}`);
+            });
+        } catch(e) {
+            console.log(`⚠️ Servidor de áudio já está rodando na porta ${this.audioPort}`);
+        }
     }
 
     // ==================== REQUISIÇÕES ====================
@@ -116,23 +156,31 @@ class MessageSDK extends EventEmitter {
     async _request(path, method = 'GET', data = null) {
         const url = `${this.FIREBASE_URL}${path}`;
 
-        const options = {
-            method: method,
-            headers: { 'Content-Type': 'application/json' }
-        };
+        return new Promise((resolve, reject) => {
+            const urlObj = new URL(url);
+            const options = {
+                hostname: urlObj.hostname,
+                path: urlObj.pathname + urlObj.search,
+                method: method,
+                headers: { 'Content-Type': 'application/json' }
+            };
 
-        if (data) {
-            options.body = JSON.stringify(data);
-        }
+            const req = https.request(options, (res) => {
+                let body = '';
+                res.on('data', chunk => body += chunk);
+                res.on('end', () => {
+                    try {
+                        resolve(body ? JSON.parse(body) : null);
+                    } catch(e) {
+                        resolve(body);
+                    }
+                });
+            });
 
-        const response = await fetch(url, options);
-        const text = await response.text();
-        
-        try {
-            return text ? JSON.parse(text) : null;
-        } catch(e) {
-            return text;
-        }
+            req.on('error', reject);
+            if (data) req.write(JSON.stringify(data));
+            req.end();
+        });
     }
 
     // ==================== INICIALIZAÇÃO ====================
@@ -162,14 +210,17 @@ class MessageSDK extends EventEmitter {
 
     async _initPeer() {
         if (!this.Peer) {
-            console.log('⚠️ PeerJS não disponível');
-            return;
+            console.log('⚠️ PeerJS não disponível. Instalando...');
+            this._instalarPacote('peerjs');
+            if (!this.Peer) {
+                console.log('❌ PeerJS ainda não disponível. Tente instalar manualmente: npm install peerjs');
+                return;
+            }
         }
 
         const peerId = `bot_${this.botId}_${Date.now()}`;
         
         try {
-            // Configuração para Node.js
             this.peer = new this.Peer(peerId, {
                 host: '0.peerjs.com',
                 port: 443,
@@ -177,10 +228,7 @@ class MessageSDK extends EventEmitter {
                 config: {
                     'iceServers': [
                         { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                        { urls: 'stun:stun3.l.google.com:19302' },
-                        { urls: 'stun:stun4.l.google.com:19302' }
+                        { urls: 'stun:stun1.l.google.com:19302' }
                     ]
                 },
                 debug: 2
@@ -190,8 +238,6 @@ class MessageSDK extends EventEmitter {
                 this.peerId = id;
                 console.log(`✅ PeerJS conectado! ID: ${id}`);
                 this.emit('peer.ready', { peerId: id });
-                
-                // Verificar chamadas pendentes
                 this._verificarChamadasPendentes();
             });
 
@@ -214,11 +260,6 @@ class MessageSDK extends EventEmitter {
                 }, 5000);
             });
 
-            this.peer.on('close', () => {
-                console.log('🔴 PeerJS fechado');
-                this.peerId = null;
-            });
-
         } catch(e) {
             console.error('❌ Erro ao iniciar PeerJS:', e.message);
         }
@@ -230,13 +271,7 @@ class MessageSDK extends EventEmitter {
         console.log(`📞 Chamada recebida de: ${call.peer}`);
         this.currentCall = call;
         
-        // Responder à chamada
-        call.answer();
-        
-        // Se tiver stream local, adicionar
-        if (this.localStream) {
-            call.answer(this.localStream);
-        }
+        call.answer(this.localStream || null);
 
         call.on('stream', (remoteStream) => {
             console.log(`🔊 Stream recebido de ${call.peer}`);
@@ -432,7 +467,9 @@ class MessageSDK extends EventEmitter {
                 
                 if (chamada.callerPeerId === this.peerId) continue;
                 
-                console.log(`📞 Chamada detectada automaticamente: ${chamada.id}`);
+                console.log(`📞 Chamada detectada: ${chamada.id}`);
+                console.log(`👤 Caller: ${chamada.callerId}`);
+                console.log(`📌 Grupo: ${chamada.receiverId}`);
                 
                 this.emit('call.incoming', {
                     callId: chamada.id,
@@ -444,7 +481,7 @@ class MessageSDK extends EventEmitter {
                 });
                 
                 if (this.entradaAutomatica && !this.isInCall) {
-                    console.log(`🚪 Entrando automaticamente na chamada...`);
+                    console.log(`🚪 Entrando automaticamente...`);
                     await this.entrarChamada(chamada.id);
                 }
             }
@@ -455,7 +492,7 @@ class MessageSDK extends EventEmitter {
 
     async entrarChamada(callId) {
         if (!this.peerId) {
-            throw new Error('PeerJS não conectado. Aguarde...');
+            throw new Error('PeerJS não conectado');
         }
 
         if (this.isInCall) {
@@ -479,7 +516,7 @@ class MessageSDK extends EventEmitter {
         this.activeCallId = callId;
         this.chamadaAtiva = chamada;
 
-        // Criar stream de áudio para Node.js
+        // Criar stream de áudio (simplificado)
         this.localStream = await this._getUserMedia(chamada.isVideo || false);
 
         // Atualizar Firebase
@@ -488,7 +525,7 @@ class MessageSDK extends EventEmitter {
             receiverPeerId: this.peerId
         });
 
-        // Conectar ao caller via PeerJS
+        // Conectar ao caller
         if (chamada.callerPeerId) {
             console.log(`🔗 Conectando ao caller: ${chamada.callerPeerId}`);
             
@@ -518,11 +555,11 @@ class MessageSDK extends EventEmitter {
                 this.isInCall = true;
                 
             } catch(e) {
-                console.error('❌ Erro ao conectar ao caller:', e.message);
+                console.error('❌ Erro ao conectar:', e.message);
                 throw e;
             }
         } else {
-            console.log('⚠️ Caller não tem PeerID, aguardando...');
+            console.log('⚠️ Caller não tem PeerID, aguardando chamada...');
         }
 
         this.emit('call.joined', {
@@ -583,11 +620,7 @@ class MessageSDK extends EventEmitter {
     // ==================== GRAVAÇÃO ====================
 
     _iniciarGravacaoLocal(callId) {
-        if (!this.localStream) return;
-        
-        // Para Node.js, vamos apenas registrar que a gravação começou
-        console.log(`🎙️ Gravação local iniciada para chamada ${callId}`);
-        
+        console.log(`🎙️ Gravação local iniciada`);
         this.emit('call.recording.started', {
             callId: callId,
             participantId: this.botId,
@@ -598,7 +631,6 @@ class MessageSDK extends EventEmitter {
 
     _iniciarGravacaoParticipante(peerId, stream) {
         console.log(`🎙️ Gravação de ${peerId} iniciada`);
-        
         this.emit('call.recording.remote', {
             callId: this.activeCallId,
             peerId: peerId,
@@ -618,24 +650,13 @@ class MessageSDK extends EventEmitter {
     // ==================== MÍDIA ====================
 
     async _getUserMedia(isVideo = false) {
-        // Para Node.js, criar um stream vazio ou usar áudio do sistema
         try {
-            const { MediaStream } = require('wrtc');
-            const stream = new MediaStream();
-            
-            // Se tiver áudio disponível, adicionar
             if (this.wrtc) {
-                try {
-                    const { audio } = require('node-record-lpcm16');
-                    // Opcional: adicionar áudio real
-                } catch(e) {
-                    console.log('⚠️ Áudio real não disponível');
-                }
+                const { MediaStream } = this.wrtc;
+                return new MediaStream();
             }
-            
-            return stream;
+            return null;
         } catch(e) {
-            console.log('⚠️ Usando stream vazio para Node.js');
             return null;
         }
     }
@@ -643,7 +664,7 @@ class MessageSDK extends EventEmitter {
     // ==================== MONITORAMENTO ====================
 
     async monitorarChamadas(grupoId = null) {
-        console.log(`🔍 Monitorando chamadas${grupoId ? ` no grupo ${grupoId}` : ''}...`);
+        console.log(`🔍 Monitorando chamadas...`);
 
         setInterval(async () => {
             try {
@@ -676,9 +697,7 @@ class MessageSDK extends EventEmitter {
                         }
                     }
                 }
-            } catch(e) {
-                // Silencia erros
-            }
+            } catch(e) {}
         }, 3000);
     }
 
@@ -707,10 +726,7 @@ class MessageSDK extends EventEmitter {
                         .sort((a, b) => a.timestamp - b.timestamp);
 
                     for (const msg of msgs) {
-                        if (callback) {
-                            await callback(msg);
-                        }
-
+                        if (callback) await callback(msg);
                         this.emit('mensagem', msg);
 
                         if (msg.text && msg.text.startsWith('!')) {
@@ -729,7 +745,7 @@ class MessageSDK extends EventEmitter {
                                     await cmd.callback(args, ctx);
                                     console.log(`🎯 Comando executado: ${comando} por ${msg.senderName}`);
                                 } catch(e) {
-                                    console.error(`❌ Erro no comando ${comando}:`, e.message);
+                                    console.error(`❌ Erro: ${e.message}`);
                                     await this.enviarMensagem(grupoId, `❌ Erro: ${e.message}`);
                                 }
                             }
