@@ -1,5 +1,5 @@
-// sdk.js - SDK COMPLETO FUNCIONAL
-// versão 5.0.0
+// sdk.js - SDK COMPLETO (APENAS ENTRAR EM CHAMADAS)
+// versão 6.0.0
 // Hospedar em: https://alexandre7888.github.io/mensagens/bot/sdk.js
 
 const https = require('https');
@@ -15,21 +15,25 @@ class MessageSDK {
         this.conectado = false;
         this.comandos = new Map();
         this.eventos = new Map();
-        this.versao = '5.0.0';
+        this.versao = '6.0.0';
         
         // Monitoramento
         this.monitorInterval = null;
         this.ultimoTimestamp = {};
         this.processando = {};
+        this.monitorandoChamadas = false;
         
         // Chamadas
         this.peer = null;
         this.peerId = null;
         this.localStream = null;
-        this.calls = new Map();
+        this.remoteStreams = new Map();
         this.isInCall = false;
         this.currentCallId = null;
+        this.currentCallData = null;
+        this.participantes = [];
         this.audioDir = path.join(process.cwd(), 'chamadas_audio');
+        this.callMonitorInterval = null;
         
         // Criar pasta de áudio
         if (!fs.existsSync(this.audioDir)) {
@@ -137,29 +141,6 @@ class MessageSDK {
         };
     }
 
-    async criarGrupo(nome, descricao = '') {
-        const grupoId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-
-        const grupo = {
-            id: grupoId,
-            nome: nome,
-            descricao: descricao,
-            owner: this.botId,
-            criado: Date.now(),
-            members: { [this.botId]: { name: this.botNome, joined: Date.now(), cargos: [] } },
-            messages: {}
-        };
-
-        await this._request(`/groups/${grupoId}.json`, 'PUT', grupo);
-        await this._request(`/users/${this.botId}/chats/${grupoId}.json`, 'PUT', {
-            name: nome,
-            type: 'group',
-            joined: Date.now()
-        });
-
-        return { success: true, grupoId: grupoId };
-    }
-
     async entrarGrupo(grupoId) {
         const grupo = await this._request(`/groups/${grupoId}.json`);
         if (!grupo) throw new Error('Grupo não encontrado');
@@ -176,12 +157,6 @@ class MessageSDK {
             joined: Date.now()
         });
 
-        return { success: true };
-    }
-
-    async sairGrupo(grupoId) {
-        await this._request(`/groups/${grupoId}/members/${this.botId}.json`, 'DELETE');
-        await this._request(`/users/${this.botId}/chats/${grupoId}.json`, 'DELETE');
         return { success: true };
     }
 
@@ -204,18 +179,7 @@ class MessageSDK {
             replyTo: options.replyTo || null
         };
 
-        if (options.embed) {
-            mensagem.embed = options.embed;
-            mensagem.type = 'embed';
-        }
-
-        if (options.imagem) {
-            mensagem.imagem = options.imagem;
-            mensagem.type = 'image';
-        }
-
         await this._request(`/groups/${grupoId}/messages/${msgId}.json`, 'PUT', mensagem);
-
         return { success: true, messageId: msgId };
     }
 
@@ -226,11 +190,6 @@ class MessageSDK {
         return Object.entries(mensagens)
             .map(([id, msg]) => ({ id, ...msg }))
             .sort((a, b) => a.timestamp - b.timestamp);
-    }
-
-    async deletarMensagem(grupoId, mensagemId) {
-        await this._request(`/groups/${grupoId}/messages/${mensagemId}.json`, 'DELETE');
-        return { success: true };
     }
 
     // ==================== MEMBROS ====================
@@ -249,22 +208,6 @@ class MessageSDK {
             });
         }
         return membros;
-    }
-
-    async adicionarMembro(grupoId, userId, nome = null) {
-        const memberData = {
-            name: nome || userId,
-            joined: Date.now(),
-            cargos: []
-        };
-
-        await this._request(`/groups/${grupoId}/members/${userId}.json`, 'PUT', memberData);
-        return { success: true };
-    }
-
-    async removerMembro(grupoId, userId) {
-        await this._request(`/groups/${grupoId}/members/${userId}.json`, 'DELETE');
-        return { success: true };
     }
 
     // ==================== CARGOS ====================
@@ -296,24 +239,6 @@ class MessageSDK {
         }));
     }
 
-    async atribuirCargo(grupoId, userId, cargoNome) {
-        let cargos = await this._request(`/groups/${grupoId}/cargos.json`);
-        if (!cargos || !cargos.cargos_personalizados || !cargos.cargos_personalizados[cargoNome]) {
-            throw new Error(`Cargo "${cargoNome}" não encontrado`);
-        }
-
-        if (!cargos.cargos_personalizados[cargoNome].membros) {
-            cargos.cargos_personalizados[cargoNome].membros = [];
-        }
-
-        if (!cargos.cargos_personalizados[cargoNome].membros.includes(userId)) {
-            cargos.cargos_personalizados[cargoNome].membros.push(userId);
-        }
-
-        await this._request(`/groups/${grupoId}/cargos.json`, 'PUT', cargos);
-        return { success: true };
-    }
-
     // ==================== COMANDOS ====================
 
     registrarComando(nome, callback, descricao = '') {
@@ -322,7 +247,411 @@ class MessageSDK {
         return this;
     }
 
-    // ==================== MONITORAMENTO (FUNCIONAL) ====================
+    // ==================== SISTEMA DE CHAMADAS (APENAS ENTRAR) ====================
+
+    // Verificar se existe chamada ativa
+    async getStatusChamada(grupoId) {
+        const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
+        
+        if (!chamada) {
+            return { active: false };
+        }
+
+        return {
+            active: true,
+            callId: chamada.id,
+            groupId: grupoId,
+            startedAt: chamada.startedAt,
+            tipo: chamada.tipo || 'audio',
+            participants: Object.keys(chamada.participants || {}),
+            totalParticipants: Object.keys(chamada.participants || {}).length,
+            owner: chamada.owner,
+            participantsData: chamada.participants || {},
+            isBotInCall: !!(chamada.participants && chamada.participants[this.botId]),
+            isBotMuted: !!(chamada.participants && chamada.participants[this.botId] && chamada.participants[this.botId].isMuted)
+        };
+    }
+
+    // ========== ENTRAR EM CHAMADA EXISTENTE ==========
+    
+    async entrarChamada(grupoId) {
+        // Verificar se PeerJS está disponível
+        if (!this.Peer) {
+            throw new Error('PeerJS não disponível. Instale: npm install peerjs');
+        }
+
+        // Verificar se já está em uma chamada
+        if (this.isInCall) {
+            throw new Error('Já está em uma chamada');
+        }
+
+        // Verificar se existe chamada ativa
+        const status = await this.getStatusChamada(grupoId);
+        if (!status.active) {
+            throw new Error('Nenhuma chamada ativa neste grupo');
+        }
+
+        // Verificar se o bot já está na chamada
+        if (status.isBotInCall) {
+            throw new Error('Bot já está na chamada');
+        }
+
+        console.log(`📞 Entrando na chamada do grupo ${grupoId}...`);
+        console.log(`👥 Participantes: ${status.totalParticipants}`);
+
+        try {
+            // 1. Inicializar PeerJS
+            this.peerId = `peer_${this.botId}_${Date.now()}`;
+            this.peer = new this.Peer(this.peerId, {
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            });
+
+            // Aguardar conexão do Peer
+            await new Promise((resolve, reject) => {
+                this.peer.on('open', resolve);
+                this.peer.on('error', reject);
+                setTimeout(() => reject(new Error('Timeout ao conectar PeerJS')), 10000);
+            });
+
+            console.log(`✅ PeerJS conectado: ${this.peerId}`);
+
+            // 2. Obter stream de áudio local (se disponível)
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: false
+                });
+                this.localStream = stream;
+                console.log('🎤 Microfone capturado');
+            } catch(e) {
+                console.log('⚠️ Não foi possível capturar áudio:', e.message);
+                // Continua sem áudio
+            }
+
+            // 3. Adicionar bot aos participantes no Firebase
+            const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
+            if (!chamada.participants) chamada.participants = {};
+            
+            chamada.participants[this.botId] = {
+                peerId: this.peerId,
+                name: this.botNome,
+                joinedAt: Date.now(),
+                isMuted: false
+            };
+
+            await this._request(`/groups/${grupoId}/active_call.json`, 'PUT', chamada);
+
+            this.isInCall = true;
+            this.currentCallId = grupoId;
+            this.currentCallData = chamada;
+
+            // 4. Escutar chamadas recebidas
+            this.peer.on('call', (call) => {
+                console.log(`📞 Recebendo chamada de ${call.peer}`);
+                
+                // Responder com áudio local se disponível
+                if (this.localStream) {
+                    call.answer(this.localStream);
+                } else {
+                    call.answer();
+                }
+                
+                call.on('stream', (remoteStream) => {
+                    console.log(`🔊 Áudio recebido de ${call.peer}`);
+                    this.remoteStreams.set(call.peer, remoteStream);
+                    this.emit('call.audio.stream', {
+                        peerId: call.peer,
+                        stream: remoteStream,
+                        timestamp: Date.now()
+                    });
+                });
+
+                call.on('close', () => {
+                    console.log(`📞 Chamada encerrada com ${call.peer}`);
+                    this.remoteStreams.delete(call.peer);
+                });
+
+                this.calls.set(call.peer, call);
+            });
+
+            // 5. Conectar com participantes existentes
+            const participantes = Object.entries(chamada.participants || {});
+            let conectados = 0;
+            
+            for (const [userId, data] of participantes) {
+                if (userId === this.botId) continue; // Pular a si mesmo
+                
+                if (data.peerId) {
+                    console.log(`🔗 Conectando com ${data.name} (${data.peerId})...`);
+                    
+                    try {
+                        const call = this.peer.call(data.peerId, this.localStream || null);
+                        
+                        call.on('stream', (remoteStream) => {
+                            console.log(`🔊 Áudio recebido de ${data.name}`);
+                            this.remoteStreams.set(data.peerId, remoteStream);
+                            this.emit('call.audio.stream', {
+                                peerId: data.peerId,
+                                peerName: data.name,
+                                stream: remoteStream,
+                                timestamp: Date.now()
+                            });
+                        });
+
+                        call.on('close', () => {
+                            console.log(`📞 Chamada encerrada com ${data.name}`);
+                            this.remoteStreams.delete(data.peerId);
+                        });
+
+                        this.calls.set(data.peerId, call);
+                        conectados++;
+                    } catch(e) {
+                        console.log(`❌ Falha ao conectar com ${data.name}:`, e.message);
+                    }
+                }
+            }
+
+            // 6. Emitir evento de entrada
+            this.emit('call.joined', {
+                callId: chamada.id,
+                groupId: grupoId,
+                participantId: this.botId,
+                participantName: this.botNome,
+                peerId: this.peerId,
+                participants: Object.keys(chamada.participants),
+                totalParticipants: Object.keys(chamada.participants).length,
+                connectedTo: conectados
+            });
+
+            console.log(`✅ Entrou na chamada! Conectado a ${conectados} participantes`);
+
+            return {
+                success: true,
+                callId: chamada.id,
+                peerId: this.peerId,
+                participants: Object.keys(chamada.participants),
+                totalParticipants: Object.keys(chamada.participants).length,
+                connectedTo: conectados
+            };
+
+        } catch (error) {
+            console.error('❌ Erro ao entrar na chamada:', error);
+            
+            // Limpar em caso de erro
+            if (this.peer) {
+                this.peer.destroy();
+                this.peer = null;
+            }
+            if (this.localStream) {
+                this.localStream.getTracks().forEach(track => track.stop());
+                this.localStream = null;
+            }
+            this.isInCall = false;
+            this.currentCallId = null;
+            
+            throw error;
+        }
+    }
+
+    // ========== SAIR DA CHAMADA ==========
+    
+    async sairChamada() {
+        if (!this.isInCall || !this.currentCallId) {
+            throw new Error('Não está em uma chamada');
+        }
+
+        const grupoId = this.currentCallId;
+        console.log(`👋 Saindo da chamada ${grupoId}...`);
+
+        // Remover bot dos participantes
+        const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
+        if (chamada && chamada.participants) {
+            delete chamada.participants[this.botId];
+            
+            // Se não houver mais participantes, encerrar chamada
+            if (Object.keys(chamada.participants).length === 0) {
+                await this._request(`/groups/${grupoId}/active_call.json`, 'DELETE');
+                console.log('⏹️ Chamada encerrada (último participante)');
+            } else {
+                await this._request(`/groups/${grupoId}/active_call.json`, 'PUT', chamada);
+            }
+        }
+
+        // Fechar conexões P2P
+        for (const [peerId, call] of this.calls) {
+            try {
+                call.close();
+            } catch(e) {}
+        }
+        this.calls.clear();
+        this.remoteStreams.clear();
+
+        // Fechar PeerJS
+        if (this.peer) {
+            try {
+                this.peer.destroy();
+            } catch(e) {}
+            this.peer = null;
+        }
+
+        // Parar streams locais
+        if (this.localStream) {
+            try {
+                this.localStream.getTracks().forEach(track => track.stop());
+            } catch(e) {}
+            this.localStream = null;
+        }
+
+        this.isInCall = false;
+        this.currentCallId = null;
+        this.currentCallData = null;
+        this.participantes = [];
+
+        this.emit('call.left', {
+            groupId: grupoId,
+            participantId: this.botId,
+            timestamp: Date.now()
+        });
+
+        console.log('👋 Saiu da chamada');
+
+        return { success: true };
+    }
+
+    // ========== MUTAR/DESMUTAR ==========
+    
+    async alternarMudo() {
+        if (!this.isInCall || !this.currentCallId) {
+            throw new Error('Não está em uma chamada');
+        }
+
+        if (!this.localStream) {
+            throw new Error('Stream de áudio não disponível');
+        }
+
+        const audioTrack = this.localStream.getAudioTracks()[0];
+        if (!audioTrack) {
+            throw new Error('Nenhum track de áudio encontrado');
+        }
+
+        audioTrack.enabled = !audioTrack.enabled;
+        const isMuted = !audioTrack.enabled;
+        
+        // Atualizar no Firebase
+        const chamada = await this._request(`/groups/${this.currentCallId}/active_call.json`);
+        if (chamada && chamada.participants && chamada.participants[this.botId]) {
+            chamada.participants[this.botId].isMuted = isMuted;
+            await this._request(`/groups/${this.currentCallId}/active_call.json`, 'PUT', chamada);
+        }
+
+        this.emit(isMuted ? 'call.muted' : 'call.unmuted', {
+            groupId: this.currentCallId,
+            participantId: this.botId,
+            timestamp: Date.now()
+        });
+
+        return { success: true, isMuted: isMuted };
+    }
+
+    // ========== MONITORAR CHAMADAS ==========
+
+    async monitorarChamadas(grupoId, callback = null) {
+        if (this.callMonitorInterval) {
+            clearInterval(this.callMonitorInterval);
+        }
+
+        console.log(`🔍 Monitorando chamadas no grupo ${grupoId}...`);
+
+        let ultimoStatus = null;
+
+        this.callMonitorInterval = setInterval(async () => {
+            try {
+                const status = await this.getStatusChamada(grupoId);
+                
+                // Chamada foi iniciada
+                if (status.active && !ultimoStatus) {
+                    console.log(`📞 CHAMADA DETECTADA!`);
+                    console.log(`👥 Participantes: ${status.totalParticipants}`);
+                    console.log(`👑 Dono: ${status.owner}`);
+                    
+                    this.emit('call.incoming', {
+                        callId: status.callId,
+                        groupId: grupoId,
+                        owner: status.owner,
+                        participants: status.participants,
+                        totalParticipants: status.totalParticipants,
+                        startedAt: status.startedAt,
+                        participantsData: status.participantsData
+                    });
+
+                    if (callback) {
+                        await callback('incoming', status);
+                    }
+
+                    // Entrar automaticamente na chamada (se configurado)
+                    if (this.entrarAutomaticamente && !status.isBotInCall) {
+                        console.log('🚪 Entrando automaticamente na chamada...');
+                        try {
+                            await this.entrarChamada(grupoId);
+                        } catch(e) {
+                            console.log('❌ Erro ao entrar:', e.message);
+                        }
+                    }
+                }
+                
+                // Chamada terminou
+                if (!status.active && ultimoStatus) {
+                    console.log(`⏹️ Chamada encerrada`);
+                    
+                    this.emit('call.ended', {
+                        groupId: grupoId,
+                        callId: ultimoStatus.callId,
+                        duration: Date.now() - ultimoStatus.startedAt
+                    });
+
+                    if (callback) {
+                        await callback('ended', status);
+                    }
+
+                    // Sair da chamada se estiver nela
+                    if (this.isInCall) {
+                        try {
+                            await this.sairChamada();
+                        } catch(e) {}
+                    }
+                }
+                
+                ultimoStatus = status.active ? status : null;
+                
+            } catch(e) {
+                // Silencia erros
+            }
+        }, 3000);
+
+        return { parar: () => clearInterval(this.callMonitorInterval) };
+    }
+
+    pararMonitoramentoChamadas() {
+        if (this.callMonitorInterval) {
+            clearInterval(this.callMonitorInterval);
+            this.callMonitorInterval = null;
+            console.log('🛑 Monitoramento de chamadas parado');
+        }
+    }
+
+    // ========== CONFIGURAÇÕES ==========
+
+    setEntrarAutomaticamente(ativar) {
+        this.entrarAutomaticamente = ativar;
+        console.log(`🤖 Entrar automaticamente: ${ativar ? '✅' : '❌'}`);
+    }
+
+    // ==================== MONITORAMENTO DE MENSAGENS ====================
 
     async monitorarGrupo(grupoId, callback = null) {
         if (this.monitorInterval) {
@@ -333,7 +662,7 @@ class MessageSDK {
             this.ultimoTimestamp[grupoId] = Date.now();
         }
 
-        console.log(`🔍 Monitorando grupo: ${grupoId}`);
+        console.log(`📡 Monitorando mensagens no grupo ${grupoId}...`);
 
         this.monitorInterval = setInterval(async () => {
             if (this.processando[grupoId]) return;
@@ -400,117 +729,8 @@ class MessageSDK {
         if (this.monitorInterval) {
             clearInterval(this.monitorInterval);
             this.monitorInterval = null;
-            console.log('🛑 Monitoramento parado');
+            console.log('🛑 Monitoramento de mensagens parado');
         }
-    }
-
-    // ==================== SISTEMA DE CHAMADAS ====================
-
-    async getStatusChamada(grupoId) {
-        const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
-        
-        if (!chamada) {
-            return { active: false };
-        }
-
-        return {
-            active: true,
-            callId: chamada.id,
-            groupId: grupoId,
-            startedAt: chamada.startedAt,
-            tipo: chamada.tipo || 'audio',
-            participants: Object.keys(chamada.participants || {}),
-            totalParticipants: Object.keys(chamada.participants || {}).length,
-            owner: chamada.owner,
-            isBotInCall: !!(chamada.participants && chamada.participants[this.botId]),
-            isBotMuted: !!(chamada.participants && chamada.participants[this.botId] && chamada.participants[this.botId].isMuted)
-        };
-    }
-
-    async entrarChamada(grupoId) {
-        if (this.isInCall) {
-            throw new Error('Já está em uma chamada');
-        }
-
-        const status = await this.getStatusChamada(grupoId);
-        if (!status.active) {
-            throw new Error('Nenhuma chamada ativa neste grupo');
-        }
-
-        // Adicionar bot aos participantes
-        const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
-        if (!chamada.participants) chamada.participants = {};
-        
-        chamada.participants[this.botId] = {
-            name: this.botNome,
-            joinedAt: Date.now(),
-            isMuted: false
-        };
-
-        await this._request(`/groups/${grupoId}/active_call.json`, 'PUT', chamada);
-
-        this.isInCall = true;
-        this.currentCallId = grupoId;
-
-        this.emit('call.joined', {
-            callId: chamada.id,
-            groupId: grupoId,
-            participantId: this.botId
-        });
-
-        return { success: true, callId: chamada.id };
-    }
-
-    async sairChamada() {
-        if (!this.isInCall || !this.currentCallId) {
-            throw new Error('Não está em uma chamada');
-        }
-
-        const grupoId = this.currentCallId;
-        const chamada = await this._request(`/groups/${grupoId}/active_call.json`);
-        
-        if (chamada && chamada.participants) {
-            delete chamada.participants[this.botId];
-            
-            if (Object.keys(chamada.participants).length === 0) {
-                await this._request(`/groups/${grupoId}/active_call.json`, 'DELETE');
-            } else {
-                await this._request(`/groups/${grupoId}/active_call.json`, 'PUT', chamada);
-            }
-        }
-
-        this.isInCall = false;
-        this.currentCallId = null;
-
-        this.emit('call.left', {
-            groupId: grupoId,
-            participantId: this.botId
-        });
-
-        return { success: true };
-    }
-
-    async alternarMudo() {
-        if (!this.isInCall || !this.currentCallId) {
-            throw new Error('Não está em uma chamada');
-        }
-
-        const chamada = await this._request(`/groups/${this.currentCallId}/active_call.json`);
-        if (chamada && chamada.participants && chamada.participants[this.botId]) {
-            chamada.participants[this.botId].isMuted = !chamada.participants[this.botId].isMuted;
-            const isMuted = chamada.participants[this.botId].isMuted;
-            
-            await this._request(`/groups/${this.currentCallId}/active_call.json`, 'PUT', chamada);
-            
-            this.emit(isMuted ? 'call.muted' : 'call.unmuted', {
-                groupId: this.currentCallId,
-                participantId: this.botId
-            });
-
-            return { success: true, isMuted: isMuted };
-        }
-
-        return { success: false, error: 'Participante não encontrado' };
     }
 
     // ==================== EVENTOS ====================
@@ -547,6 +767,10 @@ class MessageSDK {
 
     isConectado() {
         return this.conectado;
+    }
+
+    isEmChamada() {
+        return this.isInCall;
     }
 
     async delay(ms) {
