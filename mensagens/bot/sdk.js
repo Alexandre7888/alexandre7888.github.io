@@ -1,5 +1,5 @@
-// sdk.js - SDK COM INSTALAÇÃO AUTOMÁTICA
-// versão 12.0.0
+// sdk.js - SDK SEM wrtc e com porta dinâmica
+// versão 13.0.0
 // Hospedar em: https://alexandre7888.github.io/mensagens/bot/sdk.js
 
 const https = require('https');
@@ -7,7 +7,6 @@ const { URL } = require('url');
 const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
-const { execSync } = require('child_process');
 
 class MessageSDK extends EventEmitter {
     constructor() {
@@ -17,7 +16,7 @@ class MessageSDK extends EventEmitter {
         this.botNome = null;
         this.conectado = false;
         this.comandos = new Map();
-        this.versao = '12.0.0';
+        this.versao = '13.0.0';
         
         // Monitoramento
         this.monitorInterval = null;
@@ -46,109 +45,77 @@ class MessageSDK extends EventEmitter {
             fs.mkdirSync(this.audioDir, { recursive: true });
         }
         
-        // ========== SERVIDOR DE ÁUDIO ==========
+        // ========== SERVIDOR DE ÁUDIO (PORTA DINÂMICA) ==========
         this.audioServer = null;
         this.audioPort = 3001;
         this._iniciarServidorAudio();
         
-        // ========== INSTALAR DEPENDÊNCIAS AUTOMATICAMENTE ==========
-        this._instalarDependencias();
-        
-        // Carregar PeerJS
+        // ========== CARREGAR PEERJS ==========
         try {
             const Peer = require('peerjs');
             this.Peer = Peer;
             console.log('✅ PeerJS carregado');
         } catch(e) {
             this.Peer = null;
-            console.log('⚠️ PeerJS não encontrado. Instalando...');
-            this._instalarPacote('peerjs');
+            console.log('⚠️ PeerJS não encontrado. Instale: npm install peerjs');
         }
         
-        // Carregar WebRTC
-        try {
-            this.wrtc = require('wrtc');
-            console.log('✅ WebRTC carregado');
-        } catch(e) {
-            this.wrtc = null;
-            console.log('⚠️ wrtc não encontrado. Instalando...');
-            this._instalarPacote('wrtc');
-        }
+        // ========== SEM WRTC (usamos fallback) ==========
+        this.wrtc = null;
+        console.log('ℹ️ Usando modo sem WebRTC (apenas gerenciamento de chamadas)');
     }
 
     getVersao() {
         return this.versao;
     }
 
-    // ==================== INSTALAÇÃO AUTOMÁTICA ====================
-    
-    _instalarDependencias() {
-        try {
-            // Verificar se o package.json existe
-            if (!fs.existsSync(path.join(process.cwd(), 'package.json'))) {
-                console.log('📦 Criando package.json...');
-                execSync('npm init -y', { stdio: 'ignore' });
-            }
-        } catch(e) {
-            console.log('⚠️ Erro ao criar package.json:', e.message);
-        }
-    }
-
-    _instalarPacote(pacote) {
-        try {
-            console.log(`📦 Instalando ${pacote}...`);
-            execSync(`npm install ${pacote}`, { stdio: 'inherit' });
-            console.log(`✅ ${pacote} instalado!`);
-            
-            // Recarregar o módulo
-            delete require.cache[require.resolve(pacote)];
-            if (pacote === 'peerjs') {
-                this.Peer = require('peerjs');
-            } else if (pacote === 'wrtc') {
-                this.wrtc = require('wrtc');
-            }
-        } catch(e) {
-            console.log(`❌ Erro ao instalar ${pacote}:`, e.message);
-            console.log(`💡 Instale manualmente: npm install ${pacote}`);
-        }
-    }
-
-    // ==================== SERVIDOR DE ÁUDIO ====================
+    // ==================== SERVIDOR DE ÁUDIO (PORTA DINÂMICA) ====================
     
     _iniciarServidorAudio() {
         const http = require('http');
         
-        this.audioServer = http.createServer((req, res) => {
-            const url = new URL(req.url, `http://localhost:${this.audioPort}`);
-            const filePath = path.join(this.audioDir, url.pathname);
-            
-            if (!filePath.startsWith(this.audioDir)) {
-                res.writeHead(403);
-                res.end('Acesso negado');
-                return;
-            }
-            
-            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-                const stat = fs.statSync(filePath);
-                res.writeHead(200, {
-                    'Content-Type': 'audio/webm',
-                    'Content-Length': stat.size,
-                    'Access-Control-Allow-Origin': '*'
-                });
-                fs.createReadStream(filePath).pipe(res);
-            } else {
-                res.writeHead(404);
-                res.end('Áudio não encontrado');
-            }
-        });
-        
-        try {
-            this.audioServer.listen(this.audioPort, '0.0.0.0', () => {
-                console.log(`🎵 Servidor de áudio: http://localhost:${this.audioPort}`);
+        // Tentar portas de 3001 a 3010
+        const tentarPorta = (porta) => {
+            this.audioServer = http.createServer((req, res) => {
+                const url = new URL(req.url, `http://localhost:${porta}`);
+                const filePath = path.join(this.audioDir, url.pathname);
+                
+                if (!filePath.startsWith(this.audioDir)) {
+                    res.writeHead(403);
+                    res.end('Acesso negado');
+                    return;
+                }
+                
+                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                    const stat = fs.statSync(filePath);
+                    res.writeHead(200, {
+                        'Content-Type': 'audio/webm',
+                        'Content-Length': stat.size,
+                        'Access-Control-Allow-Origin': '*'
+                    });
+                    fs.createReadStream(filePath).pipe(res);
+                } else {
+                    res.writeHead(404);
+                    res.end('Áudio não encontrado');
+                }
             });
-        } catch(e) {
-            console.log(`⚠️ Servidor de áudio já está rodando na porta ${this.audioPort}`);
-        }
+            
+            this.audioServer.on('error', (err) => {
+                if (err.code === 'EADDRINUSE') {
+                    console.log(`⚠️ Porta ${porta} em uso, tentando ${porta + 1}...`);
+                    tentarPorta(porta + 1);
+                } else {
+                    console.error('❌ Erro no servidor:', err.message);
+                }
+            });
+            
+            this.audioServer.listen(porta, '0.0.0.0', () => {
+                this.audioPort = porta;
+                console.log(`🎵 Servidor de áudio: http://localhost:${porta}`);
+            });
+        };
+        
+        tentarPorta(this.audioPort);
     }
 
     // ==================== REQUISIÇÕES ====================
@@ -210,12 +177,8 @@ class MessageSDK extends EventEmitter {
 
     async _initPeer() {
         if (!this.Peer) {
-            console.log('⚠️ PeerJS não disponível. Instalando...');
-            this._instalarPacote('peerjs');
-            if (!this.Peer) {
-                console.log('❌ PeerJS ainda não disponível. Tente instalar manualmente: npm install peerjs');
-                return;
-            }
+            console.log('⚠️ PeerJS não disponível');
+            return;
         }
 
         const peerId = `bot_${this.botId}_${Date.now()}`;
@@ -247,7 +210,11 @@ class MessageSDK extends EventEmitter {
             });
 
             this.peer.on('error', (err) => {
-                console.error('❌ Erro PeerJS:', err.type, err.message);
+                if (err.type === 'peer-unavailable') {
+                    console.log(`⚠️ Peer ${err.message} não disponível`);
+                } else {
+                    console.error('❌ Erro PeerJS:', err.type, err.message);
+                }
                 this.emit('peer.error', { error: err });
             });
 
@@ -271,29 +238,11 @@ class MessageSDK extends EventEmitter {
         console.log(`📞 Chamada recebida de: ${call.peer}`);
         this.currentCall = call;
         
-        call.answer(this.localStream || null);
-
-        call.on('stream', (remoteStream) => {
-            console.log(`🔊 Stream recebido de ${call.peer}`);
-            this.remoteStreams.set(call.peer, remoteStream);
-            this._iniciarGravacaoParticipante(call.peer, remoteStream);
-            
-            this.emit('call.audio.stream', {
-                peerId: call.peer,
-                stream: remoteStream,
-                timestamp: Date.now()
-            });
-            
-            this.isInCall = true;
-            this.emit('call.connected', {
-                peerId: call.peer,
-                callId: this.activeCallId
-            });
-        });
+        // Responder sem stream (modo apenas gerenciamento)
+        call.answer();
 
         call.on('close', () => {
             console.log(`📞 Chamada encerrada com ${call.peer}`);
-            this._finalizarGravacaoParticipante(call.peer);
             this.remoteStreams.delete(call.peer);
             
             if (this.remoteStreams.size === 0) {
@@ -468,8 +417,6 @@ class MessageSDK extends EventEmitter {
                 if (chamada.callerPeerId === this.peerId) continue;
                 
                 console.log(`📞 Chamada detectada: ${chamada.id}`);
-                console.log(`👤 Caller: ${chamada.callerId}`);
-                console.log(`📌 Grupo: ${chamada.receiverId}`);
                 
                 this.emit('call.incoming', {
                     callId: chamada.id,
@@ -516,38 +463,21 @@ class MessageSDK extends EventEmitter {
         this.activeCallId = callId;
         this.chamadaAtiva = chamada;
 
-        // Criar stream de áudio (simplificado)
-        this.localStream = await this._getUserMedia(chamada.isVideo || false);
-
         // Atualizar Firebase
         await this._request(`/calls/${callId}.json`, 'PATCH', {
             status: 'active',
             receiverPeerId: this.peerId
         });
 
-        // Conectar ao caller
+        // Conectar ao caller (apenas gerenciamento, sem áudio real)
         if (chamada.callerPeerId) {
             console.log(`🔗 Conectando ao caller: ${chamada.callerPeerId}`);
             
             try {
-                const call = this.peer.call(chamada.callerPeerId, this.localStream || null);
+                const call = this.peer.call(chamada.callerPeerId, null);
                 
-                call.on('stream', (remoteStream) => {
-                    console.log(`🔊 Stream recebido do caller`);
-                    this.remoteStreams.set(chamada.callerPeerId, remoteStream);
-                    this._iniciarGravacaoParticipante(chamada.callerPeerId, remoteStream);
-                    
-                    this.emit('call.audio.stream', {
-                        peerId: chamada.callerPeerId,
-                        stream: remoteStream,
-                        timestamp: Date.now()
-                    });
-                });
-
                 call.on('close', () => {
                     console.log(`📞 Chamada com caller encerrada`);
-                    this._finalizarGravacaoParticipante(chamada.callerPeerId);
-                    this.remoteStreams.delete(chamada.callerPeerId);
                     this.isInCall = false;
                 });
 
@@ -580,22 +510,10 @@ class MessageSDK extends EventEmitter {
         }
 
         const callId = this.activeCallId;
-        
-        this._finalizarGravacaoLocal();
-        for (const [peerId, _] of this.remoteStreams) {
-            this._finalizarGravacaoParticipante(peerId);
-        }
 
         if (this.currentCall) {
             this.currentCall.close();
             this.currentCall = null;
-        }
-
-        if (this.localStream) {
-            if (this.localStream.getTracks) {
-                this.localStream.getTracks().forEach(t => t.stop());
-            }
-            this.localStream = null;
         }
 
         this.remoteStreams.clear();
@@ -615,50 +533,6 @@ class MessageSDK extends EventEmitter {
         });
 
         return { success: true };
-    }
-
-    // ==================== GRAVAÇÃO ====================
-
-    _iniciarGravacaoLocal(callId) {
-        console.log(`🎙️ Gravação local iniciada`);
-        this.emit('call.recording.started', {
-            callId: callId,
-            participantId: this.botId,
-            participantName: this.botNome,
-            startedAt: Date.now()
-        });
-    }
-
-    _iniciarGravacaoParticipante(peerId, stream) {
-        console.log(`🎙️ Gravação de ${peerId} iniciada`);
-        this.emit('call.recording.remote', {
-            callId: this.activeCallId,
-            peerId: peerId,
-            startedAt: Date.now()
-        });
-    }
-
-    _finalizarGravacaoLocal() {
-        console.log('🛑 Gravação local finalizada');
-    }
-
-    _finalizarGravacaoParticipante(peerId) {
-        console.log(`🛑 Gravação de ${peerId} finalizada`);
-        this.streamsGravacao.delete(peerId);
-    }
-
-    // ==================== MÍDIA ====================
-
-    async _getUserMedia(isVideo = false) {
-        try {
-            if (this.wrtc) {
-                const { MediaStream } = this.wrtc;
-                return new MediaStream();
-            }
-            return null;
-        } catch(e) {
-            return null;
-        }
     }
 
     // ==================== MONITORAMENTO ====================
