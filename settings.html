@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeHub - Configurações</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:'Segoe UI',sans-serif;
+      background:linear-gradient(135deg,#0b1120,#1a1f35);
+      min-height:100vh;padding:20px;color:#fff;
+    }
+    .container{max-width:700px;margin:0 auto}
+    .header{
+      background:rgba(20,25,45,0.95);border-radius:16px;padding:20px;
+      margin-bottom:20px;border:1px solid rgba(67,97,238,0.3);
+      display:flex;justify-content:space-between;align-items:center;
+    }
+    .header h1{font-size:22px}
+    .back-btn{
+      background:rgba(255,255,255,0.1);color:#fff;border:none;
+      padding:10px 20px;border-radius:20px;cursor:pointer;font-size:14px;transition:0.3s;
+    }
+    .back-btn:hover{background:rgba(255,255,255,0.2)}
+    .card{
+      background:rgba(20,25,45,0.95);border-radius:16px;padding:20px;
+      margin-bottom:20px;border:1px solid rgba(67,97,238,0.3);
+    }
+    .card h2{font-size:18px;margin-bottom:15px;color:#4895ef}
+    .account-item{
+      display:flex;align-items:center;gap:12px;padding:12px;
+      background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:8px;
+    }
+    .account-avatar{
+      width:40px;height:40px;border-radius:50%;display:flex;
+      align-items:center;justify-content:center;font-weight:700;
+      font-size:16px;color:#fff;flex-shrink:0;
+    }
+    .account-info{flex:1}
+    .account-name{font-weight:600;font-size:14px}
+    .account-email{font-size:11px;color:#a0b3c9}
+    .device-item{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:8px;
+    }
+    .device-info{flex:1}
+    .device-name{font-weight:600;font-size:14px}
+    .device-details{font-size:11px;color:#a0b3c9}
+    .btn{
+      padding:8px 16px;border:none;border-radius:8px;font-size:13px;
+      font-weight:600;cursor:pointer;transition:0.3s;
+    }
+    .btn-danger{background:rgba(247,37,133,0.2);color:#f72585;border:1px solid rgba(247,37,133,0.3)}
+    .btn-danger:hover{background:rgba(247,37,133,0.4)}
+    .btn-warning{background:rgba(230,180,34,0.2);color:#e6b422;border:1px solid rgba(230,180,34,0.3)}
+    .btn-warning:hover{background:rgba(230,180,34,0.4)}
+    .btn-primary{background:rgba(67,97,238,0.3);color:#fff;border:1px solid rgba(67,97,238,0.5)}
+    .btn-primary:hover{background:rgba(67,97,238,0.5)}
+    .badge{
+      padding:4px 10px;border-radius:12px;font-size:10px;font-weight:600;
+    }
+    .badge-active{background:rgba(76,201,240,0.3);color:#4cc9f0}
+    .badge-other{background:rgba(160,179,201,0.3);color:#a0b3c9}
+    .warning-box{
+      background:rgba(230,180,34,0.1);border:1px solid rgba(230,180,34,0.3);
+      border-radius:10px;padding:15px;margin-top:15px;
+    }
+    .warning-box h3{color:#e6b422;font-size:14px;margin-bottom:8px}
+    .warning-box p{font-size:12px;color:#a0b3c9}
+    .loading{text-align:center;padding:30px;color:#a0b3c9}
+    .empty{text-align:center;padding:30px;color:#a0b3c9}
+    .count{font-size:12px;color:#a0b3c9;margin-bottom:10px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚙️ Central de Contas</h1>
+      <button class="back-btn" onclick="goBack()">🏠 Voltar</button>
+    </div>
+
+    <div id="loadingMsg" class="loading">⏳ Carregando dados do Firebase...</div>
+
+    <!-- Contas -->
+    <div class="card" id="accountsCard" style="display:none;">
+      <h2>👤 Contas Vinculadas</h2>
+      <div class="count" id="accountsCount"></div>
+      <div id="accountsList"></div>
+    </div>
+
+    <!-- Dispositivos -->
+    <div class="card" id="devicesCard" style="display:none;">
+      <h2>📱 Dispositivos Conectados</h2>
+      <div class="count" id="devicesCount"></div>
+      <div id="devicesList"></div>
+    </div>
+
+    <!-- Zona de Perigo -->
+    <div class="card" id="dangerZone" style="display:none;">
+      <h2>⚠️ Zona de Perigo</h2>
+      <div class="warning-box">
+        <h3>🔄 Regenerar MasterKey</h3>
+        <p>Isso criará uma nova MasterKey. Todos os outros dispositivos serão desconectados e precisarão fazer login novamente. Este dispositivo continuará funcionando normalmente.</p>
+        <button class="btn btn-warning" onclick="regenerateMasterKey()" style="margin-top:10px;width:100%;">
+          🔄 Regenerar MasterKey
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+    import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    let masterKey = '';
+    let currentDeviceId = '';
+
+    function getAvatarColor(name) {
+      const colors = ['#4361ee','#f72585','#4cc9f0','#7209b7','#f8961e','#43aa8b','#e63946','#277da1'];
+      let hash = 0;
+      for (let i = 0; i < (name||'?').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      return colors[Math.abs(hash) % colors.length];
+    }
+
+    window.goBack = () => {
+      const userKey = localStorage.getItem('current_userKey');
+      window.location.href = userKey ? `index.html?userKey=${userKey}` : 'index.html';
+    };
+
+    async function init() {
+      masterKey = localStorage.getItem('codehub_masterKey');
+      currentDeviceId = localStorage.getItem('codehub_deviceId') || 'device_' + Date.now();
+
+      if (!masterKey) {
+        document.getElementById('loadingMsg').innerHTML = '<div class="empty">❌ Nenhuma MasterKey encontrada. Faça login primeiro.</div>';
+        return;
+      }
+
+      await loadAccounts();
+      await loadDevices();
+      
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('accountsCard').style.display = 'block';
+      document.getElementById('devicesCard').style.display = 'block';
+      document.getElementById('dangerZone').style.display = 'block';
+    }
+
+    async function loadAccounts() {
+      try {
+        const snap = await get(ref(database, `contas/${masterKey}`));
+        const list = document.getElementById('accountsList');
+        
+        if (snap.exists()) {
+          const data = snap.val();
+          const accounts = Object.values(data);
+          document.getElementById('accountsCount').textContent = `${accounts.length} conta(s)`;
+          
+          list.innerHTML = accounts.map(acc => `
+            <div class="account-item">
+              <div class="account-avatar" style="background:${getAvatarColor(acc.username||acc.email||'?')}">
+                ${(acc.username||acc.email||'?').charAt(0).toUpperCase()}
+              </div>
+              <div class="account-info">
+                <div class="account-name">${acc.username||'Sem nome'} ${acc.userType==='entrepreneur'?'🏢':'👤'}</div>
+                <div class="account-email">${acc.email}</div>
+              </div>
+            </div>
+          `).join('');
+        } else {
+          document.getElementById('accountsCount').textContent = '0 contas';
+          list.innerHTML = '<div class="empty">Nenhuma conta vinculada</div>';
+        }
+      } catch(e) {
+        console.error(e);
+      }
+    }
+
+    async function loadDevices() {
+      try {
+        // Buscar todos os dispositivos que têm esta masterKey
+        const snap = await get(ref(database, 'dispositivos'));
+        const list = document.getElementById('devicesList');
+        
+        if (snap.exists()) {
+          const allDevices = snap.val();
+          const myDevices = [];
+          
+          // Filtrar dispositivos com esta masterKey
+          for (const [devId, devData] of Object.entries(allDevices)) {
+            if (devData.masterKey === masterKey || devId === currentDeviceId) {
+              myDevices.push({
+                id: devId,
+                ...devData,
+                isCurrent: devId === currentDeviceId
+              });
+            }
+          }
+          
+          document.getElementById('devicesCount').textContent = `${myDevices.length} dispositivo(s)`;
+          
+          list.innerHTML = myDevices.map(dev => `
+            <div class="device-item">
+              <div class="device-info">
+                <div class="device-name">
+                  ${dev.isCurrent ? '📱 Este dispositivo' : '💻 Outro dispositivo'}
+                  ${dev.isCurrent ? '<span class="badge badge-active">Atual</span>' : '<span class="badge badge-other">Conectado</span>'}
+                </div>
+                <div class="device-details">
+                  ID: ${dev.id.substring(0, 25)}...<br>
+                  Último acesso: ${dev.lastAccess ? new Date(dev.lastAccess).toLocaleString() : 'N/A'}<br>
+                  Contas: ${dev.totalAccounts || '?'}
+                </div>
+              </div>
+              ${!dev.isCurrent ? `
+                <button class="btn btn-danger" onclick="removeDevice('${dev.id}')">🗑️ Desconectar</button>
+              ` : ''}
+            </div>
+          `).join('');
+        } else {
+          document.getElementById('devicesCount').textContent = '0 dispositivos';
+          list.innerHTML = '<div class="empty">Nenhum dispositivo encontrado</div>';
+        }
+      } catch(e) {
+        console.error(e);
+      }
+    }
+
+    window.removeDevice = async function(deviceId) {
+      if (!confirm('Tem certeza que deseja desconectar este dispositivo? Ele precisará fazer login novamente.')) return;
+      
+      try {
+        await remove(ref(database, `dispositivos/${deviceId}`));
+        alert('✅ Dispositivo desconectado com sucesso!');
+        await loadDevices();
+      } catch(e) {
+        alert('❌ Erro ao desconectar dispositivo');
+        console.error(e);
+      }
+    };
+
+    window.regenerateMasterKey = async function() {
+      if (!confirm('⚠️ ATENÇÃO: Isso irá gerar uma nova MasterKey. Todos os outros dispositivos serão desconectados. Deseja continuar?')) return;
+      
+      try {
+        // Gerar nova masterKey
+        const newMasterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        
+        // Copiar contas para nova masterKey
+        const contasSnap = await get(ref(database, `contas/${masterKey}`));
+        if (contasSnap.exists()) {
+          await set(ref(database, `contas/${newMasterKey}`), contasSnap.val());
+          await remove(ref(database, `contas/${masterKey}`));
+        }
+        
+        // Atualizar dispositivo atual
+        await set(ref(database, `dispositivos/${currentDeviceId}/masterKey`), newMasterKey);
+        
+        // Atualizar localStorage
+        localStorage.setItem('codehub_masterKey', newMasterKey);
+        masterKey = newMasterKey;
+        
+        alert('✅ MasterKey regenerada com sucesso! Outros dispositivos precisarão fazer login novamente.');
+        
+        // Recarregar
+        await loadAccounts();
+        await loadDevices();
+      } catch(e) {
+        alert('❌ Erro ao regenerar MasterKey');
+        console.error(e);
+      }
+    };
+
+    init();
+  </script>
+</body>
+</html>
