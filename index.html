@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CodeHUB · Plataforma</title>
   <link rel="icon" type="image/png" href="https://alexandre7888.github.io/CodeHUB/InShot_20250807_112151490.jpg">
+  
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -12,27 +13,23 @@
     gtag('js', new Date());
     gtag('config', 'G-X4VF1LWB0F');
   </script>
+  
   <script src="https://alexandre7888.github.io/protecao.js"></script>
   <script src="https://alexandre7888.github.io/Botao/floating-menu.js"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{
       --bg-start:#0b1120;--bg-end:#03060c;--canvas-bg:#11161f;
       --border:#2a3a4a;--text:#e2e9f0;--text2:#a0b3c9;
-      --gold:#e6b422;--glow:#ffaa44;--white-bg:#f5f7fc;
-      --white-text:#1e293b;--toggle-bg:#1e2a3a;--toggle-border:#3e5a77;
-      --shadow:rgba(0,0,0,0.5);
+      --gold:#e6b422;--white-bg:#f5f7fc;--white-text:#1e293b;
+      --toggle-bg:#1e2a3a;--toggle-border:#3e5a77;--shadow:rgba(0,0,0,0.5);
     }
     body.light{
       --bg-start:#e2e8f0;--bg-end:#cbd5e1;--canvas-bg:#f0f4fa;
       --border:#9aaebf;--text:#0f172a;--text2:#2c3e4e;
-      --gold:#b45309;--glow:#e67e22;--white-bg:#fff;
-      --white-text:#0f172a;--toggle-bg:#dce5f0;--toggle-border:#8ba0bc;
-      --shadow:rgba(0,0,0,0.1);
+      --gold:#b45309;--white-bg:#fff;--white-text:#0f172a;
+      --toggle-bg:#dce5f0;--toggle-border:#8ba0bc;--shadow:rgba(0,0,0,0.1);
     }
     body{
       background:radial-gradient(circle at 30% 20%,var(--bg-start),var(--bg-end));
@@ -48,8 +45,7 @@
       position:fixed;top:18px;right:20px;z-index:1100;
       background:rgba(0,0,0,0.5);backdrop-filter:blur(8px);
       border-radius:60px;padding:6px;
-      box-shadow:0 6px 16px var(--shadow);
-      border:1px solid var(--border);
+      box-shadow:0 6px 16px var(--shadow);border:1px solid var(--border);
     }
     .mini-clock canvas{display:block;width:70px;height:70px;border-radius:50%;background:var(--canvas-bg)}
     .theme-panel{
@@ -79,8 +75,7 @@
     .welcome{
       color:var(--text);font-size:1.2rem;
       background:rgba(10,15,26,0.75);backdrop-filter:blur(8px);
-      padding:15px 30px;border-radius:60px;border:1px solid var(--border);
-      font-weight:500;
+      padding:15px 30px;border-radius:60px;border:1px solid var(--border);font-weight:500;
     }
     @media(max-width:550px){
       .theme-btn{font-size:0.7rem;padding:6px 10px}
@@ -89,18 +84,23 @@
   </style>
 </head>
 <body class="dark">
+
+  <!-- Container da Interface -->
   <div id="app-menu-root"></div>
 
+  <!-- Relógio -->
   <div class="mini-clock"><canvas id="miniCanvas" width="200" height="200"></canvas></div>
 
+  <!-- Temas -->
   <div class="theme-panel">
     <button id="themeDark" class="theme-btn active">🌙 Dark</button>
     <button id="themeLight" class="theme-btn">☀️ Light</button>
     <button id="themeSystem" class="theme-btn">🖥️ Sistema</button>
   </div>
 
+  <!-- Conteúdo -->
   <div class="content-wrap">
-    <div class="welcome">✨ Bem-vindo ao CodeHUB ✨</div>
+    <div class="welcome" id="welcomeMsg">✨ Bem-vindo ao CodeHUB ✨</div>
     <div class="white-area">
       <h3>🚀 Plataforma CodeHUB</h3>
       <p>Use o menu 4x4 no canto superior esquerdo</p>
@@ -110,10 +110,27 @@
     </div>
   </div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+  <!-- Firebase + App -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
 
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // ==================== CONFIGURAÇÃO ====================
     const MAX_ACCOUNTS = 5;
+
     const apps = [
       { id:'editor', name:'Editor', icon:'📝', url:'editor.html' },
       { id:'clock', name:'Relógio', icon:'🕐', url:'clock.html' },
@@ -129,6 +146,14 @@
       { id:'help', name:'Ajuda', icon:'❓', url:'help.html' },
     ];
 
+    // ==================== ESTADO GLOBAL ====================
+    let isAuth = false;
+    let userData = null;
+    let userKey = null;
+    let accounts = [];
+    let deviceId = '';
+
+    // ==================== FUNÇÕES AUXILIARES ====================
     function getAvatarColor(name) {
       const colors = ['#4361ee','#f72585','#4cc9f0','#7209b7','#f8961e','#43aa8b','#e63946','#277da1'];
       let hash = 0;
@@ -136,285 +161,385 @@
       return colors[Math.abs(hash) % colors.length];
     }
 
-    function App() {
-      const [isAuth, setIsAuth] = useState(false);
-      const [userData, setUserData] = useState(null);
-      const [userKey, setUserKey] = useState(null);
-      const [accounts, setAccounts] = useState([]);
-      const [showMenu, setShowMenu] = useState(false);
-      const [showPanel, setShowPanel] = useState(false);
-      const panelRef = useRef(null);
+    function generateDeviceId() {
+      let id = localStorage.getItem('codehub_deviceId');
+      if (!id) {
+        id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('codehub_deviceId', id);
+      }
+      return id;
+    }
 
-      useEffect(() => {
-        init();
-        document.addEventListener('mousedown', (e) => {
-          if (panelRef.current && !panelRef.current.contains(e.target)) setShowPanel(false);
+    // ==================== INICIALIZAÇÃO ====================
+    async function init() {
+      deviceId = generateDeviceId();
+      
+      // Carregar contas locais
+      loadLocalAccounts();
+      
+      // Sincronizar com Firebase
+      await syncFromFirebase();
+      
+      // Verificar autenticação
+      const urlKey = new URLSearchParams(window.location.search).get('userKey');
+      const localKey = localStorage.getItem('current_userKey');
+      const key = urlKey || localKey;
+      
+      if (key) {
+        userKey = key;
+        await loadUserData(key);
+      }
+      
+      renderAll();
+    }
+
+    function loadLocalAccounts() {
+      accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+    }
+
+    async function syncFromFirebase() {
+      try {
+        const snap = await get(ref(database, `dispositivos/${deviceId}/contas`));
+        
+        if (snap.exists()) {
+          const fbAccounts = Object.values(snap.val());
+          const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+          
+          // Mesclar
+          fbAccounts.forEach(fbAcc => {
+            const exists = localAccounts.find(la => la.uid === fbAcc.uid);
+            if (!exists) localAccounts.push(fbAcc);
+          });
+          
+          const merged = localAccounts.slice(0, MAX_ACCOUNTS);
+          localStorage.setItem('codehub_deviceAccounts', JSON.stringify(merged));
+          accounts = merged;
+          
+          await uploadToFirebase();
+        }
+      } catch(e) {
+        console.error('Erro ao sincronizar:', e);
+      }
+    }
+
+    async function uploadToFirebase() {
+      try {
+        const obj = {};
+        accounts.forEach(acc => {
+          obj[acc.uid] = {
+            uid: acc.uid,
+            email: acc.email,
+            username: acc.username,
+            userType: acc.userType || 'normal',
+            userKey: acc.userKey,
+            lastLogin: acc.lastLogin || Date.now(),
+            deviceId: deviceId
+          };
         });
-      }, []);
-
-      async function init() {
-        const urlKey = new URLSearchParams(window.location.search).get('userKey');
-        const localKey = localStorage.getItem('current_userKey');
-        const key = urlKey || localKey;
-        if (key) { setUserKey(key); await loadUser(key); }
-        loadAccounts();
+        
+        await set(ref(database, `dispositivos/${deviceId}/contas`), obj);
+        await set(ref(database, `dispositivos/${deviceId}/info`), {
+          deviceId: deviceId,
+          lastAccess: Date.now(),
+          totalAccounts: accounts.length,
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language
+        });
+      } catch(e) {
+        console.error('Erro ao enviar:', e);
       }
+    }
 
-      async function loadUser(key) {
-        try {
-          const db = window.db || null;
-          if (!db) return;
-          const { ref, get } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
-          const snap = await get(ref(db, `userKeysData/${key}`));
-          if (snap.exists()) {
-            const d = snap.val();
-            const u = d.authTokenDecoded || d;
-            setUserData(u); setIsAuth(true);
-            localStorage.setItem('current_userKey', key);
-            if (d.authToken) localStorage.setItem('auth_token', d.authToken);
-            if (u.uid) localStorage.setItem('token_user_id', u.uid);
-          }
-        } catch(e) { console.error(e); }
-      }
-
-      function loadAccounts() {
-        const acc = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-        setAccounts(acc);
-      }
-
-      function openApp(url) {
-        const key = userKey || localStorage.getItem('current_userKey');
-        const sep = url.includes('?') ? '&' : '?';
-        window.location.href = key ? `${url}${sep}userKey=${key}` : url;
-      }
-
-      async function switchAccount(acc) {
-        if (acc.userKey) {
-          localStorage.setItem('current_userKey', acc.userKey);
-          if (acc.authToken) localStorage.setItem('auth_token', acc.authToken);
-          localStorage.setItem('token_user_id', acc.uid);
-          setUserKey(acc.userKey);
-          await loadUser(acc.userKey);
-          setShowPanel(false);
-          loadAccounts();
+    async function loadUserData(key) {
+      try {
+        const snap = await get(ref(database, `userKeysData/${key}`));
+        if (snap.exists()) {
+          const d = snap.val();
+          userData = d.authTokenDecoded || d;
+          isAuth = true;
+          localStorage.setItem('current_userKey', key);
+          if (d.authToken) localStorage.setItem('auth_token', d.authToken);
+          if (userData.uid) localStorage.setItem('token_user_id', userData.uid);
         }
+      } catch(e) {
+        console.error('Erro ao carregar usuário:', e);
       }
+    }
 
-      function removeAccount(uid) {
-        if (confirm('Remover esta conta?')) {
-          const updated = accounts.filter(a => a.uid !== uid);
-          localStorage.setItem('codehub_deviceAccounts', JSON.stringify(updated));
-          setAccounts(updated);
-          if (userData?.uid === uid) {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('token_user_id');
-            localStorage.removeItem('current_userKey');
-            setIsAuth(false); setUserData(null); setUserKey(null);
-          }
-        }
+    function openApp(url) {
+      const key = userKey || localStorage.getItem('current_userKey');
+      const sep = url.includes('?') ? '&' : '?';
+      window.location.href = key ? `${url}${sep}userKey=${key}` : url;
+    }
+
+    async function switchAccount(acc) {
+      if (acc.userKey) {
+        localStorage.setItem('current_userKey', acc.userKey);
+        if (acc.authToken) localStorage.setItem('auth_token', acc.authToken);
+        localStorage.setItem('token_user_id', acc.uid);
+        userKey = acc.userKey;
+        await loadUserData(acc.userKey);
+        renderAll();
       }
+    }
 
-      function logout() {
-        if (confirm('Sair?')) {
+    async function removeAccount(uid) {
+      if (confirm('Remover esta conta deste dispositivo?')) {
+        accounts = accounts.filter(a => a.uid !== uid);
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(accounts));
+        await uploadToFirebase();
+        
+        if (userData?.uid === uid) {
           localStorage.removeItem('auth_token');
           localStorage.removeItem('token_user_id');
           localStorage.removeItem('current_userKey');
-          setIsAuth(false); setUserData(null); setUserKey(null);
-          setShowPanel(false);
+          isAuth = false;
+          userData = null;
+          userKey = null;
         }
+        
+        renderAll();
       }
+    }
 
+    function handleLogout() {
+      if (confirm('Sair da conta atual?')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('token_user_id');
+        localStorage.removeItem('current_userKey');
+        isAuth = false;
+        userData = null;
+        userKey = null;
+        renderAll();
+      }
+    }
+
+    // ==================== RENDERIZAÇÃO ====================
+    function renderAll() {
+      const root = document.getElementById('app-menu-root');
       const name = userData?.username || userData?.email || '?';
       const letter = name.charAt(0).toUpperCase();
       const avatarColor = getAvatarColor(name);
 
-      return React.createElement('div', null,
-        // Menu 4x4
-        React.createElement('div', { style: { position:'fixed',top:20,left:20,zIndex:10000 } },
-          React.createElement('div', {
-            onClick: () => setShowMenu(true),
-            style: {
-              width:48,height:48,background:'rgba(20,25,45,0.9)',backdropFilter:'blur(10px)',
-              borderRadius:12,cursor:'pointer',display:'grid',
-              gridTemplateColumns:'repeat(4,1fr)',gridTemplateRows:'repeat(4,1fr)',
-              gap:3,padding:8,border:'1px solid rgba(67,97,238,0.3)',
-              boxShadow:'0 8px 20px rgba(0,0,0,0.4)'
-            }
-          }, [...Array(16)].map((_,i) => React.createElement('div', {
-            key:i,
-            style: { width:'100%',height:'100%',background:'rgba(67,97,238,0.8)',borderRadius:'50%' }
-          })))
-        ),
+      // Atualizar mensagem
+      const welcomeMsg = document.getElementById('welcomeMsg');
+      if (welcomeMsg) {
+        welcomeMsg.textContent = isAuth ? `✨ Bem-vindo, ${name}! ✨` : '✨ Bem-vindo ao CodeHUB ✨';
+      }
 
-        // Avatar ou Login
-        React.createElement('div', { style: { position:'fixed',top:20,right:90,zIndex:10000 } },
-          isAuth ? React.createElement('div', {
-            onClick: () => { loadAccounts(); setShowPanel(true); },
-            style: {
-              width:48,height:48,borderRadius:'50%',background:avatarColor,
-              cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
-              fontWeight:700,fontSize:20,color:'#fff',
-              border:'2px solid rgba(255,255,255,0.3)',
-              boxShadow:'0 8px 20px rgba(0,0,0,0.4)'
-            }
-          }, letter, React.createElement('div', {
-            style: {
-              position:'absolute',bottom:2,right:2,width:12,height:12,
-              background:'#4cc9f0',borderRadius:'50%',border:'2px solid rgba(20,25,45,0.9)'
-            }
-          })) : React.createElement('button', {
-            onClick: () => window.location.href = 'auth.html',
-            style: {
-              background:'linear-gradient(135deg,#4361ee,#7c3aed)',color:'#fff',
-              padding:'12px 24px',borderRadius:20,cursor:'pointer',
-              fontSize:14,fontWeight:600,border:'none',
-              boxShadow:'0 8px 20px rgba(67,97,238,0.3)'
-            }
-          }, '🔐 Fazer Login')
-        ),
+      root.innerHTML = `
+        <!-- Menu 4x4 -->
+        <div style="position:fixed;top:20px;left:20px;z-index:10000;">
+          <div id="menuBtn" style="
+            width:48px;height:48px;background:rgba(20,25,45,0.9);backdrop-filter:blur(10px);
+            border-radius:12px;cursor:pointer;display:grid;
+            grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);
+            gap:3px;padding:8px;border:1px solid rgba(67,97,238,0.3);
+            box-shadow:0 8px 20px rgba(0,0,0,0.4);transition:0.3s;
+          " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            ${[...Array(16)].map(() => '<div style="width:100%;height:100%;background:rgba(67,97,238,0.8);border-radius:50%;"></div>').join('')}
+          </div>
+        </div>
 
-        // Overlay Apps
-        showMenu && React.createElement('div', {
-          onClick: (e) => { if (e.target === e.currentTarget) setShowMenu(false); },
-          style: {
-            position:'fixed',top:0,left:0,width:'100%',height:'100%',
-            background:'rgba(0,0,0,0.7)',zIndex:9999,
-            display:'flex',justifyContent:'center',alignItems:'center',backdropFilter:'blur(5px)'
-          }
-        }, React.createElement('div', {
-          style: {
-            background:'rgba(20,25,45,0.95)',borderRadius:20,padding:30,
-            display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:15,
-            maxWidth:500,width:'90%',border:'1px solid rgba(67,97,238,0.3)',
-            boxShadow:'0 20px 40px rgba(0,0,0,0.5)'
-          }
-        }, apps.map(app => React.createElement('div', {
-          key: app.id,
-          onClick: () => { setShowMenu(false); openApp(app.url); },
-          style: {
-            display:'flex',flexDirection:'column',alignItems:'center',
-            justifyContent:'center',padding:15,background:'rgba(255,255,255,0.05)',
-            borderRadius:12,cursor:'pointer',minHeight:80
-          }
-        }, React.createElement('div', { style: { fontSize:28,marginBottom:8 } }, app.icon),
-           React.createElement('div', { style: { color:'#fff',fontSize:12,fontWeight:500 } }, app.name))))),
+        <!-- Avatar (SEMPRE VISÍVEL) -->
+        <div style="position:fixed;top:20px;right:90px;z-index:10000;">
+          <div id="avatarBtn" style="
+            width:48px;height:48px;border-radius:50%;
+            background:${isAuth ? avatarColor : '#6c757d'};
+            cursor:pointer;display:flex;align-items:center;justify-content:center;
+            font-weight:700;font-size:20px;color:#fff;
+            border:2px solid rgba(255,255,255,0.3);
+            box-shadow:0 8px 20px rgba(0,0,0,0.4);transition:0.3s;position:relative;
+          " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            ${isAuth ? letter : '👤'}
+            ${isAuth ? `<div style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;
+              background:#4cc9f0;border-radius:50%;border:2px solid rgba(20,25,45,0.9);"></div>` : ''}
+          </div>
+        </div>
 
-        // Painel de Contas
-        showPanel && React.createElement('div', {
-          ref: panelRef,
-          style: {
-            position:'fixed',top:0,right:0,width:320,height:'100%',
-            background:'rgba(20,25,45,0.98)',backdropFilter:'blur(20px)',
-            zIndex:10001,boxShadow:'-10px 0 30px rgba(0,0,0,0.5)',
-            borderLeft:'1px solid rgba(67,97,238,0.3)',overflowY:'auto',padding:20
-          }
-        },
-          React.createElement('div', {
-            style: {
-              display:'flex',justifyContent:'space-between',alignItems:'center',
-              marginBottom:20,paddingBottom:15,borderBottom:'1px solid rgba(255,255,255,0.1)'
-            }
-          }, React.createElement('div', { style: { color:'#fff',fontSize:18,fontWeight:600 } }, '👤 Contas'),
-             React.createElement('button', {
-               onClick: () => setShowPanel(false),
-               style: {
-                 background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',
-                 width:32,height:32,borderRadius:'50%',cursor:'pointer',fontSize:16
-               }
-             }, '✕')),
+        <!-- Overlay Menu Apps -->
+        <div id="appsOverlay" style="
+          position:fixed;top:0;left:0;width:100%;height:100%;
+          background:rgba(0,0,0,0.7);z-index:9999;
+          display:none;justify-content:center;align-items:center;backdrop-filter:blur(5px);
+        ">
+          <div style="
+            background:rgba(20,25,45,0.95);border-radius:20px;padding:30px;
+            display:grid;grid-template-columns:repeat(4,1fr);gap:15px;
+            max-width:500px;width:90%;border:1px solid rgba(67,97,238,0.3);
+            box-shadow:0 20px 40px rgba(0,0,0,0.5);
+          ">
+            ${apps.map(app => `
+              <div class="app-item" data-url="${app.url}" style="
+                display:flex;flex-direction:column;align-items:center;
+                justify-content:center;padding:15px;background:rgba(255,255,255,0.05);
+                border-radius:12px;cursor:pointer;min-height:80px;transition:0.3s;
+              " onmouseover="this.style.background='rgba(67,97,238,0.2)';this.style.transform='translateY(-3px)'" 
+                onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'">
+                <div style="font-size:28px;margin-bottom:8px;">${app.icon}</div>
+                <div style="color:#fff;font-size:12px;font-weight:500;">${app.name}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
 
-          accounts.length === 0 ? React.createElement('div', {
-            style: { color:'#a0b3c9',textAlign:'center',padding:30 }
-          }, 'Nenhuma conta salva') : accounts.map((acc,i) => React.createElement('div', {
-            key: i,
-            onClick: () => switchAccount(acc),
-            style: {
-              background: userData?.uid === acc.uid ? 'rgba(67,97,238,0.3)' : 'rgba(255,255,255,0.05)',
-              borderRadius:12,padding:15,marginBottom:10,cursor:'pointer',
-              border: userData?.uid === acc.uid ? '1px solid rgba(67,97,238,0.6)' : '1px solid transparent',
-              display:'flex',alignItems:'center',gap:12
-            }
-          }, React.createElement('div', {
-            style: {
-              width:40,height:40,borderRadius:'50%',
-              background: getAvatarColor(acc.username || acc.email || '?'),
-              display:'flex',alignItems:'center',justifyContent:'center',
-              fontWeight:700,fontSize:16,color:'#fff',flexShrink:0
-            }
-          }, (acc.username || acc.email || '?').charAt(0).toUpperCase()),
-             React.createElement('div', { style: { flex:1,minWidth:0 } },
-               React.createElement('div', {
-                 style: { color:'#fff',fontWeight:600,fontSize:14,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }
-               }, acc.username || acc.email),
-               React.createElement('div', {
-                 style: { color:'#a0b3c9',fontSize:11,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }
-               }, acc.email)),
-             React.createElement('button', {
-               onClick: (e) => { e.stopPropagation(); removeAccount(acc.uid); },
-               style: {
-                 background:'rgba(247,37,133,0.2)',color:'#f72585',
-                 border:'1px solid rgba(247,37,133,0.3)',
-                 padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12,flexShrink:0
-               }
-             }, '✕'))),
+        <!-- Painel de Contas -->
+        <div id="accountPanel" style="
+          position:fixed;top:0;right:0;width:320px;height:100%;
+          background:rgba(20,25,45,0.98);backdrop-filter:blur(20px);
+          z-index:10001;box-shadow:-10px 0 30px rgba(0,0,0,0.5);
+          border-left:1px solid rgba(67,97,238,0.3);overflow-y:auto;padding:20px;
+          transform:translateX(100%);transition:transform 0.3s;
+        ">
+          <div style="display:flex;justify-content:space-between;align-items:center;
+            margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid rgba(255,255,255,0.1);">
+            <div style="color:#fff;font-size:18px;font-weight:600;">👤 Contas</div>
+            <button id="closePanel" style="
+              background:rgba(255,255,255,0.1);border:none;color:#fff;
+              width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;
+            ">✕</button>
+          </div>
 
-          accounts.length < MAX_ACCOUNTS && React.createElement('button', {
-            onClick: () => window.location.href = 'auth.html',
-            style: {
-              width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,
-              cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',
-              justifyContent:'center',gap:8,color:'#4cc9f0',
-              background:'rgba(76,201,240,0.2)',border:'1px solid rgba(76,201,240,0.4)'
-            }
-          }, '➕ Adicionar Conta'),
+          ${isAuth && userData ? `
+            <div style="background:rgba(67,97,238,0.2);border-radius:10px;padding:12px;margin-bottom:15px;color:#fff;text-align:center;">
+              <div style="font-weight:600;">✅ Logado como:</div>
+              <div style="font-size:14px;margin-top:4px;">${userData.username || userData.email}</div>
+            </div>
+          ` : ''}
 
-          React.createElement('button', {
-            onClick: logout,
-            style: {
-              width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,
-              cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',
-              justifyContent:'center',gap:8,color:'#f72585',
-              background:'rgba(247,37,133,0.2)',border:'1px solid rgba(247,37,133,0.4)'
-            }
-          }, '🚪 Sair'),
+          <div id="accountsList">
+            ${accounts.length === 0 ? `
+              <div style="color:#a0b3c9;text-align:center;padding:30px;">
+                <div style="font-size:40px;margin-bottom:10px;">📱</div>
+                <div>Nenhuma conta salva</div>
+                <div style="font-size:11px;margin-top:5px;">Faça login para adicionar</div>
+              </div>
+            ` : accounts.map(acc => `
+              <div class="account-card" data-uid="${acc.uid}" style="
+                background:${userData?.uid === acc.uid ? 'rgba(67,97,238,0.3)' : 'rgba(255,255,255,0.05)'};
+                border-radius:12px;padding:15px;margin-bottom:10px;cursor:pointer;
+                border:${userData?.uid === acc.uid ? '1px solid rgba(67,97,238,0.6)' : '1px solid transparent'};
+                display:flex;align-items:center;gap:12px;transition:0.3s;
+              " onmouseover="this.style.background='rgba(67,97,238,0.2)'" 
+                onmouseout="this.style.background='${userData?.uid === acc.uid ? 'rgba(67,97,238,0.3)' : 'rgba(255,255,255,0.05)'}'">
+                <div style="
+                  width:40px;height:40px;border-radius:50%;
+                  background:${getAvatarColor(acc.username || acc.email || '?')};
+                  display:flex;align-items:center;justify-content:center;
+                  font-weight:700;font-size:16px;color:#fff;flex-shrink:0;
+                ">${(acc.username || acc.email || '?').charAt(0).toUpperCase()}</div>
+                <div style="flex:1;min-width:0;">
+                  <div style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    ${acc.username || acc.email} ${userData?.uid === acc.uid ? '✓' : ''}
+                  </div>
+                  <div style="color:#a0b3c9;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    ${acc.email}
+                  </div>
+                </div>
+                <div style="font-size:18px;flex-shrink:0;">${acc.userType === 'entrepreneur' ? '🏢' : '👤'}</div>
+                <button class="remove-account" data-uid="${acc.uid}" style="
+                  background:rgba(247,37,133,0.2);color:#f72585;
+                  border:1px solid rgba(247,37,133,0.3);
+                  padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;flex-shrink:0;
+                ">✕</button>
+              </div>
+            `).join('')}
+          </div>
 
-          React.createElement('div', {
-            style: { color:'#a0b3c9',fontSize:12,textAlign:'center',marginTop:15 }
-          }, `${accounts.length}/${MAX_ACCOUNTS} contas`)
-        )
-      );
+          ${accounts.length < MAX_ACCOUNTS ? `
+            <button id="addAccountBtn" style="
+              width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;
+              cursor:pointer;margin-top:10px;display:flex;align-items:center;
+              justify-content:center;gap:8px;color:#4cc9f0;
+              background:rgba(76,201,240,0.2);border:1px solid rgba(76,201,240,0.4);
+            ">➕ Adicionar Conta</button>
+          ` : ''}
+
+          ${isAuth ? `
+            <button id="logoutBtn" style="
+              width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;
+              cursor:pointer;margin-top:10px;display:flex;align-items:center;
+              justify-content:center;gap:8px;color:#f72585;
+              background:rgba(247,37,133,0.2);border:1px solid rgba(247,37,133,0.4);
+            ">🚪 Sair da Conta Atual</button>
+          ` : ''}
+
+          <div style="color:#a0b3c9;font-size:11px;text-align:center;margin-top:15px;
+            background:rgba(0,0,0,0.2);padding:8px;border-radius:8px;">
+            📱 ${accounts.length}/${MAX_ACCOUNTS} contas neste dispositivo
+          </div>
+        </div>
+      `;
+
+      // ==================== EVENTOS ====================
+      
+      document.getElementById('menuBtn')?.addEventListener('click', () => {
+        document.getElementById('appsOverlay').style.display = 'flex';
+      });
+
+      document.getElementById('appsOverlay')?.addEventListener('click', function(e) {
+        if (e.target === this) this.style.display = 'none';
+      });
+
+      document.querySelectorAll('.app-item').forEach(item => {
+        item.addEventListener('click', function() {
+          document.getElementById('appsOverlay').style.display = 'none';
+          openApp(this.getAttribute('data-url'));
+        });
+      });
+
+      document.getElementById('avatarBtn')?.addEventListener('click', () => {
+        loadLocalAccounts();
+        renderAll();
+        setTimeout(() => {
+          document.getElementById('accountPanel').style.transform = 'translateX(0)';
+        }, 50);
+      });
+
+      document.getElementById('closePanel')?.addEventListener('click', () => {
+        document.getElementById('accountPanel').style.transform = 'translateX(100%)';
+      });
+
+      document.querySelectorAll('.account-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+          if (e.target.classList.contains('remove-account')) return;
+          const uid = this.getAttribute('data-uid');
+          const acc = accounts.find(a => a.uid === uid);
+          if (acc) switchAccount(acc);
+        });
+      });
+
+      document.querySelectorAll('.remove-account').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          removeAccount(this.getAttribute('data-uid'));
+        });
+      });
+
+      document.getElementById('addAccountBtn')?.addEventListener('click', () => {
+        window.location.href = 'auth.html';
+      });
+
+      document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
     }
 
-    // Firebase init
-    import('https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js').then(({ initializeApp }) => {
-      import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js').then(({ getDatabase }) => {
-        const app = initializeApp({
-          apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-          authDomain: "html-15e80.firebaseapp.com",
-          databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-          projectId: "html-15e80",
-          storageBucket: "html-15e80.firebasestorage.app",
-          messagingSenderId: "1068148640439",
-          appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
-        });
-        window.db = getDatabase(app);
-        ReactDOM.createRoot(document.getElementById('app-menu-root')).render(React.createElement(App));
-      });
-    });
+    // Iniciar
+    init();
   </script>
 
+  <!-- Tema e Relógio -->
   <script>
-    // Tema
     const body = document.body;
     function setTheme(t) {
       if (t === 'dark') { body.classList.add('dark'); body.classList.remove('light'); }
       else if (t === 'light') { body.classList.add('light'); body.classList.remove('dark'); }
       else {
-        localStorage.setItem('codehub-theme','system');
         const d = window.matchMedia('(prefers-color-scheme:dark)').matches;
         body.classList.toggle('dark', d); body.classList.toggle('light', !d);
       }
       if (t !== 'system') localStorage.setItem('codehub-theme', t);
+      else localStorage.setItem('codehub-theme', 'system');
       document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('theme' + t.charAt(0).toUpperCase() + t.slice(1))?.classList.add('active');
     }
@@ -423,14 +548,10 @@
     document.getElementById('themeDark').onclick = () => setTheme('dark');
     document.getElementById('themeLight').onclick = () => setTheme('light');
     document.getElementById('themeSystem').onclick = () => setTheme('system');
-    window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
-      if (localStorage.getItem('codehub-theme') === 'system') setTheme('system');
-    });
 
-    // Relógio
     const c = document.getElementById('miniCanvas');
     const ctx = c.getContext('2d');
-    setInterval(() => {
+    function draw() {
       c.width = 200; c.height = 200;
       const cx = 100, cy = 100, r = 88;
       ctx.fillStyle = getComputedStyle(body).getPropertyValue('--canvas-bg').trim() || '#11161f';
@@ -438,18 +559,18 @@
       ctx.beginPath(); ctx.arc(cx, cy, r+1, 0, Math.PI*2);
       ctx.strokeStyle = '#5a7a9a'; ctx.lineWidth = 1.5; ctx.stroke();
       for (let i = 0; i < 12; i++) {
-        let a = i * Math.PI * 2 / 12 - Math.PI/2;
+        let a = i * Math.PI*2/12 - Math.PI/2;
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(a)*(r-10), cy + Math.sin(a)*(r-10));
         ctx.lineTo(cx + Math.cos(a)*(r-2), cy + Math.sin(a)*(r-2));
-        ctx.lineWidth = i % 3 === 0 ? 2.2 : 1.2;
-        ctx.strokeStyle = i % 3 === 0 ? '#f0c674' : '#8a9bb0';
+        ctx.lineWidth = i%3===0 ? 2.2 : 1.2;
+        ctx.strokeStyle = i%3===0 ? '#f0c674' : '#8a9bb0';
         ctx.stroke();
       }
       const n = new Date();
-      const ha = (n.getHours()%12*30 + n.getMinutes()*0.5) * Math.PI/180 - Math.PI/2;
-      const ma = (n.getMinutes()*6 + n.getSeconds()*0.1) * Math.PI/180 - Math.PI/2;
-      const sa = (n.getSeconds()*6) * Math.PI/180 - Math.PI/2;
+      const ha = (n.getHours()%12*30 + n.getMinutes()*0.5)*Math.PI/180 - Math.PI/2;
+      const ma = (n.getMinutes()*6 + n.getSeconds()*0.1)*Math.PI/180 - Math.PI/2;
+      const sa = (n.getSeconds()*6)*Math.PI/180 - Math.PI/2;
       [[ha,r*0.48,3,'#d9e2f0'],[ma,r*0.68,2.2,'#bdd4ff'],[sa,r*0.78,1.5,'#ffaa66']].forEach(([a,l,w,s]) => {
         ctx.beginPath(); ctx.moveTo(cx, cy);
         ctx.lineTo(cx + Math.cos(a)*l, cy + Math.sin(a)*l);
@@ -457,7 +578,9 @@
       });
       ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2); ctx.fillStyle = '#332211'; ctx.fill();
       ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI*2); ctx.fillStyle = '#f5c17a'; ctx.fill();
-    }, 1000);
+    }
+    setInterval(draw, 1000);
+    draw();
   </script>
 </body>
 </html>
