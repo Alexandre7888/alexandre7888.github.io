@@ -37,7 +37,7 @@
 </head>
 <body class="dark">
 
-  <!-- POSIÇÃO DO REACT AQUI -->
+  <!-- POSIÇÃO DO REACT -->
   <div id="app-menu-root"></div>
 
   <div class="mini-clock"><canvas id="miniCanvas" width="200" height="200"></canvas></div>
@@ -58,13 +58,17 @@
   </div>
 
   <!-- Carregar app-menu.js -->
-  <script type="text/babel" src="app-menu.js"></script>
+  <script src="app-menu.js"></script>
 
   <!-- Renderizar React na posição -->
-  <script type="text/babel">
-    import AppMenu from './app-menu.js';
-    const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
-    root.render(<AppMenu />);
+  <script>
+    // Esperar o DOM carregar
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.AppMenu) {
+        const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
+        root.render(React.createElement(window.AppMenu));
+      }
+    });
   </script>
 
   <!-- Tema e Relógio -->
