@@ -34,7 +34,6 @@ function getAvatarColor(name) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-// ==================== COMPONENTE PRINCIPAL ====================
 function AppMenu() {
   const [masterKey, setMasterKey] = useState(null);
   const [isAuth, setIsAuth] = useState(false);
@@ -43,34 +42,30 @@ function AppMenu() {
   const [accounts, setAccounts] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const panelRef = useRef(null);
 
-  // ==================== INICIALIZAR ====================
   useEffect(() => {
     init();
     
-    // Fechar painel ao clicar fora
     document.addEventListener('mousedown', (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) {
-        setShowPanel(false);
-      }
+      if (panelRef.current && !panelRef.current.contains(e.target)) setShowPanel(false);
     });
     
-    // Atualização automática a cada 1 segundo
     const interval = setInterval(() => {
-      loadAccountsFromFirebase();
-      loadCurrentUser();
+      if (masterKey) loadAccounts();
+      if (userKey || localStorage.getItem('current_userKey')) loadCurrentUser();
     }, 1000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [masterKey, userKey]);
 
   async function init() {
     const mk = localStorage.getItem('codehub_masterKey');
     if (mk) {
       setMasterKey(mk);
-      await loadAccountsFromFirebase(mk);
+      await loadAccounts(mk);
     }
     
     const urlKey = new URLSearchParams(window.location.search).get('userKey');
@@ -82,10 +77,11 @@ function AppMenu() {
       localStorage.setItem('current_userKey', key);
       await loadUserData(key);
     }
+    
+    setLoading(false);
   }
 
-  // ==================== CARREGAR CONTAS DO FIREBASE ====================
-  async function loadAccountsFromFirebase(mk) {
+  async function loadAccounts(mk) {
     const key = mk || masterKey;
     if (!key) return;
     
@@ -95,14 +91,17 @@ function AppMenu() {
       const snap = await get(ref(db, `contas/${key}`));
       
       if (snap.exists()) {
-        setAccounts(Object.values(snap.val()));
+        const data = snap.val();
+        const list = Object.values(data);
+        setAccounts(list);
+      } else {
+        setAccounts([]);
       }
     } catch(e) {
       console.error('Erro ao carregar contas:', e);
     }
   }
 
-  // ==================== CARREGAR USUÁRIO ATUAL ====================
   async function loadCurrentUser() {
     const key = userKey || localStorage.getItem('current_userKey');
     if (!key) return;
@@ -128,15 +127,14 @@ function AppMenu() {
         if (mk && mk !== masterKey) {
           setMasterKey(mk);
           localStorage.setItem('codehub_masterKey', mk);
-          await loadAccountsFromFirebase(mk);
+          await loadAccounts(mk);
         }
       }
     } catch(e) {
-      console.error('Erro ao carregar usuário:', e);
+      console.error('Erro ao carregar:', e);
     }
   }
 
-  // ==================== REMOVER CONTA ====================
   async function removeAccount(uid) {
     if (!masterKey) return;
     if (!confirm('Remover esta conta? (Afeta todos os dispositivos)')) return;
@@ -160,29 +158,26 @@ function AppMenu() {
         setUserKey(null);
       }
     } catch(e) {
-      console.error('Erro ao remover:', e);
+      console.error('Erro:', e);
     }
   }
 
-  // ==================== ABRIR APP ====================
   function openApp(url) {
     const key = userKey || localStorage.getItem('current_userKey');
     const sep = url.includes('?') ? '&' : '?';
     window.location.href = key ? `${url}${sep}userKey=${key}` : url;
   }
 
-  // ==================== TROCAR DE CONTA ====================
   async function switchAccount(acc) {
     if (acc.userKey) {
       localStorage.setItem('current_userKey', acc.userKey);
       setUserKey(acc.userKey);
       await loadUserData(acc.userKey);
-      await loadAccountsFromFirebase(masterKey);
+      if (masterKey) await loadAccounts(masterKey);
       setShowPanel(false);
     }
   }
 
-  // ==================== LOGOUT ====================
   function handleLogout() {
     if (!confirm('Sair?')) return;
     localStorage.removeItem('current_userKey');
@@ -192,13 +187,17 @@ function AppMenu() {
     setShowPanel(false);
   }
 
-  // ==================== ABRIR PAINEL ====================
   async function handleOpenPanel() {
-    if (masterKey) await loadAccountsFromFirebase(masterKey);
+    if (masterKey) await loadAccounts(masterKey);
     setShowPanel(true);
   }
 
-  // ==================== RENDER ====================
+  if (loading) {
+    return React.createElement('div', {
+      style: { position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#fff',fontSize:18,zIndex:99999 }
+    }, '⏳ Carregando...');
+  }
+
   const name = userData?.username || userData?.email || '?';
   const letter = name.charAt(0).toUpperCase();
   const avatarColor = getAvatarColor(name);
@@ -208,18 +207,9 @@ function AppMenu() {
     React.createElement('div', { style: { position:'fixed',top:20,left:20,zIndex:10000 } },
       React.createElement('div', {
         onClick: () => setShowMenu(true),
-        style: {
-          width:48,height:48,background:'rgba(20,25,45,0.9)',backdropFilter:'blur(10px)',
-          borderRadius:12,cursor:'pointer',display:'grid',
-          gridTemplateColumns:'repeat(4,1fr)',gridTemplateRows:'repeat(4,1fr)',
-          gap:3,padding:8,border:'1px solid rgba(67,97,238,0.3)',
-          boxShadow:'0 8px 20px rgba(0,0,0,0.4)',transition:'0.3s'
-        }
+        style: { width:48,height:48,background:'rgba(20,25,45,0.9)',backdropFilter:'blur(10px)',borderRadius:12,cursor:'pointer',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gridTemplateRows:'repeat(4,1fr)',gap:3,padding:8,border:'1px solid rgba(67,97,238,0.3)',boxShadow:'0 8px 20px rgba(0,0,0,0.4)',transition:'0.3s' }
       }, [...Array(16)].map((_,i) =>
-        React.createElement('div', {
-          key: i,
-          style: { width:'100%',height:'100%',background:'rgba(67,97,238,0.8)',borderRadius:'50%' }
-        })
+        React.createElement('div', { key:i, style:{ width:'100%',height:'100%',background:'rgba(67,97,238,0.8)',borderRadius:'50%' } })
       ))
     ),
 
@@ -227,53 +217,28 @@ function AppMenu() {
     React.createElement('div', { style: { position:'fixed',top:20,right:90,zIndex:10000 } },
       React.createElement('div', {
         onClick: handleOpenPanel,
-        style: {
-          width:48,height:48,borderRadius:'50%',
-          background: isAuth ? avatarColor : '#6c757d',
-          cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
-          fontWeight:700,fontSize:20,color:'#fff',
-          border:'2px solid rgba(255,255,255,0.3)',
-          boxShadow:'0 8px 20px rgba(0,0,0,0.4)',transition:'0.3s',position:'relative'
-        }
+        style: { width:48,height:48,borderRadius:'50%',background:isAuth?avatarColor:'#6c757d',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:20,color:'#fff',border:'2px solid rgba(255,255,255,0.3)',boxShadow:'0 8px 20px rgba(0,0,0,0.4)',transition:'0.3s',position:'relative' }
       },
         isAuth ? letter : '👤',
-        isAuth ? React.createElement('div', {
-          style: {
-            position:'absolute',bottom:2,right:2,width:12,height:12,
-            background:'#4cc9f0',borderRadius:'50%',border:'2px solid rgba(20,25,45,0.9)'
-          }
-        }) : null
+        isAuth ? React.createElement('div', { style:{ position:'absolute',bottom:2,right:2,width:12,height:12,background:'#4cc9f0',borderRadius:'50%',border:'2px solid rgba(20,25,45,0.9)' } }) : null
       )
     ),
 
     // Overlay Apps
     showMenu ? React.createElement('div', {
-      onClick: (e) => { if (e.target === e.currentTarget) setShowMenu(false); },
-      style: {
-        position:'fixed',top:0,left:0,width:'100%',height:'100%',
-        background:'rgba(0,0,0,0.7)',zIndex:9999,
-        display:'flex',justifyContent:'center',alignItems:'center',backdropFilter:'blur(5px)'
-      }
+      onClick: (e) => { if(e.target===e.currentTarget) setShowMenu(false) },
+      style: { position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',justifyContent:'center',alignItems:'center',backdropFilter:'blur(5px)' }
     },
       React.createElement('div', {
-        style: {
-          background:'rgba(20,25,45,0.95)',borderRadius:20,padding:30,
-          display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:15,
-          maxWidth:500,width:'90%',border:'1px solid rgba(67,97,238,0.3)',
-          boxShadow:'0 20px 40px rgba(0,0,0,0.5)'
-        }
+        style: { background:'rgba(20,25,45,0.95)',borderRadius:20,padding:30,display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:15,maxWidth:500,width:'90%',border:'1px solid rgba(67,97,238,0.3)',boxShadow:'0 20px 40px rgba(0,0,0,0.5)' }
       }, apps.map(app =>
         React.createElement('div', {
           key: app.id,
-          onClick: () => { setShowMenu(false); openApp(app.url); },
-          style: {
-            display:'flex',flexDirection:'column',alignItems:'center',
-            justifyContent:'center',padding:15,background:'rgba(255,255,255,0.05)',
-            borderRadius:12,cursor:'pointer',minHeight:80,transition:'0.3s'
-          }
+          onClick: () => { setShowMenu(false); openApp(app.url) },
+          style: { display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:15,background:'rgba(255,255,255,0.05)',borderRadius:12,cursor:'pointer',minHeight:80,transition:'0.3s' }
         },
-          React.createElement('div', { style: { fontSize:28,marginBottom:8 } }, app.icon),
-          React.createElement('div', { style: { color:'#fff',fontSize:12,fontWeight:500 } }, app.name)
+          React.createElement('div', { style:{ fontSize:28,marginBottom:8 } }, app.icon),
+          React.createElement('div', { style:{ color:'#fff',fontSize:12,fontWeight:500 } }, app.name)
         )
       ))
     ) : null,
@@ -281,140 +246,87 @@ function AppMenu() {
     // Painel de Contas
     showPanel ? React.createElement('div', {
       ref: panelRef,
-      style: {
-        position:'fixed',top:0,right:0,width:340,height:'100%',
-        background:'rgba(20,25,45,0.98)',backdropFilter:'blur(20px)',
-        zIndex:10001,boxShadow:'-10px 0 30px rgba(0,0,0,0.5)',
-        borderLeft:'1px solid rgba(67,97,238,0.3)',
-        overflowY:'auto',padding:20,animation:'slideRight 0.3s'
-      }
+      style: { position:'fixed',top:0,right:0,width:340,height:'100%',background:'rgba(20,25,45,0.98)',backdropFilter:'blur(20px)',zIndex:10001,boxShadow:'-10px 0 30px rgba(0,0,0,0.5)',borderLeft:'1px solid rgba(67,97,238,0.3)',overflowY:'auto',padding:20,animation:'slideRight 0.3s' }
     },
       // Cabeçalho
       React.createElement('div', {
-        style: {
-          display:'flex',justifyContent:'space-between',alignItems:'center',
-          marginBottom:20,paddingBottom:15,borderBottom:'1px solid rgba(255,255,255,0.1)'
-        }
+        style: { display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,paddingBottom:15,borderBottom:'1px solid rgba(255,255,255,0.1)' }
       },
-        React.createElement('div', { style: { color:'#fff',fontSize:18,fontWeight:600 } }, '👤 Contas ☁️'),
+        React.createElement('div', { style:{ color:'#fff',fontSize:18,fontWeight:600 } }, '👤 Contas ☁️'),
         React.createElement('button', {
           onClick: () => setShowPanel(false),
-          style: {
-            background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',
-            width:32,height:32,borderRadius:'50%',cursor:'pointer',fontSize:16
-          }
+          style: { background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',width:32,height:32,borderRadius:'50%',cursor:'pointer',fontSize:16 }
         }, '✕')
       ),
 
-      // Status atual
+      // Status
       isAuth && userData ? React.createElement('div', {
-        style: {
-          background:'rgba(67,97,238,0.2)',borderRadius:10,padding:12,
-          marginBottom:15,color:'#fff',textAlign:'center'
-        }
+        style: { background:'rgba(67,97,238,0.2)',borderRadius:10,padding:12,marginBottom:15,color:'#fff',textAlign:'center' }
       },
-        React.createElement('div', { style: { fontWeight:600 } }, `✅ ${userData.username || userData.email}`),
-        React.createElement('div', { style: { fontSize:10,opacity:0.7,marginTop:4 } }, `userKey: ${(userKey||'').substring(0,20)}...`)
+        React.createElement('div', { style:{ fontWeight:600 } }, '✅ ' + (userData.username || userData.email))
       ) : null,
 
-      // Lista de contas
-      React.createElement('div', { style: { color:'#fff',fontSize:13,fontWeight:600,marginBottom:10 } },
-        `📋 Contas (${accounts.length}/${MAX_ACCOUNTS})`
+      // Título da lista
+      React.createElement('div', { style:{ color:'#fff',fontSize:13,fontWeight:600,marginBottom:10 } },
+        '📋 Contas (' + accounts.length + '/' + MAX_ACCOUNTS + ')'
       ),
 
+      // Lista de contas
       accounts.length === 0 ?
-        React.createElement('div', { style: { color:'#a0b3c9',textAlign:'center',padding:30 } },
-          React.createElement('div', { style: { fontSize:40,marginBottom:10 } }, '☁️'),
-          React.createElement('div', null, 'Nenhuma conta')
+        React.createElement('div', { style:{ color:'#a0b3c9',textAlign:'center',padding:30 } },
+          React.createElement('div', { style:{ fontSize:40,marginBottom:10 } }, '☁️'),
+          React.createElement('div', null, 'Nenhuma conta na nuvem'),
+          React.createElement('div', { style:{ fontSize:11,marginTop:5 } }, 'Faça login para adicionar')
         )
       : accounts.map(acc =>
           React.createElement('div', {
             key: acc.uid,
             onClick: () => switchAccount(acc),
-            style: {
-              background: userData?.uid === acc.uid ? 'rgba(67,97,238,0.3)' : 'rgba(255,255,255,0.05)',
-              borderRadius:12,padding:15,marginBottom:10,cursor:'pointer',
-              border: userData?.uid === acc.uid ? '1px solid rgba(67,97,238,0.6)' : '1px solid transparent',
-              display:'flex',alignItems:'center',gap:12,transition:'0.3s'
-            }
+            style: { background:userData?.uid===acc.uid?'rgba(67,97,238,0.3)':'rgba(255,255,255,0.05)',borderRadius:12,padding:15,marginBottom:10,cursor:'pointer',border:userData?.uid===acc.uid?'1px solid rgba(67,97,238,0.6)':'1px solid transparent',display:'flex',alignItems:'center',gap:12,transition:'0.3s' }
           },
             React.createElement('div', {
-              style: {
-                width:42,height:42,borderRadius:'50%',
-                background: getAvatarColor(acc.username || acc.email || '?'),
-                display:'flex',alignItems:'center',justifyContent:'center',
-                fontWeight:700,fontSize:17,color:'#fff',flexShrink:0
-              }
-            }, (acc.username || acc.email || '?').charAt(0).toUpperCase()),
-            React.createElement('div', { style: { flex:1,minWidth:0 } },
-              React.createElement('div', {
-                style: {
-                  color:'#fff',fontWeight:600,fontSize:14,
-                  whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'
-                }
-              }, `${acc.username || acc.email} ${userData?.uid === acc.uid ? '✓' : ''}`),
-              React.createElement('div', {
-                style: {
-                  color:'#a0b3c9',fontSize:11,
-                  whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'
-                }
-              }, acc.email)
+              style: { width:42,height:42,borderRadius:'50%',background:getAvatarColor(acc.username||acc.email||'?'),display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:17,color:'#fff',flexShrink:0 }
+            }, (acc.username||acc.email||'?').charAt(0).toUpperCase()),
+            React.createElement('div', { style:{ flex:1,minWidth:0 } },
+              React.createElement('div', { style:{ color:'#fff',fontWeight:600,fontSize:14,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' } },
+                (acc.username||acc.email) + (userData?.uid===acc.uid?' ✓':'')
+              ),
+              React.createElement('div', { style:{ color:'#a0b3c9',fontSize:11,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' } }, acc.email)
             ),
-            React.createElement('div', { style: { fontSize:18,flexShrink:0 } },
-              acc.userType === 'entrepreneur' ? '🏢' : '👤'
-            ),
+            React.createElement('div', { style:{ fontSize:18,flexShrink:0 } }, acc.userType==='entrepreneur'?'🏢':'👤'),
             React.createElement('button', {
-              onClick: (e) => { e.stopPropagation(); removeAccount(acc.uid); },
-              style: {
-                background:'rgba(247,37,133,0.2)',color:'#f72585',
-                border:'1px solid rgba(247,37,133,0.3)',
-                padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12,flexShrink:0
-              }
+              onClick: (e) => { e.stopPropagation(); removeAccount(acc.uid) },
+              style: { background:'rgba(247,37,133,0.2)',color:'#f72585',border:'1px solid rgba(247,37,133,0.3)',padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12,flexShrink:0 }
             }, '✕')
           )
         ),
 
-      // Botões
+      // Botão Adicionar
       accounts.length < MAX_ACCOUNTS ?
         React.createElement('button', {
           onClick: () => window.location.href = 'auth.html',
-          style: {
-            width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,
-            cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',
-            justifyContent:'center',gap:8,color:'#4cc9f0',
-            background:'rgba(76,201,240,0.2)',border:'1px solid rgba(76,201,240,0.4)'
-          }
+          style: { width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',justifyContent:'center',gap:8,color:'#4cc9f0',background:'rgba(76,201,240,0.2)',border:'1px solid rgba(76,201,240,0.4)' }
         }, '➕ Adicionar Conta')
       : null,
 
+      // Botão Sair
       isAuth ?
         React.createElement('button', {
           onClick: handleLogout,
-          style: {
-            width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,
-            cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',
-            justifyContent:'center',gap:8,color:'#f72585',
-            background:'rgba(247,37,133,0.2)',border:'1px solid rgba(247,37,133,0.4)'
-          }
+          style: { width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',justifyContent:'center',gap:8,color:'#f72585',background:'rgba(247,37,133,0.2)',border:'1px solid rgba(247,37,133,0.4)' }
         }, '🚪 Sair')
       : null,
 
-      // Info
+      // Info rodapé
       React.createElement('div', {
-        style: {
-          color:'#a0b3c9',fontSize:10,textAlign:'center',marginTop:15,
-          background:'rgba(0,0,0,0.2)',padding:10,borderRadius:8
-        }
+        style: { color:'#a0b3c9',fontSize:10,textAlign:'center',marginTop:15,background:'rgba(0,0,0,0.2)',padding:10,borderRadius:8 }
       },
-        `☁️ Firebase: ${accounts.length}/${MAX_ACCOUNTS}`,
+        '☁️ Nuvem: ' + accounts.length + '/' + MAX_ACCOUNTS + ' contas',
         masterKey ? React.createElement('br') : null,
-        masterKey ? `🔑 ${masterKey.substring(0,20)}...` : '❌ Sem MasterKey',
-        userKey ? React.createElement('br') : null,
-        userKey ? `👤 ${userKey.substring(0,20)}...` : null
+        masterKey ? '🔑 Chave: ' + masterKey.substring(0,20) + '...' : null
       )
     ) : null
   );
 }
 
-// Exportar
 window.AppMenu = AppMenu;
