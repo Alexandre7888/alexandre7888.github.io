@@ -19,93 +19,43 @@
       border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s;
     }
     @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-    .auth-header{
-      background:linear-gradient(135deg,#4361ee,#7c3aed);
-      color:#fff;padding:25px;text-align:center;
-    }
+    .auth-header{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;padding:25px;text-align:center}
     .auth-header h1{font-size:24px;margin-bottom:5px}
     .auth-header p{font-size:13px;opacity:0.9}
-    .account-indicator{
-      background:rgba(0,0,0,0.2);padding:6px 14px;
-      border-radius:20px;display:inline-block;margin-top:8px;font-size:12px;
-    }
+    .account-indicator{background:rgba(0,0,0,0.2);padding:6px 14px;border-radius:20px;display:inline-block;margin-top:8px;font-size:12px}
     .tabs{display:flex;background:rgba(0,0,0,0.3)}
-    .tab{
-      flex:1;text-align:center;padding:14px;cursor:pointer;
-      font-weight:600;color:#a0b3c9;transition:0.3s;position:relative;
-    }
+    .tab{flex:1;text-align:center;padding:14px;cursor:pointer;font-weight:600;color:#a0b3c9;transition:0.3s;position:relative}
     .tab.active{color:#fff;background:rgba(67,97,238,0.3)}
-    .tab.active::after{
-      content:'';position:absolute;bottom:0;left:0;
-      width:100%;height:3px;background:#4361ee;
-    }
+    .tab.active::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:3px;background:#4361ee}
     .tab-content{padding:25px;display:none}
     .tab-content.active{display:block}
     .form-group{margin-bottom:16px}
     .form-group label{display:block;margin-bottom:6px;font-weight:600;color:#e2e9f0;font-size:13px}
-    .form-control{
-      width:100%;padding:11px 14px;background:rgba(0,0,0,0.3);
-      border:2px solid rgba(67,97,238,0.3);border-radius:8px;
-      font-size:14px;color:#fff;transition:0.3s;
-    }
+    .form-control{width:100%;padding:11px 14px;background:rgba(0,0,0,0.3);border:2px solid rgba(67,97,238,0.3);border-radius:8px;font-size:14px;color:#fff;transition:0.3s}
     .form-control:focus{border-color:#4895ef;outline:none;box-shadow:0 0 0 3px rgba(67,97,238,0.2);background:rgba(0,0,0,0.5)}
     .form-control::placeholder{color:#6b7280}
-    .btn{
-      width:100%;padding:13px;border:none;border-radius:10px;
-      font-size:15px;font-weight:600;cursor:pointer;transition:0.3s;
-      display:flex;align-items:center;justify-content:center;gap:8px;
-    }
+    .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:0.3s;display:flex;align-items:center;justify-content:center;gap:8px}
     .btn-primary{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff}
     .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(67,97,238,0.3)}
     .btn-google{background:#fff;color:#212529;border:1px solid #dee2e6}
     .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
-    .btn-back{background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);margin-top:10px;font-size:13px}
-    .btn-back:hover{background:rgba(255,255,255,0.2)}
-    .divider{
-      display:flex;align-items:center;margin:18px 0;
-      color:#a0b3c9;font-size:13px;
-    }
-    .divider::before,.divider::after{
-      content:'';flex:1;height:1px;background:rgba(255,255,255,0.2);margin:0 10px;
-    }
-    .error-message{
-      color:#f72585;font-size:12px;margin-top:4px;display:none;
-      background:rgba(247,37,133,0.1);padding:8px;border-radius:6px;margin-bottom:10px;
-    }
+    .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.2);margin:0 10px}
+    .error-message{color:#f72585;font-size:12px;display:none;background:rgba(247,37,133,0.1);padding:8px;border-radius:6px;margin-bottom:10px}
     .error-message.show{display:block}
-    .success-message{
-      color:#4cc9f0;font-size:13px;margin-top:12px;text-align:center;
-      font-weight:600;background:rgba(76,201,240,0.1);padding:8px;border-radius:6px;
-    }
+    .success-message{color:#4cc9f0;font-size:13px;margin-top:12px;text-align:center;font-weight:600;background:rgba(76,201,240,0.1);padding:8px;border-radius:6px}
     .footer-text{text-align:center;margin-top:18px;font-size:13px;color:#a0b3c9}
     .footer-text a{color:#4361ee;text-decoration:none;font-weight:600;cursor:pointer}
     .header-actions{position:fixed;top:20px;right:20px;z-index:1000}
-    .home-btn{
-      background:rgba(255,255,255,0.1);color:#fff;border:none;
-      padding:10px 20px;border-radius:20px;font-size:14px;
-      cursor:pointer;transition:0.3s;backdrop-filter:blur(10px);
-    }
+    .home-btn{background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;transition:0.3s;backdrop-filter:blur(10px)}
     .home-btn:hover{background:rgba(255,255,255,0.2)}
-    .user-type-selector{
-      display:flex;gap:12px;margin-bottom:16px;padding:8px;
-      background:rgba(0,0,0,0.3);border-radius:8px;
-    }
-    .user-type-option{
-      flex:1;text-align:center;padding:8px;border:2px solid rgba(67,97,238,0.3);
-      border-radius:8px;cursor:pointer;transition:0.3s;color:#fff;font-size:13px;
-    }
+    .user-type-selector{display:flex;gap:12px;margin-bottom:16px;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px}
+    .user-type-option{flex:1;text-align:center;padding:8px;border:2px solid rgba(67,97,238,0.3);border-radius:8px;cursor:pointer;transition:0.3s;color:#fff;font-size:13px}
     .user-type-option.selected{border-color:#4361ee;background:rgba(67,97,238,0.3)}
     .company-fields{display:none}
     .company-fields.show{display:block}
-    .device-info{
-      background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;
-      margin:15px;font-size:11px;color:#a0b3c9;text-align:center;
-    }
-    @media(max-width:480px){
-      .auth-container{border-radius:12px}
-      .auth-header{padding:20px}
-      .tab-content{padding:20px}
-    }
+    .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
+    @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
 <body>
@@ -117,9 +67,7 @@
     <div class="auth-header">
       <h1>Bem-vindo ao CodeHub</h1>
       <p>Autenticação Multi-Conta</p>
-      <div class="account-indicator">
-        👤 Contas: <span id="accountCountNumber">0</span>/5
-      </div>
+      <div class="account-indicator">👤 Contas: <span id="accountCountNumber">0</span>/5</div>
     </div>
 
     <div id="global-error" class="error-message"></div>
@@ -131,66 +79,32 @@
     </div>
 
     <div id="login-tab" class="tab-content active">
-      <div class="form-group">
-        <label for="login-email">Email</label>
-        <input type="email" id="login-email" class="form-control" placeholder="digite seu email">
-      </div>
-      <div class="form-group">
-        <label for="login-password">Senha</label>
-        <input type="password" id="login-password" class="form-control" placeholder="digite sua senha">
-      </div>
-      <div id="login-cnpj-group" class="form-group" style="display:none;">
-        <label for="login-cnpj">CNPJ</label>
-        <input type="text" id="login-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)">
-      </div>
-
+      <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" class="form-control" placeholder="digite seu email"></div>
+      <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
+      <div id="login-cnpj-group" class="form-group" style="display:none;"><label for="login-cnpj">CNPJ</label><input type="text" id="login-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)"></div>
       <button class="btn btn-primary" id="login-btn" onclick="login()">🔐 Entrar</button>
       <div class="divider">ou</div>
       <button class="btn btn-google" onclick="loginWithGoogle()">🟢 Google</button>
-      <div class="footer-text">
-        Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a>
-      </div>
+      <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
     </div>
 
     <div id="register-tab" class="tab-content">
-      <div class="form-group">
-        <label>Tipo de Conta</label>
+      <div class="form-group"><label>Tipo de Conta</label>
         <div class="user-type-selector">
           <div class="user-type-option selected" data-type="normal" onclick="selectUserType('normal')">👤 Normal</div>
           <div class="user-type-option" data-type="entrepreneur" onclick="selectUserType('entrepreneur')">🏢 Empreendedor</div>
         </div>
       </div>
-      <div class="form-group">
-        <label for="register-username">Usuário</label>
-        <input type="text" id="register-username" class="form-control" placeholder="ex: dev123">
-      </div>
-      <div class="form-group">
-        <label for="register-email">Email</label>
-        <input type="email" id="register-email" class="form-control" placeholder="seu email">
-      </div>
-      <div class="form-group">
-        <label for="register-password">Senha</label>
-        <input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres">
-      </div>
-      <div class="form-group">
-        <label for="register-confirm-password">Confirmar</label>
-        <input type="password" id="register-confirm-password" class="form-control" placeholder="confirme">
-      </div>
+      <div class="form-group"><label for="register-username">Usuário</label><input type="text" id="register-username" class="form-control" placeholder="ex: dev123"></div>
+      <div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" class="form-control" placeholder="seu email"></div>
+      <div class="form-group"><label for="register-password">Senha</label><input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres"></div>
+      <div class="form-group"><label for="register-confirm-password">Confirmar</label><input type="password" id="register-confirm-password" class="form-control" placeholder="confirme"></div>
       <div id="company-fields" class="company-fields">
-        <div class="form-group">
-          <label for="register-company-name">Empresa</label>
-          <input type="text" id="register-company-name" class="form-control" placeholder="Nome da empresa">
-        </div>
-        <div class="form-group">
-          <label for="register-cnpj">CNPJ</label>
-          <input type="text" id="register-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)">
-        </div>
+        <div class="form-group"><label for="register-company-name">Empresa</label><input type="text" id="register-company-name" class="form-control" placeholder="Nome da empresa"></div>
+        <div class="form-group"><label for="register-cnpj">CNPJ</label><input type="text" id="register-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)"></div>
       </div>
-
       <button class="btn btn-primary" id="register-btn" onclick="register()">✨ Criar Conta</button>
-      <div class="footer-text">
-        Já tem conta? <a onclick="switchTab('login')">Faça login</a>
-      </div>
+      <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
     </div>
 
     <div class="device-info" id="deviceInfo"></div>
@@ -198,10 +112,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-    import { 
-      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-      GoogleAuthProvider, signInWithPopup
-    } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
     import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -230,9 +141,12 @@
 
     function generateUserKey(uid) { return `${uid}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`; }
 
-    function generateAuthToken(uid, email, username, userType, companyData = null) {
+    function generateMasterKey() { return 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12); }
+
+    function generateAuthToken(uid, email, username, userType, masterKey, companyData = null) {
       return btoa(unescape(encodeURIComponent(JSON.stringify({
-        uid, email, username, userType, companyData, createdAt: Date.now(), expiresAt: null, version: "1.0", isPermanent: true
+        uid, email, username, userType, masterKey, companyData,
+        createdAt: Date.now(), expiresAt: null, version: "2.0", isPermanent: true
       }))));
     }
 
@@ -240,9 +154,8 @@
     document.getElementById('deviceInfo').innerHTML = `📱 ${deviceId.substring(0, 25)}...`;
     document.getElementById('accountCountNumber').textContent = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]').length;
 
-    // ==================== FUNÇÕES UI ====================
+    // ==================== UI ====================
     window.goToIndex = () => window.location.href = 'index.html';
-
     window.switchTab = (id) => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -251,14 +164,12 @@
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
     };
-
     window.selectUserType = (type) => {
       selectedUserType = type;
       document.querySelectorAll('.user-type-option').forEach(o => o.classList.remove('selected'));
       document.querySelector(`[data-type="${type}"]`).classList.add('selected');
       document.getElementById('company-fields').classList.toggle('show', type === 'entrepreneur');
     };
-
     window.formatCNPJ = (input) => {
       let v = input.value.replace(/\D/g, '');
       if (v.length > 14) v = v.slice(0, 14);
@@ -268,7 +179,6 @@
       else if (v.length > 2) v = v.replace(/^(\d{2})(\d{3})$/, '$1.$2');
       input.value = v;
     };
-
     function showError(m) { const e = document.getElementById('global-error'); e.textContent = m; e.classList.add('show'); }
     function showSuccess(m) { const e = document.getElementById('global-success'); e.textContent = m; e.style.display = 'block'; }
 
@@ -285,7 +195,62 @@
       return d === parseInt(cnpj[13]);
     }
 
-    async function saveAccountToDevice(userData) {
+    // ==================== SISTEMA DE MASTER KEY ====================
+    async function getOrCreateMasterKey(deviceId) {
+      let masterKey = localStorage.getItem('codehub_masterKey');
+      if (!masterKey) {
+        const snap = await get(ref(database, `dispositivos/${deviceId}/masterKey`));
+        if (snap.exists()) {
+          masterKey = snap.val();
+        } else {
+          masterKey = generateMasterKey();
+          await set(ref(database, `dispositivos/${deviceId}/masterKey`), masterKey);
+        }
+        localStorage.setItem('codehub_masterKey', masterKey);
+      }
+      return masterKey;
+    }
+
+    async function syncAllAccountsToMasterKey(masterKey, accounts) {
+      const masterData = {};
+      accounts.forEach(acc => {
+        masterData[acc.uid] = {
+          uid: acc.uid,
+          email: acc.email,
+          username: acc.username,
+          userType: acc.userType || 'normal',
+          userKey: acc.userKey,
+          lastLogin: acc.lastLogin || Date.now()
+        };
+      });
+      await set(ref(database, `masterKeys/${masterKey}/contas`), masterData);
+      await set(ref(database, `masterKeys/${masterKey}/info`), {
+        masterKey,
+        createdAt: Date.now(),
+        totalAccounts: accounts.length,
+        lastSync: Date.now()
+      });
+    }
+
+    async function loadAccountsFromMasterKey(masterKey) {
+      const snap = await get(ref(database, `masterKeys/${masterKey}/contas`));
+      if (snap.exists()) {
+        const fbAccounts = Object.values(snap.val());
+        const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+        
+        fbAccounts.forEach(fbAcc => {
+          const exists = localAccounts.find(la => la.uid === fbAcc.uid);
+          if (!exists) localAccounts.push(fbAcc);
+        });
+        
+        const merged = localAccounts.slice(0, MAX_ACCOUNTS);
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(merged));
+        return merged;
+      }
+      return JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+    }
+
+    async function saveAccountToDevice(userData, masterKey) {
       let accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
       const idx = accounts.findIndex(a => a.uid === userData.uid);
       if (idx >= 0) accounts[idx] = { ...accounts[idx], ...userData, lastLogin: Date.now() };
@@ -295,13 +260,19 @@
       }
       localStorage.setItem('codehub_deviceAccounts', JSON.stringify(accounts));
       
-      const obj = {}; accounts.forEach(a => { obj[a.uid] = { ...a, deviceId }; });
+      // Salvar no dispositivo
+      const obj = {}; accounts.forEach(a => { obj[a.uid] = { ...a, deviceId, masterKey }; });
       await set(ref(database, `dispositivos/${deviceId}/contas`), obj);
       await set(ref(database, `dispositivos/${deviceId}/info`), {
-        deviceId, lastAccess: Date.now(), totalAccounts: accounts.length,
+        deviceId, masterKey, lastAccess: Date.now(), totalAccounts: accounts.length,
         userAgent: navigator.userAgent, platform: navigator.platform, language: navigator.language
       });
+      
+      // Sincronizar com masterKey
+      await syncAllAccountsToMasterKey(masterKey, accounts);
+      
       document.getElementById('accountCountNumber').textContent = accounts.length;
+      return accounts;
     }
 
     function redirectAfterAuth(userKey) {
@@ -337,26 +308,27 @@
       btn.disabled = true; btn.textContent = 'Criando...';
 
       try {
+        const masterKey = await getOrCreateMasterKey(deviceId);
         const uc = await createUserWithEmailAndPassword(auth, email, password);
         const user = uc.user;
         const userKey = generateUserKey(user.uid);
-        const token = generateAuthToken(user.uid, email, username, selectedUserType,
+        const token = generateAuthToken(user.uid, email, username, selectedUserType, masterKey,
           selectedUserType === 'entrepreneur' ? { companyName, cnpj } : null);
 
         const userData = {
           username, email, userType: selectedUserType, userKey, uid: user.uid,
-          createdAt: Date.now(), lastLogin: Date.now(), hasToken: true, deviceId
+          masterKey, createdAt: Date.now(), lastLogin: Date.now(), hasToken: true, deviceId
         };
         if (selectedUserType === 'entrepreneur') { userData.companyName = companyName; userData.cnpj = cnpj.replace(/\D/g, ''); }
 
         await set(ref(database, 'users/' + user.uid), userData);
         await set(ref(database, `userKeysData/${userKey}`), {
           authToken: token,
-          authTokenDecoded: { createdAt: Date.now(), email, isPermanent: true, uid: user.uid, userType: selectedUserType, username, version: "1.0" },
-          criadoEm: Date.now(), email, hasAuthToken: true, isAnonymous: false, nome: username, uid: user.uid, deviceId
+          authTokenDecoded: { createdAt: Date.now(), email, isPermanent: true, uid: user.uid, userType: selectedUserType, username, masterKey, version: "2.0" },
+          criadoEm: Date.now(), email, hasAuthToken: true, isAnonymous: false, nome: username, uid: user.uid, deviceId, masterKey
         });
 
-        await saveAccountToDevice(userData);
+        await saveAccountToDevice(userData, masterKey);
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
         localStorage.setItem('current_userKey', userKey);
@@ -380,6 +352,11 @@
       btn.disabled = true; btn.textContent = 'Entrando...';
 
       try {
+        const masterKey = await getOrCreateMasterKey(deviceId);
+        
+        // Carregar contas sincronizadas da masterKey
+        await loadAccountsFromMasterKey(masterKey);
+        
         const uc = await signInWithEmailAndPassword(auth, email, password);
         const user = uc.user;
         const snap = await get(ref(database, 'users/' + user.uid));
@@ -395,22 +372,23 @@
         }
 
         let userKey = userData.userKey || generateUserKey(user.uid);
-        if (!userData.userKey) await update(ref(database, 'users/' + user.uid), { userKey });
+        if (!userData.userKey) await update(ref(database, 'users/' + user.uid), { userKey, masterKey });
 
-        const token = generateAuthToken(user.uid, email, userData.username, userData.userType || 'normal',
+        const token = generateAuthToken(user.uid, email, userData.username, userData.userType || 'normal', masterKey,
           userData.userType === 'entrepreneur' ? { companyName: userData.companyName, cnpj: userData.cnpj } : null);
 
         await set(ref(database, `userKeysData/${userKey}`), {
           authToken: token,
-          authTokenDecoded: { createdAt: Date.now(), email, isPermanent: true, uid: user.uid, userType: userData.userType || 'normal', username: userData.username, version: "1.0" },
-          criadoEm: Date.now(), email, hasAuthToken: true, isAnonymous: false, nome: userData.username, uid: user.uid, deviceId
+          authTokenDecoded: { createdAt: Date.now(), email, isPermanent: true, uid: user.uid, userType: userData.userType || 'normal', username: userData.username, masterKey, version: "2.0" },
+          criadoEm: Date.now(), email, hasAuthToken: true, isAnonymous: false, nome: userData.username, uid: user.uid, deviceId, masterKey
         });
-        await update(ref(database, 'users/' + user.uid), { lastLogin: Date.now() });
+        await update(ref(database, 'users/' + user.uid), { lastLogin: Date.now(), masterKey });
 
-        await saveAccountToDevice({
+        const accountData = {
           uid: user.uid, email, username: userData.username,
-          userType: userData.userType || 'normal', userKey, lastLogin: Date.now()
-        });
+          userType: userData.userType || 'normal', userKey, masterKey, lastLogin: Date.now()
+        };
+        await saveAccountToDevice(accountData, masterKey);
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
         localStorage.setItem('current_userKey', userKey);
@@ -430,6 +408,9 @@
       if (accounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
       try {
+        const masterKey = await getOrCreateMasterKey(deviceId);
+        await loadAccountsFromMasterKey(masterKey);
+        
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         const username = user.displayName || user.email.split('@')[0];
@@ -440,21 +421,22 @@
           userKey = generateUserKey(user.uid);
           await set(ref(database, 'users/' + user.uid), {
             username, email: user.email, userType: 'normal', userKey, uid: user.uid,
-            createdAt: Date.now(), lastLogin: Date.now(), provider: 'google', hasToken: true, deviceId
+            masterKey, createdAt: Date.now(), lastLogin: Date.now(), provider: 'google', hasToken: true, deviceId
           });
         } else {
           userType = snap.val().userType || 'normal';
           userKey = snap.val().userKey || generateUserKey(user.uid);
         }
 
-        const token = generateAuthToken(user.uid, user.email, username, userType, null);
+        const token = generateAuthToken(user.uid, user.email, username, userType, masterKey, null);
         await set(ref(database, `userKeysData/${userKey}`), {
           authToken: token,
-          authTokenDecoded: { createdAt: Date.now(), email: user.email, isPermanent: true, uid: user.uid, userType, username, version: "1.0" },
-          criadoEm: Date.now(), email: user.email, hasAuthToken: true, isAnonymous: false, nome: username, uid: user.uid, deviceId
+          authTokenDecoded: { createdAt: Date.now(), email: user.email, isPermanent: true, uid: user.uid, userType, username, masterKey, version: "2.0" },
+          criadoEm: Date.now(), email: user.email, hasAuthToken: true, isAnonymous: false, nome: username, uid: user.uid, deviceId, masterKey
         });
 
-        await saveAccountToDevice({ uid: user.uid, email: user.email, username, userType, userKey, lastLogin: Date.now() });
+        const accountData = { uid: user.uid, email: user.email, username, userType, userKey, masterKey, lastLogin: Date.now() };
+        await saveAccountToDevice(accountData, masterKey);
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
         localStorage.setItem('current_userKey', userKey);
