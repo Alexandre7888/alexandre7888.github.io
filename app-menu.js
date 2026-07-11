@@ -3,18 +3,8 @@ const { useState, useEffect, useRef } = React;
 const MAX_ACCOUNTS = 5;
 
 const apps = [
-  { id:'editor', name:'Editor', icon:'📝', url:'editor.html' },
-  { id:'clock', name:'Relógio', icon:'🕐', url:'clock.html' },
-  { id:'compass', name:'Bússola', icon:'🧭', url:'compass.html' },
-  { id:'notes', name:'Notas', icon:'📋', url:'notes.html' },
-  { id:'calc', name:'Calc', icon:'🔢', url:'calc.html' },
-  { id:'weather', name:'Clima', icon:'🌤️', url:'weather.html' },
-  { id:'tasks', name:'Tarefas', icon:'✅', url:'tasks.html' },
-  { id:'chat', name:'Chat', icon:'💬', url:'chat.html' },
-  { id:'files', name:'Arquivos', icon:'📁', url:'files.html' },
-  { id:'profile', name:'Perfil', icon:'👤', url:'profile.html' },
-  { id:'help', name:'Ajuda', icon:'❓', url:'help.html' },
-  { id:'settings', name:'Config', icon:'⚙️', url:'settings.html' },
+    { id:'settings', name:'Config', icon:'⚙️', url:'settings.html' },
+    { id:'MENSAGENS', name:'Config', icon:'', url:'https://app.mensagens.site.je/' }
 ];
 
 function getAvatarColor(name) {
