@@ -6,18 +6,8 @@
   <title>CodeHub - Autenticação</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{
-      font-family:'Segoe UI',sans-serif;
-      background:linear-gradient(135deg,#0b1120,#1a1f35);
-      display:flex;justify-content:center;align-items:center;
-      min-height:100vh;padding:20px;
-    }
-    .auth-container{
-      width:100%;max-width:480px;
-      background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;
-      box-shadow:0 20px 40px rgba(0,0,0,0.4);
-      border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s;
-    }
+    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+    .auth-container{width:100%;max-width:480px;background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s}
     @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     .auth-header{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;padding:25px;text-align:center}
     .auth-header h1{font-size:24px;margin-bottom:5px}
@@ -59,9 +49,7 @@
   </style>
 </head>
 <body>
-  <div class="header-actions">
-    <button class="home-btn" onclick="goToIndex()">🏠 Voltar</button>
-  </div>
+  <div class="header-actions"><button class="home-btn" onclick="goToIndex()">🏠 Voltar</button></div>
 
   <div class="auth-container">
     <div class="auth-header">
@@ -138,11 +126,8 @@
       if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
       return id;
     }
-
     function generateUserKey(uid) { return `${uid}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`; }
-
     function generateMasterKey() { return 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12); }
-
     function generateAuthToken(uid, email, username, userType, masterKey, companyData = null) {
       return btoa(unescape(encodeURIComponent(JSON.stringify({
         uid, email, username, userType, masterKey, companyData,
@@ -154,7 +139,6 @@
     document.getElementById('deviceInfo').innerHTML = `📱 ${deviceId.substring(0, 25)}...`;
     document.getElementById('accountCountNumber').textContent = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]').length;
 
-    // ==================== UI ====================
     window.goToIndex = () => window.location.href = 'index.html';
     window.switchTab = (id) => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -181,7 +165,6 @@
     };
     function showError(m) { const e = document.getElementById('global-error'); e.textContent = m; e.classList.add('show'); }
     function showSuccess(m) { const e = document.getElementById('global-success'); e.textContent = m; e.style.display = 'block'; }
-
     function validateCNPJ(cnpj) {
       cnpj = cnpj.replace(/\D/g, '');
       if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
@@ -195,84 +178,49 @@
       return d === parseInt(cnpj[13]);
     }
 
-    // ==================== SISTEMA DE MASTER KEY ====================
-    async function getOrCreateMasterKey(deviceId) {
-      let masterKey = localStorage.getItem('codehub_masterKey');
-      if (!masterKey) {
-        const snap = await get(ref(database, `dispositivos/${deviceId}/masterKey`));
-        if (snap.exists()) {
-          masterKey = snap.val();
-        } else {
-          masterKey = generateMasterKey();
-          await set(ref(database, `dispositivos/${deviceId}/masterKey`), masterKey);
-        }
-        localStorage.setItem('codehub_masterKey', masterKey);
+    // ==================== MASTER KEY ====================
+    async function getOrCreateMasterKey() {
+      let mk = localStorage.getItem('codehub_masterKey');
+      if (!mk) {
+        mk = generateMasterKey();
+        localStorage.setItem('codehub_masterKey', mk);
       }
-      return masterKey;
+      return mk;
     }
 
-    async function syncAllAccountsToMasterKey(masterKey, accounts) {
-      const masterData = {};
-      accounts.forEach(acc => {
-        masterData[acc.uid] = {
+    // ==================== SALVAR NO CAMINHO contas/{masterKey} ====================
+    async function saveAccountsToMasterKey(mk, accountsList) {
+      const accountsObj = {};
+      accountsList.forEach(acc => {
+        accountsObj[acc.uid] = {
           uid: acc.uid,
           email: acc.email,
           username: acc.username,
           userType: acc.userType || 'normal',
           userKey: acc.userKey,
-          lastLogin: acc.lastLogin || Date.now()
+          lastLogin: acc.lastLogin || Date.now(),
+          deviceId: deviceId,
+          masterKey: mk
         };
       });
-      await set(ref(database, `masterKeys/${masterKey}/contas`), masterData);
-      await set(ref(database, `masterKeys/${masterKey}/info`), {
-        masterKey,
-        createdAt: Date.now(),
-        totalAccounts: accounts.length,
-        lastSync: Date.now()
-      });
+      await set(ref(database, `contas/${mk}`), accountsObj);
+      console.log('✅ Contas salvas em contas/' + mk);
     }
 
-    async function loadAccountsFromMasterKey(masterKey) {
-      const snap = await get(ref(database, `masterKeys/${masterKey}/contas`));
-      if (snap.exists()) {
-        const fbAccounts = Object.values(snap.val());
-        const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-        
-        fbAccounts.forEach(fbAcc => {
-          const exists = localAccounts.find(la => la.uid === fbAcc.uid);
-          if (!exists) localAccounts.push(fbAcc);
-        });
-        
-        const merged = localAccounts.slice(0, MAX_ACCOUNTS);
-        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(merged));
-        return merged;
-      }
-      return JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-    }
-
-    async function saveAccountToDevice(userData, masterKey) {
-      let accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-      const idx = accounts.findIndex(a => a.uid === userData.uid);
-      if (idx >= 0) accounts[idx] = { ...accounts[idx], ...userData, lastLogin: Date.now() };
-      else {
-        if (accounts.length >= MAX_ACCOUNTS) throw new Error('Limite de 5 contas!');
-        accounts.push({ ...userData, addedAt: Date.now(), lastLogin: Date.now() });
-      }
-      localStorage.setItem('codehub_deviceAccounts', JSON.stringify(accounts));
-      
-      // Salvar no dispositivo
-      const obj = {}; accounts.forEach(a => { obj[a.uid] = { ...a, deviceId, masterKey }; });
-      await set(ref(database, `dispositivos/${deviceId}/contas`), obj);
-      await set(ref(database, `dispositivos/${deviceId}/info`), {
-        deviceId, masterKey, lastAccess: Date.now(), totalAccounts: accounts.length,
-        userAgent: navigator.userAgent, platform: navigator.platform, language: navigator.language
-      });
-      
-      // Sincronizar com masterKey
-      await syncAllAccountsToMasterKey(masterKey, accounts);
-      
-      document.getElementById('accountCountNumber').textContent = accounts.length;
-      return accounts;
+    async function addAccountToMasterKey(mk, userData) {
+      const snap = await get(ref(database, `contas/${mk}`));
+      let accounts = snap.exists() ? snap.val() : {};
+      accounts[userData.uid] = {
+        uid: userData.uid,
+        email: userData.email,
+        username: userData.username,
+        userType: userData.userType || 'normal',
+        userKey: userData.userKey,
+        lastLogin: Date.now(),
+        deviceId: deviceId,
+        masterKey: mk
+      };
+      await set(ref(database, `contas/${mk}`), accounts);
     }
 
     function redirectAfterAuth(userKey) {
@@ -301,14 +249,14 @@
       if (!password || password.length < 6) return showError('Senha: mín. 6 caracteres');
       if (password !== confirm) return showError('Senhas não coincidem');
 
-      const accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-      if (accounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
+      const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+      if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
       const btn = document.getElementById('register-btn');
       btn.disabled = true; btn.textContent = 'Criando...';
 
       try {
-        const masterKey = await getOrCreateMasterKey(deviceId);
+        const masterKey = await getOrCreateMasterKey();
         const uc = await createUserWithEmailAndPassword(auth, email, password);
         const user = uc.user;
         const userKey = generateUserKey(user.uid);
@@ -328,10 +276,17 @@
           criadoEm: Date.now(), email, hasAuthToken: true, isAnonymous: false, nome: username, uid: user.uid, deviceId, masterKey
         });
 
-        await saveAccountToDevice(userData, masterKey);
+        // Adicionar à masterKey
+        await addAccountToMasterKey(masterKey, userData);
+
+        // localStorage
+        const allLocal = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+        allLocal.push(userData);
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
         localStorage.setItem('current_userKey', userKey);
+        document.getElementById('accountCountNumber').textContent = allLocal.length;
 
         redirectAfterAuth(userKey);
       } catch(e) {
@@ -352,11 +307,7 @@
       btn.disabled = true; btn.textContent = 'Entrando...';
 
       try {
-        const masterKey = await getOrCreateMasterKey(deviceId);
-        
-        // Carregar contas sincronizadas da masterKey
-        await loadAccountsFromMasterKey(masterKey);
-        
+        const masterKey = await getOrCreateMasterKey();
         const uc = await signInWithEmailAndPassword(auth, email, password);
         const user = uc.user;
         const snap = await get(ref(database, 'users/' + user.uid));
@@ -388,10 +339,20 @@
           uid: user.uid, email, username: userData.username,
           userType: userData.userType || 'normal', userKey, masterKey, lastLogin: Date.now()
         };
-        await saveAccountToDevice(accountData, masterKey);
+
+        // Adicionar à masterKey
+        await addAccountToMasterKey(masterKey, accountData);
+
+        // localStorage
+        const allLocal = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+        const idx = allLocal.findIndex(a => a.uid === user.uid);
+        if (idx >= 0) allLocal[idx] = { ...allLocal[idx], ...accountData };
+        else allLocal.push(accountData);
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
         localStorage.setItem('current_userKey', userKey);
+        document.getElementById('accountCountNumber').textContent = allLocal.length;
 
         redirectAfterAuth(userKey);
       } catch(e) {
@@ -404,13 +365,11 @@
     // ==================== GOOGLE ====================
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
-      const accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-      if (accounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
+      const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+      if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
       try {
-        const masterKey = await getOrCreateMasterKey(deviceId);
-        await loadAccountsFromMasterKey(masterKey);
-        
+        const masterKey = await getOrCreateMasterKey();
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         const username = user.displayName || user.email.split('@')[0];
@@ -436,10 +395,15 @@
         });
 
         const accountData = { uid: user.uid, email: user.email, username, userType, userKey, masterKey, lastLogin: Date.now() };
-        await saveAccountToDevice(accountData, masterKey);
+        await addAccountToMasterKey(masterKey, accountData);
+
+        const allLocal = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+        allLocal.push(accountData);
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
         localStorage.setItem('current_userKey', userKey);
+        document.getElementById('accountCountNumber').textContent = allLocal.length;
 
         redirectAfterAuth(userKey);
       } catch(e) {
