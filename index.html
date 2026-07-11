@@ -11,6 +11,11 @@
   <script src="https://alexandre7888.github.io/protecao.js"></script>
   <script src="https://alexandre7888.github.io/Botao/floating-menu.js"></script>
 
+  <!-- React -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{--bg-start:#0b1120;--bg-end:#03060c;--canvas-bg:#11161f;--border:#2a3a4a;--text:#e2e9f0;--text2:#a0b3c9;--gold:#e6b422;--white-bg:#f5f7fc;--white-text:#1e293b;--toggle-bg:#1e2a3a;--toggle-border:#3e5a77;--shadow:rgba(0,0,0,0.5)}
@@ -32,7 +37,9 @@
 </head>
 <body class="dark">
 
+  <!-- POSIÇÃO DO REACT AQUI -->
   <div id="app-menu-root"></div>
+
   <div class="mini-clock"><canvas id="miniCanvas" width="200" height="200"></canvas></div>
 
   <div class="theme-panel">
@@ -50,289 +57,17 @@
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+  <!-- Carregar app-menu.js -->
+  <script type="text/babel" src="app-menu.js"></script>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.firebasestorage.app",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
-
-    const MAX_ACCOUNTS = 5;
-    const apps = [
-      { id:'editor', name:'Editor', icon:'📝', url:'editor.html' },
-      { id:'clock', name:'Relógio', icon:'🕐', url:'clock.html' },
-      { id:'compass', name:'Bússola', icon:'🧭', url:'compass.html' },
-      { id:'notes', name:'Notas', icon:'📋', url:'notes.html' },
-      { id:'calc', name:'Calc', icon:'🔢', url:'calc.html' },
-      { id:'weather', name:'Clima', icon:'🌤️', url:'weather.html' },
-      { id:'tasks', name:'Tarefas', icon:'✅', url:'tasks.html' },
-      { id:'chat', name:'Chat', icon:'💬', url:'chat.html' },
-      { id:'files', name:'Arquivos', icon:'📁', url:'files.html' },
-      { id:'profile', name:'Perfil', icon:'👤', url:'profile.html' },
-      { id:'help', name:'Ajuda', icon:'❓', url:'help.html' },
-      { id:'settings', name:'Config', icon:'⚙️', url:'settings.html' },
-    ];
-
-    // ==================== ESTADO ====================
-    let state = {
-      masterKey: null,
-      isAuth: false,
-      userData: null,
-      userKey: null,
-      accounts: [],
-      showMenu: false,
-      showPanel: false
-    };
-
-    function getAvatarColor(name) {
-      const colors = ['#4361ee','#f72585','#4cc9f0','#7209b7','#f8961e','#43aa8b','#e63946','#277da1'];
-      let hash = 0;
-      for (let i = 0; i < (name||'?').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      return colors[Math.abs(hash) % colors.length];
-    }
-
-    // ==================== CARREGAR CONTAS DO FIREBASE ====================
-    async function loadAccountsFromFirebase() {
-      if (!state.masterKey) return;
-      try {
-        const snap = await get(ref(database, `contas/${state.masterKey}`));
-        state.accounts = snap.exists() ? Object.values(snap.val()) : [];
-      } catch(e) {
-        state.accounts = [];
-      }
-    }
-
-    // ==================== CARREGAR DADOS DO USUÁRIO ====================
-    async function loadUserData(key) {
-      if (!key) return;
-      try {
-        const snap = await get(ref(database, `userKeysData/${key}`));
-        if (snap.exists()) {
-          const data = snap.val();
-          state.userData = data.authTokenDecoded || data;
-          state.isAuth = true;
-          state.userKey = key;
-          
-          const mk = state.userData.masterKey || data.masterKey;
-          if (mk) {
-            state.masterKey = mk;
-            localStorage.setItem('codehub_masterKey', mk);
-          }
-        }
-      } catch(e) { console.error(e); }
-    }
-
-    // ==================== REMOVER CONTA ====================
-    async function removeAccount(uid) {
-      if (!state.masterKey) return;
-      if (!confirm('Remover esta conta? (Afeta todos os dispositivos)')) return;
-      try {
-        const snap = await get(ref(database, `contas/${state.masterKey}`));
-        if (snap.exists()) {
-          const contas = snap.val();
-          delete contas[uid];
-          await set(ref(database, `contas/${state.masterKey}`), contas);
-          state.accounts = Object.values(contas);
-        }
-        if (state.userData?.uid === uid) {
-          localStorage.removeItem('current_userKey');
-          state.isAuth = false;
-          state.userData = null;
-          state.userKey = null;
-        }
-        renderAll();
-      } catch(e) { console.error(e); }
-    }
-
-    // ==================== ABRIR APP COM USERKEY ATUAL ====================
-    function openApp(url) {
-      const key = state.userKey;
-      const sep = url.includes('?') ? '&' : '?';
-      window.location.href = key ? `${url}${sep}userKey=${key}` : url;
-    }
-
-    // ==================== TROCAR DE CONTA (MUDA USERKEY PRINCIPAL) ====================
-    async function switchAccount(acc) {
-      if (acc.userKey) {
-        localStorage.setItem('current_userKey', acc.userKey);
-        state.userKey = acc.userKey;
-        await loadUserData(acc.userKey);
-        await loadAccountsFromFirebase();
-        state.showPanel = false;
-        renderAll();
-      }
-    }
-
-    // ==================== LOGOUT ====================
-    function handleLogout() {
-      if (!confirm('Sair?')) return;
-      localStorage.removeItem('current_userKey');
-      state.isAuth = false;
-      state.userData = null;
-      state.userKey = null;
-      state.showPanel = false;
-      renderAll();
-    }
-
-    // ==================== ABRIR PAINEL ====================
-    async function handleOpenPanel() {
-      if (state.masterKey) await loadAccountsFromFirebase();
-      state.showPanel = true;
-      renderAll();
-    }
-
-    // ==================== RENDER ====================
-    function renderAll() {
-      const root = document.getElementById('app-menu-root');
-      const name = state.userData?.username || state.userData?.email || '?';
-      const letter = name.charAt(0).toUpperCase();
-      const avatarColor = getAvatarColor(name);
-
-      document.getElementById('welcomeMsg').textContent = state.isAuth ? `✨ Bem-vindo, ${name}! ✨` : '✨ Bem-vindo ao CodeHUB ✨';
-
-      root.innerHTML = `
-        <div style="position:fixed;top:20px;left:20px;z-index:10000">
-          <div id="menuBtn" style="width:48px;height:48px;background:rgba(20,25,45,0.9);backdrop-filter:blur(10px);border-radius:12px;cursor:pointer;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:3px;padding:8px;border:1px solid rgba(67,97,238,0.3);box-shadow:0 8px 20px rgba(0,0,0,0.4);transition:0.3s" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-            ${[...Array(16)].map(()=>'<div style="width:100%;height:100%;background:rgba(67,97,238,0.8);border-radius:50%"></div>').join('')}
-          </div>
-        </div>
-
-        <div style="position:fixed;top:20px;right:90px;z-index:10000">
-          <div id="avatarBtn" style="width:48px;height:48px;border-radius:50%;background:${state.isAuth?avatarColor:'#6c757d'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#fff;border:2px solid rgba(255,255,255,0.3);box-shadow:0 8px 20px rgba(0,0,0,0.4);transition:0.3s;position:relative" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-            ${state.isAuth ? letter : '👤'}
-            ${state.isAuth ? '<div style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;background:#4cc9f0;border-radius:50%;border:2px solid rgba(20,25,45,0.9)"></div>' : ''}
-          </div>
-        </div>
-
-        <div id="appsOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:none;justify-content:center;align-items:center;backdrop-filter:blur(5px)">
-          <div style="background:rgba(20,25,45,0.95);border-radius:20px;padding:30px;display:grid;grid-template-columns:repeat(4,1fr);gap:15px;max-width:500px;width:90%;border:1px solid rgba(67,97,238,0.3);box-shadow:0 20px 40px rgba(0,0,0,0.5)">
-            ${apps.map(app=>`
-              <div class="app-item" data-url="${app.url}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;cursor:pointer;min-height:80px;transition:0.3s" onmouseover="this.style.background='rgba(67,97,238,0.2)';this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'">
-                <div style="font-size:28px;margin-bottom:8px">${app.icon}</div>
-                <div style="color:#fff;font-size:12px;font-weight:500">${app.name}</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-        <div id="accountPanel" style="position:fixed;top:0;right:0;width:340px;height:100%;background:rgba(20,25,45,0.98);backdrop-filter:blur(20px);z-index:10001;box-shadow:-10px 0 30px rgba(0,0,0,0.5);border-left:1px solid rgba(67,97,238,0.3);overflow-y:auto;padding:20px;transform:translateX(${state.showPanel?'0':'100%'});transition:transform 0.3s">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <div style="color:#fff;font-size:18px;font-weight:600">👤 Contas ☁️</div>
-            <button id="closePanel" style="background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
-          </div>
-
-          ${state.isAuth && state.userData ? `
-            <div style="background:rgba(67,97,238,0.2);border-radius:10px;padding:12px;margin-bottom:15px;color:#fff;text-align:center">
-              <div style="font-weight:600">✅ Ativo: ${state.userData.username||state.userData.email}</div>
-              <div style="font-size:10px;opacity:0.7;margin-top:4px">userKey: ${(state.userKey||'').substring(0,20)}...</div>
-            </div>
-          ` : ''}
-
-          <div style="color:#fff;font-size:13px;font-weight:600;margin-bottom:10px">📋 Contas (${state.accounts.length}/${MAX_ACCOUNTS})</div>
-
-          ${state.accounts.length===0 ? '<div style="color:#a0b3c9;text-align:center;padding:30px"><div style="font-size:40px;margin-bottom:10px">☁️</div><div>Nenhuma conta</div></div>' : state.accounts.map(acc=>`
-            <div class="account-card" data-uid="${acc.uid}" style="background:${state.userData?.uid===acc.uid?'rgba(67,97,238,0.3)':'rgba(255,255,255,0.05)'};border-radius:12px;padding:15px;margin-bottom:10px;cursor:pointer;border:${state.userData?.uid===acc.uid?'1px solid rgba(67,97,238,0.6)':'1px solid transparent'};display:flex;align-items:center;gap:12px;transition:0.3s">
-              <div style="width:42px;height:42px;border-radius:50%;background:${getAvatarColor(acc.username||acc.email||'?')};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;color:#fff;flex-shrink:0">${(acc.username||acc.email||'?').charAt(0).toUpperCase()}</div>
-              <div style="flex:1;min-width:0">
-                <div style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${acc.username||acc.email} ${state.userData?.uid===acc.uid?'✓':''}</div>
-                <div style="color:#a0b3c9;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${acc.email}</div>
-              </div>
-              <div style="font-size:18px;flex-shrink:0">${acc.userType==='entrepreneur'?'🏢':'👤'}</div>
-              <button class="remove-account" data-uid="${acc.uid}" style="background:rgba(247,37,133,0.2);color:#f72585;border:1px solid rgba(247,37,133,0.3);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;flex-shrink:0">✕</button>
-            </div>
-          `).join('')}
-
-          ${state.accounts.length<MAX_ACCOUNTS ? `<button id="addAccountBtn" style="width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;color:#4cc9f0;background:rgba(76,201,240,0.2);border:1px solid rgba(76,201,240,0.4)">➕ Adicionar Conta</button>` : ''}
-          ${state.isAuth ? `<button id="logoutBtn" style="width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;color:#f72585;background:rgba(247,37,133,0.2);border:1px solid rgba(247,37,133,0.4)">🚪 Sair</button>` : ''}
-
-          <div style="color:#a0b3c9;font-size:10px;text-align:center;margin-top:15px;background:rgba(0,0,0,0.2);padding:10px;border-radius:8px">
-            ☁️ Firebase: ${state.accounts.length}/${MAX_ACCOUNTS}
-            ${state.masterKey ? `<br>🔑 ${state.masterKey.substring(0,20)}...` : '<br>❌ Sem MasterKey'}
-            ${state.userKey ? `<br>👤 ${state.userKey.substring(0,20)}...` : ''}
-          </div>
-        </div>
-      `;
-
-      // Eventos
-      document.getElementById('menuBtn')?.addEventListener('click', ()=>{
-        document.getElementById('appsOverlay').style.display = 'flex';
-      });
-      document.getElementById('appsOverlay')?.addEventListener('click', function(e){
-        if(e.target===this) this.style.display = 'none';
-      });
-      document.querySelectorAll('.app-item').forEach(item=>{
-        item.addEventListener('click', function(){
-          document.getElementById('appsOverlay').style.display = 'none';
-          openApp(this.getAttribute('data-url'));
-        });
-      });
-      document.getElementById('avatarBtn')?.addEventListener('click', handleOpenPanel);
-      document.getElementById('closePanel')?.addEventListener('click', ()=>{
-        state.showPanel = false;
-        renderAll();
-      });
-      document.querySelectorAll('.account-card').forEach(card=>{
-        card.addEventListener('click', function(e){
-          if(e.target.classList.contains('remove-account')) return;
-          const acc = state.accounts.find(a=>a.uid===this.getAttribute('data-uid'));
-          if(acc) switchAccount(acc);
-        });
-      });
-      document.querySelectorAll('.remove-account').forEach(btn=>{
-        btn.addEventListener('click', function(e){
-          e.stopPropagation();
-          removeAccount(this.getAttribute('data-uid'));
-        });
-      });
-      document.getElementById('addAccountBtn')?.addEventListener('click', ()=>window.location.href='auth.html');
-      document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
-    }
-
-    // ==================== INICIAR ====================
-    async function init() {
-      state.masterKey = localStorage.getItem('codehub_masterKey');
-      
-      const urlKey = new URLSearchParams(window.location.search).get('userKey');
-      const localKey = localStorage.getItem('current_userKey');
-      const key = urlKey || localKey;
-      
-      if (state.masterKey) {
-        await loadAccountsFromFirebase();
-      }
-      
-      if (key) {
-        state.userKey = key;
-        localStorage.setItem('current_userKey', key);
-        await loadUserData(key);
-      }
-      
-      renderAll();
-      
-      // ==================== ATUALIZAÇÃO AUTOMÁTICA A CADA 1 SEGUNDO ====================
-      setInterval(async () => {
-        if (state.masterKey) {
-          await loadAccountsFromFirebase();
-        }
-        if (state.userKey) {
-          await loadUserData(state.userKey);
-        }
-        renderAll();
-      }, 1000);
-    }
-
-    init();
+  <!-- Renderizar React na posição -->
+  <script type="text/babel">
+    import AppMenu from './app-menu.js';
+    const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
+    root.render(<AppMenu />);
   </script>
 
+  <!-- Tema e Relógio -->
   <script>
     const body=document.body;
     function setTheme(t){
