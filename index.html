@@ -22,12 +22,26 @@
     gtag('config', 'G-7RYPMEN60E');
   </script>
 
-  <!-- React e ReactDOM -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  
-  <!-- Babel para JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32",
+      measurementId: "G-V57KRZ02HJ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    window.database = database;
+  </script>
 
   <!-- Scripts Externos -->
   <script src="https://alexandre7888.github.io/protecao.js"></script>
@@ -104,416 +118,8 @@
       margin-bottom: 30px;
     }
 
-    /* Mini relógio */
-    .mini-clock-corner {
-      position: fixed;
-      top: 18px;
-      right: 20px;
-      z-index: 1100;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(8px);
-      border-radius: 60px;
-      padding: 6px;
-      box-shadow: 0 6px 16px var(--shadow-color);
-      border: 1px solid var(--canvas-border-dark);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .mini-clock-corner:hover {
-      transform: scale(1.02);
-    }
-    
-    canvas.mini-canvas {
-      display: block;
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: var(--canvas-bg);
-    }
-
-    /* Painel de temas */
-    .theme-panel {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 1050;
-      background: var(--card-bg);
-      backdrop-filter: blur(12px);
-      border-radius: 48px;
-      padding: 6px 12px;
-      display: flex;
-      gap: 8px;
-      border: 1px solid var(--canvas-border-dark);
-      box-shadow: 0 8px 20px var(--shadow-color);
-    }
-    
-    .theme-btn {
-      background: var(--toggle-bg);
-      border: none;
-      border-radius: 40px;
-      padding: 8px 16px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
-      font-family: inherit;
-      backdrop-filter: blur(4px);
-      border: 1px solid var(--toggle-border);
-    }
-    
-    .theme-btn.active {
-      background: var(--accent-gold);
-      color: #0a0f14;
-      box-shadow: 0 0 8px rgba(230, 180, 34, 0.4);
-      border-color: var(--accent-glow);
-    }
-    
-    .theme-btn:hover:not(.active) {
-      background: var(--canvas-border-dark);
-      transform: translateY(-1px);
-    }
-
-    /* Área branca */
-    .white-area {
-      width: 100%;
-      max-width: 780px;
-      margin: 20px auto 30px auto;
-      background: var(--white-area-bg);
-      border-radius: 32px;
-      padding: 28px 24px;
-      box-shadow: 0 20px 35px -10px var(--shadow-color);
-      border: 1px solid rgba(255,255,245,0.2);
-      text-align: center;
-    }
-    
-    .white-area h3 {
-      color: var(--white-area-text);
-      font-weight: 600;
-      font-size: 1.4rem;
-      margin-bottom: 12px;
-    }
-    
-    .white-area p {
-      color: var(--white-area-text);
-      opacity: 0.75;
-      font-size: 1rem;
-    }
-    
-    .white-placeholder {
-      background: rgba(0,0,0,0.03);
-      border-radius: 24px;
-      padding: 24px;
-      margin-top: 16px;
-      color: var(--white-area-text);
-    }
-
-    .welcome-message {
-      text-align: center;
-      color: var(--text-primary);
-      font-size: 1.2rem;
-      background: var(--card-bg);
-      backdrop-filter: blur(8px);
-      padding: 15px 30px;
-      border-radius: 60px;
-      border: 1px solid var(--canvas-border-dark);
-      display: inline-block;
-      font-weight: 500;
-    }
-
-    @media (max-width: 550px) {
-      .theme-btn span:first-child { display: none; }
-      .theme-btn { padding: 6px 12px; font-size: 0.75rem; }
-      .mini-canvas { width: 55px !important; height: 55px !important; }
-    }
-  </style>
-</head>
-<body class="dark">
-  <!-- Container React -->
-  <div id="app-menu-root"></div>
-
-  <!-- Mini relógio -->
-  <div class="mini-clock-corner" id="miniClockWrapper" title="Relógio analógico">
-    <canvas id="miniCanvas" class="mini-canvas" width="200" height="200"></canvas>
-  </div>
-
-  <!-- Painel de temas -->
-  <div class="theme-panel">
-    <button id="themeDark" class="theme-btn" data-theme="dark">🌙 <span>Dark</span></button>
-    <button id="themeLight" class="theme-btn" data-theme="light">☀️ <span>Light</span></button>
-    <button id="themeSystem" class="theme-btn" data-theme="system">🖥️ <span>Sistema</span></button>
-  </div>
-
-  <!-- Conteúdo principal -->
-  <div class="main-layout">
-    <div class="content-wrapper">
-      <div class="welcome-message">
-        ✨ Bem-vindo ao CodeHUB ✨
-      </div>
-    </div>
-
-    <div class="white-area">
-      <h3>🚀 Plataforma CodeHUB</h3>
-      <p>Use o menu 4x4 no canto superior esquerdo para acessar os aplicativos</p>
-      <div class="white-placeholder">
-        📱 Menu de grade 4x4 com todos os apps<br />
-        👤 Avatar com gerenciador de contas<br />
-        🔐 Até 5 contas por dispositivo
-      </div>
-    </div>
-  </div>
-
-  <!-- Carregar o app-menu.js -->
-  <script type="text/babel" src="app-menu.js"></script>
-  
-  <script type="text/babel">
-    // Importar e renderizar o componente
-    import AppMenu from './app-menu.js';
-    
-    const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
-    root.render(<AppMenu />);
-  </script>
-
-  <!-- Script do relógio e tema -->
-  <script>
-    // ==================== TEMA ====================
-    const body = document.body;
-    
-    function setTheme(theme) {
-      if (theme === 'dark') {
-        body.classList.add('dark');
-        body.classList.remove('light');
-        localStorage.setItem('codehub-theme', 'dark');
-        updateThemeButtons('dark');
-      } else if (theme === 'light') {
-        body.classList.add('light');
-        body.classList.remove('dark');
-        localStorage.setItem('codehub-theme', 'light');
-        updateThemeButtons('light');
-      } else if (theme === 'system') {
-        localStorage.setItem('codehub-theme', 'system');
-        applySystemTheme();
-        updateThemeButtons('system');
-      }
-    }
-
-    function applySystemTheme() {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (isDark) {
-        body.classList.add('dark');
-        body.classList.remove('light');
-      } else {
-        body.classList.add('light');
-        body.classList.remove('dark');
-      }
-    }
-
-    function updateThemeButtons(active) {
-      document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-      const btn = document.getElementById(`theme${active.charAt(0).toUpperCase() + active.slice(1)}`);
-      if (btn) btn.classList.add('active');
-    }
-
-    const savedTheme = localStorage.getItem('codehub-theme');
-    if (savedTheme === 'dark') setTheme('dark');
-    else if (savedTheme === 'light') setTheme('light');
-    else if (savedTheme === 'system') setTheme('system');
-    else setTheme('dark');
-
-    document.getElementById('themeDark')?.addEventListener('click', () => setTheme('dark'));
-    document.getElementById('themeLight')?.addEventListener('click', () => setTheme('light'));
-    document.getElementById('themeSystem')?.addEventListener('click', () => setTheme('system'));
-
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (localStorage.getItem('codehub-theme') === 'system') {
-        applySystemTheme();
-      }
-    });
-
-    // ==================== RELÓGIO MINI ====================
-    const miniCanvas = document.getElementById('miniCanvas');
-    if (miniCanvas) {
-      const miniCtx = miniCanvas.getContext('2d');
-      const miniCenter = 100;
-      const miniRadius = 88;
-
-      function drawMiniClock() {
-        miniCanvas.width = 200;
-        miniCanvas.height = 200;
-        
-        const cX = miniCenter, cY = miniCenter, r = miniRadius;
-        miniCtx.clearRect(0, 0, 200, 200);
-        
-        const computedStyle = getComputedStyle(body);
-        const canvasBg = computedStyle.getPropertyValue('--canvas-bg').trim() || '#11161f';
-        
-        miniCtx.fillStyle = canvasBg;
-        miniCtx.beginPath();
-        miniCtx.arc(cX, cY, r+3, 0, Math.PI*2);
-        miniCtx.fill();
-
-        miniCtx.beginPath();
-        miniCtx.arc(cX, cY, r+1, 0, Math.PI*2);
-        miniCtx.strokeStyle = computedStyle.getPropertyValue('--canvas-border-dark').trim() || '#5a7a9a';
-        miniCtx.lineWidth = 1.5;
-        miniCtx.stroke();
-
-        for (let i = 0; i < 12; i++) {
-          let angle = i * Math.PI * 2 / 12 - Math.PI/2;
-          let inner = r - 10;
-          let outer = r - 2;
-          miniCtx.beginPath();
-          miniCtx.moveTo(cX + Math.cos(angle)*inner, cY + Math.sin(angle)*inner);
-          miniCtx.lineTo(cX + Math.cos(angle)*outer, cY + Math.sin(angle)*outer);
-          miniCtx.lineWidth = i % 3 === 0 ? 2.2 : 1.2;
-          miniCtx.strokeStyle = i % 3 === 0 ? '#f0c674' : '#8a9bb0';
-          miniCtx.stroke();
-        }
-
-        const now = new Date();
-        let hours = now.getHours() % 12;
-        let minutes = now.getMinutes();
-        let seconds = now.getSeconds();
-
-        let hourAngle = (hours * 30 + minutes * 0.5) * Math.PI/180 - Math.PI/2;
-        let minuteAngle = (minutes * 6 + seconds * 0.1) * Math.PI/180 - Math.PI/2;
-        let secondAngle = (seconds * 6) * Math.PI/180 - Math.PI/2;
-
-        miniCtx.beginPath();
-        miniCtx.moveTo(cX, cY);
-        miniCtx.lineTo(cX + Math.cos(hourAngle) * (r * 0.48), cY + Math.sin(hourAngle) * (r * 0.48));
-        miniCtx.lineWidth = 3;
-        miniCtx.lineCap = 'round';
-        miniCtx.strokeStyle = '#d9e2f0';
-        miniCtx.stroke();
-
-        miniCtx.beginPath();
-        miniCtx.moveTo(cX, cY);
-        miniCtx.lineTo(cX + Math.cos(minuteAngle) * (r * 0.68), cY + Math.sin(minuteAngle) * (r * 0.68));
-        miniCtx.lineWidth = 2.2;
-        miniCtx.strokeStyle = '#bdd4ff';
-        miniCtx.stroke();
-
-        miniCtx.beginPath();
-        miniCtx.moveTo(cX, cY);
-        miniCtx.lineTo(cX + Math.cos(secondAngle) * (r * 0.78), cY + Math.sin(secondAngle) * (r * 0.78));
-        miniCtx.lineWidth = 1.5;
-        miniCtx.strokeStyle = '#ffaa66';
-        miniCtx.stroke();
-
-        miniCtx.beginPath();
-        miniCtx.arc(cX, cY, 4, 0, Math.PI*2);
-        miniCtx.fillStyle = '#332211';
-        miniCtx.fill();
-        miniCtx.beginPath();
-        miniCtx.arc(cX, cY, 2, 0, Math.PI*2);
-        miniCtx.fillStyle = '#f5c17a';
-        miniCtx.fill();
-      }
-
-      setInterval(drawMiniClock, 1000);
-      drawMiniClock();
-    }
-  </script>
-</body>
-</html>
-    :root {
-      --bg-gradient-start: #0b1120;
-      --bg-gradient-end: #03060c;
-      --card-bg: rgba(10, 15, 26, 0.75);
-      --canvas-bg: #11161f;
-      --canvas-border-dark: #2a3a4a;
-      --canvas-inner: #0a0f14;
-      --text-primary: #e2e9f0;
-      --text-secondary: #a0b3c9;
-      --accent-gold: #e6b422;
-      --accent-glow: #ffaa44;
-      --white-area-bg: #f5f7fc;
-      --white-area-text: #1e293b;
-      --toggle-bg: #1e2a3a;
-      --toggle-border: #3e5a77;
-      --shadow-color: rgba(0,0,0,0.5);
-    }
-
-    body.light {
-      --bg-gradient-start: #e2e8f0;
-      --bg-gradient-end: #cbd5e1;
-      --card-bg: rgba(240, 246, 255, 0.85);
-      --canvas-bg: #f0f4fa;
-      --canvas-border-dark: #9aaebf;
-      --canvas-inner: #dce5ef;
-      --text-primary: #0f172a;
-      --text-secondary: #2c3e4e;
-      --accent-gold: #b45309;
-      --accent-glow: #e67e22;
-      --white-area-bg: #ffffff;
-      --white-area-text: #0f172a;
-      --toggle-bg: #dce5f0;
-      --toggle-border: #8ba0bc;
-      --shadow-color: rgba(0,0,0,0.1);
-    }
-
-    body {
-      background: radial-gradient(circle at 30% 20%, var(--bg-gradient-start), var(--bg-gradient-end));
-      font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    .main-layout {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 20px 24px 24px 24px;
-    }
-
-    .content-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2rem;
-      margin-top: 20px;
-      margin-bottom: 30px;
-    }
-
-    /* Mini relógio */
-    .mini-clock-corner {
-      position: fixed;
-      top: 18px;
-      right: 20px;
-      z-index: 1100;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(8px);
-      border-radius: 60px;
-      padding: 6px;
-      box-shadow: 0 6px 16px var(--shadow-color);
-      border: 1px solid var(--canvas-border-dark);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .mini-clock-corner:hover {
-      transform: scale(1.02);
-      filter: brightness(1.02);
-    }
-    
-    canvas.mini-canvas {
-      display: block;
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: var(--canvas-bg);
-    }
-
-    /* Menu de grade 4x4 */
-    .app-menu-button {
+    /* ========== MENU DE GRADE 4x4 ========== */
+    .menu-grid-button {
       position: fixed;
       top: 20px;
       left: 20px;
@@ -534,12 +140,12 @@
       transition: all 0.3s ease;
     }
 
-    .app-menu-button:hover {
+    .menu-grid-button:hover {
       transform: scale(1.1);
       box-shadow: 0 12px 30px rgba(67, 97, 238, 0.4);
     }
 
-    .app-menu-dot {
+    .menu-dot {
       width: 100%;
       height: 100%;
       background: rgba(67, 97, 238, 0.8);
@@ -547,8 +153,68 @@
       transition: all 0.3s ease;
     }
 
-    /* Overlay do menu */
-    .menu-overlay {
+    /* ========== AVATAR DO USUÁRIO ========== */
+    .user-avatar {
+      position: fixed;
+      top: 20px;
+      right: 90px;
+      z-index: 10000;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 20px;
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .user-avatar:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 30px rgba(67, 97, 238, 0.4);
+    }
+
+    .online-dot {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 12px;
+      height: 12px;
+      background: #4cc9f0;
+      border-radius: 50%;
+      border: 2px solid rgba(20, 25, 45, 0.9);
+    }
+
+    /* ========== BOTÃO LOGIN ========== */
+    .btn-login-header {
+      position: fixed;
+      top: 20px;
+      right: 90px;
+      z-index: 10000;
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      transition: all 0.3s;
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+    }
+
+    .btn-login-header:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(67, 97, 238, 0.5);
+    }
+
+    /* ========== OVERLAY DO MENU DE APPS ========== */
+    .apps-overlay {
       position: fixed;
       top: 0;
       left: 0;
@@ -562,11 +228,11 @@
       backdrop-filter: blur(5px);
     }
 
-    .menu-overlay.active {
+    .apps-overlay.active {
       display: flex;
     }
 
-    .menu-grid {
+    .apps-grid {
       background: rgba(20, 25, 45, 0.95);
       border-radius: 20px;
       padding: 30px;
@@ -585,17 +251,7 @@
       to { opacity: 1; transform: scale(1) translateY(0); }
     }
 
-    .menu-user-info {
-      grid-column: 1 / -1;
-      text-align: center;
-      color: white;
-      padding: 10px;
-      background: rgba(67, 97, 238, 0.2);
-      border-radius: 10px;
-      margin-bottom: 10px;
-    }
-
-    .menu-item {
+    .app-item {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -607,27 +263,228 @@
       transition: all 0.3s ease;
       text-align: center;
       min-height: 80px;
-      color: white;
-      text-decoration: none;
     }
 
-    .menu-item:hover {
+    .app-item:hover {
       background: rgba(67, 97, 238, 0.2);
       transform: translateY(-3px);
       box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
     }
 
-    .menu-item-icon {
+    .app-icon {
       font-size: 28px;
       margin-bottom: 8px;
     }
 
-    .menu-item-name {
+    .app-name {
+      color: white;
       font-size: 12px;
       font-weight: 500;
     }
 
-    /* Painel de temas */
+    /* ========== PAINEL DE CONTAS ========== */
+    .account-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 320px;
+      height: 100%;
+      background: rgba(20, 25, 45, 0.98);
+      backdrop-filter: blur(20px);
+      z-index: 10001;
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+      border-left: 1px solid rgba(67, 97, 238, 0.3);
+      transform: translateX(100%);
+      transition: transform 0.3s ease-out;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .account-panel.active {
+      transform: translateX(0);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .panel-title {
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .panel-close {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+
+    .panel-close:hover {
+      background: rgba(247, 37, 133, 0.5);
+    }
+
+    .account-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .account-card:hover {
+      background: rgba(67, 97, 238, 0.2);
+      border-color: rgba(67, 97, 238, 0.4);
+    }
+
+    .account-card.active {
+      background: rgba(67, 97, 238, 0.3);
+      border-color: rgba(67, 97, 238, 0.6);
+    }
+
+    .account-avatar-small {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .account-info-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .account-name-small {
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .account-email-small {
+      color: #a0b3c9;
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-remove-account {
+      background: rgba(247, 37, 133, 0.2);
+      color: #f72585;
+      border: 1px solid rgba(247, 37, 133, 0.3);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+      flex-shrink: 0;
+    }
+
+    .btn-remove-account:hover {
+      background: rgba(247, 37, 133, 0.4);
+    }
+
+    .btn-panel-action {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: white;
+    }
+
+    .btn-add-account-action {
+      background: rgba(76, 201, 240, 0.2);
+      border: 1px solid rgba(76, 201, 240, 0.4);
+      color: #4cc9f0;
+    }
+
+    .btn-add-account-action:hover {
+      background: rgba(76, 201, 240, 0.4);
+    }
+
+    .btn-logout-action {
+      background: rgba(247, 37, 133, 0.2);
+      border: 1px solid rgba(247, 37, 133, 0.4);
+      color: #f72585;
+    }
+
+    .btn-logout-action:hover {
+      background: rgba(247, 37, 133, 0.4);
+    }
+
+    .account-count-text {
+      color: #a0b3c9;
+      font-size: 12px;
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    /* ========== RELÓGIO ========== */
+    .mini-clock-corner {
+      position: fixed;
+      top: 18px;
+      right: 20px;
+      z-index: 1100;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      border-radius: 60px;
+      padding: 6px;
+      box-shadow: 0 6px 16px var(--shadow-color);
+      border: 1px solid var(--canvas-border-dark);
+      cursor: pointer;
+    }
+
+    .mini-clock-corner:hover {
+      transform: scale(1.02);
+    }
+
+    canvas.mini-canvas {
+      display: block;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: var(--canvas-bg);
+    }
+
+    /* ========== PAINEL DE TEMAS ========== */
     .theme-panel {
       position: fixed;
       bottom: 24px;
@@ -642,7 +499,7 @@
       border: 1px solid var(--canvas-border-dark);
       box-shadow: 0 8px 20px var(--shadow-color);
     }
-    
+
     .theme-btn {
       background: var(--toggle-bg);
       border: none;
@@ -660,20 +517,20 @@
       backdrop-filter: blur(4px);
       border: 1px solid var(--toggle-border);
     }
-    
+
     .theme-btn.active {
       background: var(--accent-gold);
       color: #0a0f14;
       box-shadow: 0 0 8px rgba(230, 180, 34, 0.4);
       border-color: var(--accent-glow);
     }
-    
+
     .theme-btn:hover:not(.active) {
       background: var(--canvas-border-dark);
       transform: translateY(-1px);
     }
 
-    /* Área branca */
+    /* ========== ÁREA BRANCA ========== */
     .white-area {
       width: 100%;
       max-width: 780px;
@@ -683,30 +540,27 @@
       padding: 28px 24px;
       box-shadow: 0 20px 35px -10px var(--shadow-color);
       border: 1px solid rgba(255,255,245,0.2);
-      transition: all 0.2s;
       text-align: center;
     }
-    
+
     .white-area h3 {
       color: var(--white-area-text);
       font-weight: 600;
       font-size: 1.4rem;
       margin-bottom: 12px;
     }
-    
+
     .white-area p {
       color: var(--white-area-text);
       opacity: 0.75;
       font-size: 1rem;
     }
-    
+
     .white-placeholder {
       background: rgba(0,0,0,0.03);
       border-radius: 24px;
       padding: 24px;
       margin-top: 16px;
-      font-style: italic;
-      font-weight: 400;
       color: var(--white-area-text);
     }
 
@@ -720,93 +574,73 @@
       border-radius: 60px;
       border: 1px solid var(--canvas-border-dark);
       display: inline-block;
-      margin-top: 8px;
       font-weight: 500;
     }
 
-    /* Botão de login */
-    .login-prompt {
-      position: fixed;
-      top: 20px;
-      left: 80px;
-      z-index: 10000;
-      background: rgba(67, 97, 238, 0.9);
-      color: white;
-      padding: 10px 20px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      border: none;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s;
-      display: none;
-    }
-
-    .login-prompt:hover {
-      background: rgba(67, 97, 238, 1);
-      transform: translateY(-2px);
-    }
-
-    .login-prompt.show {
-      display: block;
-    }
-
     @media (max-width: 550px) {
-      .theme-btn span:first-child { display: none; }
+      .theme-btn span { display: none; }
       .theme-btn { padding: 6px 12px; font-size: 0.75rem; }
       .mini-canvas { width: 55px !important; height: 55px !important; }
-      .app-menu-button { width: 40px; height: 40px; top: 10px; left: 10px; }
-      .login-prompt { left: 60px; top: 10px; font-size: 12px; padding: 8px 14px; }
+      .account-panel { width: 100%; }
+      .user-avatar { right: 75px; }
+      .btn-login-header { right: 75px; padding: 10px 18px; font-size: 12px; }
     }
   </style>
 </head>
 <body class="dark">
-  <!-- Menu de Apps (Grade 4x4) -->
-  <div class="app-menu-button" id="appMenuButton" title="Aplicativos">
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
-    <div class="app-menu-dot"></div>
+  <!-- ==================== MENU DE GRADE 4x4 ==================== -->
+  <div class="menu-grid-button" id="menuGridButton" title="Aplicativos">
+    <div class="menu-dot"></div><div class="menu-dot"></div><div class="menu-dot"></div><div class="menu-dot"></div>
+    <div class="menu-dot"></div><div class="menu-dot"></div><div class="menu-dot"></div><div class="menu-dot"></div>
+    <div class="menu-dot"></div><div class="menu-dot"></div><div class="menu-dot"></div><div class="menu-dot"></div>
+    <div class="menu-dot"></div><div class="menu-dot"></div><div class="menu-dot"></div><div class="menu-dot"></div>
   </div>
 
-  <!-- Botão de Login -->
-  <button class="login-prompt" id="loginPrompt" onclick="window.location.href='auth.html'">
+  <!-- ==================== AVATAR DO USUÁRIO ==================== -->
+  <div class="user-avatar" id="userAvatar" style="display: none;" title="Gerenciar Contas">
+    <span id="avatarLetter">?</span>
+    <div class="online-dot"></div>
+  </div>
+
+  <!-- ==================== BOTÃO DE LOGIN ==================== -->
+  <button class="btn-login-header" id="btnLoginHeader" onclick="window.location.href='auth.html'">
     🔐 Fazer Login
   </button>
 
-  <!-- Overlay do Menu -->
-  <div class="menu-overlay" id="menuOverlay">
-    <div class="menu-grid" id="menuGrid">
-      <!-- Preenchido dinamicamente -->
-    </div>
+  <!-- ==================== OVERLAY DO MENU DE APPS ==================== -->
+  <div class="apps-overlay" id="appsOverlay">
+    <div class="apps-grid" id="appsGrid"></div>
   </div>
 
-  <!-- Mini relógio -->
-  <div class="mini-clock-corner" id="miniClockWrapper" title="Relógio analógico">
+  <!-- ==================== PAINEL DE CONTAS ==================== -->
+  <div class="account-panel" id="accountPanel">
+    <div class="panel-header">
+      <div class="panel-title">👤 Contas</div>
+      <button class="panel-close" id="panelClose">✕</button>
+    </div>
+    <div id="accountsList"></div>
+    <button class="btn-panel-action btn-add-account-action" id="btnAddAccount" onclick="window.location.href='auth.html'">
+      ➕ Adicionar Conta
+    </button>
+    <button class="btn-panel-action btn-logout-action" id="btnLogout">
+      🚪 Sair
+    </button>
+    <div class="account-count-text" id="accountCountText">0/5 contas neste dispositivo</div>
+  </div>
+
+  <!-- ==================== RELÓGIO ==================== -->
+  <div class="mini-clock-corner" title="Relógio analógico">
     <canvas id="miniCanvas" class="mini-canvas" width="200" height="200"></canvas>
   </div>
 
-  <!-- Painel de temas -->
+  <!-- ==================== PAINEL DE TEMAS ==================== -->
   <div class="theme-panel">
     <button id="themeDark" class="theme-btn" data-theme="dark">🌙 <span>Dark</span></button>
     <button id="themeLight" class="theme-btn" data-theme="light">☀️ <span>Light</span></button>
     <button id="themeSystem" class="theme-btn" data-theme="system">🖥️ <span>Sistema</span></button>
   </div>
 
-  <!-- Conteúdo principal -->
+  <!-- ==================== CONTEÚDO PRINCIPAL ==================== -->
   <div class="main-layout">
     <div class="content-wrapper">
       <div class="welcome-message" id="welcomeMessage">
@@ -814,19 +648,21 @@
       </div>
     </div>
 
-    <div class="white-area" id="whiteArea">
+    <div class="white-area">
       <h3>🚀 Plataforma CodeHUB</h3>
-      <p id="statusMessage">Carregando...</p>
-      <div class="white-placeholder" id="placeholderContent">
-        📱 Use o menu de pontos (4x4) no canto superior esquerdo para navegar<br />
-        🔐 Faça login para acessar todos os aplicativos
+      <p id="statusText">Carregando...</p>
+      <div class="white-placeholder">
+        📱 Menu 4x4 no canto superior esquerdo<br />
+        👤 Avatar com gerenciador de contas<br />
+        🔐 Até 5 contas por dispositivo
       </div>
     </div>
   </div>
 
+  <!-- ==================== SCRIPTS ==================== -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -843,11 +679,13 @@
     const database = getDatabase(app);
 
     // ==================== VARIÁVEIS ====================
+    const MAX_ACCOUNTS = 5;
     let currentUserKey = null;
     let currentUserData = null;
     let isAuthenticated = false;
+    let accounts = [];
 
-    // ==================== APPS DO MENU ====================
+    // Apps do menu
     const apps = [
       { id: 'editor', name: 'Editor', icon: '📝', url: 'editor.html' },
       { id: 'clock', name: 'Relógio', icon: '🕐', url: 'clock.html' },
@@ -861,9 +699,6 @@
       { id: 'settings', name: 'Config', icon: '⚙️', url: 'settings.html' },
       { id: 'profile', name: 'Perfil', icon: '👤', url: 'profile.html' },
       { id: 'help', name: 'Ajuda', icon: '❓', url: 'help.html' },
-      { id: 'about', name: 'Sobre', icon: 'ℹ️', url: 'about.html' },
-      { id: 'auth', name: 'Contas', icon: '🔐', url: 'auth.html' },
-      { id: 'logout', name: 'Sair', icon: '🚪', url: '#logout' },
     ];
 
     // ==================== INICIALIZAÇÃO ====================
@@ -872,130 +707,206 @@
       const urlParams = new URLSearchParams(window.location.search);
       const urlUserKey = urlParams.get('userKey');
       
-      // Pegar userKey do localStorage
+      // Pegar do localStorage
       const localUserKey = localStorage.getItem('current_userKey');
       
       currentUserKey = urlUserKey || localUserKey;
       
       if (currentUserKey) {
-        await loadUserData();
-      } else {
-        checkLocalAuth();
+        await loadUserData(currentUserKey);
       }
       
-      buildMenuGrid();
+      loadAccounts();
+      buildAppsGrid();
       updateUI();
     }
 
-    async function loadUserData() {
+    async function loadUserData(key) {
       try {
-        const snapshot = await get(ref(database, `userKeysData/${currentUserKey}`));
+        const snapshot = await get(ref(database, `userKeysData/${key}`));
         
         if (snapshot.exists()) {
-          const keyData = snapshot.val();
-          currentUserData = keyData.authTokenDecoded || keyData;
+          const data = snapshot.val();
+          currentUserData = data.authTokenDecoded || data;
           isAuthenticated = true;
           
-          // Salvar no localStorage
-          localStorage.setItem('current_userKey', currentUserKey);
-          localStorage.setItem('auth_token', keyData.authToken);
-          localStorage.setItem('token_user_id', currentUserData.uid);
+          localStorage.setItem('current_userKey', key);
+          if (data.authToken) {
+            localStorage.setItem('auth_token', data.authToken);
+          }
+          if (currentUserData.uid) {
+            localStorage.setItem('token_user_id', currentUserData.uid);
+          }
           
-          console.log('✅ Usuário autenticado:', currentUserData.username || currentUserData.email);
+          console.log('✅ Autenticado:', currentUserData.username || currentUserData.email);
         } else {
-          console.log('⚠️ UserKey não encontrada no Firebase');
+          console.log('⚠️ UserKey não encontrada');
           isAuthenticated = false;
         }
       } catch (error) {
-        console.error('Erro ao carregar dados do usuário:', error);
+        console.error('Erro ao carregar:', error);
         isAuthenticated = false;
       }
     }
 
-    function checkLocalAuth() {
-      const token = localStorage.getItem('auth_token');
-      const userId = localStorage.getItem('token_user_id');
-      
-      if (token && userId) {
-        isAuthenticated = true;
-        console.log('✅ Autenticação local encontrada');
-      } else {
-        isAuthenticated = false;
-        console.log('⚠️ Usuário não autenticado');
-      }
+    function loadAccounts() {
+      accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+      document.getElementById('accountCountText').textContent = `${accounts.length}/${MAX_ACCOUNTS} contas neste dispositivo`;
     }
 
-    function updateUI() {
-      const loginPrompt = document.getElementById('loginPrompt');
-      const welcomeMessage = document.getElementById('welcomeMessage');
-      const statusMessage = document.getElementById('statusMessage');
-      const placeholderContent = document.getElementById('placeholderContent');
+    function buildAppsGrid() {
+      const grid = document.getElementById('appsGrid');
+      grid.innerHTML = '';
       
-      if (isAuthenticated && currentUserData) {
-        loginPrompt.classList.remove('show');
-        welcomeMessage.innerHTML = `✨ Bem-vindo, ${currentUserData.username || currentUserData.email || 'Usuário'}! ✨`;
-        statusMessage.textContent = '✅ Autenticado - Acesse os aplicativos pelo menu';
-        placeholderContent.innerHTML = `
-          👤 ${currentUserData.username || 'Usuário'}<br />
-          📧 ${currentUserData.email || ''}<br />
-          🏷️ ${currentUserData.userType === 'entrepreneur' ? 'Empreendedor' : 'Usuário Normal'}<br />
-          🔑 UserKey: ${currentUserKey ? currentUserKey.substring(0, 20) + '...' : 'N/A'}
-        `;
-      } else {
-        loginPrompt.classList.add('show');
-        welcomeMessage.innerHTML = '✨ Bem-vindo ao CodeHUB ✨';
-        statusMessage.textContent = '🔐 Faça login para acessar todos os recursos';
-        placeholderContent.innerHTML = `
-          📱 Use o menu de pontos (4x4) no canto superior esquerdo<br />
-          🔐 Faça login para acessar todos os aplicativos<br />
-          👥 Até 5 contas por dispositivo
-        `;
-      }
-    }
-
-    // ==================== MENU DE APPS ====================
-    function buildMenuGrid() {
-      const menuGrid = document.getElementById('menuGrid');
-      menuGrid.innerHTML = '';
-      
-      // Info do usuário (se autenticado)
-      if (isAuthenticated && currentUserData) {
-        const userInfo = document.createElement('div');
-        userInfo.className = 'menu-user-info';
-        userInfo.innerHTML = `
-          <div style="font-weight: 600;">👋 ${currentUserData.username || 'Usuário'}</div>
-          <div style="font-size: 12px; opacity: 0.7;">${currentUserData.email || ''}</div>
-        `;
-        menuGrid.appendChild(userInfo);
-      }
-      
-      // Apps
       apps.forEach(app => {
         const item = document.createElement('div');
-        item.className = 'menu-item';
+        item.className = 'app-item';
         item.innerHTML = `
-          <div class="menu-item-icon">${app.icon}</div>
-          <div class="menu-item-name">${app.name}</div>
+          <div class="app-icon">${app.icon}</div>
+          <div class="app-name">${app.name}</div>
         `;
-        
         item.onclick = () => {
-          if (app.id === 'logout') {
-            handleLogout();
-          } else {
-            openApp(app.url);
-          }
+          closeAppsMenu();
+          openApp(app.url);
         };
-        
-        menuGrid.appendChild(item);
+        grid.appendChild(item);
       });
     }
 
     function openApp(url) {
-      if (currentUserKey) {
+      const key = currentUserKey || localStorage.getItem('current_userKey');
+      if (key) {
         const separator = url.includes('?') ? '&' : '?';
-        window.location.href = `${url}${separator}userKey=${currentUserKey}`;
+        window.location.href = `${url}${separator}userKey=${key}`;
       } else {
         window.location.href = url;
+      }
+    }
+
+    function updateUI() {
+      const avatar = document.getElementById('userAvatar');
+      const avatarLetter = document.getElementById('avatarLetter');
+      const btnLogin = document.getElementById('btnLoginHeader');
+      const welcomeMsg = document.getElementById('welcomeMessage');
+      const statusText = document.getElementById('statusText');
+      const addBtn = document.getElementById('btnAddAccount');
+      
+      if (isAuthenticated && currentUserData) {
+        // Mostrar avatar, esconder botão de login
+        avatar.style.display = 'flex';
+        btnLogin.style.display = 'none';
+        
+        // Cor do avatar
+        const name = currentUserData.username || currentUserData.email || 'User';
+        const colors = ['#4361ee', '#f72585', '#4cc9f0', '#7209b7', '#f8961e', '#43aa8b', '#e63946', '#277da1'];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        avatar.style.background = colors[Math.abs(hash) % colors.length];
+        avatarLetter.textContent = name.charAt(0).toUpperCase();
+        
+        welcomeMsg.innerHTML = `✨ Bem-vindo, ${name}! ✨`;
+        statusText.textContent = '✅ Autenticado';
+        
+        // Mostrar/ocultar botão adicionar
+        if (accounts.length >= MAX_ACCOUNTS) {
+          addBtn.style.display = 'none';
+        } else {
+          addBtn.style.display = 'flex';
+        }
+      } else {
+        // Mostrar botão de login, esconder avatar
+        avatar.style.display = 'none';
+        btnLogin.style.display = 'block';
+        welcomeMsg.innerHTML = '✨ Bem-vindo ao CodeHUB ✨';
+        statusText.textContent = '🔐 Faça login para acessar todos os recursos';
+        addBtn.style.display = 'none';
+      }
+      
+      // Atualizar lista de contas no painel
+      buildAccountsList();
+      loadAccounts();
+    }
+
+    function buildAccountsList() {
+      const list = document.getElementById('accountsList');
+      list.innerHTML = '';
+      
+      if (accounts.length === 0) {
+        list.innerHTML = '<div style="color: #a0b3c9; text-align: center; padding: 20px;">Nenhuma conta salva</div>';
+        return;
+      }
+      
+      accounts.forEach(account => {
+        const colors = ['#4361ee', '#f72585', '#4cc9f0', '#7209b7', '#f8961e', '#43aa8b', '#e63946', '#277da1'];
+        const name = account.username || account.email || '?';
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const color = colors[Math.abs(hash) % colors.length];
+        
+        const card = document.createElement('div');
+        card.className = `account-card ${currentUserData?.uid === account.uid ? 'active' : ''}`;
+        card.innerHTML = `
+          <div class="account-avatar-small" style="background: ${color};">${name.charAt(0).toUpperCase()}</div>
+          <div class="account-info-details">
+            <div class="account-name-small">${account.username || account.email}</div>
+            <div class="account-email-small">${account.email}</div>
+          </div>
+          <button class="btn-remove-account" data-uid="${account.uid}">✕</button>
+        `;
+        
+        card.onclick = (e) => {
+          if (!e.target.classList.contains('btn-remove-account')) {
+            switchAccount(account);
+          }
+        };
+        
+        list.appendChild(card);
+      });
+      
+      // Eventos dos botões de remover
+      document.querySelectorAll('.btn-remove-account').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const uid = btn.getAttribute('data-uid');
+          removeAccount(uid);
+        });
+      });
+    }
+
+    async function switchAccount(account) {
+      if (account.userKey) {
+        localStorage.setItem('current_userKey', account.userKey);
+        localStorage.setItem('auth_token', account.authToken || '');
+        localStorage.setItem('token_user_id', account.uid);
+        
+        currentUserKey = account.userKey;
+        await loadUserData(account.userKey);
+        updateUI();
+        closeAccountPanel();
+      }
+    }
+
+    function removeAccount(uid) {
+      if (confirm('Remover esta conta do dispositivo?')) {
+        accounts = accounts.filter(acc => acc.uid !== uid);
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(accounts));
+        
+        if (currentUserData?.uid === uid) {
+          // Logout se removeu a conta atual
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('token_user_id');
+          localStorage.removeItem('current_userKey');
+          isAuthenticated = false;
+          currentUserData = null;
+          currentUserKey = null;
+        }
+        
+        loadAccounts();
+        updateUI();
       }
     }
 
@@ -1004,31 +915,44 @@
         localStorage.removeItem('auth_token');
         localStorage.removeItem('token_user_id');
         localStorage.removeItem('current_userKey');
-        window.location.reload();
+        isAuthenticated = false;
+        currentUserData = null;
+        currentUserKey = null;
+        updateUI();
+        closeAccountPanel();
       }
     }
 
-    // ==================== EVENTOS DO MENU ====================
-    document.getElementById('appMenuButton').addEventListener('click', () => {
-      document.getElementById('menuOverlay').classList.add('active');
-      
-      // Animação dos pontos
-      const dots = document.querySelectorAll('.app-menu-dot');
-      dots.forEach((dot, index) => {
-        setTimeout(() => {
-          dot.style.background = '#4cc9f0';
-          setTimeout(() => {
-            dot.style.background = 'rgba(67, 97, 238, 0.8)';
-          }, 200);
-        }, index * 30);
-      });
+    // ==================== EVENTOS ====================
+    // Menu de apps
+    document.getElementById('menuGridButton').addEventListener('click', () => {
+      document.getElementById('appsOverlay').classList.add('active');
     });
 
-    document.getElementById('menuOverlay').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('menuOverlay')) {
-        document.getElementById('menuOverlay').classList.remove('active');
+    document.getElementById('appsOverlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        closeAppsMenu();
       }
     });
+
+    function closeAppsMenu() {
+      document.getElementById('appsOverlay').classList.remove('active');
+    }
+
+    // Avatar - abrir painel de contas
+    document.getElementById('userAvatar').addEventListener('click', () => {
+      document.getElementById('accountPanel').classList.add('active');
+    });
+
+    // Fechar painel
+    document.getElementById('panelClose').addEventListener('click', closeAccountPanel);
+
+    function closeAccountPanel() {
+      document.getElementById('accountPanel').classList.remove('active');
+    }
+
+    // Logout
+    document.getElementById('btnLogout').addEventListener('click', handleLogout);
 
     // ==================== TEMA ====================
     const body = document.body;
@@ -1053,18 +977,13 @@
 
     function applySystemTheme() {
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (isDark) {
-        body.classList.add('dark');
-        body.classList.remove('light');
-      } else {
-        body.classList.add('light');
-        body.classList.remove('dark');
-      }
+      body.classList.toggle('dark', isDark);
+      body.classList.toggle('light', !isDark);
     }
 
     function updateThemeButtons(active) {
       document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-      document.getElementById(`theme${active.charAt(0).toUpperCase() + active.slice(1)}`).classList.add('active');
+      document.getElementById(`theme${active.charAt(0).toUpperCase() + active.slice(1)}`)?.classList.add('active');
     }
 
     const savedTheme = localStorage.getItem('codehub-theme');
@@ -1073,67 +992,61 @@
     else if (savedTheme === 'system') setTheme('system');
     else setTheme('dark');
 
-    document.getElementById('themeDark').addEventListener('click', () => setTheme('dark'));
-    document.getElementById('themeLight').addEventListener('click', () => setTheme('light'));
-    document.getElementById('themeSystem').addEventListener('click', () => setTheme('system'));
+    document.getElementById('themeDark')?.addEventListener('click', () => setTheme('dark'));
+    document.getElementById('themeLight')?.addEventListener('click', () => setTheme('light'));
+    document.getElementById('themeSystem')?.addEventListener('click', () => setTheme('system'));
 
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (localStorage.getItem('codehub-theme') === 'system') {
-        applySystemTheme();
-      }
+      if (localStorage.getItem('codehub-theme') === 'system') applySystemTheme();
     });
 
-    // ==================== RELÓGIO MINI ====================
+    // ==================== RELÓGIO ====================
     const miniCanvas = document.getElementById('miniCanvas');
     const miniCtx = miniCanvas.getContext('2d');
-    let miniCenter = 100;
-    let miniRadius = 88;
-
+    
     function drawMiniClock() {
       miniCanvas.width = 200;
       miniCanvas.height = 200;
       
-      const cX = miniCenter, cY = miniCenter, r = miniRadius;
+      const cX = 100, cY = 100, r = 88;
       miniCtx.clearRect(0, 0, 200, 200);
       
-      const computedStyle = getComputedStyle(body);
-      const canvasBg = computedStyle.getPropertyValue('--canvas-bg').trim() || '#11161f';
+      const style = getComputedStyle(body);
+      const bg = style.getPropertyValue('--canvas-bg').trim() || '#11161f';
       
-      miniCtx.fillStyle = canvasBg;
+      miniCtx.fillStyle = bg;
       miniCtx.beginPath();
       miniCtx.arc(cX, cY, r+3, 0, Math.PI*2);
       miniCtx.fill();
 
       miniCtx.beginPath();
       miniCtx.arc(cX, cY, r+1, 0, Math.PI*2);
-      miniCtx.strokeStyle = computedStyle.getPropertyValue('--canvas-border-dark').trim() || '#5a7a9a';
+      miniCtx.strokeStyle = style.getPropertyValue('--canvas-border-dark').trim() || '#5a7a9a';
       miniCtx.lineWidth = 1.5;
       miniCtx.stroke();
 
       for (let i = 0; i < 12; i++) {
         let angle = i * Math.PI * 2 / 12 - Math.PI/2;
-        let inner = r - 10;
-        let outer = r - 2;
         miniCtx.beginPath();
-        miniCtx.moveTo(cX + Math.cos(angle)*inner, cY + Math.sin(angle)*inner);
-        miniCtx.lineTo(cX + Math.cos(angle)*outer, cY + Math.sin(angle)*outer);
+        miniCtx.moveTo(cX + Math.cos(angle)*(r-10), cY + Math.sin(angle)*(r-10));
+        miniCtx.lineTo(cX + Math.cos(angle)*(r-2), cY + Math.sin(angle)*(r-2));
         miniCtx.lineWidth = i % 3 === 0 ? 2.2 : 1.2;
         miniCtx.strokeStyle = i % 3 === 0 ? '#f0c674' : '#8a9bb0';
         miniCtx.stroke();
       }
 
       const now = new Date();
-      let hours = now.getHours() % 12;
-      let minutes = now.getMinutes();
-      let seconds = now.getSeconds();
+      const hours = now.getHours() % 12;
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
 
-      let hourAngle = (hours * 30 + minutes * 0.5) * Math.PI/180 - Math.PI/2;
-      let minuteAngle = (minutes * 6 + seconds * 0.1) * Math.PI/180 - Math.PI/2;
-      let secondAngle = (seconds * 6) * Math.PI/180 - Math.PI/2;
+      const hourAngle = (hours * 30 + minutes * 0.5) * Math.PI/180 - Math.PI/2;
+      const minuteAngle = (minutes * 6 + seconds * 0.1) * Math.PI/180 - Math.PI/2;
+      const secondAngle = (seconds * 6) * Math.PI/180 - Math.PI/2;
 
       miniCtx.beginPath();
       miniCtx.moveTo(cX, cY);
-      miniCtx.lineTo(cX + Math.cos(hourAngle) * (r * 0.48), cY + Math.sin(hourAngle) * (r * 0.48));
+      miniCtx.lineTo(cX + Math.cos(hourAngle)*(r*0.48), cY + Math.sin(hourAngle)*(r*0.48));
       miniCtx.lineWidth = 3;
       miniCtx.lineCap = 'round';
       miniCtx.strokeStyle = '#d9e2f0';
@@ -1141,14 +1054,14 @@
 
       miniCtx.beginPath();
       miniCtx.moveTo(cX, cY);
-      miniCtx.lineTo(cX + Math.cos(minuteAngle) * (r * 0.68), cY + Math.sin(minuteAngle) * (r * 0.68));
+      miniCtx.lineTo(cX + Math.cos(minuteAngle)*(r*0.68), cY + Math.sin(minuteAngle)*(r*0.68));
       miniCtx.lineWidth = 2.2;
       miniCtx.strokeStyle = '#bdd4ff';
       miniCtx.stroke();
 
       miniCtx.beginPath();
       miniCtx.moveTo(cX, cY);
-      miniCtx.lineTo(cX + Math.cos(secondAngle) * (r * 0.78), cY + Math.sin(secondAngle) * (r * 0.78));
+      miniCtx.lineTo(cX + Math.cos(secondAngle)*(r*0.78), cY + Math.sin(secondAngle)*(r*0.78));
       miniCtx.lineWidth = 1.5;
       miniCtx.strokeStyle = '#ffaa66';
       miniCtx.stroke();
@@ -1169,8 +1082,6 @@
     // ==================== INICIAR ====================
     init();
     console.log('🚀 CodeHUB inicializado!');
-    console.log('🔑 UserKey:', currentUserKey || 'Nenhuma');
-    console.log('🔐 Autenticado:', isAuthenticated);
   </script>
 </body>
 </html>
