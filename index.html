@@ -83,7 +83,7 @@
       { id:'settings', name:'Config', icon:'⚙️', url:'settings.html' },
     ];
 
-    // ==================== ESTADO (TUDO DO FIREBASE) ====================
+    // ==================== ESTADO ====================
     let state = {
       masterKey: null,
       isAuth: false,
@@ -101,7 +101,7 @@
       return colors[Math.abs(hash) % colors.length];
     }
 
-    // ==================== FIREBASE: CARREGAR CONTAS ====================
+    // ==================== CARREGAR CONTAS DO FIREBASE ====================
     async function loadAccountsFromFirebase() {
       if (!state.masterKey) return;
       try {
@@ -112,8 +112,9 @@
       }
     }
 
-    // ==================== FIREBASE: CARREGAR USUÁRIO ====================
+    // ==================== CARREGAR DADOS DO USUÁRIO ====================
     async function loadUserData(key) {
+      if (!key) return;
       try {
         const snap = await get(ref(database, `userKeysData/${key}`));
         if (snap.exists()) {
@@ -122,18 +123,16 @@
           state.isAuth = true;
           state.userKey = key;
           
-          // Se tem masterKey no userData, usar
           const mk = state.userData.masterKey || data.masterKey;
           if (mk) {
             state.masterKey = mk;
             localStorage.setItem('codehub_masterKey', mk);
-            await loadAccountsFromFirebase();
           }
         }
       } catch(e) { console.error(e); }
     }
 
-    // ==================== FIREBASE: REMOVER CONTA ====================
+    // ==================== REMOVER CONTA ====================
     async function removeAccount(uid) {
       if (!state.masterKey) return;
       if (!confirm('Remover esta conta? (Afeta todos os dispositivos)')) return;
@@ -155,22 +154,26 @@
       } catch(e) { console.error(e); }
     }
 
+    // ==================== ABRIR APP COM USERKEY ATUAL ====================
     function openApp(url) {
       const key = state.userKey;
       const sep = url.includes('?') ? '&' : '?';
       window.location.href = key ? `${url}${sep}userKey=${key}` : url;
     }
 
+    // ==================== TROCAR DE CONTA (MUDA USERKEY PRINCIPAL) ====================
     async function switchAccount(acc) {
       if (acc.userKey) {
         localStorage.setItem('current_userKey', acc.userKey);
         state.userKey = acc.userKey;
         await loadUserData(acc.userKey);
+        await loadAccountsFromFirebase();
         state.showPanel = false;
         renderAll();
       }
     }
 
+    // ==================== LOGOUT ====================
     function handleLogout() {
       if (!confirm('Sair?')) return;
       localStorage.removeItem('current_userKey');
@@ -181,6 +184,7 @@
       renderAll();
     }
 
+    // ==================== ABRIR PAINEL ====================
     async function handleOpenPanel() {
       if (state.masterKey) await loadAccountsFromFirebase();
       state.showPanel = true;
@@ -227,11 +231,10 @@
             <button id="closePanel" style="background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
           </div>
 
-          <button id="refreshBtn" style="width:100%;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:15px;display:flex;align-items:center;justify-content:center;gap:6px;color:#4cc9f0;background:rgba(76,201,240,0.1);border:1px solid rgba(76,201,240,0.3)">🔄 Atualizar do Firebase</button>
-
           ${state.isAuth && state.userData ? `
             <div style="background:rgba(67,97,238,0.2);border-radius:10px;padding:12px;margin-bottom:15px;color:#fff;text-align:center">
-              <div style="font-weight:600">✅ ${state.userData.username||state.userData.email}</div>
+              <div style="font-weight:600">✅ Ativo: ${state.userData.username||state.userData.email}</div>
+              <div style="font-size:10px;opacity:0.7;margin-top:4px">userKey: ${(state.userKey||'').substring(0,20)}...</div>
             </div>
           ` : ''}
 
@@ -252,9 +255,10 @@
           ${state.accounts.length<MAX_ACCOUNTS ? `<button id="addAccountBtn" style="width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;color:#4cc9f0;background:rgba(76,201,240,0.2);border:1px solid rgba(76,201,240,0.4)">➕ Adicionar Conta</button>` : ''}
           ${state.isAuth ? `<button id="logoutBtn" style="width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;color:#f72585;background:rgba(247,37,133,0.2);border:1px solid rgba(247,37,133,0.4)">🚪 Sair</button>` : ''}
 
-          <div style="color:#a0b3c9;font-size:11px;text-align:center;margin-top:15px;background:rgba(0,0,0,0.2);padding:10px;border-radius:8px">
+          <div style="color:#a0b3c9;font-size:10px;text-align:center;margin-top:15px;background:rgba(0,0,0,0.2);padding:10px;border-radius:8px">
             ☁️ Firebase: ${state.accounts.length}/${MAX_ACCOUNTS}
             ${state.masterKey ? `<br>🔑 ${state.masterKey.substring(0,20)}...` : '<br>❌ Sem MasterKey'}
+            ${state.userKey ? `<br>👤 ${state.userKey.substring(0,20)}...` : ''}
           </div>
         </div>
       `;
@@ -277,12 +281,6 @@
         state.showPanel = false;
         renderAll();
       });
-      document.getElementById('refreshBtn')?.addEventListener('click', async ()=>{
-        if(state.masterKey) {
-          await loadAccountsFromFirebase();
-          renderAll();
-        }
-      });
       document.querySelectorAll('.account-card').forEach(card=>{
         card.addEventListener('click', function(e){
           if(e.target.classList.contains('remove-account')) return;
@@ -302,7 +300,6 @@
 
     // ==================== INICIAR ====================
     async function init() {
-      // SÓ pega masterKey do localStorage
       state.masterKey = localStorage.getItem('codehub_masterKey');
       
       const urlKey = new URLSearchParams(window.location.search).get('userKey');
@@ -315,10 +312,22 @@
       
       if (key) {
         state.userKey = key;
+        localStorage.setItem('current_userKey', key);
         await loadUserData(key);
       }
       
       renderAll();
+      
+      // ==================== ATUALIZAÇÃO AUTOMÁTICA A CADA 1 SEGUNDO ====================
+      setInterval(async () => {
+        if (state.masterKey) {
+          await loadAccountsFromFirebase();
+        }
+        if (state.userKey) {
+          await loadUserData(state.userKey);
+        }
+        renderAll();
+      }, 1000);
     }
 
     init();
