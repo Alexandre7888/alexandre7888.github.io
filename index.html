@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-
-  <!-- SEO -->
-  <meta name="keywords" content="CodeHUB, relógio analógico, relógio de ponteiro, bússola online, ferramenta web, Discord, alternador de temas">
-  <meta name="description" content="CodeHUB - Relógio analógico estilo bússola com alternador de temas (Dark/Light/Sistema)">
-  <meta name="author" content="CodeHUB - Alexandre Braatz Junior">
+  <meta name="keywords" content="CodeHUB, relógio analógico, bússola online, ferramenta web, alternador de temas">
+  <meta name="description" content="CodeHUB - Plataforma de Ferramentas Web">
+  <meta name="author" content="CodeHUB">
   <meta name="google-site-verification" content="d5deNmIStRgPPphEkAypCTSv-E_1gi9ba16et47RSmA" />
 
-  <title>CodeHUB · Relógio Bússola</title>
+  <title>CodeHUB · Plataforma</title>
   <link rel="icon" type="image/png" href="https://alexandre7888.github.io/CodeHUB/InShot_20250807_112151490.jpg">
 
   <!-- Google Analytics -->
@@ -37,7 +35,6 @@
       transition: background-color 0.25s ease, border-color 0.2s ease, color 0.2s ease;
     }
 
-    /* ----- TEMAS (DARK / LIGHT) com variáveis CSS ----- */
     :root {
       --bg-gradient-start: #0b1120;
       --bg-gradient-end: #03060c;
@@ -49,8 +46,6 @@
       --text-secondary: #a0b3c9;
       --accent-gold: #e6b422;
       --accent-glow: #ffaa44;
-      --discord-bg: #5865F2;
-      --discord-hover: #4752c4;
       --white-area-bg: #f5f7fc;
       --white-area-text: #1e293b;
       --toggle-bg: #1e2a3a;
@@ -69,8 +64,6 @@
       --text-secondary: #2c3e4e;
       --accent-gold: #b45309;
       --accent-glow: #e67e22;
-      --discord-bg: #4c5bd6;
-      --discord-hover: #3b48b5;
       --white-area-bg: #ffffff;
       --white-area-text: #0f172a;
       --toggle-bg: #dce5f0;
@@ -87,7 +80,6 @@
       position: relative;
     }
 
-    /* Layout principal */
     .main-layout {
       flex: 1;
       display: flex;
@@ -95,7 +87,6 @@
       padding: 20px 24px 24px 24px;
     }
 
-    /* top bar para dar espaçamento (os elementos fixos já estão posicionados, mas garantimos que conteúdo não fique atrás) */
     .content-wrapper {
       display: flex;
       flex-direction: column;
@@ -106,7 +97,6 @@
       margin-bottom: 30px;
     }
 
-    /* Relógio pequeno no CANTO DIREITO (fixed) */
     .mini-clock-corner {
       position: fixed;
       top: 18px;
@@ -121,10 +111,12 @@
       cursor: pointer;
       transition: all 0.2s;
     }
+    
     .mini-clock-corner:hover {
       transform: scale(1.02);
       filter: brightness(1.02);
     }
+    
     canvas.mini-canvas {
       display: block;
       width: 70px;
@@ -133,49 +125,6 @@
       background: var(--canvas-bg);
     }
 
-    /* Botão Discord (canto esquerdo superior) */
-    .discord-fixed {
-      position: fixed;
-      top: 18px;
-      left: 20px;
-      z-index: 1100;
-      background: var(--discord-bg);
-      backdrop-filter: blur(4px);
-      border-radius: 48px;
-      padding: 6px 16px 6px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border: 1px solid rgba(255,255,240,0.3);
-      box-shadow: 0 6px 14px var(--shadow-color);
-      cursor: pointer;
-      transition: 0.2s;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .discord-fixed:hover {
-      background: var(--discord-hover);
-      transform: translateY(-2px);
-    }
-    .discord-icon {
-      width: 28px;
-      height: 28px;
-      background: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      font-weight: bold;
-      color: #5865F2;
-    }
-    .discord-text {
-      color: white;
-      font-size: 0.9rem;
-      letter-spacing: 0.3px;
-    }
-
-    /* Painel de configurações de tema (no canto inferior direito ou área elegante) */
     .theme-panel {
       position: fixed;
       bottom: 24px;
@@ -190,6 +139,7 @@
       border: 1px solid var(--canvas-border-dark);
       box-shadow: 0 8px 20px var(--shadow-color);
     }
+    
     .theme-btn {
       background: var(--toggle-bg);
       border: none;
@@ -207,18 +157,19 @@
       backdrop-filter: blur(4px);
       border: 1px solid var(--toggle-border);
     }
+    
     .theme-btn.active {
       background: var(--accent-gold);
       color: #0a0f14;
       box-shadow: 0 0 8px rgba(230, 180, 34, 0.4);
       border-color: var(--accent-glow);
     }
+    
     .theme-btn:hover:not(.active) {
       background: var(--canvas-border-dark);
       transform: translateY(-1px);
     }
 
-    /* Área branca (conteúdo provisório) */
     .white-area {
       width: 100%;
       max-width: 780px;
@@ -231,17 +182,20 @@
       transition: all 0.2s;
       text-align: center;
     }
+    
     .white-area h3 {
       color: var(--white-area-text);
       font-weight: 600;
       font-size: 1.4rem;
       margin-bottom: 12px;
     }
+    
     .white-area p {
       color: var(--white-area-text);
       opacity: 0.75;
       font-size: 1rem;
     }
+    
     .white-placeholder {
       background: rgba(0,0,0,0.03);
       border-radius: 24px;
@@ -252,26 +206,21 @@
       color: var(--white-area-text);
     }
 
-    /* mensagem antiga agora adaptada */
-    .mensagem-mini {
+    .welcome-message {
       text-align: center;
-      color: var(--text-secondary);
-      font-size: 0.85rem;
+      color: var(--text-primary);
+      font-size: 1.2rem;
       background: var(--card-bg);
       backdrop-filter: blur(8px);
-      padding: 10px 20px;
+      padding: 15px 30px;
       border-radius: 60px;
       border: 1px solid var(--canvas-border-dark);
       display: inline-block;
       margin-top: 8px;
-    }
-    .mensagem-mini span {
-      color: var(--accent-glow);
+      font-weight: 500;
     }
 
     @media (max-width: 550px) {
-      .discord-text { display: none; }
-      .discord-fixed { padding: 8px 12px; }
       .theme-btn span:first-child { display: none; }
       .theme-btn { padding: 6px 12px; font-size: 0.75rem; }
       .mini-canvas { width: 55px !important; height: 55px !important; }
@@ -279,47 +228,50 @@
   </style>
 </head>
 <body class="dark">
-  <!-- Botão Discord (abrir comunidade) -->
-  <a id="discordLink" href="#" target="_blank" class="discord-fixed" rel="noopener noreferrer">
-    <div class="discord-icon">
-      <svg width="18" height="14" viewBox="0 0 127.14 96.36" fill="white" style="margin-top:2px"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.86.68,1.75,1.36,2.66,2a68.68,68.68,0,0,1-10.87,5.18,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S53.8,46,53.8,53,48.81,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.2,60,73.2,53s5-12.74,11.44-12.74S96.05,46,96.05,53,91.08,65.69,84.69,65.69Z"/></svg>
-    </div>
-    <span class="discord-text">Comunidade CodeHUB</span>
-  </a>
+  <!-- Menu de Apps (Grade 4x4) -->
+  <div data-app-menu="auto" data-position="top-left"></div>
 
-  <!-- Mini relógio analógico no canto direito (pequenininho) -->
+  <!-- Mini relógio analógico no canto direito -->
   <div class="mini-clock-corner" id="miniClockWrapper" title="Relógio analógico">
     <canvas id="miniCanvas" class="mini-canvas" width="200" height="200"></canvas>
   </div>
 
-  <!-- Painel de temas (Dark / Light / Sistema) -->
+  <!-- Painel de temas -->
   <div class="theme-panel">
     <button id="themeDark" class="theme-btn" data-theme="dark">🌙 <span>Dark</span></button>
     <button id="themeLight" class="theme-btn" data-theme="light">☀️ <span>Light</span></button>
     <button id="themeSystem" class="theme-btn" data-theme="system">🖥️ <span>Sistema</span></button>
   </div>
 
-  <!-- Conteúdo principal com relógio grande? não, mas mantemos uma mensagem sutil e a área branca solicitada -->
+  <!-- Conteúdo principal -->
   <div class="main-layout">
     <div class="content-wrapper">
-      <div class="mensagem-mini">
-        ⏰ Nós desistimos de fazer o editor por enquanto... <span>um dia a gente pode tentar voltar</span> ✨
+      <div class="welcome-message">
+        ✨ Bem-vindo ao CodeHUB ✨
       </div>
     </div>
 
-    <!-- Área branca (por enquanto conteúdo neutro) -->
+    <!-- Área branca -->
     <div class="white-area" id="whiteArea">
-      <h3>✨ Base para expansão ✨</h3>
-      <p>Espaço reservado para futuros recursos, feeds, ou informações da comunidade.</p>
+      <h3>🚀 Plataforma CodeHUB</h3>
+      <p>Acesse os aplicativos pelo menu de grade 4x4 no canto superior esquerdo</p>
       <div class="white-placeholder">
-        🧩 Em breve: integrações, novidades e muito mais.<br />
-        Fique ligado no Discord!
+        📱 Use o menu de pontos para navegar entre os aplicativos<br />
+        🔐 Sistema multi-conta disponível (até 5 contas por dispositivo)
       </div>
     </div>
   </div>
 
+  <!-- Script do Menu de Apps -->
+  <script src="app-menu.js"></script>
+
   <script>
-    // ---- CONFIGURAÇÕES DE TEMA (DARK, LIGHT, SISTEMA) ----
+    // Inicializar Menu de Apps
+    const appMenu = new AppMenuGrid({
+      position: 'top-left'
+    });
+
+    // ---- CONFIGURAÇÕES DE TEMA ----
     const body = document.body;
     const darkBtn = document.getElementById('themeDark');
     const lightBtn = document.getElementById('themeLight');
@@ -367,28 +319,27 @@
     else if (savedTheme === 'light') setTheme('light');
     else if (savedTheme === 'system') setTheme('system');
     else {
-      // padrão: dark
       setTheme('dark');
     }
 
     darkBtn.addEventListener('click', () => setTheme('dark'));
     lightBtn.addEventListener('click', () => setTheme('light'));
     systemBtn.addEventListener('click', () => setTheme('system'));
+    
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
       if (localStorage.getItem('codehub-theme') === 'system') {
         applySystemTheme();
       }
     });
 
-    // ---- RELÓGIO ANALÓGICO (MINI VERSÃO) bem pequeno no canto ----
+    // ---- RELÓGIO ANALÓGICO MINI ----
     const miniCanvas = document.getElementById('miniCanvas');
     let miniCtx = miniCanvas.getContext('2d');
-    let miniSize = 200;   // canvas interno, mas via CSS reduzido para 70x70 (alta resolução para nitidez)
+    let miniSize = 200;
     let miniCenter = 100;
     let miniRadius = 88;
 
     function resizeMiniCanvasInternal() {
-      // fixo para evitar perda de qualidade: 200x200 e depois CSS encolhe
       miniCanvas.width = 200;
       miniCanvas.height = 200;
       miniSize = 200;
@@ -401,24 +352,22 @@
       if (!miniCtx) return;
       const ctxMini = miniCtx;
       const cX = miniCenter, cY = miniCenter, r = miniRadius;
-      
+
       ctxMini.clearRect(0, 0, miniSize, miniSize);
-      // fundo do mini relógio (usa cores do tema atual via getComputedStyle)
+      
       const computedStyle = getComputedStyle(body);
       const canvasBg = computedStyle.getPropertyValue('--canvas-bg').trim() || '#11161f';
       ctxMini.fillStyle = canvasBg;
       ctxMini.beginPath();
       ctxMini.arc(cX, cY, r+3, 0, Math.PI*2);
       ctxMini.fill();
-      
-      // borda externa
+
       ctxMini.beginPath();
       ctxMini.arc(cX, cY, r+1, 0, Math.PI*2);
       ctxMini.strokeStyle = computedStyle.getPropertyValue('--canvas-border-dark').trim() || '#5a7a9a';
       ctxMini.lineWidth = 1.5;
       ctxMini.stroke();
-      
-      // traços simplificados (horas principais)
+
       for (let i = 0; i < 12; i++) {
         let angle = i * Math.PI * 2 / 12 - Math.PI/2;
         let inner = r - 10;
@@ -430,18 +379,16 @@
         ctxMini.strokeStyle = i % 3 === 0 ? '#f0c674' : '#8a9bb0';
         ctxMini.stroke();
       }
-      
-      // ponteiros
+
       const now = new Date();
       let hours = now.getHours() % 12;
       let minutes = now.getMinutes();
       let seconds = now.getSeconds();
-      
+
       let hourAngle = (hours * 30 + minutes * 0.5) * Math.PI/180 - Math.PI/2;
       let minuteAngle = (minutes * 6 + seconds * 0.1) * Math.PI/180 - Math.PI/2;
       let secondAngle = (seconds * 6) * Math.PI/180 - Math.PI/2;
-      
-      // ponteiro hora
+
       ctxMini.beginPath();
       ctxMini.moveTo(cX, cY);
       ctxMini.lineTo(cX + Math.cos(hourAngle) * (r * 0.48), cY + Math.sin(hourAngle) * (r * 0.48));
@@ -449,21 +396,21 @@
       ctxMini.lineCap = 'round';
       ctxMini.strokeStyle = '#d9e2f0';
       ctxMini.stroke();
-      // ponteiro minuto
+
       ctxMini.beginPath();
       ctxMini.moveTo(cX, cY);
       ctxMini.lineTo(cX + Math.cos(minuteAngle) * (r * 0.68), cY + Math.sin(minuteAngle) * (r * 0.68));
       ctxMini.lineWidth = 2.2;
       ctxMini.strokeStyle = '#bdd4ff';
       ctxMini.stroke();
-      // ponteiro segundo
+
       ctxMini.beginPath();
       ctxMini.moveTo(cX, cY);
       ctxMini.lineTo(cX + Math.cos(secondAngle) * (r * 0.78), cY + Math.sin(secondAngle) * (r * 0.78));
       ctxMini.lineWidth = 1.5;
       ctxMini.strokeStyle = '#ffaa66';
       ctxMini.stroke();
-      
+
       ctxMini.beginPath();
       ctxMini.arc(cX, cY, 4, 0, Math.PI*2);
       ctxMini.fillStyle = '#332211';
@@ -473,58 +420,33 @@
       ctxMini.fillStyle = '#f5c17a';
       ctxMini.fill();
     }
-    
-    // Atualização do mini relógio a cada segundo
+
     setInterval(() => {
       drawMiniClock();
     }, 1000);
     drawMiniClock();
-    
-    // Opcional: se houver necessidade de redesenhar ao mudar tema (cores)
+
     function refreshAllThemedClocks() {
       drawMiniClock();
     }
-    // Monitorar mudanças de tema para redesenhar o mini relógio com novas cores do CSS
+
     const observer = new MutationObserver(() => {
       drawMiniClock();
     });
     observer.observe(body, { attributes: true, attributeFilter: ['class'] });
-    
-    // ---- CONFIGURAR LINK DO DISCORD (substitua pelo link da sua comunidade) ----
-    const discordLink = document.getElementById('discordLink');
-    // LINK OFICIAL (coloque o link real do seu servidor, exemplo placeholder)
-    // Caso queira redirecionar para comunidade real, edite essa URL:
-    const DISCORD_INVITE_URL = "https://discord.gg/codehub";  // Altere para seu invite real
-    discordLink.href = DISCORD_INVITE_URL;
-    
-    // Adicionar funcionalidade extra: se clicar no mini relógio pode dar zoom ou mostrar algo (opcional)
-    const miniWrapper = document.getElementById('miniClockWrapper');
-    miniWrapper.addEventListener('click', () => {
-      // efeito simpático: não precisa fazer nada, mas apenas um feedback;
-      // como solicitado apenas estética, mas não interfere.
-      console.log("mini clock tocado");
-    });
-    
-    // Ajuste para garantir que o canvas do mini relógio seja responsivo em tamanho minúsculo
+
     function adjustMiniCanvasCSS() {
       const wrapper = document.querySelector('.mini-clock-corner');
       if (wrapper) {
-        // só reforçar
+        // Ajustes responsivos se necessário
       }
     }
     window.addEventListener('resize', adjustMiniCanvasCSS);
     adjustMiniCanvasCSS();
-    
-    // garantir que o fundo da área branca esteja sempre sincronizado com o tema (CSS já faz)
-    // pequeno detalhe adicional: texto do relógio grande não existe mais, removemos o canvas grande;
-    // Então o design final fica leve apenas com mini relógio + área branca.
-    
-    // como não há mais o relógio grande, mas mantemos harmonia visual.
-    // Adicional: compatibilidade com external scripts existentes (protecao, menu flutuante, assistente IA)
-    // todos já incluídos.
-    
-    // Pequeno toque para se o usuário quiser ver algo, mas tudo nos conformes.
-    console.log("CodeHUB - Modo Dark/Light/Sistema ativo, mini relógio + Discord + área branca.");
+
+    console.log("CodeHUB - Plataforma inicializada com sucesso!");
+    console.log("🔐 Sistema de autenticação multi-conta ativo");
+    console.log("📱 Menu de apps em grade 4x4 disponível");
   </script>
 </body>
 </html>

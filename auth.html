@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeHub - Autenticação 2</title>
+  <title>CodeHub - Autenticação Multi-Conta</title>
   <style>
     :root {
       --primary-color: #4361ee;
@@ -24,7 +24,7 @@
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #0b1120 0%, #1a1f35 100%);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -34,12 +34,13 @@
 
     .auth-container {
       width: 100%;
-      max-width: 480px;
-      background-color: white;
-      border-radius: 16px;
+      max-width: 520px;
+      background: rgba(20, 25, 45, 0.95);
+      border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
       animation: fadeIn 0.5s ease-out;
+      border: 1px solid rgba(67, 97, 238, 0.2);
     }
 
     @keyframes fadeIn {
@@ -48,9 +49,9 @@
     }
 
     .auth-header {
-      background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+      background: linear-gradient(135deg, var(--primary-color), #7c3aed);
       color: white;
-      padding: 25px;
+      padding: 30px;
       text-align: center;
     }
 
@@ -65,9 +66,18 @@
       opacity: 0.9;
     }
 
+    .account-indicator {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
     .tabs {
       display: flex;
-      background-color: #f1f3f5;
+      background: rgba(0, 0, 0, 0.3);
     }
 
     .tab {
@@ -76,14 +86,14 @@
       padding: 15px;
       cursor: pointer;
       font-weight: 600;
-      color: var(--gray-color);
+      color: #a0b3c9;
       transition: all 0.3s ease;
       position: relative;
     }
 
     .tab.active {
-      color: var(--primary-color);
-      background-color: white;
+      color: white;
+      background: rgba(67, 97, 238, 0.3);
     }
 
     .tab.active::after {
@@ -93,7 +103,7 @@
       left: 0;
       width: 100%;
       height: 3px;
-      background-color: var(--primary-color);
+      background: var(--primary-color);
     }
 
     .tab-content {
@@ -113,16 +123,18 @@
       display: block;
       margin-bottom: 8px;
       font-weight: 600;
-      color: var(--dark-color);
+      color: #e2e9f0;
       font-size: 14px;
     }
 
     .form-control {
       width: 100%;
       padding: 12px 15px;
-      border: 2px solid #e9ecef;
-      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 2px solid rgba(67, 97, 238, 0.3);
+      border-radius: 10px;
       font-size: 15px;
+      color: white;
       transition: all 0.3s;
     }
 
@@ -130,13 +142,18 @@
       border-color: var(--accent-color);
       outline: none;
       box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .form-control::placeholder {
+      color: #6b7280;
     }
 
     .btn {
       width: 100%;
       padding: 14px;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
@@ -148,30 +165,55 @@
     }
 
     .btn-primary {
-      background-color: var(--primary-color);
+      background: linear-gradient(135deg, var(--primary-color), #7c3aed);
       color: white;
     }
 
     .btn-primary:hover {
-      background-color: var(--secondary-color);
       transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3);
     }
 
     .btn-google {
-      background-color: white;
+      background: white;
       color: var(--dark-color);
       border: 1px solid #dee2e6;
     }
 
     .btn-google:hover {
-      background-color: #f8f9fa;
+      background: #f8f9fa;
+      transform: translateY(-2px);
+    }
+
+    .btn-switch-account {
+      background: rgba(67, 97, 238, 0.2);
+      color: white;
+      border: 1px solid rgba(67, 97, 238, 0.4);
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .btn-switch-account:hover {
+      background: rgba(67, 97, 238, 0.4);
+    }
+
+    .btn-add-account {
+      background: rgba(76, 201, 240, 0.2);
+      color: var(--success-color);
+      border: 1px solid rgba(76, 201, 240, 0.4);
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .btn-add-account:hover {
+      background: rgba(76, 201, 240, 0.4);
     }
 
     .divider {
       display: flex;
       align-items: center;
       margin: 20px 0;
-      color: var(--gray-color);
+      color: #a0b3c9;
       font-size: 14px;
     }
 
@@ -180,7 +222,7 @@
       content: '';
       flex: 1;
       height: 1px;
-      background-color: #e9ecef;
+      background: rgba(255, 255, 255, 0.2);
       margin: 0 10px;
     }
 
@@ -204,20 +246,73 @@
     }
 
     .info-message {
-      background-color: #e7f3ff;
+      background: rgba(67, 97, 238, 0.2);
       border-left: 4px solid var(--accent-color);
       padding: 12px 15px;
       margin: 15px 0;
       border-radius: 6px;
       font-size: 14px;
-      color: var(--dark-color);
+      color: #e2e9f0;
+    }
+
+    .accounts-list {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      padding: 10px;
+      margin: 15px 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .account-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      background: rgba(67, 97, 238, 0.1);
+      border-radius: 8px;
+      margin-bottom: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+      color: white;
+    }
+
+    .account-item:hover {
+      background: rgba(67, 97, 238, 0.3);
+    }
+
+    .account-item.active {
+      background: rgba(67, 97, 238, 0.4);
+      border: 1px solid var(--primary-color);
+    }
+
+    .account-item .account-info {
+      flex: 1;
+    }
+
+    .account-item .account-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .account-item .account-email {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    .account-item .account-badge {
+      background: var(--primary-color);
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      color: white;
     }
 
     .footer-text {
       text-align: center;
       margin-top: 20px;
       font-size: 14px;
-      color: var(--gray-color);
+      color: #a0b3c9;
     }
 
     .footer-text a {
@@ -238,7 +333,7 @@
     }
 
     .home-btn {
-      background-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
       color: white;
       border: none;
       padding: 8px 16px;
@@ -249,24 +344,11 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      backdrop-filter: blur(10px);
     }
 
     .home-btn:hover {
-      background-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .token-info {
-      background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
-      border-radius: 8px;
-      padding: 12px;
-      margin: 15px 0;
-      font-size: 12px;
-      word-break: break-all;
-      border: 1px solid var(--primary-color);
-    }
-
-    .token-info strong {
-      color: var(--primary-color);
+      background: rgba(255, 255, 255, 0.2);
     }
 
     .user-type-selector {
@@ -274,23 +356,24 @@
       gap: 15px;
       margin-bottom: 20px;
       padding: 10px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
     }
 
     .user-type-option {
       flex: 1;
       text-align: center;
       padding: 10px;
-      border: 2px solid #e9ecef;
+      border: 2px solid rgba(67, 97, 238, 0.3);
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
+      color: white;
     }
 
     .user-type-option.selected {
       border-color: var(--primary-color);
-      background-color: rgba(67, 97, 238, 0.1);
+      background: rgba(67, 97, 238, 0.3);
     }
 
     .user-type-option:hover {
@@ -321,23 +404,26 @@
       }
     }
 
-    .cnpj-field {
-      margin-top: 15px;
+    .device-info {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 11px;
+      color: #a0b3c9;
+      text-align: center;
     }
 
     @media (max-width: 480px) {
       .auth-container {
         border-radius: 12px;
       }
-
       .auth-header {
         padding: 20px;
       }
-
       .tab-content {
         padding: 20px;
       }
-
       .header-actions {
         top: 10px;
         right: 10px;
@@ -358,17 +444,19 @@
   <div class="auth-container">
     <div class="auth-header">
       <h1>Bem-vindo ao CodeHub</h1>
-      <p>Seu editor de código online favorito</p>
+      <p>Autenticação Multi-Conta</p>
+      <div class="account-indicator" id="accountCount">
+        👤 Contas neste dispositivo: <span id="accountCountNumber">0</span>/5
+      </div>
     </div>
 
-    <div id="token-display" class="token-info" style="display: none;">
-      <strong>🔐 Token de Autenticação:</strong><br>
-      <span id="token-value"></span>
+    <div id="accounts-list" class="accounts-list" style="display: none;">
+      <div style="color: white; font-weight: 600; margin-bottom: 10px;">📱 Contas Salvas:</div>
+      <div id="accounts-container"></div>
     </div>
 
     <div id="no-token-info" class="info-message" style="display: none;">
-      <strong>Modo Direto:</strong> Você acessou diretamente a página de login. 
-      Após o login, um token único será gerado e salvo permanentemente.
+      <strong>🔐 Modo Seguro:</strong> Até 5 contas podem ser salvas neste dispositivo.
     </div>
 
     <div class="tabs">
@@ -390,7 +478,6 @@
           <div id="login-password-error" class="error-message"></div>
         </div>
 
-        <!-- Campo CNPJ para empreendedor (aparece apenas se o usuário for do tipo empreendedor) -->
         <div id="login-cnpj-group" class="form-group" style="display: none;">
           <label for="login-cnpj">CNPJ da Empresa</label>
           <input type="text" id="login-cnpj" class="form-control" placeholder="00.000.000/0000-00">
@@ -416,6 +503,10 @@
           Continuar com Google
         </button>
 
+        <button type="button" class="btn btn-add-account" onclick="addNewAccount()" id="addAccountBtn" style="display: none;">
+          ➕ Adicionar Nova Conta
+        </button>
+
         <div class="footer-text">
           Não tem uma conta? <a href="#" onclick="switchTab('register'); return false;">Cadastre-se</a>
         </div>
@@ -425,7 +516,6 @@
 
     <div id="register-tab" class="tab-content">
       <form id="register-form">
-        <!-- Seleção de tipo de usuário -->
         <div class="form-group">
           <label>Tipo de Conta</label>
           <div class="user-type-selector">
@@ -464,7 +554,6 @@
           <div id="register-confirm-error" class="error-message"></div>
         </div>
 
-        <!-- Campos específicos para empreendedor -->
         <div id="company-fields" class="company-fields">
           <div class="form-group">
             <label for="register-company-name">Nome da Empresa</label>
@@ -492,6 +581,8 @@
         <div id="register-success" class="success-message"></div>
       </form>
     </div>
+
+    <div class="device-info" id="deviceInfo"></div>
   </div>
 
   <script type="module">
@@ -501,9 +592,10 @@
       createUserWithEmailAndPassword, 
       signInWithEmailAndPassword, 
       GoogleAuthProvider, 
-      signInWithPopup 
+      signInWithPopup,
+      signOut
     } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+    import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -521,24 +613,143 @@
     const database = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
-    // Variável global para armazenar o tipo de usuário selecionado
     let selectedUserType = 'normal';
+    const MAX_ACCOUNTS = 5;
 
-    // Função para selecionar tipo de usuário
+    // Gerar ID único do dispositivo
+    function generateDeviceId() {
+      let deviceId = localStorage.getItem('codehub_deviceId');
+      if (!deviceId) {
+        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('codehub_deviceId', deviceId);
+      }
+      return deviceId;
+    }
+
+    const deviceId = generateDeviceId();
+
+    // Mostrar info do dispositivo
+    document.getElementById('deviceInfo').innerHTML = `
+      📱 Dispositivo: ${deviceId.substring(0, 20)}...<br>
+      🌐 Navegador: ${navigator.userAgent.substring(0, 50)}...
+    `;
+
+    // Gerar userKey único
+    function generateUserKey(uid) {
+      return `${uid}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    }
+
+    // Salvar conta no dispositivo (máximo 5)
+    async function saveAccountToDevice(userData) {
+      const deviceAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+      
+      // Verificar se já existe
+      const existingIndex = deviceAccounts.findIndex(acc => acc.uid === userData.uid);
+      
+      if (existingIndex >= 0) {
+        // Atualizar conta existente
+        deviceAccounts[existingIndex] = { ...deviceAccounts[existingIndex], ...userData, lastLogin: Date.now() };
+      } else {
+        // Verificar limite
+        if (deviceAccounts.length >= MAX_ACCOUNTS) {
+          throw new Error('Limite de 5 contas por dispositivo atingido!');
+        }
+        deviceAccounts.push({ ...userData, addedAt: Date.now(), lastLogin: Date.now() });
+      }
+      
+      localStorage.setItem('codehub_deviceAccounts', JSON.stringify(deviceAccounts));
+      
+      // Salvar no Firebase também
+      await set(ref(database, `devices/${deviceId}/accounts/${userData.uid}`), {
+        ...userData,
+        lastAccess: Date.now(),
+        deviceInfo: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language
+        }
+      });
+      
+      return deviceAccounts;
+    }
+
+    // Carregar contas do dispositivo
+    function loadDeviceAccounts() {
+      const accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+      const accountsList = document.getElementById('accounts-list');
+      const accountsContainer = document.getElementById('accounts-container');
+      const accountCountNumber = document.getElementById('accountCountNumber');
+      const addAccountBtn = document.getElementById('addAccountBtn');
+      
+      accountCountNumber.textContent = accounts.length;
+      
+      if (accounts.length > 0) {
+        accountsList.style.display = 'block';
+        accountsContainer.innerHTML = '';
+        
+        accounts.forEach(account => {
+          const accountElement = document.createElement('div');
+          accountElement.className = 'account-item';
+          accountElement.innerHTML = `
+            <div class="account-info">
+              <div class="account-name">${account.username || account.email}</div>
+              <div class="account-email">${account.email}</div>
+            </div>
+            <div class="account-badge">${account.userType === 'entrepreneur' ? '🏢' : '👤'}</div>
+          `;
+          accountElement.onclick = () => switchToAccount(account);
+          accountsContainer.appendChild(accountElement);
+        });
+        
+        if (accounts.length < MAX_ACCOUNTS) {
+          addAccountBtn.style.display = 'block';
+        }
+      }
+    }
+
+    // Trocar para uma conta existente
+    async function switchToAccount(account) {
+      try {
+        // Fazer login automático com token salvo
+        const userKey = account.userKey;
+        if (userKey) {
+          const userKeyRef = ref(database, `userKeysData/${userKey}`);
+          const snapshot = await get(userKeyRef);
+          
+          if (snapshot.exists()) {
+            const keyData = snapshot.val();
+            localStorage.setItem('auth_token', keyData.authToken);
+            localStorage.setItem('token_user_id', account.uid);
+            
+            showSuccess('login', `✅ Alternado para conta: ${account.username || account.email}`);
+            setTimeout(() => {
+              window.location.href = 'index.html';
+            }, 1000);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao trocar conta:', error);
+      }
+    }
+
+    // Adicionar nova conta
+    window.addNewAccount = function() {
+      document.getElementById('accounts-list').style.display = 'none';
+      document.getElementById('addAccountBtn').style.display = 'none';
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-password').value = '';
+    };
+
     window.selectUserType = function(type) {
       selectedUserType = type;
-      
-      // Atualizar UI dos seletores
       document.querySelectorAll('.user-type-option').forEach(opt => {
         opt.classList.remove('selected');
       });
       document.querySelector(`.user-type-option[data-type="${type}"]`).classList.add('selected');
       
-      // Mostrar/esconder campos de empresa
       const companyFields = document.getElementById('company-fields');
       if (type === 'entrepreneur') {
         companyFields.classList.add('show');
-        // Tornar campos obrigatórios
         document.getElementById('register-company-name').required = true;
         document.getElementById('register-cnpj').required = true;
       } else {
@@ -548,11 +759,9 @@
       }
     };
 
-    // Formatar CNPJ
     window.formatCNPJ = function(input) {
       let value = input.value.replace(/\D/g, '');
       if (value.length > 14) value = value.slice(0, 14);
-      
       if (value.length > 12) {
         value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
       } else if (value.length > 8) {
@@ -561,23 +770,16 @@
         value = value.replace(/^(\d{2})(\d{3})(\d{3})$/, '$1.$2.$3');
       } else if (value.length > 2) {
         value = value.replace(/^(\d{2})(\d{3})$/, '$1.$2');
-      } else if (value.length > 0) {
-        value = value.replace(/^(\d{2})$/, '$1');
       }
-      
       input.value = value;
       return value;
     };
 
-    // Validar CNPJ
     function validateCNPJ(cnpj) {
       cnpj = cnpj.replace(/\D/g, '');
       if (cnpj.length !== 14) return false;
-      
-      // Verificar dígitos repetidos
       if (/^(\d)\1+$/.test(cnpj)) return false;
       
-      // Calcular primeiro dígito verificador
       let sum = 0;
       let weight = 5;
       for (let i = 0; i < 12; i++) {
@@ -588,7 +790,6 @@
       digit = digit >= 10 ? 0 : digit;
       if (digit !== parseInt(cnpj.charAt(12))) return false;
       
-      // Calcular segundo dígito verificador
       sum = 0;
       weight = 6;
       for (let i = 0; i < 13; i++) {
@@ -602,11 +803,6 @@
       return true;
     }
 
-    // Pega token da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const appToken = urlParams.get('token');
-
-    // ==================== SISTEMA DE TOKEN ====================
     function generateAuthToken(userId, userEmail, username, userType, companyData = null) {
       const tokenData = {
         uid: userId,
@@ -619,153 +815,25 @@
         version: "1.0",
         isPermanent: true
       };
-      
-      const jsonString = JSON.stringify(tokenData);
-      const base64Token = btoa(unescape(encodeURIComponent(jsonString)));
-      
-      return base64Token;
-    }
-
-    function decodeToken(token) {
-      try {
-        const jsonString = decodeURIComponent(escape(atob(token)));
-        return JSON.parse(jsonString);
-      } catch (error) {
-        console.error("Erro ao decodificar token:", error);
-        return null;
-      }
-    }
-
-    async function saveTokenToFirebase(userId, token, userInfo) {
-      try {
-        await set(ref(database, `tokens/${userId}`), {
-          token: token,
-          userInfo: userInfo,
-          createdAt: Date.now(),
-          isPermanent: true,
-          lastUsed: Date.now()
-        });
-        
-        localStorage.setItem('auth_token', token);
-        localStorage.setItem('token_user_id', userId);
-        localStorage.setItem('token_data', JSON.stringify(userInfo));
-        
-        console.log("✅ Token salvo com sucesso no Firebase e localStorage");
-        return true;
-      } catch (error) {
-        console.error("❌ Erro ao salvar token:", error);
-        return false;
-      }
-    }
-
-    async function getUserExistingToken(userId) {
-      try {
-        const tokenRef = ref(database, `tokens/${userId}`);
-        const snapshot = await get(tokenRef);
-        
-        if (snapshot.exists()) {
-          const tokenData = snapshot.val();
-          if (tokenData.isPermanent === true) {
-            return tokenData.token;
-          }
-        }
-        return null;
-      } catch (error) {
-        console.error("Erro ao buscar token existente:", error);
-        return null;
-      }
-    }
-
-    async function manageUserToken(user, username, userType, companyData = null) {
-      const userId = user.uid;
-      const userEmail = user.email;
-      const displayName = username || user.displayName || userEmail.split('@')[0];
-      
-      let existingToken = await getUserExistingToken(userId);
-      
-      if (existingToken) {
-        console.log("🔑 Token existente encontrado (permanente)");
-        localStorage.setItem('auth_token', existingToken);
-        localStorage.setItem('token_user_id', userId);
-        displayTokenInfo(existingToken);
-        return existingToken;
-      } else {
-        console.log("✨ Gerando novo token permanente para o usuário");
-        
-        const newToken = generateAuthToken(userId, userEmail, displayName, userType, companyData);
-        const tokenInfo = decodeToken(newToken);
-        
-        await saveTokenToFirebase(userId, newToken, tokenInfo);
-        displayTokenInfo(newToken);
-        
-        return newToken;
-      }
-    }
-
-    function displayTokenInfo(token) {
-      const tokenDisplay = document.getElementById('token-display');
-      const tokenValueSpan = document.getElementById('token-value');
-      
-      if (token && tokenDisplay) {
-        const decoded = decodeToken(token);
-        if (decoded) {
-          tokenValueSpan.innerHTML = `
-            <span style="font-family: monospace; font-size: 11px;">${token.substring(0, 80)}...</span><br>
-            <small style="opacity: 0.8;">👤 Usuário: ${decoded.username} | 📧 ${decoded.email}</small><br>
-            <small style="opacity: 0.8;">🏷️ Tipo: ${decoded.userType === 'entrepreneur' ? 'Empreendedor' : 'Usuário Normal'}</small><br>
-            <small style="opacity: 0.8;">🔒 Token Permanente | Criado em: ${new Date(decoded.createdAt).toLocaleString()}</small>
-          `;
-          tokenDisplay.style.display = 'block';
-        }
-      }
-    }
-
-    function checkLocalToken() {
-      const localToken = localStorage.getItem('auth_token');
-      if (localToken) {
-        displayTokenInfo(localToken);
-      }
+      return btoa(unescape(encodeURIComponent(JSON.stringify(tokenData))));
     }
 
     window.goToIndex = function() {
       window.location.href = 'index.html';
     };
 
-    if (!appToken) {
-      const infoElement = document.getElementById('no-token-info');
-      if (infoElement) infoElement.style.display = 'block';
-    }
-
-    function redirectAfterAuth() {
-      if (appToken) {
-        setTimeout(() => {
-          window.location.href = `API/continuar-conta.html?token=${appToken}`;
-        }, 1500);
-      } else {
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 1500);
-      }
-    }
-
     window.switchTab = (tabId) => {
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
+      
       const tabButton = document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`);
       if (tabButton) tabButton.classList.add('active');
       
       const tabContent = document.getElementById(`${tabId}-tab`);
       if (tabContent) tabContent.classList.add('active');
-
+      
       document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
       document.querySelectorAll('.success-message').forEach(el => el.textContent = '');
-      
-      // Limpar campo CNPJ do login ao mudar de aba
-      if (tabId === 'login') {
-        document.getElementById('login-cnpj').value = '';
-        document.getElementById('login-cnpj-group').style.display = 'none';
-      }
     };
 
     function showError(fieldId, message) {
@@ -790,7 +858,7 @@
 
     window.register = async () => {
       clearErrors();
-
+      
       const username = document.getElementById('register-username').value.trim();
       const email = document.getElementById('register-email').value.trim();
       const password = document.getElementById('register-password').value;
@@ -799,7 +867,7 @@
       
       let companyName = '';
       let cnpj = '';
-
+      
       if (userType === 'entrepreneur') {
         companyName = document.getElementById('register-company-name').value.trim();
         cnpj = document.getElementById('register-cnpj').value.trim();
@@ -808,84 +876,116 @@
           showError('register-company', 'Nome da empresa é obrigatório');
           return;
         }
-        
         if (!cnpj) {
           showError('register-cnpj', 'CNPJ é obrigatório');
           return;
         }
-        
         if (!validateCNPJ(cnpj)) {
           showError('register-cnpj', 'CNPJ inválido');
           return;
         }
       }
-
+      
       if (!username) {
         showError('register-username', 'Nome de usuário é obrigatório');
         return;
       }
-
       if (!email) {
         showError('register-email', 'Email é obrigatório');
         return;
       }
-
       if (!password) {
         showError('register-password', 'Senha é obrigatória');
         return;
       }
-
       if (password.length < 6) {
         showError('register-password', 'A senha deve ter pelo menos 6 caracteres');
         return;
       }
-
       if (password !== confirmPassword) {
         showError('register-confirm', 'As senhas não coincidem');
         return;
       }
-
+      
       try {
+        // Verificar limite de contas
+        const deviceAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+        if (deviceAccounts.length >= MAX_ACCOUNTS) {
+          showError('register-email', 'Limite de 5 contas por dispositivo atingido!');
+          return;
+        }
+        
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-
+        
+        const userKey = generateUserKey(user.uid);
+        const authToken = generateAuthToken(user.uid, email, username, userType, userType === 'entrepreneur' ? { companyName, cnpj } : null);
+        
         const userData = {
           username: username,
           email: email,
           userType: userType,
+          userKey: userKey,
+          uid: user.uid,
           createdAt: Date.now(),
           lastLogin: Date.now(),
           hasToken: true
         };
-
+        
         if (userType === 'entrepreneur') {
           userData.companyName = companyName;
           userData.cnpj = cnpj.replace(/\D/g, '');
-          userData.formattedCNPJ = cnpj;
         }
-
+        
+        // Salvar dados do usuário
         await set(ref(database, 'users/' + user.uid), userData);
+        
+        // Salvar userKey data
+        await set(ref(database, `userKeysData/${userKey}`), {
+          authToken: authToken,
+          authTokenDecoded: {
+            createdAt: Date.now(),
+            email: email,
+            isPermanent: true,
+            uid: user.uid,
+            userType: userType,
+            username: username,
+            version: "1.0"
+          },
+          criadoEm: Date.now(),
+          email: email,
+          hasAuthToken: true,
+          isAnonymous: false,
+          nome: username,
+          uid: user.uid
+        });
         
         if (userType === 'entrepreneur') {
           await set(ref(database, 'entrepreneurs/' + user.uid), {
             companyName: companyName,
             cnpj: cnpj.replace(/\D/g, ''),
-            formattedCNPJ: cnpj,
             ownerId: user.uid,
             ownerEmail: email,
-            ownerUsername: username,
             createdAt: Date.now()
           });
         }
-
-        const authToken = await manageUserToken(user, username, userType, userType === 'entrepreneur' ? { companyName, cnpj } : null);
         
-        showSuccess('register', `✅ Conta de ${userType === 'entrepreneur' ? 'Empreendedor' : 'Usuário Normal'} criada com sucesso! Token gerado. Redirecionando...`);
-        redirectAfterAuth();
-
+        // Salvar no dispositivo
+        await saveAccountToDevice(userData);
+        
+        // Salvar token local
+        localStorage.setItem('auth_token', authToken);
+        localStorage.setItem('token_user_id', user.uid);
+        
+        loadDeviceAccounts();
+        showSuccess('register', `✅ Conta criada com sucesso! Redirecionando...`);
+        
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1500);
+        
       } catch (error) {
         console.error('Erro no registro:', error);
-
         switch(error.code) {
           case 'auth/email-already-in-use':
             showError('register-email', 'Este email já está em uso');
@@ -904,24 +1004,23 @@
 
     window.login = async () => {
       clearErrors();
-
+      
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
-
+      
       if (!email) {
         showError('login-email', 'Email é obrigatório');
         return;
       }
-
       if (!password) {
         showError('login-password', 'Senha é obrigatória');
         return;
       }
-
+      
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-
+        
         const userRef = ref(database, 'users/' + user.uid);
         const userSnapshot = await get(userRef);
         
@@ -929,15 +1028,13 @@
           showError('login-email', 'Dados do usuário não encontrados');
           return;
         }
-
+        
         const userData = userSnapshot.val();
         const username = userData.username || email.split('@')[0];
         const userType = userData.userType || 'normal';
-
-        // Se for empreendedor, verificar CNPJ
+        
         if (userType === 'entrepreneur') {
           const cnpjInput = document.getElementById('login-cnpj').value.trim();
-          
           if (!cnpjInput) {
             document.getElementById('login-cnpj-group').style.display = 'block';
             showError('login-cnpj', 'Por favor, informe o CNPJ da sua empresa');
@@ -952,17 +1049,58 @@
             return;
           }
         }
-
-        await set(ref(database, 'users/' + user.uid + '/lastLogin'), Date.now());
-
-        const authToken = await manageUserToken(user, username, userType, userType === 'entrepreneur' ? { companyName: userData.companyName, cnpj: userData.cnpj } : null);
-
+        
+        // Gerar novo userKey se não existir
+        let userKey = userData.userKey;
+        if (!userKey) {
+          userKey = generateUserKey(user.uid);
+          await update(ref(database, 'users/' + user.uid), { userKey: userKey });
+        }
+        
+        const authToken = generateAuthToken(user.uid, email, username, userType, userType === 'entrepreneur' ? { companyName: userData.companyName, cnpj: userData.cnpj } : null);
+        
+        // Atualizar userKey data
+        await set(ref(database, `userKeysData/${userKey}`), {
+          authToken: authToken,
+          authTokenDecoded: {
+            createdAt: Date.now(),
+            email: email,
+            isPermanent: true,
+            uid: user.uid,
+            userType: userType,
+            username: username,
+            version: "1.0"
+          },
+          criadoEm: Date.now(),
+          email: email,
+          hasAuthToken: true,
+          isAnonymous: false,
+          nome: username,
+          uid: user.uid
+        });
+        
+        await update(ref(database, 'users/' + user.uid), { lastLogin: Date.now() });
+        
+        // Salvar no dispositivo
+        const accountData = {
+          ...userData,
+          userKey: userKey,
+          lastLogin: Date.now()
+        };
+        await saveAccountToDevice(accountData);
+        
+        localStorage.setItem('auth_token', authToken);
+        localStorage.setItem('token_user_id', user.uid);
+        
+        loadDeviceAccounts();
         showSuccess('login', `✅ Login realizado! Redirecionando...`);
-        redirectAfterAuth();
-
+        
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1500);
+        
       } catch (error) {
         console.error('Erro no login:', error);
-
         switch(error.code) {
           case 'auth/user-not-found':
             showError('login-email', 'Usuário não encontrado');
@@ -981,41 +1119,92 @@
 
     window.loginWithGoogle = async () => {
       try {
+        const deviceAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+        if (deviceAccounts.length >= MAX_ACCOUNTS) {
+          showError('login-email', 'Limite de 5 contas por dispositivo atingido!');
+          return;
+        }
+        
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         const username = user.displayName || user.email.split('@')[0];
-
+        
         const userRef = ref(database, 'users/' + user.uid);
         const userSnapshot = await get(userRef);
         
         let userType = 'normal';
+        let userKey;
         
         if (!userSnapshot.exists()) {
+          userKey = generateUserKey(user.uid);
           userType = 'normal';
-          await set(ref(database, 'users/' + user.uid), {
+          
+          const userData = {
             username: username,
             email: user.email,
             userType: 'normal',
+            userKey: userKey,
+            uid: user.uid,
             createdAt: Date.now(),
             lastLogin: Date.now(),
             provider: 'google',
             hasToken: true
-          });
+          };
+          
+          await set(ref(database, 'users/' + user.uid), userData);
+          await saveAccountToDevice(userData);
         } else {
           userType = userSnapshot.val().userType || 'normal';
+          userKey = userSnapshot.val().userKey || generateUserKey(user.uid);
+          
+          const accountData = {
+            ...userSnapshot.val(),
+            userKey: userKey,
+            lastLogin: Date.now()
+          };
+          await saveAccountToDevice(accountData);
         }
-
-        const authToken = await manageUserToken(user, username, userType, null);
-
+        
+        const authToken = generateAuthToken(user.uid, user.email, username, userType, null);
+        
+        await set(ref(database, `userKeysData/${userKey}`), {
+          authToken: authToken,
+          authTokenDecoded: {
+            createdAt: Date.now(),
+            email: user.email,
+            isPermanent: true,
+            uid: user.uid,
+            userType: userType,
+            username: username,
+            version: "1.0"
+          },
+          criadoEm: Date.now(),
+          email: user.email,
+          hasAuthToken: true,
+          isAnonymous: false,
+          nome: username,
+          uid: user.uid
+        });
+        
+        localStorage.setItem('auth_token', authToken);
+        localStorage.setItem('token_user_id', user.uid);
+        
+        loadDeviceAccounts();
         showSuccess('login', `✅ Login com Google realizado! Redirecionando...`);
-        redirectAfterAuth();
-
+        
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1500);
+        
       } catch (error) {
         console.error('Erro no login com Google:', error);
         showError('login-email', 'Erro ao fazer login com Google');
       }
     };
 
+    // Inicializar
+    loadDeviceAccounts();
+    
     auth.onAuthStateChanged(async (user) => {
       if (user) {
         const userRef = ref(database, 'users/' + user.uid);
@@ -1023,31 +1212,12 @@
         
         if (userSnapshot.exists()) {
           const userData = userSnapshot.val();
-          const username = userData.username || user.displayName || user.email.split('@')[0];
-          const userType = userData.userType || 'normal';
-          
-          await manageUserToken(user, username, userType, userType === 'entrepreneur' ? { companyName: userData.companyName, cnpj: userData.cnpj } : null);
-          
-          if (appToken) {
-            showSuccess('login', '✅ Você já está logado! Redirecionando...');
-            setTimeout(() => {
-              window.location.href = `API/v2/continuar-conta.html?token=${appToken}`;
-            }, 1000);
-          } else {
-            showSuccess('login', '✅ Você já está logado! Redirecionando...');
-            setTimeout(() => {
-              window.location.href = 'index.html';
-            }, 1000);
-          }
+          showSuccess('login', '✅ Você já está logado! Redirecionando...');
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1000);
         }
       }
-    });
-
-    checkLocalToken();
-    
-    // Adicionar evento de tecla ENTER no campo CNPJ do login
-    document.getElementById('login-cnpj')?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') login();
     });
   </script>
 </body>
