@@ -1,15 +1,5 @@
 const { useState, useEffect, useRef } = React;
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-  authDomain: "html-15e80.firebaseapp.com",
-  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-  projectId: "html-15e80",
-  storageBucket: "html-15e80.firebasestorage.app",
-  messagingSenderId: "1068148640439",
-  appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
-};
-
 const MAX_ACCOUNTS = 5;
 
 const apps = [
@@ -45,18 +35,38 @@ function AppMenu() {
   const [loading, setLoading] = useState(true);
   
   const panelRef = useRef(null);
+  const dbRef = useRef(null);
 
+  // Inicializar Firebase
   useEffect(() => {
-    init();
+    async function initFirebase() {
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js');
+      const { getDatabase } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
+      
+      const app = initializeApp({
+        apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+        authDomain: "html-15e80.firebaseapp.com",
+        databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+        projectId: "html-15e80",
+        storageBucket: "html-15e80.firebasestorage.app",
+        messagingSenderId: "1068148640439",
+        appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
+      });
+      
+      dbRef.current = getDatabase(app);
+      await init();
+    }
+    
+    initFirebase();
     
     document.addEventListener('mousedown', (e) => {
       if (panelRef.current && !panelRef.current.contains(e.target)) setShowPanel(false);
     });
     
-    const interval = setInterval(() => {
-      if (masterKey) loadAccounts();
-      if (userKey || localStorage.getItem('current_userKey')) loadCurrentUser();
-    }, 1000);
+    const interval = setInterval(async () => {
+      if (masterKey) await loadAccounts();
+      if (userKey || localStorage.getItem('current_userKey')) await loadCurrentUser();
+    }, 3000);
     
     return () => clearInterval(interval);
   }, [masterKey, userKey]);
@@ -83,22 +93,20 @@ function AppMenu() {
 
   async function loadAccounts(mk) {
     const key = mk || masterKey;
-    if (!key) return;
+    if (!key || !dbRef.current) return;
     
     try {
-      const { getDatabase, ref, get } = await import('firebase/database');
-      const db = getDatabase();
-      const snap = await get(ref(db, `contas/${key}`));
+      const { ref, get } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
+      const snap = await get(ref(dbRef.current, `contas/${key}`));
       
       if (snap.exists()) {
         const data = snap.val();
-        const list = Object.values(data);
-        setAccounts(list);
+        setAccounts(Object.values(data));
       } else {
         setAccounts([]);
       }
     } catch(e) {
-      console.error('Erro ao carregar contas:', e);
+      console.error('Erro:', e);
     }
   }
 
@@ -109,12 +117,11 @@ function AppMenu() {
   }
 
   async function loadUserData(key) {
-    if (!key) return;
+    if (!key || !dbRef.current) return;
     
     try {
-      const { getDatabase, ref, get } = await import('firebase/database');
-      const db = getDatabase();
-      const snap = await get(ref(db, `userKeysData/${key}`));
+      const { ref, get } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
+      const snap = await get(ref(dbRef.current, `userKeysData/${key}`));
       
       if (snap.exists()) {
         const data = snap.val();
@@ -131,23 +138,22 @@ function AppMenu() {
         }
       }
     } catch(e) {
-      console.error('Erro ao carregar:', e);
+      console.error('Erro:', e);
     }
   }
 
   async function removeAccount(uid) {
-    if (!masterKey) return;
+    if (!masterKey || !dbRef.current) return;
     if (!confirm('Remover esta conta? (Afeta todos os dispositivos)')) return;
     
     try {
-      const { getDatabase, ref, get, set } = await import('firebase/database');
-      const db = getDatabase();
-      const snap = await get(ref(db, `contas/${masterKey}`));
+      const { ref, get, set } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
+      const snap = await get(ref(dbRef.current, `contas/${masterKey}`));
       
       if (snap.exists()) {
         const contas = snap.val();
         delete contas[uid];
-        await set(ref(db, `contas/${masterKey}`), contas);
+        await set(ref(dbRef.current, `contas/${masterKey}`), contas);
         setAccounts(Object.values(contas));
       }
       
@@ -248,7 +254,6 @@ function AppMenu() {
       ref: panelRef,
       style: { position:'fixed',top:0,right:0,width:340,height:'100%',background:'rgba(20,25,45,0.98)',backdropFilter:'blur(20px)',zIndex:10001,boxShadow:'-10px 0 30px rgba(0,0,0,0.5)',borderLeft:'1px solid rgba(67,97,238,0.3)',overflowY:'auto',padding:20,animation:'slideRight 0.3s' }
     },
-      // Cabeçalho
       React.createElement('div', {
         style: { display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,paddingBottom:15,borderBottom:'1px solid rgba(255,255,255,0.1)' }
       },
@@ -259,19 +264,16 @@ function AppMenu() {
         }, '✕')
       ),
 
-      // Status
       isAuth && userData ? React.createElement('div', {
         style: { background:'rgba(67,97,238,0.2)',borderRadius:10,padding:12,marginBottom:15,color:'#fff',textAlign:'center' }
       },
         React.createElement('div', { style:{ fontWeight:600 } }, '✅ ' + (userData.username || userData.email))
       ) : null,
 
-      // Título da lista
       React.createElement('div', { style:{ color:'#fff',fontSize:13,fontWeight:600,marginBottom:10 } },
         '📋 Contas (' + accounts.length + '/' + MAX_ACCOUNTS + ')'
       ),
 
-      // Lista de contas
       accounts.length === 0 ?
         React.createElement('div', { style:{ color:'#a0b3c9',textAlign:'center',padding:30 } },
           React.createElement('div', { style:{ fontSize:40,marginBottom:10 } }, '☁️'),
@@ -301,7 +303,6 @@ function AppMenu() {
           )
         ),
 
-      // Botão Adicionar
       accounts.length < MAX_ACCOUNTS ?
         React.createElement('button', {
           onClick: () => window.location.href = 'auth.html',
@@ -309,7 +310,6 @@ function AppMenu() {
         }, '➕ Adicionar Conta')
       : null,
 
-      // Botão Sair
       isAuth ?
         React.createElement('button', {
           onClick: handleLogout,
@@ -317,7 +317,6 @@ function AppMenu() {
         }, '🚪 Sair')
       : null,
 
-      // Info rodapé
       React.createElement('div', {
         style: { color:'#a0b3c9',fontSize:10,textAlign:'center',marginTop:15,background:'rgba(0,0,0,0.2)',padding:10,borderRadius:8 }
       },
