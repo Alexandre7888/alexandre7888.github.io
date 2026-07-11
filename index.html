@@ -22,6 +22,13 @@
     gtag('config', 'G-7RYPMEN60E');
   </script>
 
+  <!-- React e ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel para JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <!-- Scripts Externos -->
   <script src="https://alexandre7888.github.io/protecao.js"></script>
   <script src="https://alexandre7888.github.io/Botao/floating-menu.js"></script>
@@ -35,6 +42,385 @@
       transition: background-color 0.25s ease, border-color 0.2s ease, color 0.2s ease;
     }
 
+    :root {
+      --bg-gradient-start: #0b1120;
+      --bg-gradient-end: #03060c;
+      --card-bg: rgba(10, 15, 26, 0.75);
+      --canvas-bg: #11161f;
+      --canvas-border-dark: #2a3a4a;
+      --canvas-inner: #0a0f14;
+      --text-primary: #e2e9f0;
+      --text-secondary: #a0b3c9;
+      --accent-gold: #e6b422;
+      --accent-glow: #ffaa44;
+      --white-area-bg: #f5f7fc;
+      --white-area-text: #1e293b;
+      --toggle-bg: #1e2a3a;
+      --toggle-border: #3e5a77;
+      --shadow-color: rgba(0,0,0,0.5);
+    }
+
+    body.light {
+      --bg-gradient-start: #e2e8f0;
+      --bg-gradient-end: #cbd5e1;
+      --card-bg: rgba(240, 246, 255, 0.85);
+      --canvas-bg: #f0f4fa;
+      --canvas-border-dark: #9aaebf;
+      --canvas-inner: #dce5ef;
+      --text-primary: #0f172a;
+      --text-secondary: #2c3e4e;
+      --accent-gold: #b45309;
+      --accent-glow: #e67e22;
+      --white-area-bg: #ffffff;
+      --white-area-text: #0f172a;
+      --toggle-bg: #dce5f0;
+      --toggle-border: #8ba0bc;
+      --shadow-color: rgba(0,0,0,0.1);
+    }
+
+    body {
+      background: radial-gradient(circle at 30% 20%, var(--bg-gradient-start), var(--bg-gradient-end));
+      font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .main-layout {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 24px 24px 24px;
+    }
+
+    .content-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 80px;
+      margin-bottom: 30px;
+    }
+
+    /* Mini relógio */
+    .mini-clock-corner {
+      position: fixed;
+      top: 18px;
+      right: 20px;
+      z-index: 1100;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      border-radius: 60px;
+      padding: 6px;
+      box-shadow: 0 6px 16px var(--shadow-color);
+      border: 1px solid var(--canvas-border-dark);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .mini-clock-corner:hover {
+      transform: scale(1.02);
+    }
+    
+    canvas.mini-canvas {
+      display: block;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: var(--canvas-bg);
+    }
+
+    /* Painel de temas */
+    .theme-panel {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1050;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border-radius: 48px;
+      padding: 6px 12px;
+      display: flex;
+      gap: 8px;
+      border: 1px solid var(--canvas-border-dark);
+      box-shadow: 0 8px 20px var(--shadow-color);
+    }
+    
+    .theme-btn {
+      background: var(--toggle-bg);
+      border: none;
+      border-radius: 40px;
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      font-family: inherit;
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--toggle-border);
+    }
+    
+    .theme-btn.active {
+      background: var(--accent-gold);
+      color: #0a0f14;
+      box-shadow: 0 0 8px rgba(230, 180, 34, 0.4);
+      border-color: var(--accent-glow);
+    }
+    
+    .theme-btn:hover:not(.active) {
+      background: var(--canvas-border-dark);
+      transform: translateY(-1px);
+    }
+
+    /* Área branca */
+    .white-area {
+      width: 100%;
+      max-width: 780px;
+      margin: 20px auto 30px auto;
+      background: var(--white-area-bg);
+      border-radius: 32px;
+      padding: 28px 24px;
+      box-shadow: 0 20px 35px -10px var(--shadow-color);
+      border: 1px solid rgba(255,255,245,0.2);
+      text-align: center;
+    }
+    
+    .white-area h3 {
+      color: var(--white-area-text);
+      font-weight: 600;
+      font-size: 1.4rem;
+      margin-bottom: 12px;
+    }
+    
+    .white-area p {
+      color: var(--white-area-text);
+      opacity: 0.75;
+      font-size: 1rem;
+    }
+    
+    .white-placeholder {
+      background: rgba(0,0,0,0.03);
+      border-radius: 24px;
+      padding: 24px;
+      margin-top: 16px;
+      color: var(--white-area-text);
+    }
+
+    .welcome-message {
+      text-align: center;
+      color: var(--text-primary);
+      font-size: 1.2rem;
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      padding: 15px 30px;
+      border-radius: 60px;
+      border: 1px solid var(--canvas-border-dark);
+      display: inline-block;
+      font-weight: 500;
+    }
+
+    @media (max-width: 550px) {
+      .theme-btn span:first-child { display: none; }
+      .theme-btn { padding: 6px 12px; font-size: 0.75rem; }
+      .mini-canvas { width: 55px !important; height: 55px !important; }
+    }
+  </style>
+</head>
+<body class="dark">
+  <!-- Container React -->
+  <div id="app-menu-root"></div>
+
+  <!-- Mini relógio -->
+  <div class="mini-clock-corner" id="miniClockWrapper" title="Relógio analógico">
+    <canvas id="miniCanvas" class="mini-canvas" width="200" height="200"></canvas>
+  </div>
+
+  <!-- Painel de temas -->
+  <div class="theme-panel">
+    <button id="themeDark" class="theme-btn" data-theme="dark">🌙 <span>Dark</span></button>
+    <button id="themeLight" class="theme-btn" data-theme="light">☀️ <span>Light</span></button>
+    <button id="themeSystem" class="theme-btn" data-theme="system">🖥️ <span>Sistema</span></button>
+  </div>
+
+  <!-- Conteúdo principal -->
+  <div class="main-layout">
+    <div class="content-wrapper">
+      <div class="welcome-message">
+        ✨ Bem-vindo ao CodeHUB ✨
+      </div>
+    </div>
+
+    <div class="white-area">
+      <h3>🚀 Plataforma CodeHUB</h3>
+      <p>Use o menu 4x4 no canto superior esquerdo para acessar os aplicativos</p>
+      <div class="white-placeholder">
+        📱 Menu de grade 4x4 com todos os apps<br />
+        👤 Avatar com gerenciador de contas<br />
+        🔐 Até 5 contas por dispositivo
+      </div>
+    </div>
+  </div>
+
+  <!-- Carregar o app-menu.js -->
+  <script type="text/babel" src="app-menu.js"></script>
+  
+  <script type="text/babel">
+    // Importar e renderizar o componente
+    import AppMenu from './app-menu.js';
+    
+    const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
+    root.render(<AppMenu />);
+  </script>
+
+  <!-- Script do relógio e tema -->
+  <script>
+    // ==================== TEMA ====================
+    const body = document.body;
+    
+    function setTheme(theme) {
+      if (theme === 'dark') {
+        body.classList.add('dark');
+        body.classList.remove('light');
+        localStorage.setItem('codehub-theme', 'dark');
+        updateThemeButtons('dark');
+      } else if (theme === 'light') {
+        body.classList.add('light');
+        body.classList.remove('dark');
+        localStorage.setItem('codehub-theme', 'light');
+        updateThemeButtons('light');
+      } else if (theme === 'system') {
+        localStorage.setItem('codehub-theme', 'system');
+        applySystemTheme();
+        updateThemeButtons('system');
+      }
+    }
+
+    function applySystemTheme() {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (isDark) {
+        body.classList.add('dark');
+        body.classList.remove('light');
+      } else {
+        body.classList.add('light');
+        body.classList.remove('dark');
+      }
+    }
+
+    function updateThemeButtons(active) {
+      document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+      const btn = document.getElementById(`theme${active.charAt(0).toUpperCase() + active.slice(1)}`);
+      if (btn) btn.classList.add('active');
+    }
+
+    const savedTheme = localStorage.getItem('codehub-theme');
+    if (savedTheme === 'dark') setTheme('dark');
+    else if (savedTheme === 'light') setTheme('light');
+    else if (savedTheme === 'system') setTheme('system');
+    else setTheme('dark');
+
+    document.getElementById('themeDark')?.addEventListener('click', () => setTheme('dark'));
+    document.getElementById('themeLight')?.addEventListener('click', () => setTheme('light'));
+    document.getElementById('themeSystem')?.addEventListener('click', () => setTheme('system'));
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (localStorage.getItem('codehub-theme') === 'system') {
+        applySystemTheme();
+      }
+    });
+
+    // ==================== RELÓGIO MINI ====================
+    const miniCanvas = document.getElementById('miniCanvas');
+    if (miniCanvas) {
+      const miniCtx = miniCanvas.getContext('2d');
+      const miniCenter = 100;
+      const miniRadius = 88;
+
+      function drawMiniClock() {
+        miniCanvas.width = 200;
+        miniCanvas.height = 200;
+        
+        const cX = miniCenter, cY = miniCenter, r = miniRadius;
+        miniCtx.clearRect(0, 0, 200, 200);
+        
+        const computedStyle = getComputedStyle(body);
+        const canvasBg = computedStyle.getPropertyValue('--canvas-bg').trim() || '#11161f';
+        
+        miniCtx.fillStyle = canvasBg;
+        miniCtx.beginPath();
+        miniCtx.arc(cX, cY, r+3, 0, Math.PI*2);
+        miniCtx.fill();
+
+        miniCtx.beginPath();
+        miniCtx.arc(cX, cY, r+1, 0, Math.PI*2);
+        miniCtx.strokeStyle = computedStyle.getPropertyValue('--canvas-border-dark').trim() || '#5a7a9a';
+        miniCtx.lineWidth = 1.5;
+        miniCtx.stroke();
+
+        for (let i = 0; i < 12; i++) {
+          let angle = i * Math.PI * 2 / 12 - Math.PI/2;
+          let inner = r - 10;
+          let outer = r - 2;
+          miniCtx.beginPath();
+          miniCtx.moveTo(cX + Math.cos(angle)*inner, cY + Math.sin(angle)*inner);
+          miniCtx.lineTo(cX + Math.cos(angle)*outer, cY + Math.sin(angle)*outer);
+          miniCtx.lineWidth = i % 3 === 0 ? 2.2 : 1.2;
+          miniCtx.strokeStyle = i % 3 === 0 ? '#f0c674' : '#8a9bb0';
+          miniCtx.stroke();
+        }
+
+        const now = new Date();
+        let hours = now.getHours() % 12;
+        let minutes = now.getMinutes();
+        let seconds = now.getSeconds();
+
+        let hourAngle = (hours * 30 + minutes * 0.5) * Math.PI/180 - Math.PI/2;
+        let minuteAngle = (minutes * 6 + seconds * 0.1) * Math.PI/180 - Math.PI/2;
+        let secondAngle = (seconds * 6) * Math.PI/180 - Math.PI/2;
+
+        miniCtx.beginPath();
+        miniCtx.moveTo(cX, cY);
+        miniCtx.lineTo(cX + Math.cos(hourAngle) * (r * 0.48), cY + Math.sin(hourAngle) * (r * 0.48));
+        miniCtx.lineWidth = 3;
+        miniCtx.lineCap = 'round';
+        miniCtx.strokeStyle = '#d9e2f0';
+        miniCtx.stroke();
+
+        miniCtx.beginPath();
+        miniCtx.moveTo(cX, cY);
+        miniCtx.lineTo(cX + Math.cos(minuteAngle) * (r * 0.68), cY + Math.sin(minuteAngle) * (r * 0.68));
+        miniCtx.lineWidth = 2.2;
+        miniCtx.strokeStyle = '#bdd4ff';
+        miniCtx.stroke();
+
+        miniCtx.beginPath();
+        miniCtx.moveTo(cX, cY);
+        miniCtx.lineTo(cX + Math.cos(secondAngle) * (r * 0.78), cY + Math.sin(secondAngle) * (r * 0.78));
+        miniCtx.lineWidth = 1.5;
+        miniCtx.strokeStyle = '#ffaa66';
+        miniCtx.stroke();
+
+        miniCtx.beginPath();
+        miniCtx.arc(cX, cY, 4, 0, Math.PI*2);
+        miniCtx.fillStyle = '#332211';
+        miniCtx.fill();
+        miniCtx.beginPath();
+        miniCtx.arc(cX, cY, 2, 0, Math.PI*2);
+        miniCtx.fillStyle = '#f5c17a';
+        miniCtx.fill();
+      }
+
+      setInterval(drawMiniClock, 1000);
+      drawMiniClock();
+    }
+  </script>
+</body>
+</html>
     :root {
       --bg-gradient-start: #0b1120;
       --bg-gradient-end: #03060c;
