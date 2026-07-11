@@ -97,6 +97,7 @@
       margin-bottom: 30px;
     }
 
+    /* Mini relógio */
     .mini-clock-corner {
       position: fixed;
       top: 18px;
@@ -125,6 +126,122 @@
       background: var(--canvas-bg);
     }
 
+    /* Menu de grade 4x4 */
+    .app-menu-button {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 10000;
+      width: 48px;
+      height: 48px;
+      background: rgba(20, 25, 45, 0.9);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 3px;
+      padding: 8px;
+      border: 1px solid rgba(67, 97, 238, 0.3);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .app-menu-button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 30px rgba(67, 97, 238, 0.4);
+    }
+
+    .app-menu-dot {
+      width: 100%;
+      height: 100%;
+      background: rgba(67, 97, 238, 0.8);
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    /* Overlay do menu */
+    .menu-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(5px);
+    }
+
+    .menu-overlay.active {
+      display: flex;
+    }
+
+    .menu-grid {
+      background: rgba(20, 25, 45, 0.95);
+      border-radius: 20px;
+      padding: 30px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      max-width: 500px;
+      width: 90%;
+      border: 1px solid rgba(67, 97, 238, 0.3);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .menu-user-info {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: white;
+      padding: 10px;
+      background: rgba(67, 97, 238, 0.2);
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+
+    .menu-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      min-height: 80px;
+      color: white;
+      text-decoration: none;
+    }
+
+    .menu-item:hover {
+      background: rgba(67, 97, 238, 0.2);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+    }
+
+    .menu-item-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .menu-item-name {
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* Painel de temas */
     .theme-panel {
       position: fixed;
       bottom: 24px;
@@ -170,6 +287,7 @@
       transform: translateY(-1px);
     }
 
+    /* Área branca */
     .white-area {
       width: 100%;
       max-width: 780px;
@@ -220,18 +338,77 @@
       font-weight: 500;
     }
 
+    /* Botão de login */
+    .login-prompt {
+      position: fixed;
+      top: 20px;
+      left: 80px;
+      z-index: 10000;
+      background: rgba(67, 97, 238, 0.9);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s;
+      display: none;
+    }
+
+    .login-prompt:hover {
+      background: rgba(67, 97, 238, 1);
+      transform: translateY(-2px);
+    }
+
+    .login-prompt.show {
+      display: block;
+    }
+
     @media (max-width: 550px) {
       .theme-btn span:first-child { display: none; }
       .theme-btn { padding: 6px 12px; font-size: 0.75rem; }
       .mini-canvas { width: 55px !important; height: 55px !important; }
+      .app-menu-button { width: 40px; height: 40px; top: 10px; left: 10px; }
+      .login-prompt { left: 60px; top: 10px; font-size: 12px; padding: 8px 14px; }
     }
   </style>
 </head>
 <body class="dark">
   <!-- Menu de Apps (Grade 4x4) -->
-  <div data-app-menu="auto" data-position="top-left"></div>
+  <div class="app-menu-button" id="appMenuButton" title="Aplicativos">
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+    <div class="app-menu-dot"></div>
+  </div>
 
-  <!-- Mini relógio analógico no canto direito -->
+  <!-- Botão de Login -->
+  <button class="login-prompt" id="loginPrompt" onclick="window.location.href='auth.html'">
+    🔐 Fazer Login
+  </button>
+
+  <!-- Overlay do Menu -->
+  <div class="menu-overlay" id="menuOverlay">
+    <div class="menu-grid" id="menuGrid">
+      <!-- Preenchido dinamicamente -->
+    </div>
+  </div>
+
+  <!-- Mini relógio -->
   <div class="mini-clock-corner" id="miniClockWrapper" title="Relógio analógico">
     <canvas id="miniCanvas" class="mini-canvas" width="200" height="200"></canvas>
   </div>
@@ -246,52 +423,245 @@
   <!-- Conteúdo principal -->
   <div class="main-layout">
     <div class="content-wrapper">
-      <div class="welcome-message">
+      <div class="welcome-message" id="welcomeMessage">
         ✨ Bem-vindo ao CodeHUB ✨
       </div>
     </div>
 
-    <!-- Área branca -->
     <div class="white-area" id="whiteArea">
       <h3>🚀 Plataforma CodeHUB</h3>
-      <p>Acesse os aplicativos pelo menu de grade 4x4 no canto superior esquerdo</p>
-      <div class="white-placeholder">
-        📱 Use o menu de pontos para navegar entre os aplicativos<br />
-        🔐 Sistema multi-conta disponível (até 5 contas por dispositivo)
+      <p id="statusMessage">Carregando...</p>
+      <div class="white-placeholder" id="placeholderContent">
+        📱 Use o menu de pontos (4x4) no canto superior esquerdo para navegar<br />
+        🔐 Faça login para acessar todos os aplicativos
       </div>
     </div>
   </div>
 
-  <!-- Script do Menu de Apps -->
-  <script src="app-menu.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
 
-  <script>
-    // Inicializar Menu de Apps
-    const appMenu = new AppMenuGrid({
-      position: 'top-left'
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32",
+      measurementId: "G-V57KRZ02HJ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // ==================== VARIÁVEIS ====================
+    let currentUserKey = null;
+    let currentUserData = null;
+    let isAuthenticated = false;
+
+    // ==================== APPS DO MENU ====================
+    const apps = [
+      { id: 'editor', name: 'Editor', icon: '📝', url: 'editor.html' },
+      { id: 'clock', name: 'Relógio', icon: '🕐', url: 'clock.html' },
+      { id: 'compass', name: 'Bússola', icon: '🧭', url: 'compass.html' },
+      { id: 'notes', name: 'Notas', icon: '📋', url: 'notes.html' },
+      { id: 'calc', name: 'Calc', icon: '🔢', url: 'calc.html' },
+      { id: 'weather', name: 'Clima', icon: '🌤️', url: 'weather.html' },
+      { id: 'tasks', name: 'Tarefas', icon: '✅', url: 'tasks.html' },
+      { id: 'chat', name: 'Chat', icon: '💬', url: 'chat.html' },
+      { id: 'files', name: 'Arquivos', icon: '📁', url: 'files.html' },
+      { id: 'settings', name: 'Config', icon: '⚙️', url: 'settings.html' },
+      { id: 'profile', name: 'Perfil', icon: '👤', url: 'profile.html' },
+      { id: 'help', name: 'Ajuda', icon: '❓', url: 'help.html' },
+      { id: 'about', name: 'Sobre', icon: 'ℹ️', url: 'about.html' },
+      { id: 'auth', name: 'Contas', icon: '🔐', url: 'auth.html' },
+      { id: 'logout', name: 'Sair', icon: '🚪', url: '#logout' },
+    ];
+
+    // ==================== INICIALIZAÇÃO ====================
+    async function init() {
+      // Pegar userKey da URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlUserKey = urlParams.get('userKey');
+      
+      // Pegar userKey do localStorage
+      const localUserKey = localStorage.getItem('current_userKey');
+      
+      currentUserKey = urlUserKey || localUserKey;
+      
+      if (currentUserKey) {
+        await loadUserData();
+      } else {
+        checkLocalAuth();
+      }
+      
+      buildMenuGrid();
+      updateUI();
+    }
+
+    async function loadUserData() {
+      try {
+        const snapshot = await get(ref(database, `userKeysData/${currentUserKey}`));
+        
+        if (snapshot.exists()) {
+          const keyData = snapshot.val();
+          currentUserData = keyData.authTokenDecoded || keyData;
+          isAuthenticated = true;
+          
+          // Salvar no localStorage
+          localStorage.setItem('current_userKey', currentUserKey);
+          localStorage.setItem('auth_token', keyData.authToken);
+          localStorage.setItem('token_user_id', currentUserData.uid);
+          
+          console.log('✅ Usuário autenticado:', currentUserData.username || currentUserData.email);
+        } else {
+          console.log('⚠️ UserKey não encontrada no Firebase');
+          isAuthenticated = false;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error);
+        isAuthenticated = false;
+      }
+    }
+
+    function checkLocalAuth() {
+      const token = localStorage.getItem('auth_token');
+      const userId = localStorage.getItem('token_user_id');
+      
+      if (token && userId) {
+        isAuthenticated = true;
+        console.log('✅ Autenticação local encontrada');
+      } else {
+        isAuthenticated = false;
+        console.log('⚠️ Usuário não autenticado');
+      }
+    }
+
+    function updateUI() {
+      const loginPrompt = document.getElementById('loginPrompt');
+      const welcomeMessage = document.getElementById('welcomeMessage');
+      const statusMessage = document.getElementById('statusMessage');
+      const placeholderContent = document.getElementById('placeholderContent');
+      
+      if (isAuthenticated && currentUserData) {
+        loginPrompt.classList.remove('show');
+        welcomeMessage.innerHTML = `✨ Bem-vindo, ${currentUserData.username || currentUserData.email || 'Usuário'}! ✨`;
+        statusMessage.textContent = '✅ Autenticado - Acesse os aplicativos pelo menu';
+        placeholderContent.innerHTML = `
+          👤 ${currentUserData.username || 'Usuário'}<br />
+          📧 ${currentUserData.email || ''}<br />
+          🏷️ ${currentUserData.userType === 'entrepreneur' ? 'Empreendedor' : 'Usuário Normal'}<br />
+          🔑 UserKey: ${currentUserKey ? currentUserKey.substring(0, 20) + '...' : 'N/A'}
+        `;
+      } else {
+        loginPrompt.classList.add('show');
+        welcomeMessage.innerHTML = '✨ Bem-vindo ao CodeHUB ✨';
+        statusMessage.textContent = '🔐 Faça login para acessar todos os recursos';
+        placeholderContent.innerHTML = `
+          📱 Use o menu de pontos (4x4) no canto superior esquerdo<br />
+          🔐 Faça login para acessar todos os aplicativos<br />
+          👥 Até 5 contas por dispositivo
+        `;
+      }
+    }
+
+    // ==================== MENU DE APPS ====================
+    function buildMenuGrid() {
+      const menuGrid = document.getElementById('menuGrid');
+      menuGrid.innerHTML = '';
+      
+      // Info do usuário (se autenticado)
+      if (isAuthenticated && currentUserData) {
+        const userInfo = document.createElement('div');
+        userInfo.className = 'menu-user-info';
+        userInfo.innerHTML = `
+          <div style="font-weight: 600;">👋 ${currentUserData.username || 'Usuário'}</div>
+          <div style="font-size: 12px; opacity: 0.7;">${currentUserData.email || ''}</div>
+        `;
+        menuGrid.appendChild(userInfo);
+      }
+      
+      // Apps
+      apps.forEach(app => {
+        const item = document.createElement('div');
+        item.className = 'menu-item';
+        item.innerHTML = `
+          <div class="menu-item-icon">${app.icon}</div>
+          <div class="menu-item-name">${app.name}</div>
+        `;
+        
+        item.onclick = () => {
+          if (app.id === 'logout') {
+            handleLogout();
+          } else {
+            openApp(app.url);
+          }
+        };
+        
+        menuGrid.appendChild(item);
+      });
+    }
+
+    function openApp(url) {
+      if (currentUserKey) {
+        const separator = url.includes('?') ? '&' : '?';
+        window.location.href = `${url}${separator}userKey=${currentUserKey}`;
+      } else {
+        window.location.href = url;
+      }
+    }
+
+    function handleLogout() {
+      if (confirm('Tem certeza que deseja sair?')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('token_user_id');
+        localStorage.removeItem('current_userKey');
+        window.location.reload();
+      }
+    }
+
+    // ==================== EVENTOS DO MENU ====================
+    document.getElementById('appMenuButton').addEventListener('click', () => {
+      document.getElementById('menuOverlay').classList.add('active');
+      
+      // Animação dos pontos
+      const dots = document.querySelectorAll('.app-menu-dot');
+      dots.forEach((dot, index) => {
+        setTimeout(() => {
+          dot.style.background = '#4cc9f0';
+          setTimeout(() => {
+            dot.style.background = 'rgba(67, 97, 238, 0.8)';
+          }, 200);
+        }, index * 30);
+      });
     });
 
-    // ---- CONFIGURAÇÕES DE TEMA ----
-    const body = document.body;
-    const darkBtn = document.getElementById('themeDark');
-    const lightBtn = document.getElementById('themeLight');
-    const systemBtn = document.getElementById('themeSystem');
+    document.getElementById('menuOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('menuOverlay')) {
+        document.getElementById('menuOverlay').classList.remove('active');
+      }
+    });
 
+    // ==================== TEMA ====================
+    const body = document.body;
+    
     function setTheme(theme) {
       if (theme === 'dark') {
         body.classList.add('dark');
         body.classList.remove('light');
         localStorage.setItem('codehub-theme', 'dark');
-        updateActiveButton('dark');
+        updateThemeButtons('dark');
       } else if (theme === 'light') {
         body.classList.add('light');
         body.classList.remove('dark');
         localStorage.setItem('codehub-theme', 'light');
-        updateActiveButton('light');
+        updateThemeButtons('light');
       } else if (theme === 'system') {
         localStorage.setItem('codehub-theme', 'system');
         applySystemTheme();
-        updateActiveButton('system');
+        updateThemeButtons('system');
       }
     }
 
@@ -306,78 +676,64 @@
       }
     }
 
-    function updateActiveButton(active) {
-      [darkBtn, lightBtn, systemBtn].forEach(btn => btn.classList.remove('active'));
-      if (active === 'dark') darkBtn.classList.add('active');
-      if (active === 'light') lightBtn.classList.add('active');
-      if (active === 'system') systemBtn.classList.add('active');
+    function updateThemeButtons(active) {
+      document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`theme${active.charAt(0).toUpperCase() + active.slice(1)}`).classList.add('active');
     }
 
-    // Carregar tema salvo
     const savedTheme = localStorage.getItem('codehub-theme');
     if (savedTheme === 'dark') setTheme('dark');
     else if (savedTheme === 'light') setTheme('light');
     else if (savedTheme === 'system') setTheme('system');
-    else {
-      setTheme('dark');
-    }
+    else setTheme('dark');
 
-    darkBtn.addEventListener('click', () => setTheme('dark'));
-    lightBtn.addEventListener('click', () => setTheme('light'));
-    systemBtn.addEventListener('click', () => setTheme('system'));
-    
+    document.getElementById('themeDark').addEventListener('click', () => setTheme('dark'));
+    document.getElementById('themeLight').addEventListener('click', () => setTheme('light'));
+    document.getElementById('themeSystem').addEventListener('click', () => setTheme('system'));
+
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
       if (localStorage.getItem('codehub-theme') === 'system') {
         applySystemTheme();
       }
     });
 
-    // ---- RELÓGIO ANALÓGICO MINI ----
+    // ==================== RELÓGIO MINI ====================
     const miniCanvas = document.getElementById('miniCanvas');
-    let miniCtx = miniCanvas.getContext('2d');
-    let miniSize = 200;
+    const miniCtx = miniCanvas.getContext('2d');
     let miniCenter = 100;
     let miniRadius = 88;
 
-    function resizeMiniCanvasInternal() {
+    function drawMiniClock() {
       miniCanvas.width = 200;
       miniCanvas.height = 200;
-      miniSize = 200;
-      miniCenter = 100;
-      miniRadius = 88;
-    }
-    resizeMiniCanvasInternal();
-
-    function drawMiniClock() {
-      if (!miniCtx) return;
-      const ctxMini = miniCtx;
+      
       const cX = miniCenter, cY = miniCenter, r = miniRadius;
-
-      ctxMini.clearRect(0, 0, miniSize, miniSize);
+      miniCtx.clearRect(0, 0, 200, 200);
       
       const computedStyle = getComputedStyle(body);
       const canvasBg = computedStyle.getPropertyValue('--canvas-bg').trim() || '#11161f';
-      ctxMini.fillStyle = canvasBg;
-      ctxMini.beginPath();
-      ctxMini.arc(cX, cY, r+3, 0, Math.PI*2);
-      ctxMini.fill();
+      
+      miniCtx.fillStyle = canvasBg;
+      miniCtx.beginPath();
+      miniCtx.arc(cX, cY, r+3, 0, Math.PI*2);
+      miniCtx.fill();
 
-      ctxMini.beginPath();
-      ctxMini.arc(cX, cY, r+1, 0, Math.PI*2);
-      ctxMini.strokeStyle = computedStyle.getPropertyValue('--canvas-border-dark').trim() || '#5a7a9a';
-      ctxMini.lineWidth = 1.5;
-      ctxMini.stroke();
+      miniCtx.beginPath();
+      miniCtx.arc(cX, cY, r+1, 0, Math.PI*2);
+      miniCtx.strokeStyle = computedStyle.getPropertyValue('--canvas-border-dark').trim() || '#5a7a9a';
+      miniCtx.lineWidth = 1.5;
+      miniCtx.stroke();
 
       for (let i = 0; i < 12; i++) {
         let angle = i * Math.PI * 2 / 12 - Math.PI/2;
         let inner = r - 10;
         let outer = r - 2;
-        ctxMini.beginPath();
-        ctxMini.moveTo(cX + Math.cos(angle)*inner, cY + Math.sin(angle)*inner);
-        ctxMini.lineTo(cX + Math.cos(angle)*outer, cY + Math.sin(angle)*outer);
-        ctxMini.lineWidth = i % 3 === 0 ? 2.2 : 1.2;
-        ctxMini.strokeStyle = i % 3 === 0 ? '#f0c674' : '#8a9bb0';
-        ctxMini.stroke();
+        miniCtx.beginPath();
+        miniCtx.moveTo(cX + Math.cos(angle)*inner, cY + Math.sin(angle)*inner);
+        miniCtx.lineTo(cX + Math.cos(angle)*outer, cY + Math.sin(angle)*outer);
+        miniCtx.lineWidth = i % 3 === 0 ? 2.2 : 1.2;
+        miniCtx.strokeStyle = i % 3 === 0 ? '#f0c674' : '#8a9bb0';
+        miniCtx.stroke();
       }
 
       const now = new Date();
@@ -389,64 +745,46 @@
       let minuteAngle = (minutes * 6 + seconds * 0.1) * Math.PI/180 - Math.PI/2;
       let secondAngle = (seconds * 6) * Math.PI/180 - Math.PI/2;
 
-      ctxMini.beginPath();
-      ctxMini.moveTo(cX, cY);
-      ctxMini.lineTo(cX + Math.cos(hourAngle) * (r * 0.48), cY + Math.sin(hourAngle) * (r * 0.48));
-      ctxMini.lineWidth = 3;
-      ctxMini.lineCap = 'round';
-      ctxMini.strokeStyle = '#d9e2f0';
-      ctxMini.stroke();
+      miniCtx.beginPath();
+      miniCtx.moveTo(cX, cY);
+      miniCtx.lineTo(cX + Math.cos(hourAngle) * (r * 0.48), cY + Math.sin(hourAngle) * (r * 0.48));
+      miniCtx.lineWidth = 3;
+      miniCtx.lineCap = 'round';
+      miniCtx.strokeStyle = '#d9e2f0';
+      miniCtx.stroke();
 
-      ctxMini.beginPath();
-      ctxMini.moveTo(cX, cY);
-      ctxMini.lineTo(cX + Math.cos(minuteAngle) * (r * 0.68), cY + Math.sin(minuteAngle) * (r * 0.68));
-      ctxMini.lineWidth = 2.2;
-      ctxMini.strokeStyle = '#bdd4ff';
-      ctxMini.stroke();
+      miniCtx.beginPath();
+      miniCtx.moveTo(cX, cY);
+      miniCtx.lineTo(cX + Math.cos(minuteAngle) * (r * 0.68), cY + Math.sin(minuteAngle) * (r * 0.68));
+      miniCtx.lineWidth = 2.2;
+      miniCtx.strokeStyle = '#bdd4ff';
+      miniCtx.stroke();
 
-      ctxMini.beginPath();
-      ctxMini.moveTo(cX, cY);
-      ctxMini.lineTo(cX + Math.cos(secondAngle) * (r * 0.78), cY + Math.sin(secondAngle) * (r * 0.78));
-      ctxMini.lineWidth = 1.5;
-      ctxMini.strokeStyle = '#ffaa66';
-      ctxMini.stroke();
+      miniCtx.beginPath();
+      miniCtx.moveTo(cX, cY);
+      miniCtx.lineTo(cX + Math.cos(secondAngle) * (r * 0.78), cY + Math.sin(secondAngle) * (r * 0.78));
+      miniCtx.lineWidth = 1.5;
+      miniCtx.strokeStyle = '#ffaa66';
+      miniCtx.stroke();
 
-      ctxMini.beginPath();
-      ctxMini.arc(cX, cY, 4, 0, Math.PI*2);
-      ctxMini.fillStyle = '#332211';
-      ctxMini.fill();
-      ctxMini.beginPath();
-      ctxMini.arc(cX, cY, 2, 0, Math.PI*2);
-      ctxMini.fillStyle = '#f5c17a';
-      ctxMini.fill();
+      miniCtx.beginPath();
+      miniCtx.arc(cX, cY, 4, 0, Math.PI*2);
+      miniCtx.fillStyle = '#332211';
+      miniCtx.fill();
+      miniCtx.beginPath();
+      miniCtx.arc(cX, cY, 2, 0, Math.PI*2);
+      miniCtx.fillStyle = '#f5c17a';
+      miniCtx.fill();
     }
 
-    setInterval(() => {
-      drawMiniClock();
-    }, 1000);
+    setInterval(drawMiniClock, 1000);
     drawMiniClock();
 
-    function refreshAllThemedClocks() {
-      drawMiniClock();
-    }
-
-    const observer = new MutationObserver(() => {
-      drawMiniClock();
-    });
-    observer.observe(body, { attributes: true, attributeFilter: ['class'] });
-
-    function adjustMiniCanvasCSS() {
-      const wrapper = document.querySelector('.mini-clock-corner');
-      if (wrapper) {
-        // Ajustes responsivos se necessário
-      }
-    }
-    window.addEventListener('resize', adjustMiniCanvasCSS);
-    adjustMiniCanvasCSS();
-
-    console.log("CodeHUB - Plataforma inicializada com sucesso!");
-    console.log("🔐 Sistema de autenticação multi-conta ativo");
-    console.log("📱 Menu de apps em grade 4x4 disponível");
+    // ==================== INICIAR ====================
+    init();
+    console.log('🚀 CodeHUB inicializado!');
+    console.log('🔑 UserKey:', currentUserKey || 'Nenhuma');
+    console.log('🔐 Autenticado:', isAuthenticated);
   </script>
 </body>
 </html>
