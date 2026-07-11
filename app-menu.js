@@ -37,7 +37,6 @@ function AppMenu() {
   const panelRef = useRef(null);
   const dbRef = useRef(null);
 
-  // Inicializar Firebase
   useEffect(() => {
     async function initFirebase() {
       const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js');
@@ -65,7 +64,7 @@ function AppMenu() {
     
     const interval = setInterval(async () => {
       if (masterKey) await loadAccounts();
-      if (userKey || localStorage.getItem('current_userKey')) await loadCurrentUser();
+      if (userKey) await loadCurrentUser();
     }, 3000);
     
     return () => clearInterval(interval);
@@ -174,23 +173,23 @@ function AppMenu() {
     window.location.href = key ? `${url}${sep}userKey=${key}` : url;
   }
 
+  // ==================== TROCAR DE CONTA - MUDA URL ====================
   async function switchAccount(acc) {
     if (acc.userKey) {
+      // Salvar no localStorage
       localStorage.setItem('current_userKey', acc.userKey);
-      setUserKey(acc.userKey);
-      await loadUserData(acc.userKey);
-      if (masterKey) await loadAccounts(masterKey);
-      setShowPanel(false);
+      
+      // Mudar a URL e recarregar
+      const newUrl = window.location.pathname + '?userKey=' + acc.userKey;
+      window.location.href = newUrl;
     }
   }
 
   function handleLogout() {
     if (!confirm('Sair?')) return;
     localStorage.removeItem('current_userKey');
-    setIsAuth(false);
-    setUserData(null);
-    setUserKey(null);
-    setShowPanel(false);
+    // Remover userKey da URL
+    window.location.href = window.location.pathname;
   }
 
   async function handleOpenPanel() {
@@ -267,7 +266,8 @@ function AppMenu() {
       isAuth && userData ? React.createElement('div', {
         style: { background:'rgba(67,97,238,0.2)',borderRadius:10,padding:12,marginBottom:15,color:'#fff',textAlign:'center' }
       },
-        React.createElement('div', { style:{ fontWeight:600 } }, '✅ ' + (userData.username || userData.email))
+        React.createElement('div', { style:{ fontWeight:600 } }, '✅ ' + (userData.username || userData.email)),
+        React.createElement('div', { style:{ fontSize:10,opacity:0.7,marginTop:4 } }, 'userKey: ' + (userKey||'').substring(0,25) + '...')
       ) : null,
 
       React.createElement('div', { style:{ color:'#fff',fontSize:13,fontWeight:600,marginBottom:10 } },
