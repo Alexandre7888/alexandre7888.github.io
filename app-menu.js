@@ -4,7 +4,7 @@ const MAX_ACCOUNTS = 5;
 
 const apps = [
     { id:'settings', name:'Config', icon:'⚙️', url:'settings.html' },
-    { id:'MENSAGENS', name:'Config', icon:'', url:'https://app.mensagens.site.je/' }
+    { id:'MENSAGENS', name:'mensagens', icon:'✉️​', url:'https://app.mensagens.site.je/' }
 ];
 
 function getAvatarColor(name) {
