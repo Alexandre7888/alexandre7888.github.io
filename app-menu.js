@@ -22,9 +22,9 @@ const apps = [
   { id:'tasks', name:'Tarefas', icon:'✅', url:'tasks.html' },
   { id:'chat', name:'Chat', icon:'💬', url:'chat.html' },
   { id:'files', name:'Arquivos', icon:'📁', url:'files.html' },
-  { id:'settings', name:'Config', icon:'⚙️', url:'settings.html' },
   { id:'profile', name:'Perfil', icon:'👤', url:'profile.html' },
   { id:'help', name:'Ajuda', icon:'❓', url:'help.html' },
+  { id:'settings', name:'Config', icon:'⚙️', url:'settings.html' },
 ];
 
 function getAvatarColor(name) {
@@ -43,7 +43,6 @@ export default function AppMenu() {
   const [showPanel, setShowPanel] = useState(false);
   const [loading, setLoading] = useState(true);
   const [masterKey, setMasterKey] = useState(null);
-  const [deviceId, setDeviceId] = useState('');
   
   const panelRef = useRef(null);
 
@@ -55,12 +54,15 @@ export default function AppMenu() {
   }, []);
 
   async function init() {
-    const devId = generateDeviceId();
-    setDeviceId(devId);
-    
+    const mk = localStorage.getItem('codehub_masterKey');
     const urlKey = new URLSearchParams(window.location.search).get('userKey');
     const localKey = localStorage.getItem('current_userKey');
     const key = urlKey || localKey;
+    
+    if (mk) {
+      setMasterKey(mk);
+      await loadAccountsFromFirebase(mk);
+    }
     
     if (key) {
       setUserKey(key);
@@ -70,22 +72,27 @@ export default function AppMenu() {
     setLoading(false);
   }
 
-  function generateDeviceId() {
-    let id = localStorage.getItem('codehub_deviceId');
-    if (!id) {
-      id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('codehub_deviceId', id);
+  async function loadAccountsFromFirebase(mk) {
+    try {
+      const { getDatabase, ref, get } = await import('firebase/database');
+      const db = getDatabase();
+      const snap = await get(ref(db, `contas/${mk}`));
+      if (snap.exists()) {
+        setAccounts(Object.values(snap.val()));
+      } else {
+        setAccounts([]);
+      }
+    } catch(e) {
+      console.error(e);
+      setAccounts([]);
     }
-    return id;
   }
 
   async function loadUserData(key) {
     try {
       const { getDatabase, ref, get } = await import('firebase/database');
       const db = getDatabase();
-      
       const snap = await get(ref(db, `userKeysData/${key}`));
-      
       if (snap.exists()) {
         const data = snap.val();
         const user = data.authTokenDecoded || data;
@@ -93,77 +100,41 @@ export default function AppMenu() {
         setIsAuth(true);
         
         const mk = user.masterKey || data.masterKey;
-        if (mk) {
+        if (mk && mk !== masterKey) {
           setMasterKey(mk);
           localStorage.setItem('codehub_masterKey', mk);
-          await loadAllAccounts(mk);
+          await loadAccountsFromFirebase(mk);
         }
         
         localStorage.setItem('current_userKey', key);
         if (data.authToken) localStorage.setItem('auth_token', data.authToken);
         if (user.uid) localStorage.setItem('token_user_id', user.uid);
       }
-    } catch(e) {
-      console.error('Erro ao carregar:', e);
-    }
+    } catch(e) { console.error(e); }
   }
 
-  // ==================== CARREGAR TODAS AS CONTAS DA MASTERKEY ====================
-  async function loadAllAccounts(mk) {
-    try {
-      const { getDatabase, ref, get } = await import('firebase/database');
-      const db = getDatabase();
-      
-      // Buscar do caminho: contas/{masterKey}
-      const snap = await get(ref(db, `contas/${mk}`));
-      
-      if (snap.exists()) {
-        const allAccounts = snap.val();
-        const accountsArray = Object.values(allAccounts);
-        setAccounts(accountsArray);
-        
-        // Também salvar no localStorage
-        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(accountsArray));
-        
-        console.log('✅ Contas carregadas:', accountsArray.length);
-      } else {
-        // Fallback para localStorage
-        const local = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-        setAccounts(local);
-      }
-    } catch(e) {
-      console.error('Erro ao carregar contas:', e);
-      const local = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-      setAccounts(local);
-    }
-  }
-
-  // ==================== SALVAR CONTAS NO FIREBASE ====================
-  async function saveAccountsToFirebase(mk, accountsList) {
-    try {
-      const { getDatabase, ref, set } = await import('firebase/database');
-      const db = getDatabase();
-      
-      const accountsObj = {};
-      accountsList.forEach((acc, index) => {
-        accountsObj[acc.uid || index] = {
-          uid: acc.uid,
-          email: acc.email,
-          username: acc.username,
-          userType: acc.userType || 'normal',
-          userKey: acc.userKey,
-          lastLogin: acc.lastLogin || Date.now(),
-          deviceId: deviceId,
-          masterKey: mk
-        };
-      });
-      
-      // Salvar no caminho: contas/{masterKey}
-      await set(ref(db, `contas/${mk}`), accountsObj);
-      
-      console.log('✅ Contas salvas no Firebase:', accountsList.length);
-    } catch(e) {
-      console.error('Erro ao salvar contas:', e);
+  async function removeAccount(uid) {
+    if (!masterKey) return;
+    if (confirm('Remover esta conta? (Afeta todos os dispositivos)')) {
+      try {
+        const { getDatabase, ref, get, set } = await import('firebase/database');
+        const db = getDatabase();
+        const snap = await get(ref(db, `contas/${masterKey}`));
+        if (snap.exists()) {
+          const contas = snap.val();
+          delete contas[uid];
+          await set(ref(db, `contas/${masterKey}`), contas);
+          setAccounts(Object.values(contas));
+        }
+        if (userData?.uid === uid) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('token_user_id');
+          localStorage.removeItem('current_userKey');
+          setIsAuth(false);
+          setUserData(null);
+          setUserKey(null);
+        }
+      } catch(e) { console.error(e); }
     }
   }
 
@@ -184,27 +155,6 @@ export default function AppMenu() {
     }
   }
 
-  async function removeAccount(uid) {
-    if (confirm('Remover esta conta?')) {
-      const updated = accounts.filter(a => a.uid !== uid);
-      setAccounts(updated);
-      localStorage.setItem('codehub_deviceAccounts', JSON.stringify(updated));
-      
-      if (masterKey) {
-        await saveAccountsToFirebase(masterKey, updated);
-      }
-      
-      if (userData?.uid === uid) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('token_user_id');
-        localStorage.removeItem('current_userKey');
-        setIsAuth(false);
-        setUserData(null);
-        setUserKey(null);
-      }
-    }
-  }
-
   function handleLogout() {
     if (confirm('Sair?')) {
       localStorage.removeItem('auth_token');
@@ -217,10 +167,8 @@ export default function AppMenu() {
     }
   }
 
-  function handleOpenPanel() {
-    if (masterKey) {
-      loadAllAccounts(masterKey);
-    }
+  async function handleOpenPanel() {
+    if (masterKey) await loadAccountsFromFirebase(masterKey);
     setShowPanel(true);
   }
 
@@ -229,67 +177,29 @@ export default function AppMenu() {
   const avatarColor = getAvatarColor(name);
 
   if (loading) {
-    return (
-      <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#fff',fontSize:18,zIndex:99999}}>
-        ⏳ Carregando...
-      </div>
-    );
+    return <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#fff',fontSize:18,zIndex:99999}}>⏳ Carregando...</div>;
   }
 
   return (
     <>
-      {/* Menu 4x4 */}
       <div style={{position:'fixed',top:20,left:20,zIndex:10000}}>
-        <div onClick={() => setShowMenu(true)} style={{
-          width:48,height:48,background:'rgba(20,25,45,0.9)',backdropFilter:'blur(10px)',
-          borderRadius:12,cursor:'pointer',display:'grid',
-          gridTemplateColumns:'repeat(4,1fr)',gridTemplateRows:'repeat(4,1fr)',
-          gap:3,padding:8,border:'1px solid rgba(67,97,238,0.3)',
-          boxShadow:'0 8px 20px rgba(0,0,0,0.4)',transition:'0.3s'
-        }}>
-          {[...Array(16)].map((_,i) => (
-            <div key={i} style={{width:'100%',height:'100%',background:'rgba(67,97,238,0.8)',borderRadius:'50%'}}/>
-          ))}
+        <div onClick={() => setShowMenu(true)} style={{width:48,height:48,background:'rgba(20,25,45,0.9)',backdropFilter:'blur(10px)',borderRadius:12,cursor:'pointer',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gridTemplateRows:'repeat(4,1fr)',gap:3,padding:8,border:'1px solid rgba(67,97,238,0.3)',boxShadow:'0 8px 20px rgba(0,0,0,0.4)',transition:'0.3s'}}>
+          {[...Array(16)].map((_,i)=><div key={i} style={{width:'100%',height:'100%',background:'rgba(67,97,238,0.8)',borderRadius:'50%'}}/>)}
         </div>
       </div>
 
-      {/* Avatar */}
       <div style={{position:'fixed',top:20,right:90,zIndex:10000}}>
-        <div onClick={handleOpenPanel} style={{
-          width:48,height:48,borderRadius:'50%',
-          background: isAuth ? avatarColor : '#6c757d',
-          cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
-          fontWeight:700,fontSize:20,color:'#fff',
-          border:'2px solid rgba(255,255,255,0.3)',
-          boxShadow:'0 8px 20px rgba(0,0,0,0.4)',transition:'0.3s',position:'relative'
-        }}>
+        <div onClick={handleOpenPanel} style={{width:48,height:48,borderRadius:'50%',background:isAuth?avatarColor:'#6c757d',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:20,color:'#fff',border:'2px solid rgba(255,255,255,0.3)',boxShadow:'0 8px 20px rgba(0,0,0,0.4)',transition:'0.3s',position:'relative'}}>
           {isAuth ? letter : '👤'}
-          {isAuth && (
-            <div style={{position:'absolute',bottom:2,right:2,width:12,height:12,
-              background:'#4cc9f0',borderRadius:'50%',border:'2px solid rgba(20,25,45,0.9)'}}/>
-          )}
+          {isAuth && <div style={{position:'absolute',bottom:2,right:2,width:12,height:12,background:'#4cc9f0',borderRadius:'50%',border:'2px solid rgba(20,25,45,0.9)'}}/>}
         </div>
       </div>
 
-      {/* Overlay Apps */}
       {showMenu && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setShowMenu(false); }} style={{
-          position:'fixed',top:0,left:0,width:'100%',height:'100%',
-          background:'rgba(0,0,0,0.7)',zIndex:9999,
-          display:'flex',justifyContent:'center',alignItems:'center',backdropFilter:'blur(5px)'
-        }}>
-          <div style={{
-            background:'rgba(20,25,45,0.95)',borderRadius:20,padding:30,
-            display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:15,
-            maxWidth:500,width:'90%',border:'1px solid rgba(67,97,238,0.3)',
-            boxShadow:'0 20px 40px rgba(0,0,0,0.5)',animation:'slideIn 0.3s'
-          }}>
-            {apps.map(app => (
-              <div key={app.id} onClick={() => { setShowMenu(false); openApp(app.url); }} style={{
-                display:'flex',flexDirection:'column',alignItems:'center',
-                justifyContent:'center',padding:15,background:'rgba(255,255,255,0.05)',
-                borderRadius:12,cursor:'pointer',transition:'0.3s',minHeight:80
-              }}>
+        <div onClick={(e)=>{if(e.target===e.currentTarget)setShowMenu(false)}} style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',justifyContent:'center',alignItems:'center',backdropFilter:'blur(5px)'}}>
+          <div style={{background:'rgba(20,25,45,0.95)',borderRadius:20,padding:30,display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:15,maxWidth:500,width:'90%',border:'1px solid rgba(67,97,238,0.3)',boxShadow:'0 20px 40px rgba(0,0,0,0.5)',animation:'slideIn 0.3s'}}>
+            {apps.map(app=>(
+              <div key={app.id} onClick={()=>{setShowMenu(false);openApp(app.url)}} style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:15,background:'rgba(255,255,255,0.05)',borderRadius:12,cursor:'pointer',transition:'0.3s',minHeight:80}}>
                 <div style={{fontSize:28,marginBottom:8}}>{app.icon}</div>
                 <div style={{color:'#fff',fontSize:12,fontWeight:500}}>{app.name}</div>
               </div>
@@ -298,148 +208,46 @@ export default function AppMenu() {
         </div>
       )}
 
-      {/* Painel de Contas */}
       {showPanel && (
-        <div ref={panelRef} style={{
-          position:'fixed',top:0,right:0,width:340,height:'100%',
-          background:'rgba(20,25,45,0.98)',backdropFilter:'blur(20px)',
-          zIndex:10001,boxShadow:'-10px 0 30px rgba(0,0,0,0.5)',
-          borderLeft:'1px solid rgba(67,97,238,0.3)',
-          animation:'slideRight 0.3s',overflowY:'auto',padding:20
-        }}>
-          {/* Cabeçalho */}
-          <div style={{
-            display:'flex',justifyContent:'space-between',alignItems:'center',
-            marginBottom:20,paddingBottom:15,borderBottom:'1px solid rgba(255,255,255,0.1)'
-          }}>
-            <div style={{color:'#fff',fontSize:18,fontWeight:600}}>
-              👤 Contas {masterKey ? '🔗' : ''}
-            </div>
-            <button onClick={() => setShowPanel(false)} style={{
-              background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',
-              width:32,height:32,borderRadius:'50%',cursor:'pointer',fontSize:16
-            }}>✕</button>
+        <div ref={panelRef} style={{position:'fixed',top:0,right:0,width:340,height:'100%',background:'rgba(20,25,45,0.98)',backdropFilter:'blur(20px)',zIndex:10001,boxShadow:'-10px 0 30px rgba(0,0,0,0.5)',borderLeft:'1px solid rgba(67,97,238,0.3)',animation:'slideRight 0.3s',overflowY:'auto',padding:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,paddingBottom:15,borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+            <div style={{color:'#fff',fontSize:18,fontWeight:600}}>👤 Contas ☁️</div>
+            <button onClick={()=>setShowPanel(false)} style={{background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',width:32,height:32,borderRadius:'50%',cursor:'pointer',fontSize:16}}>✕</button>
           </div>
 
-          {/* Status */}
+          <button onClick={async()=>{if(masterKey)await loadAccountsFromFirebase(masterKey)}} style={{width:'100%',padding:8,borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',marginBottom:15,display:'flex',alignItems:'center',justifyContent:'center',gap:6,color:'#4cc9f0',background:'rgba(76,201,240,0.1)',border:'1px solid rgba(76,201,240,0.3)'}}>🔄 Atualizar</button>
+
           {isAuth && userData && (
-            <div style={{
-              background:'rgba(67,97,238,0.2)',borderRadius:10,padding:12,
-              marginBottom:15,color:'#fff',textAlign:'center'
-            }}>
-              <div style={{fontWeight:600}}>✅ Logado como:</div>
-              <div style={{fontSize:14,marginTop:4}}>{userData.username || userData.email}</div>
-              {masterKey && (
-                <div style={{fontSize:10,opacity:0.7,marginTop:4}}>
-                  🔗 MasterKey: {masterKey.substring(0, 20)}...
-                </div>
-              )}
+            <div style={{background:'rgba(67,97,238,0.2)',borderRadius:10,padding:12,marginBottom:15,color:'#fff',textAlign:'center'}}>
+              <div style={{fontWeight:600}}>✅ {userData.username||userData.email}</div>
             </div>
           )}
 
-          {/* Lista de Contas */}
-          <div style={{color:'#fff',fontSize:13,fontWeight:600,marginBottom:10}}>
-            📋 Todas as contas ({accounts.length}/{MAX_ACCOUNTS})
-          </div>
+          <div style={{color:'#fff',fontSize:13,fontWeight:600,marginBottom:10}}>📋 Contas ({accounts.length}/{MAX_ACCOUNTS})</div>
 
-          {accounts.length === 0 ? (
-            <div style={{color:'#a0b3c9',textAlign:'center',padding:30}}>
-              <div style={{fontSize:40,marginBottom:10}}>📱</div>
-              <div>Nenhuma conta vinculada</div>
-              <div style={{fontSize:11,marginTop:5}}>Faça login para adicionar</div>
-            </div>
-          ) : (
-            accounts.map((acc, i) => (
-              <div key={i} onClick={() => switchAccount(acc)} style={{
-                background: userData?.uid === acc.uid ? 'rgba(67,97,238,0.3)' : 'rgba(255,255,255,0.05)',
-                borderRadius:12,padding:15,marginBottom:10,cursor:'pointer',
-                border: userData?.uid === acc.uid ? '1px solid rgba(67,97,238,0.6)' : '1px solid transparent',
-                display:'flex',alignItems:'center',gap:12,transition:'0.3s'
-              }}>
-                <div style={{
-                  width:42,height:42,borderRadius:'50%',
-                  background: getAvatarColor(acc.username || acc.email || '?'),
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                  fontWeight:700,fontSize:17,color:'#fff',flexShrink:0
-                }}>
-                  {(acc.username || acc.email || '?').charAt(0).toUpperCase()}
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{
-                    color:'#fff',fontWeight:600,fontSize:14,
-                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'
-                  }}>
-                    {acc.username || acc.email}
-                    {userData?.uid === acc.uid && ' ✓'}
-                  </div>
-                  <div style={{
-                    color:'#a0b3c9',fontSize:11,
-                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'
-                  }}>
-                    {acc.email}
-                  </div>
-                </div>
-                <div style={{fontSize:18,flexShrink:0}}>
-                  {acc.userType === 'entrepreneur' ? '🏢' : '👤'}
-                </div>
-                <button onClick={(e) => { e.stopPropagation(); removeAccount(acc.uid); }} style={{
-                  background:'rgba(247,37,133,0.2)',color:'#f72585',
-                  border:'1px solid rgba(247,37,133,0.3)',
-                  padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12,flexShrink:0
-                }}>✕</button>
+          {accounts.length===0 ? <div style={{color:'#a0b3c9',textAlign:'center',padding:30}}>☁️ Nenhuma conta</div> : accounts.map((acc,i)=>(
+            <div key={i} onClick={()=>switchAccount(acc)} style={{background:userData?.uid===acc.uid?'rgba(67,97,238,0.3)':'rgba(255,255,255,0.05)',borderRadius:12,padding:15,marginBottom:10,cursor:'pointer',border:userData?.uid===acc.uid?'1px solid rgba(67,97,238,0.6)':'1px solid transparent',display:'flex',alignItems:'center',gap:12,transition:'0.3s'}}>
+              <div style={{width:42,height:42,borderRadius:'50%',background:getAvatarColor(acc.username||acc.email||'?'),display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:17,color:'#fff',flexShrink:0}}>{(acc.username||acc.email||'?').charAt(0).toUpperCase()}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:'#fff',fontWeight:600,fontSize:14,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{acc.username||acc.email} {userData?.uid===acc.uid?'✓':''}</div>
+                <div style={{color:'#a0b3c9',fontSize:11,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{acc.email}</div>
               </div>
-            ))
-          )}
+              <div style={{fontSize:18,flexShrink:0}}>{acc.userType==='entrepreneur'?'🏢':'👤'}</div>
+              <button onClick={(e)=>{e.stopPropagation();removeAccount(acc.uid)}} style={{background:'rgba(247,37,133,0.2)',color:'#f72585',border:'1px solid rgba(247,37,133,0.3)',padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12,flexShrink:0}}>✕</button>
+            </div>
+          ))}
 
-          {/* Botões */}
-          {accounts.length < MAX_ACCOUNTS && (
-            <button onClick={() => window.location.href = 'auth.html'} style={{
-              width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,
-              cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',
-              justifyContent:'center',gap:8,color:'#4cc9f0',
-              background:'rgba(76,201,240,0.2)',border:'1px solid rgba(76,201,240,0.4)'
-            }}>
-              ➕ Adicionar Conta
-            </button>
-          )}
+          {accounts.length<MAX_ACCOUNTS && <button onClick={()=>window.location.href='auth.html'} style={{width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',justifyContent:'center',gap:8,color:'#4cc9f0',background:'rgba(76,201,240,0.2)',border:'1px solid rgba(76,201,240,0.4)'}}>➕ Adicionar Conta</button>}
+          {isAuth && <button onClick={handleLogout} style={{width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',justifyContent:'center',gap:8,color:'#f72585',background:'rgba(247,37,133,0.2)',border:'1px solid rgba(247,37,133,0.4)'}}>🚪 Sair</button>}
 
-          {isAuth && (
-            <button onClick={handleLogout} style={{
-              width:'100%',padding:12,borderRadius:10,fontSize:14,fontWeight:600,
-              cursor:'pointer',marginTop:10,display:'flex',alignItems:'center',
-              justifyContent:'center',gap:8,color:'#f72585',
-              background:'rgba(247,37,133,0.2)',border:'1px solid rgba(247,37,133,0.4)'
-            }}>
-              🚪 Sair da Conta Atual
-            </button>
-          )}
-
-          {/* Info */}
-          <div style={{
-            color:'#a0b3c9',fontSize:11,textAlign:'center',marginTop:15,
-            background:'rgba(0,0,0,0.2)',padding:10,borderRadius:8
-          }}>
-            📱 {accounts.length}/{MAX_ACCOUNTS} contas vinculadas
-            {masterKey && (
-              <>
-                <br/>🔗 Sincronizado via MasterKey
-                <br/>🆔 {masterKey.substring(0, 25)}...
-              </>
-            )}
+          <div style={{color:'#a0b3c9',fontSize:11,textAlign:'center',marginTop:15,background:'rgba(0,0,0,0.2)',padding:10,borderRadius:8}}>
+            ☁️ Firebase: {accounts.length}/{MAX_ACCOUNTS}
+            {masterKey && <><br/>🔑 {masterKey.substring(0,20)}...</>}
           </div>
         </div>
       )}
 
-      <style>{`
-        @keyframes slideIn {
-          from { opacity:0; transform:scale(0.9) translateY(-20px); }
-          to { opacity:1; transform:scale(1) translateY(0); }
-        }
-        @keyframes slideRight {
-          from { transform:translateX(100%); }
-          to { transform:translateX(0); }
-        }
-      `}</style>
+      <style>{`@keyframes slideIn{from{opacity:0;transform:scale(0.9) translateY(-20px)}to{opacity:1;transform:scale(1) translateY(0)}}@keyframes slideRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
     </>
   );
 }
