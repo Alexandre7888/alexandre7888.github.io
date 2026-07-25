@@ -126,8 +126,12 @@
       if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
       return id;
     }
-    function generateUserKey(uid) { return `${uid}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`; }
+    
+    // ❌ REMOVIDA: function generateUserKey(uid)
+    // ✅ Agora usamos o próprio UID como userKey
+    
     function generateMasterKey() { return 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12); }
+    
     function generateAuthToken(uid, email, username, userType, masterKey, companyData = null) {
       return btoa(unescape(encodeURIComponent(JSON.stringify({
         uid, email, username, userType, masterKey, companyData,
@@ -197,7 +201,7 @@
           email: acc.email,
           username: acc.username,
           userType: acc.userType || 'normal',
-          userKey: acc.userKey,
+          userKey: acc.uid, // ✅ Agora userKey = uid
           lastLogin: acc.lastLogin || Date.now(),
           deviceId: deviceId,
           masterKey: mk
@@ -215,7 +219,7 @@
         email: userData.email,
         username: userData.username,
         userType: userData.userType || 'normal',
-        userKey: userData.userKey,
+        userKey: userData.uid, // ✅ Agora userKey = uid
         lastLogin: Date.now(),
         deviceId: deviceId,
         masterKey: mk
@@ -223,9 +227,11 @@
       await set(ref(database, `contas/${mk}`), accounts);
     }
 
-    function redirectAfterAuth(userKey) {
+    function redirectAfterAuth(uid) {
       showSuccess('✅ Sucesso! Redirecionando...');
-      setTimeout(() => { window.location.href = `index.html?userKey=${userKey}`; }, 1000);
+      setTimeout(() => { 
+        window.location.href = `index.html?userKey=${uid}`; // ✅ Redireciona com UID
+      }, 1000);
     }
 
     // ==================== REGISTRO ====================
@@ -259,7 +265,10 @@
         const masterKey = await getOrCreateMasterKey();
         const uc = await createUserWithEmailAndPassword(auth, email, password);
         const user = uc.user;
-        const userKey = generateUserKey(user.uid);
+        
+        // ✅ userKey agora é o próprio UID
+        const userKey = user.uid;
+        
         const token = generateAuthToken(user.uid, email, username, selectedUserType, masterKey,
           selectedUserType === 'entrepreneur' ? { companyName, cnpj } : null);
 
@@ -269,11 +278,30 @@
         };
         if (selectedUserType === 'entrepreneur') { userData.companyName = companyName; userData.cnpj = cnpj.replace(/\D/g, ''); }
 
+        // Salva em users/{uid}
         await set(ref(database, 'users/' + user.uid), userData);
-        await set(ref(database, `userKeysData/${userKey}`), {
+        
+        // ✅ Salva em userKeysData/{uid} (usando o UID como chave)
+        await set(ref(database, `userKeysData/${user.uid}`), {
           authToken: token,
-          authTokenDecoded: { createdAt: Date.now(), email, isPermanent: true, uid: user.uid, userType: selectedUserType, username, masterKey, version: "2.0" },
-          criadoEm: Date.now(), email, hasAuthToken: true, isAnonymous: false, nome: username, uid: user.uid, deviceId, masterKey
+          authTokenDecoded: { 
+            createdAt: Date.now(), 
+            email, 
+            isPermanent: true, 
+            uid: user.uid, 
+            userType: selectedUserType, 
+            username, 
+            masterKey, 
+            version: "2.0" 
+          },
+          criadoEm: Date.now(), 
+          email, 
+          hasAuthToken: true, 
+          isAnonymous: false, 
+          nome: username, 
+          uid: user.uid, 
+          deviceId, 
+          masterKey
         });
 
         // Adicionar à masterKey
@@ -285,10 +313,10 @@
         localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
-        localStorage.setItem('current_userKey', userKey);
+        localStorage.setItem('current_userKey', user.uid); // ✅ Salva o UID
         document.getElementById('accountCountNumber').textContent = allLocal.length;
 
-        redirectAfterAuth(userKey);
+        redirectAfterAuth(user.uid); // ✅ Redireciona com UID
       } catch(e) {
         showError(e.code === 'auth/email-already-in-use' ? 'Email já em uso' : 'Erro ao criar');
         btn.disabled = false; btn.textContent = '✨ Criar Conta';
@@ -322,22 +350,49 @@
           }
         }
 
-        let userKey = userData.userKey || generateUserKey(user.uid);
-        if (!userData.userKey) await update(ref(database, 'users/' + user.uid), { userKey, masterKey });
+        // ✅ userKey agora é o próprio UID
+        const userKey = user.uid;
 
         const token = generateAuthToken(user.uid, email, userData.username, userData.userType || 'normal', masterKey,
           userData.userType === 'entrepreneur' ? { companyName: userData.companyName, cnpj: userData.cnpj } : null);
 
-        await set(ref(database, `userKeysData/${userKey}`), {
+        // ✅ Salva em userKeysData/{uid} (usando o UID como chave)
+        await set(ref(database, `userKeysData/${user.uid}`), {
           authToken: token,
-          authTokenDecoded: { createdAt: Date.now(), email, isPermanent: true, uid: user.uid, userType: userData.userType || 'normal', username: userData.username, masterKey, version: "2.0" },
-          criadoEm: Date.now(), email, hasAuthToken: true, isAnonymous: false, nome: userData.username, uid: user.uid, deviceId, masterKey
+          authTokenDecoded: { 
+            createdAt: Date.now(), 
+            email, 
+            isPermanent: true, 
+            uid: user.uid, 
+            userType: userData.userType || 'normal', 
+            username: userData.username, 
+            masterKey, 
+            version: "2.0" 
+          },
+          criadoEm: Date.now(), 
+          email, 
+          hasAuthToken: true, 
+          isAnonymous: false, 
+          nome: userData.username, 
+          uid: user.uid, 
+          deviceId, 
+          masterKey
         });
-        await update(ref(database, 'users/' + user.uid), { lastLogin: Date.now(), masterKey });
+        
+        await update(ref(database, 'users/' + user.uid), { 
+          lastLogin: Date.now(), 
+          masterKey,
+          userKey: user.uid // ✅ Atualiza userKey para ser o UID
+        });
 
         const accountData = {
-          uid: user.uid, email, username: userData.username,
-          userType: userData.userType || 'normal', userKey, masterKey, lastLogin: Date.now()
+          uid: user.uid, 
+          email, 
+          username: userData.username,
+          userType: userData.userType || 'normal', 
+          userKey: user.uid, // ✅ userKey = uid
+          masterKey, 
+          lastLogin: Date.now()
         };
 
         // Adicionar à masterKey
@@ -351,12 +406,16 @@
         localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
-        localStorage.setItem('current_userKey', userKey);
+        localStorage.setItem('current_userKey', user.uid); // ✅ Salva o UID
         document.getElementById('accountCountNumber').textContent = allLocal.length;
 
-        redirectAfterAuth(userKey);
+        redirectAfterAuth(user.uid); // ✅ Redireciona com UID
       } catch(e) {
-        const m = { 'auth/user-not-found': 'Usuário não encontrado', 'auth/wrong-password': 'Senha incorreta', 'auth/invalid-email': 'Email inválido' };
+        const m = { 
+          'auth/user-not-found': 'Usuário não encontrado', 
+          'auth/wrong-password': 'Senha incorreta', 
+          'auth/invalid-email': 'Email inválido' 
+        };
         showError(m[e.code] || 'Erro ao fazer login');
         btn.disabled = false; btn.textContent = '🔐 Entrar';
       }
@@ -374,27 +433,64 @@
         const user = result.user;
         const username = user.displayName || user.email.split('@')[0];
         const snap = await get(ref(database, 'users/' + user.uid));
-        let userType = 'normal', userKey;
+        let userType = 'normal';
+        
+        // ✅ userKey agora é o próprio UID
+        const userKey = user.uid;
 
         if (!snap.exists()) {
-          userKey = generateUserKey(user.uid);
           await set(ref(database, 'users/' + user.uid), {
-            username, email: user.email, userType: 'normal', userKey, uid: user.uid,
-            masterKey, createdAt: Date.now(), lastLogin: Date.now(), provider: 'google', hasToken: true, deviceId
+            username, 
+            email: user.email, 
+            userType: 'normal', 
+            userKey, // ✅ userKey = uid
+            uid: user.uid,
+            masterKey, 
+            createdAt: Date.now(), 
+            lastLogin: Date.now(), 
+            provider: 'google', 
+            hasToken: true, 
+            deviceId
           });
         } else {
           userType = snap.val().userType || 'normal';
-          userKey = snap.val().userKey || generateUserKey(user.uid);
         }
 
         const token = generateAuthToken(user.uid, user.email, username, userType, masterKey, null);
-        await set(ref(database, `userKeysData/${userKey}`), {
+        
+        // ✅ Salva em userKeysData/{uid} (usando o UID como chave)
+        await set(ref(database, `userKeysData/${user.uid}`), {
           authToken: token,
-          authTokenDecoded: { createdAt: Date.now(), email: user.email, isPermanent: true, uid: user.uid, userType, username, masterKey, version: "2.0" },
-          criadoEm: Date.now(), email: user.email, hasAuthToken: true, isAnonymous: false, nome: username, uid: user.uid, deviceId, masterKey
+          authTokenDecoded: { 
+            createdAt: Date.now(), 
+            email: user.email, 
+            isPermanent: true, 
+            uid: user.uid, 
+            userType, 
+            username, 
+            masterKey, 
+            version: "2.0" 
+          },
+          criadoEm: Date.now(), 
+          email: user.email, 
+          hasAuthToken: true, 
+          isAnonymous: false, 
+          nome: username, 
+          uid: user.uid, 
+          deviceId, 
+          masterKey
         });
 
-        const accountData = { uid: user.uid, email: user.email, username, userType, userKey, masterKey, lastLogin: Date.now() };
+        const accountData = { 
+          uid: user.uid, 
+          email: user.email, 
+          username, 
+          userType, 
+          userKey, // ✅ userKey = uid
+          masterKey, 
+          lastLogin: Date.now() 
+        };
+        
         await addAccountToMasterKey(masterKey, accountData);
 
         const allLocal = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
@@ -402,10 +498,10 @@
         localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
         localStorage.setItem('auth_token', token);
         localStorage.setItem('token_user_id', user.uid);
-        localStorage.setItem('current_userKey', userKey);
+        localStorage.setItem('current_userKey', user.uid); // ✅ Salva o UID
         document.getElementById('accountCountNumber').textContent = allLocal.length;
 
-        redirectAfterAuth(userKey);
+        redirectAfterAuth(user.uid); // ✅ Redireciona com UID
       } catch(e) {
         if (e.code !== 'auth/popup-closed-by-user') showError('Erro no Google');
       }
