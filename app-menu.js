@@ -23,7 +23,11 @@ function AppMenu() {
   const [showMenu, setShowMenu] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+
+  // ESTADOS DO HOVER E PIN (PUTER STYLE)
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+
   const panelRef = useRef(null);
   const dbRef = useRef(null);
 
@@ -89,8 +93,7 @@ function AppMenu() {
       const snap = await get(ref(dbRef.current, `contas/${key}`));
       
       if (snap.exists()) {
-        const data = snap.val();
-        setAccounts(Object.values(data));
+        setAccounts(Object.values(snap.val()));
       } else {
         setAccounts([]);
       }
@@ -166,8 +169,7 @@ function AppMenu() {
   async function switchAccount(acc) {
     if (acc.userKey) {
       localStorage.setItem('current_userKey', acc.userKey);
-      const newUrl = window.location.pathname + '?userKey=' + acc.userKey;
-      window.location.href = newUrl;
+      window.location.href = window.location.pathname + '?userKey=' + acc.userKey;
     }
   }
 
@@ -190,97 +192,111 @@ function AppMenu() {
 
   const name = userData?.username || userData?.email || 'Code';
   const letter = name.charAt(0).toUpperCase();
-  const avatarColor = getAvatarColor(name);
+
+  // Define se a barra está expandida (se o mouse está em cima OU se clicou para fixar)
+  const isOpen = isHovered || isPinned;
 
   return React.createElement('div', null,
-    // ==================== BARRA FLUTUANTE CENTRAL (ESTILO PUTER) ====================
+
+    // ==================== BARRA NOTCH DINÂMICA (PUTER STYLE) ====================
     React.createElement('div', {
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false),
+      onClick: () => setIsPinned(!isPinned), // Clicar alterna entre fixo e auto-hide
       style: {
         position: 'fixed',
-        top: '6px',
+        top: 0,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 10000,
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        background: 'rgba(18, 18, 20, 0.85)',
+        justifyContent: 'center',
+        gap: isOpen ? '10px' : '6px',
+        background: 'rgba(18, 18, 20, 0.92)',
         backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
-        borderRadius: '12px',
-        padding: '5px 14px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
-        userSelect: 'none'
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        borderTop: 'none',
+        borderBottomLeftRadius: '12px',
+        borderBottomRightRadius: '12px',
+        padding: isOpen ? '6px 14px' : '2px 12px',
+        boxShadow: isOpen ? '0 10px 30px rgba(0, 0, 0, 0.6)' : '0 2px 10px rgba(0, 0, 0, 0.3)',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: 'pointer',
+        userSelect: 'none',
+        minWidth: isOpen ? '220px' : '90px',
+        height: isOpen ? '36px' : '12px',
+        overflow: 'hidden'
       }
     },
-      // Botão Ícone do App / Menu 4x4
-      React.createElement('div', {
-        onClick: () => setShowMenu(true),
-        title: "Abrir Aplicativos",
+      // SE ESTIVER RECOLHIDO: Exibe apenas o tracinho indicador (Mini-Notch)
+      !isOpen ? React.createElement('div', {
         style: {
-          width: 22,
-          height: 22,
-          cursor: 'pointer',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '3px',
-          padding: '2px',
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: '6px',
-          alignItems: 'center',
-          justifyItems: 'center'
+          width: '32px',
+          height: '3px',
+          background: 'rgba(255, 255, 255, 0.5)',
+          borderRadius: '2px'
         }
-      }, [...Array(4)].map((_, i) =>
+      }) : 
+      
+      // SE ESTIVER EXPANDIDO: Exibe a barra completa com controles
+      React.createElement(React.Fragment, null,
+        // Ícone App / Menu 4x4
         React.createElement('div', {
-          key: i,
-          style: { width: '6px', height: '6px', background: '#e1e1e1', borderRadius: '2px' }
-        })
-      )),
-
-      // Divisor vertical
-      React.createElement('div', { style: { width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' } }),
-
-      // Título do app / Status do Usuário
-      React.createElement('div', {
-        onClick: handleOpenPanel,
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          cursor: 'pointer',
-          color: '#ffffff',
-          fontSize: '13px',
-          fontWeight: 500,
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        }
-      },
-        React.createElement('span', {
+          onClick: (e) => { e.stopPropagation(); setShowMenu(true); },
+          title: "Abrir Apps",
           style: {
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: isAuth ? '#2ecc71' : '#e74c3c',
-            boxShadow: isAuth ? '0 0 8px #2ecc71' : 'none'
+            width: 20,
+            height: 20,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '2px',
+            padding: '2px',
+            background: 'rgba(255,255,255,0.08)',
+            borderRadius: '4px'
           }
-        }),
-        React.createElement('span', null, name)
-      ),
+        }, [...Array(4)].map((_, i) =>
+          React.createElement('div', { key: i, style: { background: '#e1e1e1', borderRadius: '1px' } })
+        )),
 
-      // Divisor vertical
-      React.createElement('div', { style: { width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' } }),
+        // Título / Conta
+        React.createElement('div', {
+          onClick: (e) => { e.stopPropagation(); handleOpenPanel(); },
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: '#fff',
+            fontSize: '12px',
+            fontWeight: 500,
+            flex: 1,
+            justifyContent: 'center'
+          }
+        },
+          React.createElement('span', {
+            style: {
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: isAuth ? '#2ecc71' : '#e74c3c'
+            }
+          }),
+          React.createElement('span', null, name)
+        ),
 
-      // Controles estilo janela (Minimizar / Fechar / Avatar)
-      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-        React.createElement('div', {
-          onClick: handleOpenPanel,
-          title: "Minimizar / Contas",
-          style: { color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }
-        }, '─'),
-        React.createElement('div', {
-          onClick: () => setShowPanel(false),
-          title: "Fechar Painel",
-          style: { color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }
-        }, '✕')
+        // Botões Minimizar / Fechar Janela
+        React.createElement('div', { style: { display: 'flex', gap: '8px', opacity: 0.7 } },
+          React.createElement('span', {
+            onClick: (e) => { e.stopPropagation(); setIsPinned(false); setIsHovered(false); },
+            title: "Recolher",
+            style: { fontSize: '11px', color: '#fff' }
+          }, '─'),
+          React.createElement('span', {
+            onClick: (e) => { e.stopPropagation(); setIsPinned(false); setIsHovered(false); },
+            title: "Fechar",
+            style: { fontSize: '11px', color: '#fff' }
+          }, '✕')
+        )
       )
     ),
 
