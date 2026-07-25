@@ -24,14 +24,13 @@ function AppMenu() {
   const [showPanel, setShowPanel] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Estados do Hover e Fixação (Puter Notch Style)
+  // Estados do Hover e Fixação
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
   const panelRef = useRef(null);
   const dbRef = useRef(null);
 
-  // Verifica se está rodando no domínio alexandre7888.github.io
   const isAllowedDomain = window.location.hostname === 'alexandre7888.github.io';
 
   useEffect(() => {
@@ -167,10 +166,9 @@ function AppMenu() {
       
       if (userData?.uid === uid) {
         localStorage.removeItem('current_userKey');
-        setIsAuth(false);
-        setUserData(null);
-        setUserKey(null);
-        window.location.reload();
+        const url = new URL(window.location.href);
+        url.searchParams.delete('userKey');
+        window.location.href = url.toString();
       }
     } catch(e) {
       console.error('Erro ao remover:', e);
@@ -183,18 +181,28 @@ function AppMenu() {
     window.location.href = key ? `${url}${sep}userKey=${key}` : url;
   }
 
-  // TROCA DE CONTA: Salva no localStorage e ATUALIZA O SITE na mesma URL
+  // TROCA DE CONTA: Atualiza a userKey na URL atual e recarrega o site
   async function switchAccount(acc) {
     if (acc.userKey) {
       localStorage.setItem('current_userKey', acc.userKey);
-      window.location.reload(); // Recarrega na mesma URL exata em que o usuário está
+      
+      // Constrói a nova URL mantendo a página atual mas substituindo/inserindo a nova userKey
+      const url = new URL(window.location.href);
+      url.searchParams.set('userKey', acc.userKey);
+      
+      // Recarrega o site na nova URL com o userKey trocado
+      window.location.href = url.toString();
     }
   }
 
   function handleLogout() {
     if (!confirm('Sair da conta atual?')) return;
     localStorage.removeItem('current_userKey');
-    window.location.reload();
+    
+    // Remove o parâmetro userKey da URL e recarrega
+    const url = new URL(window.location.href);
+    url.searchParams.delete('userKey');
+    window.location.href = url.toString();
   }
 
   async function handleOpenPanel() {
