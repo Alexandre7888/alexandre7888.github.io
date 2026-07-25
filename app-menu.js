@@ -31,6 +31,9 @@ function AppMenu() {
   const panelRef = useRef(null);
   const dbRef = useRef(null);
 
+  // Verifica se está rodando no domínio alexandre7888.github.io
+  const isAllowedDomain = window.location.hostname === 'alexandre7888.github.io';
+
   useEffect(() => {
     async function initFirebase() {
       const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js');
@@ -66,15 +69,18 @@ function AppMenu() {
   }, [masterKey, userKey]);
 
   async function init() {
-    const urlKey = new URLSearchParams(window.location.search).get('userKey');
+    const rawUserKey = new URLSearchParams(window.location.search).get('userKey');
     const localKey = localStorage.getItem('current_userKey');
-    const key = urlKey || localKey;
+    const key = rawUserKey || localKey;
     
     if (key) {
-      setUserKey(key);
-      localStorage.setItem('current_userKey', key);
-      // Ao iniciar com userKey, busca os dados e obtém automaticamente a masterKey
-      await loadUserData(key);
+      // Pega o trecho exato da userKey caso venha no formato completo
+      const cleanUserKey = key.includes('userKey-') ? key : key;
+      setUserKey(cleanUserKey);
+      localStorage.setItem('current_userKey', cleanUserKey);
+      
+      // Carrega os dados e sincroniza no Firebase em /userKeys/${user}/
+      await loadAndSyncUserData(cleanUserKey);
     } else {
       const mk = localStorage.getItem('codehub_masterKey');
       if (mk) {
@@ -107,33 +113,52 @@ function AppMenu() {
   async function loadCurrentUser() {
     const key = userKey || localStorage.getItem('current_userKey');
     if (!key) return;
-    await loadUserData(key);
+    await loadAndSyncUserData(key);
   }
 
-  async function loadUserData(key) {
+  // Função que busca e grava a masterKey direto no caminho /userKeys/${user}/
+  async function loadAndSyncUserData(key) {
     if (!key || !dbRef.current) return;
     
     try {
-      const { ref, get } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
-      const snap = await get(ref(dbRef.current, `userKeysData/${key}`));
+      const { ref, get, update } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
       
-      if (snap.exists()) {
-        const data = snap.val();
+      // Busca primeiro no nó userKeysData
+      let snap = await get(ref(dbRef.current, `userKeysData/${key}`));
+      let data = snap.exists() ? snap.val() : null;
+      
+      // Se não achar lá, busca no caminho /userKeys/${key}
+      if (!data) {
+        snap = await get(ref(dbRef.current, `userKeys/${key}`));
+        data = snap.exists() ? snap.val() : null;
+      }
+      
+      if (data) {
         const user = data.authTokenDecoded || data;
         setUserData(user);
         setIsAuth(true);
         setUserKey(key);
         
-        // Extrai a masterKey automaticamente do cadastro do usuário
-        const mk = user.masterKey || data.masterKey;
-        if (mk) {
-          setMasterKey(mk);
-          localStorage.setItem('codehub_masterKey', mk);
-          await loadAccounts(mk);
+        let mk = user.masterKey || data.masterKey || localStorage.getItem('codehub_masterKey');
+        
+        // Se ainda não houver masterKey, gera uma única para esta sessão/conta
+        if (!mk) {
+          mk = 'mk_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
         }
+
+        setMasterKey(mk);
+        localStorage.setItem('codehub_masterKey', mk);
+
+        // Salva/Atualiza automaticamente em /userKeys/${key}/ para manter sincronizado com outros dispositivos
+        await update(ref(dbRef.current, `userKeys/${key}`), {
+          masterKey: mk,
+          updatedAt: Date.now()
+        });
+
+        await loadAccounts(mk);
       }
     } catch(e) {
-      console.error('Erro:', e);
+      console.error('Erro ao sincronizar userKey:', e);
     }
   }
 
@@ -232,7 +257,6 @@ function AppMenu() {
         overflow: 'hidden'
       }
     },
-      // SE ESTIVER RECOLHIDO: Exibe apenas o indicador de traço
       !isOpen ? React.createElement('div', {
         style: {
           width: '32px',
@@ -242,9 +266,7 @@ function AppMenu() {
         }
       }) : 
       
-      // SE ESTIVER EXPANDIDO: Exibe Menu + Nome + Título do Site + Botões
       React.createElement(React.Fragment, null,
-        // Ícone App / Menu 4x4
         React.createElement('div', {
           onClick: (e) => { e.stopPropagation(); setShowMenu(true); },
           title: "Abrir Apps",
@@ -262,7 +284,6 @@ function AppMenu() {
           React.createElement('div', { key: i, style: { background: '#e1e1e1', borderRadius: '1px' } })
         )),
 
-        // Informações centrais: Nome de Usuário + Título do Site Embaixo
         React.createElement('div', {
           onClick: (e) => { e.stopPropagation(); handleOpenPanel(); },
           style: {
@@ -294,7 +315,6 @@ function AppMenu() {
             }),
             React.createElement('span', null, name)
           ),
-          // Exibe o título da página/site abaixo do nome do usuário
           React.createElement('div', {
             style: {
               fontSize: '9px',
@@ -308,7 +328,6 @@ function AppMenu() {
           }, siteTitle)
         ),
 
-        // Botões de minimizar e fechar janela
         React.createElement('div', { style: { display: 'flex', gap: '8px', opacity: 0.7 } },
           React.createElement('span', {
             onClick: (e) => { e.stopPropagation(); setIsPinned(false); setIsHovered(false); },
@@ -370,7 +389,7 @@ function AppMenu() {
       ),
 
       accounts.length === 0 ?
-        React.createElement('div', { style:{ color:'#888',textAlign:'center',padding:20 } },
+        React.createElement('div', { style:{ style:{ color:'#888',textAlign:'center',padding:20 } } },
           React.createElement('div', { style:{ fontSize:32,marginBottom:8 } }, '☁️'),
           React.createElement('div', { style:{ fontSize:13 } }, 'Nenhuma conta salva'),
           React.createElement('div', { style:{ fontSize:11,opacity:0.6,marginTop:4 } }, 'Faça login para adicionar')
@@ -397,7 +416,8 @@ function AppMenu() {
           )
         ),
 
-      accounts.length < MAX_ACCOUNTS ?
+      // Só exibe o botão se o domínio for exatamente alexandre7888.github.io
+      isAllowedDomain && accounts.length < MAX_ACCOUNTS ?
         React.createElement('button', {
           onClick: () => window.location.href = 'auth.html',
           style: { width:'100%',padding:10,borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',marginTop:12,color:'#4cc9f0',background:'rgba(76,201,240,0.12)',border:'1px solid rgba(76,201,240,0.3)' }
