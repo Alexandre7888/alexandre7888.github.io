@@ -19,9 +19,14 @@
     :root{--bg-start:#0b1120;--bg-end:#03060c;--canvas-bg:#11161f;--border:#2a3a4a;--text:#e2e9f0;--text2:#a0b3c9;--gold:#e6b422;--white-bg:#f5f7fc;--white-text:#1e293b;--toggle-bg:#1e2a3a;--toggle-border:#3e5a77;--shadow:rgba(0,0,0,0.5)}
     body.light{--bg-start:#e2e8f0;--bg-end:#cbd5e1;--canvas-bg:#f0f4fa;--border:#9aaebf;--text:#0f172a;--text2:#2c3e4e;--gold:#b45309;--white-bg:#fff;--white-text:#0f172a;--toggle-bg:#dce5f0;--toggle-border:#8ba0bc;--shadow:rgba(0,0,0,0.1)}
     body{background:radial-gradient(circle at 30% 20%,var(--bg-start),var(--bg-end));font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column}
-    .content-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;margin-top:70px}
-    .mini-clock{position:fixed;top:18px;right:20px;z-index:1100;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px);border-radius:60px;padding:6px;box-shadow:0 6px 16px var(--shadow);border:1px solid var(--border)}
-    .mini-clock canvas{display:block;width:70px;height:70px;border-radius:50%;background:var(--canvas-bg)}
+    
+    /* Espaçamento ajustado para não encostar na barra superior central */
+    .content-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;margin-top:90px}
+    
+    /* Relógio reposicionado no canto esquerdo para harmonia visual */
+    .mini-clock{position:fixed;top:10px;left:16px;z-index:1100;background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);border-radius:60px;padding:4px;box-shadow:0 6px 16px var(--shadow);border:1px solid var(--border)}
+    .mini-clock canvas{display:block;width:42px;height:42px;border-radius:50%;background:var(--canvas-bg)}
+    
     .theme-panel{position:fixed;bottom:24px;right:24px;z-index:1050;background:rgba(10,15,26,0.75);backdrop-filter:blur(12px);border-radius:48px;padding:6px 12px;display:flex;gap:8px;border:1px solid var(--border);box-shadow:0 8px 20px var(--shadow)}
     .theme-btn{background:var(--toggle-bg);border:none;border-radius:40px;padding:8px 16px;font-size:0.8rem;font-weight:600;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:6px;border:1px solid var(--toggle-border);transition:0.2s}
     .theme-btn.active{background:var(--gold);color:#0a0f14;box-shadow:0 0 8px rgba(230,180,34,0.4)}
@@ -30,7 +35,7 @@
     .white-area p{color:var(--white-text);opacity:0.75}
     .white-placeholder{background:rgba(0,0,0,0.03);border-radius:24px;padding:24px;margin-top:16px;color:var(--white-text)}
     .welcome{color:var(--text);font-size:1.2rem;background:rgba(10,15,26,0.75);backdrop-filter:blur(8px);padding:15px 30px;border-radius:60px;border:1px solid var(--border);font-weight:500}
-    @media(max-width:550px){.theme-btn{font-size:0.7rem;padding:6px 10px}.mini-clock canvas{width:55px!important;height:55px!important}}
+    @media(max-width:550px){.theme-btn{font-size:0.7rem;padding:6px 10px}.mini-clock canvas{width:36px!important;height:36px!important}}
   </style>
 </head>
 <body class="dark">
@@ -48,8 +53,8 @@
     <div class="welcome">✨ Bem-vindo ao CodeHUB ✨</div>
     <div class="white-area">
       <h3>🚀 Plataforma CodeHUB</h3>
-      <p>Use o menu 4x4 no canto superior esquerdo</p>
-      <div class="white-placeholder">📱 Menu 4x4<br>👤 Contas na nuvem<br>☁️ Dados sincronizados</div>
+      <p>Acesse as opções pelo painel de controle superior</p>
+      <div class="white-placeholder">💻 Barra de tarefas inteligente<br>👤 Contas na nuvem<br>☁️ Dados sincronizados</div>
     </div>
   </div>
 
