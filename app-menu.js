@@ -24,7 +24,7 @@ function AppMenu() {
   const [showPanel, setShowPanel] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // ESTADOS DO HOVER E PIN (PUTER STYLE)
+  // Estados do Hover e Fixação (Puter Notch Style)
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
@@ -57,7 +57,8 @@ function AppMenu() {
     });
     
     const interval = setInterval(async () => {
-      if (masterKey) await loadAccounts();
+      const mk = masterKey || localStorage.getItem('codehub_masterKey');
+      if (mk) await loadAccounts(mk);
       if (userKey) await loadCurrentUser();
     }, 3000);
     
@@ -65,12 +66,6 @@ function AppMenu() {
   }, [masterKey, userKey]);
 
   async function init() {
-    const mk = localStorage.getItem('codehub_masterKey');
-    if (mk) {
-      setMasterKey(mk);
-      await loadAccounts(mk);
-    }
-    
     const urlKey = new URLSearchParams(window.location.search).get('userKey');
     const localKey = localStorage.getItem('current_userKey');
     const key = urlKey || localKey;
@@ -78,14 +73,21 @@ function AppMenu() {
     if (key) {
       setUserKey(key);
       localStorage.setItem('current_userKey', key);
+      // Ao iniciar com userKey, busca os dados e obtém automaticamente a masterKey
       await loadUserData(key);
+    } else {
+      const mk = localStorage.getItem('codehub_masterKey');
+      if (mk) {
+        setMasterKey(mk);
+        await loadAccounts(mk);
+      }
     }
     
     setLoading(false);
   }
 
   async function loadAccounts(mk) {
-    const key = mk || masterKey;
+    const key = mk || masterKey || localStorage.getItem('codehub_masterKey');
     if (!key || !dbRef.current) return;
     
     try {
@@ -122,8 +124,9 @@ function AppMenu() {
         setIsAuth(true);
         setUserKey(key);
         
+        // Extrai a masterKey automaticamente do cadastro do usuário
         const mk = user.masterKey || data.masterKey;
-        if (mk && mk !== masterKey) {
+        if (mk) {
           setMasterKey(mk);
           localStorage.setItem('codehub_masterKey', mk);
           await loadAccounts(mk);
@@ -135,17 +138,18 @@ function AppMenu() {
   }
 
   async function removeAccount(uid) {
-    if (!masterKey || !dbRef.current) return;
+    const mk = masterKey || localStorage.getItem('codehub_masterKey');
+    if (!mk || !dbRef.current) return;
     if (!confirm('Remover esta conta? (Afeta todos os dispositivos)')) return;
     
     try {
       const { ref, get, set } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
-      const snap = await get(ref(dbRef.current, `contas/${masterKey}`));
+      const snap = await get(ref(dbRef.current, `contas/${mk}`));
       
       if (snap.exists()) {
         const contas = snap.val();
         delete contas[uid];
-        await set(ref(dbRef.current, `contas/${masterKey}`), contas);
+        await set(ref(dbRef.current, `contas/${mk}`), contas);
         setAccounts(Object.values(contas));
       }
       
@@ -180,7 +184,8 @@ function AppMenu() {
   }
 
   async function handleOpenPanel() {
-    if (masterKey) await loadAccounts(masterKey);
+    const mk = masterKey || localStorage.getItem('codehub_masterKey');
+    if (mk) await loadAccounts(mk);
     setShowPanel(true);
   }
 
@@ -190,10 +195,8 @@ function AppMenu() {
     }, '⏳ Carregando...');
   }
 
-  const name = userData?.username || userData?.email || 'Code';
-  const letter = name.charAt(0).toUpperCase();
-
-  // Define se a barra está expandida (se o mouse está em cima OU se clicou para fixar)
+  const name = userData?.username || userData?.email || 'CodeHUB';
+  const siteTitle = document.title || 'CodeHUB';
   const isOpen = isHovered || isPinned;
 
   return React.createElement('div', null,
@@ -202,7 +205,7 @@ function AppMenu() {
     React.createElement('div', {
       onMouseEnter: () => setIsHovered(true),
       onMouseLeave: () => setIsHovered(false),
-      onClick: () => setIsPinned(!isPinned), // Clicar alterna entre fixo e auto-hide
+      onClick: () => setIsPinned(!isPinned),
       style: {
         position: 'fixed',
         top: 0,
@@ -224,12 +227,12 @@ function AppMenu() {
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'pointer',
         userSelect: 'none',
-        minWidth: isOpen ? '220px' : '90px',
-        height: isOpen ? '36px' : '12px',
+        minWidth: isOpen ? '230px' : '90px',
+        height: isOpen ? '42px' : '12px',
         overflow: 'hidden'
       }
     },
-      // SE ESTIVER RECOLHIDO: Exibe apenas o tracinho indicador (Mini-Notch)
+      // SE ESTIVER RECOLHIDO: Exibe apenas o indicador de traço
       !isOpen ? React.createElement('div', {
         style: {
           width: '32px',
@@ -239,7 +242,7 @@ function AppMenu() {
         }
       }) : 
       
-      // SE ESTIVER EXPANDIDO: Exibe a barra completa com controles
+      // SE ESTIVER EXPANDIDO: Exibe Menu + Nome + Título do Site + Botões
       React.createElement(React.Fragment, null,
         // Ícone App / Menu 4x4
         React.createElement('div', {
@@ -259,32 +262,53 @@ function AppMenu() {
           React.createElement('div', { key: i, style: { background: '#e1e1e1', borderRadius: '1px' } })
         )),
 
-        // Título / Conta
+        // Informações centrais: Nome de Usuário + Título do Site Embaixo
         React.createElement('div', {
           onClick: (e) => { e.stopPropagation(); handleOpenPanel(); },
           style: {
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            gap: '6px',
-            color: '#fff',
-            fontSize: '12px',
-            fontWeight: 500,
+            justifyContent: 'center',
             flex: 1,
-            justifyContent: 'center'
+            lineHeight: 1.1
           }
         },
-          React.createElement('span', {
+          React.createElement('div', {
             style: {
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: isAuth ? '#2ecc71' : '#e74c3c'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: 600
             }
-          }),
-          React.createElement('span', null, name)
+          },
+            React.createElement('span', {
+              style: {
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: isAuth ? '#2ecc71' : '#e74c3c'
+              }
+            }),
+            React.createElement('span', null, name)
+          ),
+          // Exibe o título da página/site abaixo do nome do usuário
+          React.createElement('div', {
+            style: {
+              fontSize: '9px',
+              color: 'rgba(255, 255, 255, 0.55)',
+              marginTop: '2px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '130px'
+            }
+          }, siteTitle)
         ),
 
-        // Botões Minimizar / Fechar Janela
+        // Botões de minimizar e fechar janela
         React.createElement('div', { style: { display: 'flex', gap: '8px', opacity: 0.7 } },
           React.createElement('span', {
             onClick: (e) => { e.stopPropagation(); setIsPinned(false); setIsHovered(false); },
