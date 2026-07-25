@@ -59,7 +59,6 @@ function AppMenu() {
       if (panelRef.current && !panelRef.current.contains(e.target)) setShowPanel(false);
     });
     
-    // Atualização em background (SEM RECARREGAR A PÁGINA)
     const interval = setInterval(async () => {
       const mk = localStorage.getItem('codehub_masterKey');
       if (mk) await loadAccounts(mk);
@@ -75,7 +74,6 @@ function AppMenu() {
     const localKey = localStorage.getItem('current_userKey');
     const key = rawUserKey || localKey;
     
-    // Resgata a masterKey salva anteriormente para NÃO PERDER as contas
     let currentMasterKey = localStorage.getItem('codehub_masterKey');
     if (currentMasterKey) {
       setMasterKey(currentMasterKey);
@@ -112,7 +110,6 @@ function AppMenu() {
     await loadAndSyncUserData(key, mk);
   }
 
-  // Sincroniza os dados sem apagar a masterKey existente
   async function loadAndSyncUserData(key, activeMasterKey) {
     if (!key || !dbRef.current) return;
     
@@ -133,14 +130,12 @@ function AppMenu() {
         setIsAuth(true);
         setUserKey(key);
         
-        // Prioriza a masterKey que veio da conta ou a que já estava salva localmente
         let mk = user.masterKey || data.masterKey || activeMasterKey || localStorage.getItem('codehub_masterKey');
         
         if (mk) {
           setMasterKey(mk);
           localStorage.setItem('codehub_masterKey', mk);
 
-          // Atualiza no banco no caminho /userKeys/${key} sem apagar dados anteriores
           await update(ref(dbRef.current, `userKeys/${key}`), {
             masterKey: mk,
             updatedAt: Date.now()
@@ -175,6 +170,7 @@ function AppMenu() {
         setIsAuth(false);
         setUserData(null);
         setUserKey(null);
+        window.location.reload();
       }
     } catch(e) {
       console.error('Erro ao remover:', e);
@@ -187,30 +183,18 @@ function AppMenu() {
     window.location.href = key ? `${url}${sep}userKey=${key}` : url;
   }
 
-  // Troca de conta SILENCIOSA (sem recarregar toda a página do zero se não quiser)
+  // TROCA DE CONTA: Salva no localStorage e ATUALIZA O SITE na mesma URL
   async function switchAccount(acc) {
     if (acc.userKey) {
       localStorage.setItem('current_userKey', acc.userKey);
-      setUserKey(acc.userKey);
-      
-      // Atualiza a URL sem dar F5/Refresh na página
-      const newUrl = window.location.pathname + '?userKey=' + acc.userKey;
-      window.history.replaceState({ path: newUrl }, '', newUrl);
-
-      const mk = localStorage.getItem('codehub_masterKey');
-      await loadAndSyncUserData(acc.userKey, mk);
+      window.location.reload(); // Recarrega na mesma URL exata em que o usuário está
     }
   }
 
   function handleLogout() {
     if (!confirm('Sair da conta atual?')) return;
     localStorage.removeItem('current_userKey');
-    setIsAuth(false);
-    setUserData(null);
-    setUserKey(null);
-    
-    // Limpa a URL sem dar Refresh
-    window.history.replaceState({}, document.title, window.location.pathname);
+    window.location.reload();
   }
 
   async function handleOpenPanel() {
@@ -231,7 +215,7 @@ function AppMenu() {
 
   return React.createElement('div', null,
 
-    // ==================== BARRA NOTCH DINÂMICA (PUTER STYLE) ====================
+    // ==================== BARRA NOTCH DINÂMICA ====================
     React.createElement('div', {
       onMouseEnter: () => setIsHovered(true),
       onMouseLeave: () => setIsHovered(false),
