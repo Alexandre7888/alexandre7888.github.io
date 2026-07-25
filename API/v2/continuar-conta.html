@@ -1,1026 +1,510 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Continuar Login com Usuário v2</title>
-<style>
-    :root {
-      --primary-color: #4361ee;
-      --secondary-color: #3f37c9;
-      --accent-color: #4895ef;
-      --danger-color: #f72585;
-      --success-color: #4cc9f0;
-      --light-color: #f8f9fa;
-      --dark-color: #212529;
-      --gray-color: #6c757d;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    .auth-container {
-      width: 100%;
-      max-width: 420px;
-      background-color: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-      animation: fadeIn 0.5s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .auth-header {
-      background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-      color: white;
-      padding: 25px;
-      text-align: center;
-    }
-
-    .auth-header h1 {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 5px;
-    }
-
-    .auth-header p {
-      font-size: 14px;
-      opacity: 0.9;
-    }
-
-    .auth-content {
-      padding: 30px;
-      text-align: center;
-    }
-
-    #status {
-      margin: 20px 0;
-      font-weight: bold;
-      color: var(--dark-color);
-      font-size: 16px;
-    }
-
-    #username {
-      font-size: 1.2rem;
-      margin: 15px 0;
-      color: var(--dark-color);
-    }
-
-    #continueBtn {
-      width: 100%;
-      padding: 14px;
-      background-color: var(--primary-color);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      margin-top: 20px;
-    }
-
-    #continueBtn:hover {
-      background-color: var(--secondary-color);
-      transform: translateY(-2px);
-    }
-
-    #continueBtn:disabled {
-      background-color: var(--gray-color);
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .error-message {
-      color: var(--danger-color);
-      font-size: 13px;
-      margin-top: 15px;
-    }
-
-    .login-redirect {
-      margin-top: 20px;
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      border-left: 4px solid var(--accent-color);
-    }
-
-    .login-redirect p {
-      margin-bottom: 10px;
-      color: var(--dark-color);
-    }
-
-    .login-link {
-      display: inline-block;
-      padding: 10px 20px;
-      background-color: var(--primary-color);
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      transition: all 0.3s;
-    }
-
-    .login-link:hover {
-      background-color: var(--secondary-color);
-      transform: translateY(-2px);
-    }
-
-    .header-actions {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-    }
-
-    .home-btn {
-      background-color: rgba(255, 255, 255, 0.2);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.3s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .home-btn:hover {
-      background-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .token-info {
-      background: #e7f3ff;
-      border-left: 4px solid var(--primary-color);
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 6px;
-      font-size: 12px;
-      word-break: break-all;
-      text-align: left;
-    }
-
-    @media (max-width: 480px) {
-      .auth-container {
-        border-radius: 12px;
-      }
-
-      .auth-header {
-        padding: 20px;
-      }
-
-      .auth-content {
-        padding: 20px;
-      }
-
-      .header-actions {
-        top: 10px;
-        left: 10px;
-      }
-    }
-</style>
-</head>
-<body>
-  <div class="header-actions">
-    <button class="home-btn" onclick="goToIndex()">
-      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-      </svg>
-      Início
-    </button>
-  </div>
-
-  <div class="auth-container">
-    <div class="auth-header">
-      <h1>Continuar Login</h1>
-      <p>Complete o processo de autenticação</p>
-    </div>
-
-    <div class="auth-content">
-      <p id="status">Verificando autenticação...</p>
-      <p id="username"></p>
-      <div id="user-info"></div>
-      <div id="auth-token-display" class="token-info" style="display: none;"></div>
-      <button id="continueBtn">Continuar</button>
-      <div id="login-redirect" class="login-redirect" style="display: none;">
-        <p>Você precisa fazer login para continuar</p>
-        <a id="loginLink" href="#" class="login-link">Fazer Login</a>
-      </div>
-      <p id="error" class="error-message"></p>
-    </div>
-  </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.appspot.com",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32",
-      measurementId: "G-V57KRZ02HJ"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    const statusEl = document.getElementById('status');
-    const usernameEl = document.getElementById('username');
-    const userInfoEl = document.getElementById('user-info');
-    const continueBtn = document.getElementById('continueBtn');
-    const errorEl = document.getElementById('error');
-    const loginRedirectEl = document.getElementById('login-redirect');
-    const loginLinkEl = document.getElementById('loginLink');
-    const authTokenDisplay = document.getElementById('auth-token-display');
-
-    // Pega token da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const appToken = urlParams.get('token');
-
-    // ==================== FUNÇÕES DO TOKEN DE AUTENTICAÇÃO ====================
-
-    // Decodifica token base64
-    function decodeAuthToken(token) {
-      try {
-        const jsonString = decodeURIComponent(escape(atob(token)));
-        return JSON.parse(jsonString);
-      } catch (error) {
-        console.error("Erro ao decodificar token:", error);
-        return null;
-      }
-    }
-
-    // Busca token do usuário no Firebase (collection tokens)
-    async function fetchUserAuthTokenFromFirebase(userId) {
-      try {
-        const tokenRef = ref(db, `tokens/${userId}`);
-        const snapshot = await get(tokenRef);
-
-        if (snapshot.exists()) {
-          const tokenData = snapshot.val();
-          if (tokenData.token) {
-            return tokenData.token;
-          }
-        }
-        return null;
-      } catch (error) {
-        console.error("Erro ao buscar token do Firebase:", error);
-        return null;
-      }
-    }
-
-    // Busca token do localStorage
-    function getLocalAuthToken() {
-      try {
-        const localToken = localStorage.getItem('auth_token');
-        if (localToken) {
-          return localToken;
-        }
-        return null;
-      } catch (error) {
-        console.error("Erro ao ler localStorage:", error);
-        return null;
-      }
-    }
-
-    // Função para obter o token de autenticação do usuário
-    async function getUserAuthToken(userId) {
-      // Tenta buscar do Firebase primeiro
-      let authToken = await fetchUserAuthTokenFromFirebase(userId);
-
-      // Se não tiver no Firebase, tenta do localStorage
-      if (!authToken) {
-        authToken = getLocalAuthToken();
-      }
-
-      return authToken;
-    }
-
-    // ==================== FIM FUNÇÕES DO TOKEN ====================
-
-    // Função para ir para index.html
-    window.goToIndex = function() {
-      window.location.href = 'https://alexandre7888.github.io/auth.html';
-    };
-
-    function disableContinue() {
-      continueBtn.disabled = true;
-      errorEl.textContent = 'Não é possível continuar no momento.';
-    }
-
-    function redirectToLogin() {
-      if (appToken) {
-        window.location.href = `https://alexandre7888.github.io/auth.html?token=${appToken}`;
-      } else {
-        window.location.href = 'https://alexandre7888.github.io/auth.html';
-      }
-    }
-
-    // Configura o link de login
-    loginLinkEl.addEventListener('click', (e) => {
-      e.preventDefault();
-      redirectToLogin();
-    });
-
-    // Se não houver token, redirecionar para auth
-    if (!appToken) {
-      statusEl.textContent = 'Token não encontrado. Redirecionando para login...';
-      setTimeout(() => {
-        window.location.href = 'https://alexandre7888.github.io/auth.html';
-      }, 2000);
-    }
-
-    // Monitora o estado de autenticação
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        // Usuário NÃO está logado
-        statusEl.textContent = 'Você não está autenticado';
-        usernameEl.textContent = '';
-        userInfoEl.innerHTML = '';
-        continueBtn.style.display = 'none';
-        loginRedirectEl.style.display = 'block';
-        authTokenDisplay.style.display = 'none';
-        return;
-      }
-
-      // Usuário ESTÁ logado
-      loginRedirectEl.style.display = 'none';
-      continueBtn.style.display = 'block';
-
-      // Verificar token da aplicação
-      if (!appToken) {
-        statusEl.textContent = 'Token da aplicação não informado. Redirecionando...';
-        setTimeout(() => {
-          window.location.href = '../index.html';
-        }, 2000);
-        disableContinue();
-        return;
-      }
-
-      const tokenRef = ref(db, `tokens/${appToken}`);
-
-      try {
-        const snapshot = await get(tokenRef);
-
-        if (!snapshot.exists()) {
-          statusEl.textContent = 'Token da aplicação inválido.';
-          disableContinue();
-          return;
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Continuar Login com Usuário v2</title>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --danger-color: #f72585;
+            --success-color: #4cc9f0;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --gray-color: #6c757d;
         }
 
-        const tokenData = snapshot.val();
-        const redirectURL = tokenData.redirectURL;
-
-        if (!redirectURL) {
-          statusEl.textContent = 'Link de redirecionamento não encontrado.';
-          disableContinue();
-          return;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        // ==================== PEGAR TOKEN DE AUTENTICAÇÃO DO USUÁRIO ====================
-        const userAuthToken = await getUserAuthToken(user.uid);
-
-        // Mostrar informações do usuário
-        const hasEmail = user.email && !user.isAnonymous;
-        const nome = hasEmail ? user.email.split('@')[0] : `Usuário-${user.uid.substring(0,6)}`;
-        const userEmail = hasEmail ? user.email : null;
-
-        usernameEl.textContent = `Olá, ${nome}!`;
-        statusEl.textContent = 'Pronto para continuar';
-        errorEl.textContent = '';
-
-        // Exibir token de autenticação se existir
-        if (userAuthToken) {
-          const decodedToken = decodeAuthToken(userAuthToken);
-          authTokenDisplay.style.display = 'block';
-          authTokenDisplay.innerHTML = `
-            <strong>🔐 Token de Autenticação encontrado:</strong><br>
-            <span style="font-family: monospace; font-size: 10px;">${userAuthToken.substring(0, 80)}...</span><br>
-            <small>✅ Token será salvo na sessão</small>
-          `;
-        } else {
-          authTokenDisplay.style.display = 'block';
-          authTokenDisplay.innerHTML = `
-            <strong>⚠️ Token de Autenticação:</strong><br>
-            Nenhum token encontrado. Um novo será gerado no login.
-          `;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
         }
 
-        // Exibir informações adicionais
-        userInfoEl.innerHTML = `
-          <div style="text-align: left; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">
-            <p><strong>ID do Usuário:</strong> ${user.uid.substring(0, 8)}...</p>
-            ${userEmail ? `<p><strong>Email:</strong> ${userEmail}</p>` : ''}
-            <p><strong>Tipo:</strong> ${user.isAnonymous ? 'Sessão Temporária' : 'Conta Registrada'}</p>
-            ${userAuthToken ? `<p><strong>✅ Token Auth:</strong> Presente</p>` : '<p><strong>❌ Token Auth:</strong> Não encontrado</p>'}
-          </div>
-        `;
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            background-color: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease-out;
+        }
 
-        // Configurar botão de continuar
-        continueBtn.onclick = async () => {
-          continueBtn.disabled = true;
-          statusEl.textContent = 'Preparando sua sessão...';
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-          try {
-            const userKeyRef = ref(db, `userKeys/${user.uid}/${appToken}`);
-            let userKeySnap = await get(userKeyRef);
-            let userKey;
+        .auth-header {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
 
-            if (userKeySnap.exists()) {
-              userKey = userKeySnap.val();
-            } else {
-              // ✅ CORRIGIDO: Agora o userKey é apenas o UID do usuário
-              userKey = user.uid;
-              await set(userKeyRef, userKey);
+        .auth-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .auth-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .auth-content {
+            padding: 30px;
+            text-align: center;
+        }
+
+        #status {
+            margin: 20px 0;
+            font-weight: bold;
+            color: var(--dark-color);
+            font-size: 16px;
+        }
+
+        #username {
+            font-size: 1.2rem;
+            margin: 15px 0;
+            color: var(--dark-color);
+        }
+
+        #continueBtn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        #continueBtn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        #continueBtn:disabled {
+            background-color: var(--gray-color);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            font-size: 13px;
+            margin-top: 15px;
+        }
+
+        .login-redirect {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .login-redirect p {
+            margin-bottom: 10px;
+            color: var(--dark-color);
+        }
+
+        .login-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .login-link:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        .header-actions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+
+        .home-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .home-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .token-info {
+            background: #e7f3ff;
+            border-left: 4px solid var(--primary-color);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            font-size: 12px;
+            word-break: break-all;
+            text-align: left;
+        }
+
+        @media (max-width: 480px) {
+            .auth-container {
+                border-radius: 12px;
             }
 
-            const userKeyDataRef = ref(db, `userKeysData/${userKey}`);
-
-            // Monta o objeto com todas as informações, incluindo o token de autenticação
-            const userDataToSave = {
-              nome: nome,
-              uid: user.uid,
-              email: userEmail,
-              criadoEm: Date.now(),
-              isAnonymous: user.isAnonymous,
-              authToken: userAuthToken || null,
-              authTokenDecoded: userAuthToken ? decodeAuthToken(userAuthToken) : null,
-              hasAuthToken: !!userAuthToken
-            };
-
-            // Salva no Firebase
-            await set(userKeyDataRef, userDataToSave);
-
-            console.log('✅ Dados salvos no Firebase:', userDataToSave);
-
-            statusEl.textContent = 'Redirecionando...';
-
-            // Redireciona apenas com userKey (que agora é só o UID)
-            const sep = redirectURL.includes('?') ? '&' : '?';
-            let urlFinal = redirectURL + sep + `userKey=${encodeURIComponent(userKey)}`;
-
-            window.location.href = urlFinal;
-
-          } catch (err) {
-            statusEl.textContent = 'Erro ao preparar sua sessão';
-            errorEl.textContent = err.message || 'Erro desconhecido';
-            continueBtn.disabled = false;
-          }
-        };
-
-      } catch (error) {
-        statusEl.textContent = 'Erro ao buscar informações';
-        errorEl.textContent = error.message;
-        disableContinue();
-      }
-    });
-
-    // Adicionar botão de logout para desenvolvimento
-    const logoutBtn = document.createElement('button');
-    logoutBtn.textContent = 'Trocar Usuário';
-    logoutBtn.style.cssText = `
-      margin-top: 10px;
-      padding: 8px 15px;
-      background-color: var(--gray-color);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-    `;
-    logoutBtn.onclick = async () => {
-      try {
-        await signOut(auth);
-        statusEl.textContent = 'Sessão encerrada. Redirecionando para login...';
-        setTimeout(() => {
-          redirectToLogin();
-        }, 1500);
-      } catch (error) {
-        console.error('Erro ao fazer logout:', error);
-      }
-    };
-
-    document.querySelector('.auth-content').appendChild(logoutBtn);
-  </script>
-</body>
-</html>      max-width: 420px;
-      background-color: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-      animation: fadeIn 0.5s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .auth-header {
-      background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-      color: white;
-      padding: 25px;
-      text-align: center;
-    }
-
-    .auth-header h1 {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 5px;
-    }
-
-    .auth-header p {
-      font-size: 14px;
-      opacity: 0.9;
-    }
-
-    .auth-content {
-      padding: 30px;
-      text-align: center;
-    }
-
-    #status {
-      margin: 20px 0;
-      font-weight: bold;
-      color: var(--dark-color);
-      font-size: 16px;
-    }
-
-    #username {
-      font-size: 1.2rem;
-      margin: 15px 0;
-      color: var(--dark-color);
-    }
-
-    #continueBtn {
-      width: 100%;
-      padding: 14px;
-      background-color: var(--primary-color);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      margin-top: 20px;
-    }
-
-    #continueBtn:hover {
-      background-color: var(--secondary-color);
-      transform: translateY(-2px);
-    }
-
-    #continueBtn:disabled {
-      background-color: var(--gray-color);
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .error-message {
-      color: var(--danger-color);
-      font-size: 13px;
-      margin-top: 15px;
-    }
-
-    .login-redirect {
-      margin-top: 20px;
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      border-left: 4px solid var(--accent-color);
-    }
-
-    .login-redirect p {
-      margin-bottom: 10px;
-      color: var(--dark-color);
-    }
-
-    .login-link {
-      display: inline-block;
-      padding: 10px 20px;
-      background-color: var(--primary-color);
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      transition: all 0.3s;
-    }
-
-    .login-link:hover {
-      background-color: var(--secondary-color);
-      transform: translateY(-2px);
-    }
-
-    .header-actions {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-    }
-
-    .home-btn {
-      background-color: rgba(255, 255, 255, 0.2);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.3s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .home-btn:hover {
-      background-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .token-info {
-      background: #e7f3ff;
-      border-left: 4px solid var(--primary-color);
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 6px;
-      font-size: 12px;
-      word-break: break-all;
-      text-align: left;
-    }
-
-    @media (max-width: 480px) {
-      .auth-container {
-        border-radius: 12px;
-      }
-
-      .auth-header {
-        padding: 20px;
-      }
-
-      .auth-content {
-        padding: 20px;
-      }
-
-      .header-actions {
-        top: 10px;
-        left: 10px;
-      }
-    }
-</style>
-</head>
-<body>
-  <div class="header-actions">
-    <button class="home-btn" onclick="goToIndex()">
-      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-      </svg>
-      Início
-    </button>
-  </div>
-
-  <div class="auth-container">
-    <div class="auth-header">
-      <h1>Continuar Login</h1>
-      <p>Complete o processo de autenticação</p>
-    </div>
-
-    <div class="auth-content">
-      <p id="status">Verificando autenticação...</p>
-      <p id="username"></p>
-      <div id="user-info"></div>
-      <div id="auth-token-display" class="token-info" style="display: none;"></div>
-      <button id="continueBtn">Continuar</button>
-      <div id="login-redirect" class="login-redirect" style="display: none;">
-        <p>Você precisa fazer login para continuar</p>
-        <a id="loginLink" href="#" class="login-link">Fazer Login</a>
-      </div>
-      <p id="error" class="error-message"></p>
-    </div>
-  </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.appspot.com",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32",
-      measurementId: "G-V57KRZ02HJ"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    const statusEl = document.getElementById('status');
-    const usernameEl = document.getElementById('username');
-    const userInfoEl = document.getElementById('user-info');
-    const continueBtn = document.getElementById('continueBtn');
-    const errorEl = document.getElementById('error');
-    const loginRedirectEl = document.getElementById('login-redirect');
-    const loginLinkEl = document.getElementById('loginLink');
-    const authTokenDisplay = document.getElementById('auth-token-display');
-
-    // Pega token da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const appToken = urlParams.get('token');
-
-    // ==================== FUNÇÕES DO TOKEN DE AUTENTICAÇÃO ====================
-
-    // Decodifica token base64
-    function decodeAuthToken(token) {
-      try {
-        const jsonString = decodeURIComponent(escape(atob(token)));
-        return JSON.parse(jsonString);
-      } catch (error) {
-        console.error("Erro ao decodificar token:", error);
-        return null;
-      }
-    }
-
-    // Busca token do usuário no Firebase (collection tokens)
-    async function fetchUserAuthTokenFromFirebase(userId) {
-      try {
-        const tokenRef = ref(db, `tokens/${userId}`);
-        const snapshot = await get(tokenRef);
-
-        if (snapshot.exists()) {
-          const tokenData = snapshot.val();
-          if (tokenData.token) {
-            return tokenData.token;
-          }
-        }
-        return null;
-      } catch (error) {
-        console.error("Erro ao buscar token do Firebase:", error);
-        return null;
-      }
-    }
-
-    // Busca token do localStorage
-    function getLocalAuthToken() {
-      try {
-        const localToken = localStorage.getItem('auth_token');
-        if (localToken) {
-          return localToken;
-        }
-        return null;
-      } catch (error) {
-        console.error("Erro ao ler localStorage:", error);
-        return null;
-      }
-    }
-
-    // Função para obter o token de autenticação do usuário
-    async function getUserAuthToken(userId) {
-      // Tenta buscar do Firebase primeiro
-      let authToken = await fetchUserAuthTokenFromFirebase(userId);
-
-      // Se não tiver no Firebase, tenta do localStorage
-      if (!authToken) {
-        authToken = getLocalAuthToken();
-      }
-
-      return authToken;
-    }
-
-    // ==================== FIM FUNÇÕES DO TOKEN ====================
-
-    // Função para ir para index.html
-    window.goToIndex = function() {
-      window.location.href = 'https://alexandre7888.github.io/auth.html';
-    };
-
-    function disableContinue() {
-      continueBtn.disabled = true;
-      errorEl.textContent = 'Não é possível continuar no momento.';
-    }
-
-    function redirectToLogin() {
-      if (appToken) {
-        window.location.href = `https://alexandre7888.github.io/auth.html?token=${appToken}`;
-      } else {
-        window.location.href = 'https://alexandre7888.github.io/auth.html';
-      }
-    }
-
-    // Configura o link de login
-    loginLinkEl.addEventListener('click', (e) => {
-      e.preventDefault();
-      redirectToLogin();
-    });
-
-    // Se não houver token, redirecionar para auth
-    if (!appToken) {
-      statusEl.textContent = 'Token não encontrado. Redirecionando para login...';
-      setTimeout(() => {
-        window.location.href = 'https://alexandre7888.github.io/auth.html';
-      }, 2000);
-    }
-
-    // Monitora o estado de autenticação
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        // Usuário NÃO está logado
-        statusEl.textContent = 'Você não está autenticado';
-        usernameEl.textContent = '';
-        userInfoEl.innerHTML = '';
-        continueBtn.style.display = 'none';
-        loginRedirectEl.style.display = 'block';
-        authTokenDisplay.style.display = 'none';
-        return;
-      }
-
-      // Usuário ESTÁ logado
-      loginRedirectEl.style.display = 'none';
-      continueBtn.style.display = 'block';
-
-      // Verificar token da aplicação
-      if (!appToken) {
-        statusEl.textContent = 'Token da aplicação não informado. Redirecionando...';
-        setTimeout(() => {
-          window.location.href = '../index.html';
-        }, 2000);
-        disableContinue();
-        return;
-      }
-
-      const tokenRef = ref(db, `tokens/${appToken}`);
-
-      try {
-        const snapshot = await get(tokenRef);
-
-        if (!snapshot.exists()) {
-          statusEl.textContent = 'Token da aplicação inválido.';
-          disableContinue();
-          return;
-        }
-
-        const tokenData = snapshot.val();
-        const redirectURL = tokenData.redirectURL;
-
-        if (!redirectURL) {
-          statusEl.textContent = 'Link de redirecionamento não encontrado.';
-          disableContinue();
-          return;
-        }
-
-        // ==================== PEGAR TOKEN DE AUTENTICAÇÃO DO USUÁRIO ====================
-        const userAuthToken = await getUserAuthToken(user.uid);
-
-        // Mostrar informações do usuário
-        const hasEmail = user.email && !user.isAnonymous;
-        const nome = hasEmail ? user.email.split('@')[0] : `Usuário-${user.uid.substring(0,6)}`;
-        const userEmail = hasEmail ? user.email : null;
-
-        usernameEl.textContent = `Olá, ${nome}!`;
-        statusEl.textContent = 'Pronto para continuar';
-        errorEl.textContent = '';
-
-        // Exibir token de autenticação se existir
-        if (userAuthToken) {
-          const decodedToken = decodeAuthToken(userAuthToken);
-          authTokenDisplay.style.display = 'block';
-          authTokenDisplay.innerHTML = `
-            <strong>🔐 Token de Autenticação encontrado:</strong><br>
-            <span style="font-family: monospace; font-size: 10px;">${userAuthToken.substring(0, 80)}...</span><br>
-            <small>✅ Token será salvo na sessão</small>
-          `;
-        } else {
-          authTokenDisplay.style.display = 'block';
-          authTokenDisplay.innerHTML = `
-            <strong>⚠️ Token de Autenticação:</strong><br>
-            Nenhum token encontrado. Um novo será gerado no login.
-          `;
-        }
-
-        // Exibir informações adicionais
-        userInfoEl.innerHTML = `
-          <div style="text-align: left; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">
-            <p><strong>ID do Usuário:</strong> ${user.uid.substring(0, 8)}...</p>
-            ${userEmail ? `<p><strong>Email:</strong> ${userEmail}</p>` : ''}
-            <p><strong>Tipo:</strong> ${user.isAnonymous ? 'Sessão Temporária' : 'Conta Registrada'}</p>
-            ${userAuthToken ? `<p><strong>✅ Token Auth:</strong> Presente</p>` : '<p><strong>❌ Token Auth:</strong> Não encontrado</p>'}
-          </div>
-        `;
-
-        // Configurar botão de continuar
-        continueBtn.onclick = async () => {
-          continueBtn.disabled = true;
-          statusEl.textContent = 'Preparando sua sessão...';
-
-          try {
-            const userKeyRef = ref(db, `userKeys/${user.uid}/${appToken}`);
-            let userKeySnap = await get(userKeyRef);
-            let userKey;
-
-            if (userKeySnap.exists()) {
-              userKey = userKeySnap.val();
-            } else {
-              userKey = user.uid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
-              await set(userKeyRef, userKey);
+            .auth-header {
+                padding: 20px;
             }
 
-            const userKeyDataRef = ref(db, `userKeysData/${userKey}`);
+            .auth-content {
+                padding: 20px;
+            }
 
-            // ==================== SALVAR O TOKEN DE AUTENTICAÇÃO DENTRO DO JSON ====================
-            // Monta o objeto com todas as informações, incluindo o token de autenticação
-            const userDataToSave = {
-              nome: nome,
-              uid: user.uid,
-              email: userEmail,
-              criadoEm: Date.now(),
-              isAnonymous: user.isAnonymous,
-              authToken: userAuthToken || null,  // Salva o token de autenticação aqui!
-              authTokenDecoded: userAuthToken ? decodeAuthToken(userAuthToken) : null,
-              hasAuthToken: !!userAuthToken
-            };
+            .header-actions {
+                top: 10px;
+                left: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-actions">
+        <button class="home-btn" onclick="goToIndex()">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Início
+        </button>
+    </div>
 
-            // Salva no Firebase
-            await set(userKeyDataRef, userDataToSave);
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Continuar Login</h1>
+            <p>Complete o processo de autenticação</p>
+        </div>
 
-            console.log('✅ Dados salvos no Firebase:', userDataToSave);
+        <div class="auth-content">
+            <p id="status">Verificando autenticação...</p>
+            <p id="username"></p>
+            <div id="user-info"></div>
+            <div id="auth-token-display" class="token-info" style="display: none;"></div>
+            <button id="continueBtn">Continuar</button>
+            <div id="login-redirect" class="login-redirect" style="display: none;">
+                <p>Você precisa fazer login para continuar</p>
+                <a id="loginLink" href="#" class="login-link">Fazer Login</a>
+            </div>
+            <p id="error" class="error-message"></p>
+        </div>
+    </div>
 
-            statusEl.textContent = 'Redirecionando...';
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-            // Redireciona APENAS com userKey (sem authToken na URL)
-            const sep = redirectURL.includes('?') ? '&' : '?';
-            let urlFinal = redirectURL + sep + `userKey=${encodeURIComponent(userKey)}`;
-
-            // REMOVIDO: userName e authToken do redirecionamento
-            // Mantém apenas userKey como solicitado
-
-            window.location.href = urlFinal;
-
-          } catch (err) {
-            statusEl.textContent = 'Erro ao preparar sua sessão';
-            errorEl.textContent = err.message || 'Erro desconhecido';
-            continueBtn.disabled = false;
-          }
+        const firebaseConfig = {
+            apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+            authDomain: "html-15e80.firebaseapp.com",
+            databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+            projectId: "html-15e80",
+            storageBucket: "html-15e80.appspot.com",
+            messagingSenderId: "1068148640439",
+            appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32",
+            measurementId: "G-V57KRZ02HJ"
         };
 
-      } catch (error) {
-        statusEl.textContent = 'Erro ao buscar informações';
-        errorEl.textContent = error.message;
-        disableContinue();
-      }
-    });
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
 
-    // Adicionar botão de logout para desenvolvimento
-    const logoutBtn = document.createElement('button');
-    logoutBtn.textContent = 'Trocar Usuário';
-    logoutBtn.style.cssText = `
-      margin-top: 10px;
-      padding: 8px 15px;
-      background-color: var(--gray-color);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-    `;
-    logoutBtn.onclick = async () => {
-      try {
-        await signOut(auth);
-        statusEl.textContent = 'Sessão encerrada. Redirecionando para login...';
-        setTimeout(() => {
-          redirectToLogin();
-        }, 1500);
-      } catch (error) {
-        console.error('Erro ao fazer logout:', error);
-      }
-    };
+        const statusEl = document.getElementById('status');
+        const usernameEl = document.getElementById('username');
+        const userInfoEl = document.getElementById('user-info');
+        const continueBtn = document.getElementById('continueBtn');
+        const errorEl = document.getElementById('error');
+        const loginRedirectEl = document.getElementById('login-redirect');
+        const loginLinkEl = document.getElementById('loginLink');
+        const authTokenDisplay = document.getElementById('auth-token-display');
 
-    document.querySelector('.auth-content').appendChild(logoutBtn);
-  </script>
+        // Pega token da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const appToken = urlParams.get('token');
+
+        // Função para decodificar token base64
+        function decodeAuthToken(token) {
+            try {
+                const jsonString = decodeURIComponent(escape(atob(token)));
+                return JSON.parse(jsonString);
+            } catch (error) {
+                console.error("Erro ao decodificar token:", error);
+                return null;
+            }
+        }
+
+        // Busca token do usuário no Firebase
+        async function fetchUserAuthTokenFromFirebase(userId) {
+            try {
+                const tokenRef = ref(db, `tokens/${userId}`);
+                const snapshot = await get(tokenRef);
+                if (snapshot.exists()) {
+                    const tokenData = snapshot.val();
+                    if (tokenData.token) {
+                        return tokenData.token;
+                    }
+                }
+                return null;
+            } catch (error) {
+                console.error("Erro ao buscar token do Firebase:", error);
+                return null;
+            }
+        }
+
+        // Busca token do localStorage
+        function getLocalAuthToken() {
+            try {
+                const localToken = localStorage.getItem('auth_token');
+                if (localToken) {
+                    return localToken;
+                }
+                return null;
+            } catch (error) {
+                console.error("Erro ao ler localStorage:", error);
+                return null;
+            }
+        }
+
+        // Função para obter o token de autenticação do usuário
+        async function getUserAuthToken(userId) {
+            let authToken = await fetchUserAuthTokenFromFirebase(userId);
+            if (!authToken) {
+                authToken = getLocalAuthToken();
+            }
+            return authToken;
+        }
+
+        // Função para ir para index.html
+        window.goToIndex = function() {
+            window.location.href = 'https://alexandre7888.github.io/auth.html';
+        };
+
+        function disableContinue() {
+            continueBtn.disabled = true;
+            errorEl.textContent = 'Não é possível continuar no momento.';
+        }
+
+        function redirectToLogin() {
+            if (appToken) {
+                window.location.href = `https://alexandre7888.github.io/auth.html?token=${appToken}`;
+            } else {
+                window.location.href = 'https://alexandre7888.github.io/auth.html';
+            }
+        }
+
+        // Configura o link de login
+        loginLinkEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            redirectToLogin();
+        });
+
+        // Se não houver token, redirecionar para auth
+        if (!appToken) {
+            statusEl.textContent = 'Token não encontrado. Redirecionando para login...';
+            setTimeout(() => {
+                window.location.href = 'https://alexandre7888.github.io/auth.html';
+            }, 2000);
+        }
+
+        // Monitora o estado de autenticação
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                // Usuário NÃO está logado
+                statusEl.textContent = 'Você não está autenticado';
+                usernameEl.textContent = '';
+                userInfoEl.innerHTML = '';
+                continueBtn.style.display = 'none';
+                loginRedirectEl.style.display = 'block';
+                authTokenDisplay.style.display = 'none';
+                return;
+            }
+
+            // Usuário ESTÁ logado
+            loginRedirectEl.style.display = 'none';
+            continueBtn.style.display = 'block';
+
+            // Verificar token da aplicação
+            if (!appToken) {
+                statusEl.textContent = 'Token da aplicação não informado. Redirecionando...';
+                setTimeout(() => {
+                    window.location.href = '../index.html';
+                }, 2000);
+                disableContinue();
+                return;
+            }
+
+            const tokenRef = ref(db, `tokens/${appToken}`);
+
+            try {
+                const snapshot = await get(tokenRef);
+
+                if (!snapshot.exists()) {
+                    statusEl.textContent = 'Token da aplicação inválido.';
+                    disableContinue();
+                    return;
+                }
+
+                const tokenData = snapshot.val();
+                const redirectURL = tokenData.redirectURL;
+
+                if (!redirectURL) {
+                    statusEl.textContent = 'Link de redirecionamento não encontrado.';
+                    disableContinue();
+                    return;
+                }
+
+                // Pegar token de autenticação do usuário
+                const userAuthToken = await getUserAuthToken(user.uid);
+
+                // Mostrar informações do usuário
+                const hasEmail = user.email && !user.isAnonymous;
+                const nome = hasEmail ? user.email.split('@')[0] : `Usuário-${user.uid.substring(0,6)}`;
+                const userEmail = hasEmail ? user.email : null;
+
+                usernameEl.textContent = `Olá, ${nome}!`;
+                statusEl.textContent = 'Pronto para continuar';
+                errorEl.textContent = '';
+
+                // Exibir token de autenticação se existir
+                if (userAuthToken) {
+                    authTokenDisplay.style.display = 'block';
+                    authTokenDisplay.innerHTML = `
+                        <strong>🔐 Token de Autenticação encontrado:</strong><br>
+                        <span style="font-family: monospace; font-size: 10px;">${userAuthToken.substring(0, 80)}...</span><br>
+                        <small>✅ Token será salvo na sessão</small>
+                    `;
+                } else {
+                    authTokenDisplay.style.display = 'block';
+                    authTokenDisplay.innerHTML = `
+                        <strong>⚠️ Token de Autenticação:</strong><br>
+                        Nenhum token encontrado. Um novo será gerado no login.
+                    `;
+                }
+
+                // Exibir informações adicionais
+                userInfoEl.innerHTML = `
+                    <div style="text-align: left; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                        <p><strong>ID do Usuário:</strong> ${user.uid.substring(0, 8)}...</p>
+                        ${userEmail ? `<p><strong>Email:</strong> ${userEmail}</p>` : ''}
+                        <p><strong>Tipo:</strong> ${user.isAnonymous ? 'Sessão Temporária' : 'Conta Registrada'}</p>
+                        ${userAuthToken ? `<p><strong>✅ Token Auth:</strong> Presente</p>` : '<p><strong>❌ Token Auth:</strong> Não encontrado</p>'}
+                    </div>
+                `;
+
+                // Configurar botão de continuar
+                continueBtn.onclick = async () => {
+                    continueBtn.disabled = true;
+                    statusEl.textContent = 'Preparando sua sessão...';
+
+                    try {
+                        // ✅ CORRIGIDO: Agora salva diretamente em userKeysData com o UID
+                        const userKeyDataRef = ref(db, `userKeysData/${user.uid}`);
+
+                        // Monta o objeto com todas as informações
+                        const userDataToSave = {
+                            nome: nome,
+                            uid: user.uid,
+                            email: userEmail,
+                            criadoEm: Date.now(),
+                            isAnonymous: user.isAnonymous,
+                            authToken: userAuthToken || null,
+                            authTokenDecoded: userAuthToken ? decodeAuthToken(userAuthToken) : null,
+                            hasAuthToken: !!userAuthToken,
+                            appToken: appToken
+                        };
+
+                        // Salva no Firebase diretamente com o UID
+                        await set(userKeyDataRef, userDataToSave);
+
+                        console.log('✅ Dados salvos no Firebase em userKeysData/' + user.uid, userDataToSave);
+
+                        statusEl.textContent = 'Redirecionando...';
+
+                        // Redireciona apenas com o UID
+                        const sep = redirectURL.includes('?') ? '&' : '?';
+                        let urlFinal = redirectURL + sep + `userKey=${encodeURIComponent(user.uid)}`;
+
+                        window.location.href = urlFinal;
+
+                    } catch (err) {
+                        statusEl.textContent = 'Erro ao preparar sua sessão';
+                        errorEl.textContent = err.message || 'Erro desconhecido';
+                        continueBtn.disabled = false;
+                    }
+                };
+
+            } catch (error) {
+                statusEl.textContent = 'Erro ao buscar informações';
+                errorEl.textContent = error.message;
+                disableContinue();
+            }
+        });
+
+        // Adicionar botão de logout
+        const logoutBtn = document.createElement('button');
+        logoutBtn.textContent = 'Trocar Usuário';
+        logoutBtn.style.cssText = `
+            margin-top: 10px;
+            padding: 8px 15px;
+            background-color: var(--gray-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        `;
+        logoutBtn.onclick = async () => {
+            try {
+                await signOut(auth);
+                statusEl.textContent = 'Sessão encerrada. Redirecionando para login...';
+                setTimeout(() => {
+                    redirectToLogin();
+                }, 1500);
+            } catch (error) {
+                console.error('Erro ao fazer logout:', error);
+            }
+        };
+
+        document.querySelector('.auth-content').appendChild(logoutBtn);
+    </script>
 </body>
 </html>
