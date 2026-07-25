@@ -358,7 +358,7 @@ function AppMenu() {
         )
       ))
     ) : null,
-
+                             
     // ==================== PAINEL LATERAL DE CONTAS ====================
     showPanel ? React.createElement('div', {
       ref: panelRef,
