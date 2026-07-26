@@ -133,6 +133,11 @@
       return id;
     }
 
+    // Função para gerar userKey única
+    function generateUserKey() {
+      return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
     const deviceId = generateDeviceId();
     document.getElementById('deviceInfo').innerHTML = `📱 ${deviceId.substring(0, 25)}...`;
     document.getElementById('accountCountNumber').textContent = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]').length;
@@ -225,12 +230,16 @@
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 2. Salva dados adicionais no Realtime Database
+        // 2. Gera userKey única
+        const userKey = generateUserKey();
+
+        // 3. Salva dados no Realtime Database com userKey
         const userData = {
           username: username,
           email: email,
           userType: selectedUserType,
           uid: user.uid,
+          userKey: userKey,
           deviceId: deviceId,
           createdAt: Date.now(),
           lastLogin: Date.now(),
@@ -242,12 +251,16 @@
           userData.cnpj = cnpj.replace(/\D/g, '');
         }
 
-        // Salva no caminho users/{uid}
-        await set(ref(database, 'users/' + user.uid), userData);
+        // Salva no caminho users/{userKey}
+        await set(ref(database, 'users/' + userKey), userData);
+        
+        // Também salva referência do uid para o userKey
+        await set(ref(database, 'userKeys/' + user.uid), userKey);
 
-        // 3. Salva no localStorage
+        // 4. Salva no localStorage
         const accountData = {
           uid: user.uid,
+          userKey: userKey,
           email: email,
           username: username,
           userType: selectedUserType,
@@ -257,13 +270,13 @@
 
         localAccounts.push(accountData);
         localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('current_userId', user.uid);
+        localStorage.setItem('current_userKey', userKey);
         document.getElementById('accountCountNumber').textContent = localAccounts.length;
 
         showSuccess('✅ Conta criada com sucesso! Redirecionando...');
         
         setTimeout(() => {
-          window.location.href = `index.html?userId=${user.uid}`;
+          window.location.href = `index.html?userKey=${userKey}`;
         }, 1500);
 
       } catch(error) {
@@ -300,23 +313,23 @@
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 2. Busca dados adicionais no Realtime Database
-        const userSnap = await get(ref(database, 'users/' + user.uid));
+        // 2. Busca o userKey pelo uid
+        const userKeySnap = await get(ref(database, 'userKeys/' + user.uid));
+        
+        if (!userKeySnap.exists()) {
+          showError('Usuário não encontrado. Crie uma conta primeiro.');
+          btn.disabled = false;
+          btn.innerHTML = '🔐 Entrar';
+          return;
+        }
+
+        const userKey = userKeySnap.val();
+
+        // 3. Busca dados do usuário pelo userKey
+        const userSnap = await get(ref(database, 'users/' + userKey));
         
         if (!userSnap.exists()) {
-          // Se o usuário não tem dados no banco, cria dados padrão
-          const defaultData = {
-            username: email.split('@')[0],
-            email: email,
-            userType: 'normal',
-            uid: user.uid,
-            deviceId: deviceId,
-            createdAt: Date.now(),
-            lastLogin: Date.now(),
-            provider: 'email'
-          };
-          await set(ref(database, 'users/' + user.uid), defaultData);
-          showError('Dados do usuário criados automaticamente. Faça login novamente.');
+          showError('Dados do usuário não encontrados');
           btn.disabled = false;
           btn.innerHTML = '🔐 Entrar';
           return;
@@ -324,7 +337,7 @@
 
         const userData = userSnap.val();
 
-        // 3. Verifica CNPJ se for empreendedor
+        // 4. Verifica CNPJ se for empreendedor
         if (userData.userType === 'entrepreneur') {
           const cnpjInput = document.getElementById('login-cnpj').value.trim();
           document.getElementById('login-cnpj-group').style.display = 'block';
@@ -336,15 +349,16 @@
           }
         }
 
-        // 4. Atualiza último login
-        await update(ref(database, 'users/' + user.uid), {
+        // 5. Atualiza último login
+        await update(ref(database, 'users/' + userKey), {
           lastLogin: Date.now()
         });
 
-        // 5. Salva no localStorage
+        // 6. Salva no localStorage
         const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
         const accountData = {
           uid: user.uid,
+          userKey: userKey,
           email: userData.email || email,
           username: userData.username,
           userType: userData.userType || 'normal',
@@ -360,13 +374,13 @@
         }
         
         localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('current_userId', user.uid);
+        localStorage.setItem('current_userKey', userKey);
         document.getElementById('accountCountNumber').textContent = localAccounts.length;
 
         showSuccess('✅ Login realizado! Redirecionando...');
         
         setTimeout(() => {
-          window.location.href = `index.html?userId=${user.uid}`;
+          window.location.href = `index.html?userKey=${userKey}`;
         }, 1500);
 
       } catch(error) {
@@ -401,37 +415,43 @@
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         
-        // Verifica se o usuário já existe no banco
-        const userSnap = await get(ref(database, 'users/' + user.uid));
+        // Verifica se o usuário já existe
+        const userKeySnap = await get(ref(database, 'userKeys/' + user.uid));
+        let userKey;
         
-        if (!userSnap.exists()) {
-          // Primeiro login com Google - cria dados
+        if (!userKeySnap.exists()) {
+          // Primeiro login - cria novo userKey
+          userKey = generateUserKey();
           const username = user.displayName || user.email.split('@')[0];
           const userData = {
             username: username,
             email: user.email,
             userType: 'normal',
             uid: user.uid,
+            userKey: userKey,
             deviceId: deviceId,
             createdAt: Date.now(),
             lastLogin: Date.now(),
             provider: 'google'
           };
-          await set(ref(database, 'users/' + user.uid), userData);
+          await set(ref(database, 'users/' + userKey), userData);
+          await set(ref(database, 'userKeys/' + user.uid), userKey);
         } else {
+          userKey = userKeySnap.val();
           // Atualiza último login
-          await update(ref(database, 'users/' + user.uid), {
+          await update(ref(database, 'users/' + userKey), {
             lastLogin: Date.now()
           });
         }
 
         // Busca dados atualizados
-        const updatedSnap = await get(ref(database, 'users/' + user.uid));
+        const updatedSnap = await get(ref(database, 'users/' + userKey));
         const userData = updatedSnap.val();
 
         // Salva no localStorage
         const accountData = {
           uid: user.uid,
+          userKey: userKey,
           email: user.email,
           username: userData.username || user.displayName || user.email.split('@')[0],
           userType: userData.userType || 'normal',
@@ -441,13 +461,13 @@
 
         localAccounts.push(accountData);
         localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('current_userId', user.uid);
+        localStorage.setItem('current_userKey', userKey);
         document.getElementById('accountCountNumber').textContent = localAccounts.length;
 
         showSuccess('✅ Login com Google realizado! Redirecionando...');
         
         setTimeout(() => {
-          window.location.href = `index.html?userId=${user.uid}`;
+          window.location.href = `index.html?userKey=${userKey}`;
         }, 1500);
 
       } catch(error) {
