@@ -29,6 +29,8 @@
     .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(67,97,238,0.3)}
     .btn-google{background:#fff;color:#212529;border:1px solid #dee2e6}
     .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
+    .btn-secondary{background:rgba(255,255,255,0.1);color:#a0b3c9;border:1px solid rgba(255,255,255,0.2)}
+    .btn-secondary:hover{background:rgba(255,255,255,0.2)}
     .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
     .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.2);margin:0 10px}
     .error-message{color:#f72585;font-size:12px;display:none;background:rgba(247,37,133,0.1);padding:8px;border-radius:6px;margin-bottom:10px}
@@ -45,11 +47,14 @@
     .company-fields{display:none}
     .company-fields.show{display:block}
     .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
-    /* Área de debug */
     .debug-area{margin-top:15px;background:rgba(0,0,0,0.5);border-radius:8px;padding:10px;display:none;border:1px solid #f72585}
     .debug-area.show{display:block}
     .debug-area summary{cursor:pointer;color:#a0b3c9;font-size:12px}
     .debug-area pre{color:#f8f9fa;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto}
+    .suggest-box{background:rgba(76,201,240,0.1);border:1px solid #4cc9f0;border-radius:8px;padding:10px;margin-top:10px;display:none}
+    .suggest-box.show{display:block}
+    .suggest-box p{color:#a0b3c9;font-size:12px}
+    .suggest-box strong{color:#4cc9f0}
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -66,7 +71,12 @@
     <div id="global-error" class="error-message"></div>
     <div id="global-success" class="success-message" style="display:none;"></div>
 
-    <!-- Área de debug (inicialmente oculta) -->
+    <!-- Área de sugestões (ex: "Deseja criar uma conta?") -->
+    <div id="suggest-box" class="suggest-box">
+      <p>💡 <strong>Não encontrou sua conta?</strong> Clique em <strong>"Criar Conta"</strong> acima para se registrar.</p>
+    </div>
+
+    <!-- Área de debug -->
     <div id="debug-area" class="debug-area">
       <details>
         <summary>🔍 Mostrar detalhes do erro (debug)</summary>
@@ -84,6 +94,9 @@
       <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
       <div id="login-cnpj-group" class="form-group" style="display:none;"><label for="login-cnpj">CNPJ</label><input type="text" id="login-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)"></div>
       <button class="btn btn-primary" id="login-btn" onclick="login()">🔐 Entrar</button>
+      <div style="margin-top:10px;">
+        <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">🔑 Esqueci minha senha</button>
+      </div>
       <div class="divider">ou</div>
       <button class="btn btn-google" onclick="loginWithGoogle()">🟢 Google</button>
       <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
@@ -113,7 +126,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -138,13 +151,11 @@
       const area = document.getElementById('debug-area');
       const content = document.getElementById('debug-content');
       if (error) {
-        // Monta uma string detalhada
         let msg = `🔥 ERRO DETALHADO:\n`;
         msg += `- Nome: ${error.name || 'Não definido'}\n`;
         msg += `- Mensagem: ${error.message || 'Sem mensagem'}\n`;
         msg += `- Código: ${error.code || 'Nenhum'}\n`;
         if (error.stack) msg += `- Stack:\n${error.stack}\n`;
-        // Se for erro do Firebase, pode ter mais campos
         if (error.customData) msg += `- customData: ${JSON.stringify(error.customData, null, 2)}\n`;
         content.textContent = msg;
         area.classList.add('show');
@@ -161,14 +172,23 @@
       e.textContent = m;
       e.classList.add('show');
       if (errorObj) showDebug(errorObj);
-      else showDebug(null); // esconde debug se não houver erro
+      else showDebug(null);
+      
+      // Mostra sugestão se for erro de credenciais
+      const suggestBox = document.getElementById('suggest-box');
+      if (errorObj && errorObj.code === 'auth/invalid-login-credentials') {
+        suggestBox.classList.add('show');
+      } else {
+        suggestBox.classList.remove('show');
+      }
     }
 
     function showSuccess(m) {
       const e = document.getElementById('global-success');
       e.textContent = m;
       e.style.display = 'block';
-      showDebug(null); // esconde debug em sucesso
+      showDebug(null);
+      document.getElementById('suggest-box').classList.remove('show');
     }
 
     // ===== Utilitários =====
@@ -230,7 +250,8 @@
       document.getElementById(`${id}-tab`).classList.add('active');
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
-      showDebug(null); // esconde debug ao trocar de aba
+      document.getElementById('suggest-box').classList.remove('show');
+      showDebug(null);
     };
 
     window.selectUserType = (type) => {
@@ -250,10 +271,30 @@
       input.value = v;
     };
 
+    // ===== RESETAR SENHA =====
+    window.resetPassword = async () => {
+      const email = document.getElementById('login-email').value.trim();
+      if (!email) {
+        return showError('Digite seu email para recuperar a senha');
+      }
+      
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showSuccess(`📧 Email de recuperação enviado para ${email}. Verifique sua caixa de entrada.`);
+      } catch (error) {
+        const msg = {
+          'auth/user-not-found': 'Email não encontrado. Verifique se está correto.',
+          'auth/invalid-email': 'Email inválido.'
+        }[error.code] || 'Erro ao enviar email de recuperação';
+        showError(msg, error);
+      }
+    };
+
     // ===== REGISTRO =====
     window.register = async () => {
       document.getElementById('global-error').classList.remove('show');
-      showDebug(null); // limpa debug anterior
+      document.getElementById('suggest-box').classList.remove('show');
+      showDebug(null);
 
       const username = document.getElementById('register-username').value.trim();
       const email = document.getElementById('register-email').value.trim();
@@ -299,7 +340,6 @@
 
         redirectAfterAuth(uid);
       } catch (error) {
-        // Exibe erro detalhado
         const msg = error.code === 'auth/email-already-in-use' ? 'Email já em uso' : 'Erro ao criar conta';
         showError(msg, error);
         btn.disabled = false; btn.textContent = '✨ Criar Conta';
@@ -309,6 +349,7 @@
     // ===== LOGIN =====
     window.login = async () => {
       document.getElementById('global-error').classList.remove('show');
+      document.getElementById('suggest-box').classList.remove('show');
       showDebug(null);
 
       const email = document.getElementById('login-email').value.trim();
@@ -328,7 +369,6 @@
         let userData = accounts.find(a => a.uid === uid);
 
         if (!userData) {
-          // Cria perfil mínimo local
           const username = email.split('@')[0];
           userData = {
             uid,
@@ -340,7 +380,6 @@
           };
         }
 
-        // Se for empreendedor e tiver CNPJ salvo, valida
         if (userData.userType === 'entrepreneur' && userData.cnpj) {
           const cnpjInput = document.getElementById('login-cnpj').value.trim();
           document.getElementById('login-cnpj-group').style.display = 'block';
@@ -357,11 +396,23 @@
 
         redirectAfterAuth(uid);
       } catch (error) {
-        const msg = {
-          'auth/user-not-found': 'Usuário não encontrado',
-          'auth/wrong-password': 'Senha incorreta',
-          'auth/invalid-email': 'Email inválido'
-        }[error.code] || 'Erro ao fazer login';
+        let msg;
+        switch(error.code) {
+          case 'auth/invalid-login-credentials':
+            msg = '❌ Email ou senha incorretos. Verifique suas credenciais.';
+            break;
+          case 'auth/user-not-found':
+            msg = '❌ Usuário não encontrado. Deseja criar uma conta?';
+            break;
+          case 'auth/wrong-password':
+            msg = '❌ Senha incorreta. Tente novamente.';
+            break;
+          case 'auth/invalid-email':
+            msg = '❌ Email inválido. Verifique o formato.';
+            break;
+          default:
+            msg = 'Erro ao fazer login';
+        }
         showError(msg, error);
         btn.disabled = false; btn.textContent = '🔐 Entrar';
       }
@@ -370,6 +421,7 @@
     // ===== LOGIN COM GOOGLE =====
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
+      document.getElementById('suggest-box').classList.remove('show');
       showDebug(null);
 
       const localAccounts = getLocalAccounts();
