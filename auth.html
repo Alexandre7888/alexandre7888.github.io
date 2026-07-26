@@ -45,6 +45,11 @@
     .company-fields{display:none}
     .company-fields.show{display:block}
     .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
+    /* Área de debug */
+    .debug-area{margin-top:15px;background:rgba(0,0,0,0.5);border-radius:8px;padding:10px;display:none;border:1px solid #f72585}
+    .debug-area.show{display:block}
+    .debug-area summary{cursor:pointer;color:#a0b3c9;font-size:12px}
+    .debug-area pre{color:#f8f9fa;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto}
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -60,6 +65,14 @@
 
     <div id="global-error" class="error-message"></div>
     <div id="global-success" class="success-message" style="display:none;"></div>
+
+    <!-- Área de debug (inicialmente oculta) -->
+    <div id="debug-area" class="debug-area">
+      <details>
+        <summary>🔍 Mostrar detalhes do erro (debug)</summary>
+        <pre id="debug-content">Nenhum erro registrado.</pre>
+      </details>
+    </div>
 
     <div class="tabs">
       <div class="tab active" id="tab-login" onclick="switchTab('login')">Entrar</div>
@@ -105,19 +118,58 @@
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
-      // databaseURL removida – não usamos mais o Realtime Database
       projectId: "html-15e80",
       storageBucket: "html-15e80.firebasestorage.app",
       messagingSenderId: "1068148640439",
       appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
     };
 
+    // Inicializa o Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
+    // ===== Variáveis globais =====
     let selectedUserType = 'normal';
     const MAX_ACCOUNTS = 5;
+
+    // ===== Função de debug =====
+    function showDebug(error) {
+      const area = document.getElementById('debug-area');
+      const content = document.getElementById('debug-content');
+      if (error) {
+        // Monta uma string detalhada
+        let msg = `🔥 ERRO DETALHADO:\n`;
+        msg += `- Nome: ${error.name || 'Não definido'}\n`;
+        msg += `- Mensagem: ${error.message || 'Sem mensagem'}\n`;
+        msg += `- Código: ${error.code || 'Nenhum'}\n`;
+        if (error.stack) msg += `- Stack:\n${error.stack}\n`;
+        // Se for erro do Firebase, pode ter mais campos
+        if (error.customData) msg += `- customData: ${JSON.stringify(error.customData, null, 2)}\n`;
+        content.textContent = msg;
+        area.classList.add('show');
+        console.error('🔥 DEBUG ERROR:', error);
+      } else {
+        area.classList.remove('show');
+        content.textContent = 'Nenhum erro registrado.';
+      }
+    }
+
+    // ===== Funções de exibição de erro/sucesso =====
+    function showError(m, errorObj = null) {
+      const e = document.getElementById('global-error');
+      e.textContent = m;
+      e.classList.add('show');
+      if (errorObj) showDebug(errorObj);
+      else showDebug(null); // esconde debug se não houver erro
+    }
+
+    function showSuccess(m) {
+      const e = document.getElementById('global-success');
+      e.textContent = m;
+      e.style.display = 'block';
+      showDebug(null); // esconde debug em sucesso
+    }
 
     // ===== Utilitários =====
     function generateDeviceId() {
@@ -125,9 +177,6 @@
       if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
       return id;
     }
-
-    function showError(m) { const e = document.getElementById('global-error'); e.textContent = m; e.classList.add('show'); }
-    function showSuccess(m) { const e = document.getElementById('global-success'); e.textContent = m; e.style.display = 'block'; }
 
     function validateCNPJ(cnpj) {
       cnpj = cnpj.replace(/\D/g, '');
@@ -153,7 +202,6 @@
 
     function addLocalAccount(userData) {
       const accounts = getLocalAccounts();
-      // Evitar duplicatas
       const idx = accounts.findIndex(a => a.uid === userData.uid);
       if (idx >= 0) accounts[idx] = userData;
       else accounts.push(userData);
@@ -182,6 +230,7 @@
       document.getElementById(`${id}-tab`).classList.add('active');
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
+      showDebug(null); // esconde debug ao trocar de aba
     };
 
     window.selectUserType = (type) => {
@@ -201,9 +250,11 @@
       input.value = v;
     };
 
-    // ===== REGISTRO (apenas Firebase Auth + localStorage) =====
+    // ===== REGISTRO =====
     window.register = async () => {
       document.getElementById('global-error').classList.remove('show');
+      showDebug(null); // limpa debug anterior
+
       const username = document.getElementById('register-username').value.trim();
       const email = document.getElementById('register-email').value.trim();
       const password = document.getElementById('register-password').value;
@@ -229,12 +280,10 @@
       btn.disabled = true; btn.textContent = 'Criando...';
 
       try {
-        // 1. Criar usuário no Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
 
-        // 2. Montar dados do perfil (salvos apenas localmente)
         const userData = {
           uid,
           email,
@@ -245,22 +294,23 @@
           ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
         };
 
-        // 3. Salvar no localStorage
         addLocalAccount(userData);
         localStorage.setItem('current_userKey', uid);
 
-        // 4. Redirecionar
         redirectAfterAuth(uid);
       } catch (error) {
+        // Exibe erro detalhado
         const msg = error.code === 'auth/email-already-in-use' ? 'Email já em uso' : 'Erro ao criar conta';
-        showError(msg);
+        showError(msg, error);
         btn.disabled = false; btn.textContent = '✨ Criar Conta';
       }
     };
 
-    // ===== LOGIN (apenas Firebase Auth + localStorage) =====
+    // ===== LOGIN =====
     window.login = async () => {
       document.getElementById('global-error').classList.remove('show');
+      showDebug(null);
+
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
       if (!email) return showError('Email obrigatório');
@@ -270,17 +320,15 @@
       btn.disabled = true; btn.textContent = 'Entrando...';
 
       try {
-        // 1. Autenticar no Firebase Auth
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
 
-        // 2. Recuperar dados do localStorage (ou criar perfil básico se não existir)
         let accounts = getLocalAccounts();
         let userData = accounts.find(a => a.uid === uid);
 
         if (!userData) {
-          // Caso o usuário nunca tenha logado neste dispositivo, cria um perfil mínimo
+          // Cria perfil mínimo local
           const username = email.split('@')[0];
           userData = {
             uid,
@@ -290,14 +338,9 @@
             lastLogin: Date.now(),
             deviceId
           };
-          // Se for empreendedor, pode pedir CNPJ? Vamos simplificar: se não tiver dados, é normal.
-          // Mas o login pode exigir CNPJ se o usuário for empreendedor. Como não temos no banco,
-          // podemos verificar se há um campo CNPJ salvo localmente. Se não, não pedimos.
-          // Para manter a funcionalidade, se o usuário tiver tipo 'entrepreneur' no localStorage,
-          // exigimos CNPJ.
         }
 
-        // 3. Se o usuário for empreendedor e tiver CNPJ salvo, validar
+        // Se for empreendedor e tiver CNPJ salvo, valida
         if (userData.userType === 'entrepreneur' && userData.cnpj) {
           const cnpjInput = document.getElementById('login-cnpj').value.trim();
           document.getElementById('login-cnpj-group').style.display = 'block';
@@ -308,12 +351,10 @@
           }
         }
 
-        // 4. Atualizar lastLogin e salvar
         userData.lastLogin = Date.now();
         addLocalAccount(userData);
         localStorage.setItem('current_userKey', uid);
 
-        // 5. Redirecionar
         redirectAfterAuth(uid);
       } catch (error) {
         const msg = {
@@ -321,7 +362,7 @@
           'auth/wrong-password': 'Senha incorreta',
           'auth/invalid-email': 'Email inválido'
         }[error.code] || 'Erro ao fazer login';
-        showError(msg);
+        showError(msg, error);
         btn.disabled = false; btn.textContent = '🔐 Entrar';
       }
     };
@@ -329,6 +370,8 @@
     // ===== LOGIN COM GOOGLE =====
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
+      showDebug(null);
+
       const localAccounts = getLocalAccounts();
       if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
@@ -339,7 +382,6 @@
         const email = user.email;
         const username = user.displayName || email.split('@')[0];
 
-        // Verificar se já existe no localStorage
         let accounts = getLocalAccounts();
         let userData = accounts.find(a => a.uid === uid);
 
@@ -363,7 +405,7 @@
         redirectAfterAuth(uid);
       } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
-          showError('Erro ao fazer login com Google');
+          showError('Erro ao fazer login com Google', error);
         }
       }
     };
