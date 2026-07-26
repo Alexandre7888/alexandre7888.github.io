@@ -27,6 +27,7 @@
     .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:0.3s;display:flex;align-items:center;justify-content:center;gap:8px}
     .btn-primary{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff}
     .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(67,97,238,0.3)}
+    .btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none}
     .btn-google{background:#fff;color:#212529;border:1px solid #dee2e6}
     .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
     .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
@@ -100,8 +101,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
-    import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
+    import { getDatabase, ref, set, get, update, push } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -123,20 +124,11 @@
 
     function generateDeviceId() {
       let id = localStorage.getItem('codehub_deviceId');
-      if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
+      if (!id) { 
+        id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); 
+        localStorage.setItem('codehub_deviceId', id); 
+      }
       return id;
-    }
-    
-    // ❌ REMOVIDA: function generateUserKey(uid)
-    // ✅ Agora usamos o próprio UID como userKey
-    
-    function generateMasterKey() { return 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12); }
-    
-    function generateAuthToken(uid, email, username, userType, masterKey, companyData = null) {
-      return btoa(unescape(encodeURIComponent(JSON.stringify({
-        uid, email, username, userType, masterKey, companyData,
-        createdAt: Date.now(), expiresAt: null, version: "2.0", isPermanent: true
-      }))));
     }
 
     const deviceId = generateDeviceId();
@@ -144,6 +136,7 @@
     document.getElementById('accountCountNumber').textContent = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]').length;
 
     window.goToIndex = () => window.location.href = 'index.html';
+    
     window.switchTab = (id) => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -152,12 +145,14 @@
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
     };
+
     window.selectUserType = (type) => {
       selectedUserType = type;
       document.querySelectorAll('.user-type-option').forEach(o => o.classList.remove('selected'));
       document.querySelector(`[data-type="${type}"]`).classList.add('selected');
       document.getElementById('company-fields').classList.toggle('show', type === 'entrepreneur');
     };
+
     window.formatCNPJ = (input) => {
       let v = input.value.replace(/\D/g, '');
       if (v.length > 14) v = v.slice(0, 14);
@@ -167,8 +162,19 @@
       else if (v.length > 2) v = v.replace(/^(\d{2})(\d{3})$/, '$1.$2');
       input.value = v;
     };
-    function showError(m) { const e = document.getElementById('global-error'); e.textContent = m; e.classList.add('show'); }
-    function showSuccess(m) { const e = document.getElementById('global-success'); e.textContent = m; e.style.display = 'block'; }
+
+    function showError(m) { 
+      const e = document.getElementById('global-error'); 
+      e.textContent = m; 
+      e.classList.add('show'); 
+    }
+
+    function showSuccess(m) { 
+      const e = document.getElementById('global-success'); 
+      e.textContent = m; 
+      e.style.display = 'block'; 
+    }
+
     function validateCNPJ(cnpj) {
       cnpj = cnpj.replace(/\D/g, '');
       if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
@@ -180,58 +186,6 @@
       for (let i = 0; i < 13; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
       d = 11 - (s % 11); d = d >= 10 ? 0 : d;
       return d === parseInt(cnpj[13]);
-    }
-
-    // ==================== MASTER KEY ====================
-    async function getOrCreateMasterKey() {
-      let mk = localStorage.getItem('codehub_masterKey');
-      if (!mk) {
-        mk = generateMasterKey();
-        localStorage.setItem('codehub_masterKey', mk);
-      }
-      return mk;
-    }
-
-    // ==================== SALVAR NO CAMINHO contas/{masterKey} ====================
-    async function saveAccountsToMasterKey(mk, accountsList) {
-      const accountsObj = {};
-      accountsList.forEach(acc => {
-        accountsObj[acc.uid] = {
-          uid: acc.uid,
-          email: acc.email,
-          username: acc.username,
-          userType: acc.userType || 'normal',
-          userKey: acc.uid, // ✅ Agora userKey = uid
-          lastLogin: acc.lastLogin || Date.now(),
-          deviceId: deviceId,
-          masterKey: mk
-        };
-      });
-      await set(ref(database, `contas/${mk}`), accountsObj);
-      console.log('✅ Contas salvas em contas/' + mk);
-    }
-
-    async function addAccountToMasterKey(mk, userData) {
-      const snap = await get(ref(database, `contas/${mk}`));
-      let accounts = snap.exists() ? snap.val() : {};
-      accounts[userData.uid] = {
-        uid: userData.uid,
-        email: userData.email,
-        username: userData.username,
-        userType: userData.userType || 'normal',
-        userKey: userData.uid, // ✅ Agora userKey = uid
-        lastLogin: Date.now(),
-        deviceId: deviceId,
-        masterKey: mk
-      };
-      await set(ref(database, `contas/${mk}`), accounts);
-    }
-
-    function redirectAfterAuth(uid) {
-      showSuccess('✅ Sucesso! Redirecionando...');
-      setTimeout(() => { 
-        window.location.href = `index.html?userKey=${uid}`; // ✅ Redireciona com UID
-      }, 1000);
     }
 
     // ==================== REGISTRO ====================
@@ -259,67 +213,66 @@
       if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
       const btn = document.getElementById('register-btn');
-      btn.disabled = true; btn.textContent = 'Criando...';
+      btn.disabled = true; 
+      btn.textContent = 'Criando...';
 
       try {
-        const masterKey = await getOrCreateMasterKey();
-        const uc = await createUserWithEmailAndPassword(auth, email, password);
-        const user = uc.user;
-        
-        // ✅ userKey agora é o próprio UID
-        const userKey = user.uid;
-        
-        const token = generateAuthToken(user.uid, email, username, selectedUserType, masterKey,
-          selectedUserType === 'entrepreneur' ? { companyName, cnpj } : null);
+        // 1. Cria usuário no Firebase Authentication
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
 
+        // 2. Salva dados adicionais no Realtime Database (SEM SENHA)
         const userData = {
-          username, email, userType: selectedUserType, userKey, uid: user.uid,
-          masterKey, createdAt: Date.now(), lastLogin: Date.now(), hasToken: true, deviceId
+          username: username,
+          email: email,
+          userType: selectedUserType,
+          uid: user.uid,
+          deviceId: deviceId,
+          createdAt: Date.now(),
+          lastLogin: Date.now(),
+          provider: 'email'
         };
-        if (selectedUserType === 'entrepreneur') { userData.companyName = companyName; userData.cnpj = cnpj.replace(/\D/g, ''); }
 
-        // Salva em users/{uid}
+        if (selectedUserType === 'entrepreneur') {
+          userData.companyName = companyName;
+          userData.cnpj = cnpj.replace(/\D/g, '');
+        }
+
+        // Salva no caminho users/{uid}
         await set(ref(database, 'users/' + user.uid), userData);
+
+        // 3. Salva no localStorage
+        const accountData = {
+          uid: user.uid,
+          email: email,
+          username: username,
+          userType: selectedUserType,
+          deviceId: deviceId,
+          lastLogin: Date.now()
+        };
+
+        localAccounts.push(accountData);
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
+        localStorage.setItem('current_userId', user.uid);
+        document.getElementById('accountCountNumber').textContent = localAccounts.length;
+
+        showSuccess('✅ Conta criada com sucesso! Redirecionando...');
         
-        // ✅ Salva em userKeysData/{uid} (usando o UID como chave)
-        await set(ref(database, `userKeysData/${user.uid}`), {
-          authToken: token,
-          authTokenDecoded: { 
-            createdAt: Date.now(), 
-            email, 
-            isPermanent: true, 
-            uid: user.uid, 
-            userType: selectedUserType, 
-            username, 
-            masterKey, 
-            version: "2.0" 
-          },
-          criadoEm: Date.now(), 
-          email, 
-          hasAuthToken: true, 
-          isAnonymous: false, 
-          nome: username, 
-          uid: user.uid, 
-          deviceId, 
-          masterKey
-        });
+        setTimeout(() => {
+          window.location.href = `index.html?userId=${user.uid}`;
+        }, 1500);
 
-        // Adicionar à masterKey
-        await addAccountToMasterKey(masterKey, userData);
-
-        // localStorage
-        const allLocal = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-        allLocal.push(userData);
-        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('auth_token', token);
-        localStorage.setItem('token_user_id', user.uid);
-        localStorage.setItem('current_userKey', user.uid); // ✅ Salva o UID
-        document.getElementById('accountCountNumber').textContent = allLocal.length;
-
-        redirectAfterAuth(user.uid); // ✅ Redireciona com UID
-      } catch(e) {
-        showError(e.code === 'auth/email-already-in-use' ? 'Email já em uso' : 'Erro ao criar');
-        btn.disabled = false; btn.textContent = '✨ Criar Conta';
+      } catch(error) {
+        console.error('Erro no registro:', error);
+        if (error.code === 'auth/email-already-in-use') {
+          showError('Este email já está em uso');
+        } else if (error.code === 'auth/weak-password') {
+          showError('Senha muito fraca. Use pelo menos 6 caracteres');
+        } else {
+          showError('Erro ao criar conta: ' + error.message);
+        }
+        btn.disabled = false;
+        btn.textContent = '✨ Criar Conta';
       }
     };
 
@@ -328,184 +281,167 @@
       document.getElementById('global-error').classList.remove('show');
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
+      
       if (!email) return showError('Email obrigatório');
       if (!password) return showError('Senha obrigatória');
 
       const btn = document.getElementById('login-btn');
-      btn.disabled = true; btn.textContent = 'Entrando...';
+      btn.disabled = true;
+      btn.textContent = 'Entrando...';
 
       try {
-        const masterKey = await getOrCreateMasterKey();
-        const uc = await signInWithEmailAndPassword(auth, email, password);
-        const user = uc.user;
-        const snap = await get(ref(database, 'users/' + user.uid));
-        if (!snap.exists()) { showError('Dados não encontrados'); btn.disabled = false; btn.textContent = '🔐 Entrar'; return; }
+        // 1. Autentica no Firebase Authentication
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
 
-        const userData = snap.val();
+        // 2. Busca dados adicionais no Realtime Database
+        const userSnap = await get(ref(database, 'users/' + user.uid));
+        
+        if (!userSnap.exists()) {
+          showError('Dados do usuário não encontrados');
+          btn.disabled = false;
+          btn.textContent = '🔐 Entrar';
+          return;
+        }
+
+        const userData = userSnap.val();
+
+        // 3. Verifica CNPJ se for empreendedor
         if (userData.userType === 'entrepreneur') {
           const cnpjInput = document.getElementById('login-cnpj').value.trim();
           document.getElementById('login-cnpj-group').style.display = 'block';
           if (!cnpjInput || cnpjInput.replace(/\D/g, '') !== userData.cnpj) {
-            showError('CNPJ inválido'); btn.disabled = false; btn.textContent = '🔐 Entrar'; return;
+            showError('CNPJ inválido');
+            btn.disabled = false;
+            btn.textContent = '🔐 Entrar';
+            return;
           }
         }
 
-        // ✅ userKey agora é o próprio UID
-        const userKey = user.uid;
-
-        const token = generateAuthToken(user.uid, email, userData.username, userData.userType || 'normal', masterKey,
-          userData.userType === 'entrepreneur' ? { companyName: userData.companyName, cnpj: userData.cnpj } : null);
-
-        // ✅ Salva em userKeysData/{uid} (usando o UID como chave)
-        await set(ref(database, `userKeysData/${user.uid}`), {
-          authToken: token,
-          authTokenDecoded: { 
-            createdAt: Date.now(), 
-            email, 
-            isPermanent: true, 
-            uid: user.uid, 
-            userType: userData.userType || 'normal', 
-            username: userData.username, 
-            masterKey, 
-            version: "2.0" 
-          },
-          criadoEm: Date.now(), 
-          email, 
-          hasAuthToken: true, 
-          isAnonymous: false, 
-          nome: userData.username, 
-          uid: user.uid, 
-          deviceId, 
-          masterKey
-        });
-        
-        await update(ref(database, 'users/' + user.uid), { 
-          lastLogin: Date.now(), 
-          masterKey,
-          userKey: user.uid // ✅ Atualiza userKey para ser o UID
+        // 4. Atualiza último login
+        await update(ref(database, 'users/' + user.uid), {
+          lastLogin: Date.now()
         });
 
+        // 5. Salva no localStorage
+        const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
         const accountData = {
-          uid: user.uid, 
-          email, 
+          uid: user.uid,
+          email: userData.email || email,
           username: userData.username,
-          userType: userData.userType || 'normal', 
-          userKey: user.uid, // ✅ userKey = uid
-          masterKey, 
+          userType: userData.userType || 'normal',
+          deviceId: deviceId,
           lastLogin: Date.now()
         };
 
-        // Adicionar à masterKey
-        await addAccountToMasterKey(masterKey, accountData);
+        const idx = localAccounts.findIndex(a => a.uid === user.uid);
+        if (idx >= 0) {
+          localAccounts[idx] = accountData;
+        } else {
+          localAccounts.push(accountData);
+        }
+        
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
+        localStorage.setItem('current_userId', user.uid);
+        document.getElementById('accountCountNumber').textContent = localAccounts.length;
 
-        // localStorage
-        const allLocal = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-        const idx = allLocal.findIndex(a => a.uid === user.uid);
-        if (idx >= 0) allLocal[idx] = { ...allLocal[idx], ...accountData };
-        else allLocal.push(accountData);
-        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('auth_token', token);
-        localStorage.setItem('token_user_id', user.uid);
-        localStorage.setItem('current_userKey', user.uid); // ✅ Salva o UID
-        document.getElementById('accountCountNumber').textContent = allLocal.length;
+        showSuccess('✅ Login realizado! Redirecionando...');
+        
+        setTimeout(() => {
+          window.location.href = `index.html?userId=${user.uid}`;
+        }, 1500);
 
-        redirectAfterAuth(user.uid); // ✅ Redireciona com UID
-      } catch(e) {
-        const m = { 
-          'auth/user-not-found': 'Usuário não encontrado', 
-          'auth/wrong-password': 'Senha incorreta', 
-          'auth/invalid-email': 'Email inválido' 
+      } catch(error) {
+        console.error('Erro no login:', error);
+        const errorMessages = {
+          'auth/user-not-found': 'Usuário não encontrado',
+          'auth/wrong-password': 'Senha incorreta',
+          'auth/invalid-email': 'Email inválido',
+          'auth/user-disabled': 'Conta desativada'
         };
-        showError(m[e.code] || 'Erro ao fazer login');
-        btn.disabled = false; btn.textContent = '🔐 Entrar';
+        showError(errorMessages[error.code] || 'Erro ao fazer login: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = '🔐 Entrar';
       }
     };
 
-    // ==================== GOOGLE ====================
+    // ==================== GOOGLE LOGIN ====================
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
       const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
       if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
       try {
-        const masterKey = await getOrCreateMasterKey();
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-        const username = user.displayName || user.email.split('@')[0];
-        const snap = await get(ref(database, 'users/' + user.uid));
-        let userType = 'normal';
         
-        // ✅ userKey agora é o próprio UID
-        const userKey = user.uid;
-
-        if (!snap.exists()) {
-          await set(ref(database, 'users/' + user.uid), {
-            username, 
-            email: user.email, 
-            userType: 'normal', 
-            userKey, // ✅ userKey = uid
+        // Verifica se o usuário já existe no banco
+        const userSnap = await get(ref(database, 'users/' + user.uid));
+        
+        if (!userSnap.exists()) {
+          // Primeiro login com Google - cria dados
+          const username = user.displayName || user.email.split('@')[0];
+          const userData = {
+            username: username,
+            email: user.email,
+            userType: 'normal',
             uid: user.uid,
-            masterKey, 
-            createdAt: Date.now(), 
-            lastLogin: Date.now(), 
-            provider: 'google', 
-            hasToken: true, 
-            deviceId
-          });
+            deviceId: deviceId,
+            createdAt: Date.now(),
+            lastLogin: Date.now(),
+            provider: 'google'
+          };
+          await set(ref(database, 'users/' + user.uid), userData);
         } else {
-          userType = snap.val().userType || 'normal';
+          // Atualiza último login
+          await update(ref(database, 'users/' + user.uid), {
+            lastLogin: Date.now()
+          });
         }
 
-        const token = generateAuthToken(user.uid, user.email, username, userType, masterKey, null);
-        
-        // ✅ Salva em userKeysData/{uid} (usando o UID como chave)
-        await set(ref(database, `userKeysData/${user.uid}`), {
-          authToken: token,
-          authTokenDecoded: { 
-            createdAt: Date.now(), 
-            email: user.email, 
-            isPermanent: true, 
-            uid: user.uid, 
-            userType, 
-            username, 
-            masterKey, 
-            version: "2.0" 
-          },
-          criadoEm: Date.now(), 
-          email: user.email, 
-          hasAuthToken: true, 
-          isAnonymous: false, 
-          nome: username, 
-          uid: user.uid, 
-          deviceId, 
-          masterKey
-        });
+        // Busca dados atualizados
+        const updatedSnap = await get(ref(database, 'users/' + user.uid));
+        const userData = updatedSnap.val();
 
-        const accountData = { 
-          uid: user.uid, 
-          email: user.email, 
-          username, 
-          userType, 
-          userKey, // ✅ userKey = uid
-          masterKey, 
-          lastLogin: Date.now() 
+        // Salva no localStorage
+        const accountData = {
+          uid: user.uid,
+          email: user.email,
+          username: userData.username || user.displayName || user.email.split('@')[0],
+          userType: userData.userType || 'normal',
+          deviceId: deviceId,
+          lastLogin: Date.now()
         };
+
+        localAccounts.push(accountData);
+        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
+        localStorage.setItem('current_userId', user.uid);
+        document.getElementById('accountCountNumber').textContent = localAccounts.length;
+
+        showSuccess('✅ Login com Google realizado! Redirecionando...');
         
-        await addAccountToMasterKey(masterKey, accountData);
+        setTimeout(() => {
+          window.location.href = `index.html?userId=${user.uid}`;
+        }, 1500);
 
-        const allLocal = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-        allLocal.push(accountData);
-        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(allLocal.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('auth_token', token);
-        localStorage.setItem('token_user_id', user.uid);
-        localStorage.setItem('current_userKey', user.uid); // ✅ Salva o UID
-        document.getElementById('accountCountNumber').textContent = allLocal.length;
-
-        redirectAfterAuth(user.uid); // ✅ Redireciona com UID
-      } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') showError('Erro no Google');
+      } catch(error) {
+        if (error.code !== 'auth/popup-closed-by-user') {
+          console.error('Erro no Google:', error);
+          showError('Erro ao fazer login com Google: ' + error.message);
+        }
       }
     };
+
+    // ==================== VERIFICA USUÁRIO LOGADO ====================
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('Usuário logado:', user.uid);
+        // Atualiza contador de contas
+        const accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+        document.getElementById('accountCountNumber').textContent = accounts.length;
+      }
+    });
+
   </script>
 </body>
 </html>
