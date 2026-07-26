@@ -46,6 +46,8 @@
     .company-fields{display:none}
     .company-fields.show{display:block}
     .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
+    .loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 0.8s ease-in-out infinite;margin-right:8px}
+    @keyframes spin{to{transform:rotate(360deg)}}
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -102,7 +104,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
-    import { getDatabase, ref, set, get, update, push } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+    import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -191,6 +193,8 @@
     // ==================== REGISTRO ====================
     window.register = async () => {
       document.getElementById('global-error').classList.remove('show');
+      document.getElementById('global-success').style.display = 'none';
+      
       const username = document.getElementById('register-username').value.trim();
       const email = document.getElementById('register-email').value.trim();
       const password = document.getElementById('register-password').value;
@@ -214,14 +218,14 @@
 
       const btn = document.getElementById('register-btn');
       btn.disabled = true; 
-      btn.textContent = 'Criando...';
+      btn.innerHTML = '<span class="loading-spinner"></span> Criando...';
 
       try {
         // 1. Cria usuário no Firebase Authentication
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 2. Salva dados adicionais no Realtime Database (SEM SENHA)
+        // 2. Salva dados adicionais no Realtime Database
         const userData = {
           username: username,
           email: email,
@@ -279,6 +283,8 @@
     // ==================== LOGIN ====================
     window.login = async () => {
       document.getElementById('global-error').classList.remove('show');
+      document.getElementById('global-success').style.display = 'none';
+      
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
       
@@ -287,7 +293,7 @@
 
       const btn = document.getElementById('login-btn');
       btn.disabled = true;
-      btn.textContent = 'Entrando...';
+      btn.innerHTML = '<span class="loading-spinner"></span> Entrando...';
 
       try {
         // 1. Autentica no Firebase Authentication
@@ -298,9 +304,21 @@
         const userSnap = await get(ref(database, 'users/' + user.uid));
         
         if (!userSnap.exists()) {
-          showError('Dados do usuário não encontrados');
+          // Se o usuário não tem dados no banco, cria dados padrão
+          const defaultData = {
+            username: email.split('@')[0],
+            email: email,
+            userType: 'normal',
+            uid: user.uid,
+            deviceId: deviceId,
+            createdAt: Date.now(),
+            lastLogin: Date.now(),
+            provider: 'email'
+          };
+          await set(ref(database, 'users/' + user.uid), defaultData);
+          showError('Dados do usuário criados automaticamente. Faça login novamente.');
           btn.disabled = false;
-          btn.textContent = '🔐 Entrar';
+          btn.innerHTML = '🔐 Entrar';
           return;
         }
 
@@ -313,7 +331,7 @@
           if (!cnpjInput || cnpjInput.replace(/\D/g, '') !== userData.cnpj) {
             showError('CNPJ inválido');
             btn.disabled = false;
-            btn.textContent = '🔐 Entrar';
+            btn.innerHTML = '🔐 Entrar';
             return;
           }
         }
@@ -353,21 +371,29 @@
 
       } catch(error) {
         console.error('Erro no login:', error);
-        const errorMessages = {
-          'auth/user-not-found': 'Usuário não encontrado',
-          'auth/wrong-password': 'Senha incorreta',
-          'auth/invalid-email': 'Email inválido',
-          'auth/user-disabled': 'Conta desativada'
-        };
-        showError(errorMessages[error.code] || 'Erro ao fazer login: ' + error.message);
+        if (error.code === 'auth/invalid-login-credentials') {
+          showError('Email ou senha incorretos');
+        } else if (error.code === 'auth/user-not-found') {
+          showError('Usuário não encontrado');
+        } else if (error.code === 'auth/wrong-password') {
+          showError('Senha incorreta');
+        } else if (error.code === 'auth/invalid-email') {
+          showError('Email inválido');
+        } else if (error.code === 'auth/user-disabled') {
+          showError('Conta desativada');
+        } else {
+          showError('Erro ao fazer login: ' + error.message);
+        }
         btn.disabled = false;
-        btn.textContent = '🔐 Entrar';
+        btn.innerHTML = '🔐 Entrar';
       }
     };
 
     // ==================== GOOGLE LOGIN ====================
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
+      document.getElementById('global-success').style.display = 'none';
+      
       const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
       if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
