@@ -27,7 +27,6 @@
     .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:0.3s;display:flex;align-items:center;justify-content:center;gap:8px}
     .btn-primary{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff}
     .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(67,97,238,0.3)}
-    .btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none}
     .btn-google{background:#fff;color:#212529;border:1px solid #dee2e6}
     .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
     .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
@@ -46,8 +45,6 @@
     .company-fields{display:none}
     .company-fields.show{display:block}
     .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
-    .loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 0.8s ease-in-out infinite;margin-right:8px}
-    @keyframes spin{to{transform:rotate(360deg)}}
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -57,7 +54,7 @@
   <div class="auth-container">
     <div class="auth-header">
       <h1>Bem-vindo ao CodeHub</h1>
-      <p>Autenticação Multi-Conta</p>
+      <p>Autenticação com Firebase Auth</p>
       <div class="account-indicator">👤 Contas: <span id="accountCountNumber">0</span>/5</div>
     </div>
 
@@ -103,13 +100,12 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
-    import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      // databaseURL removida – não usamos mais o Realtime Database
       projectId: "html-15e80",
       storageBucket: "html-15e80.firebasestorage.app",
       messagingSenderId: "1068148640439",
@@ -118,32 +114,67 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const database = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
     let selectedUserType = 'normal';
     const MAX_ACCOUNTS = 5;
 
+    // ===== Utilitários =====
     function generateDeviceId() {
       let id = localStorage.getItem('codehub_deviceId');
-      if (!id) { 
-        id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); 
-        localStorage.setItem('codehub_deviceId', id); 
-      }
+      if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
       return id;
     }
 
-    // Função para gerar userKey única
-    function generateUserKey() {
-      return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    function showError(m) { const e = document.getElementById('global-error'); e.textContent = m; e.classList.add('show'); }
+    function showSuccess(m) { const e = document.getElementById('global-success'); e.textContent = m; e.style.display = 'block'; }
+
+    function validateCNPJ(cnpj) {
+      cnpj = cnpj.replace(/\D/g, '');
+      if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
+      let s = 0, w = 5;
+      for (let i = 0; i < 12; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
+      let d = 11 - (s % 11); d = d >= 10 ? 0 : d;
+      if (d !== parseInt(cnpj[12])) return false;
+      s = 0; w = 6;
+      for (let i = 0; i < 13; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
+      d = 11 - (s % 11); d = d >= 10 ? 0 : d;
+      return d === parseInt(cnpj[13]);
     }
 
+    function getLocalAccounts() {
+      return JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+    }
+
+    function saveLocalAccounts(accounts) {
+      localStorage.setItem('codehub_deviceAccounts', JSON.stringify(accounts.slice(0, MAX_ACCOUNTS)));
+      document.getElementById('accountCountNumber').textContent = accounts.length;
+    }
+
+    function addLocalAccount(userData) {
+      const accounts = getLocalAccounts();
+      // Evitar duplicatas
+      const idx = accounts.findIndex(a => a.uid === userData.uid);
+      if (idx >= 0) accounts[idx] = userData;
+      else accounts.push(userData);
+      saveLocalAccounts(accounts);
+    }
+
+    function redirectAfterAuth(uid) {
+      showSuccess('✅ Autenticado! Redirecionando...');
+      setTimeout(() => {
+        window.location.href = `index.html?userKey=${uid}`;
+      }, 1000);
+    }
+
+    // ===== Inicialização =====
     const deviceId = generateDeviceId();
     document.getElementById('deviceInfo').innerHTML = `📱 ${deviceId.substring(0, 25)}...`;
-    document.getElementById('accountCountNumber').textContent = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]').length;
+    document.getElementById('accountCountNumber').textContent = getLocalAccounts().length;
 
+    // ===== Funções globais (expostas) =====
     window.goToIndex = () => window.location.href = 'index.html';
-    
+
     window.switchTab = (id) => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -170,36 +201,9 @@
       input.value = v;
     };
 
-    function showError(m) { 
-      const e = document.getElementById('global-error'); 
-      e.textContent = m; 
-      e.classList.add('show'); 
-    }
-
-    function showSuccess(m) { 
-      const e = document.getElementById('global-success'); 
-      e.textContent = m; 
-      e.style.display = 'block'; 
-    }
-
-    function validateCNPJ(cnpj) {
-      cnpj = cnpj.replace(/\D/g, '');
-      if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
-      let s = 0, w = 5;
-      for (let i = 0; i < 12; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
-      let d = 11 - (s % 11); d = d >= 10 ? 0 : d;
-      if (d !== parseInt(cnpj[12])) return false;
-      s = 0; w = 6;
-      for (let i = 0; i < 13; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
-      d = 11 - (s % 11); d = d >= 10 ? 0 : d;
-      return d === parseInt(cnpj[13]);
-    }
-
-    // ==================== REGISTRO ====================
+    // ===== REGISTRO (apenas Firebase Auth + localStorage) =====
     window.register = async () => {
       document.getElementById('global-error').classList.remove('show');
-      document.getElementById('global-success').style.display = 'none';
-      
       const username = document.getElementById('register-username').value.trim();
       const email = document.getElementById('register-email').value.trim();
       const password = document.getElementById('register-password').value;
@@ -218,276 +222,151 @@
       if (!password || password.length < 6) return showError('Senha: mín. 6 caracteres');
       if (password !== confirm) return showError('Senhas não coincidem');
 
-      const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+      const localAccounts = getLocalAccounts();
       if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
       const btn = document.getElementById('register-btn');
-      btn.disabled = true; 
-      btn.innerHTML = '<span class="loading-spinner"></span> Criando...';
+      btn.disabled = true; btn.textContent = 'Criando...';
 
       try {
-        // 1. Cria usuário no Firebase Authentication
+        // 1. Criar usuário no Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        const uid = user.uid;
 
-        // 2. Gera userKey única
-        const userKey = generateUserKey();
-
-        // 3. Salva dados no Realtime Database com userKey
+        // 2. Montar dados do perfil (salvos apenas localmente)
         const userData = {
-          username: username,
-          email: email,
+          uid,
+          email,
+          username,
           userType: selectedUserType,
-          uid: user.uid,
-          userKey: userKey,
-          deviceId: deviceId,
-          createdAt: Date.now(),
           lastLogin: Date.now(),
-          provider: 'email'
+          deviceId,
+          ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
         };
 
-        if (selectedUserType === 'entrepreneur') {
-          userData.companyName = companyName;
-          userData.cnpj = cnpj.replace(/\D/g, '');
-        }
+        // 3. Salvar no localStorage
+        addLocalAccount(userData);
+        localStorage.setItem('current_userKey', uid);
 
-        // Salva no caminho users/{userKey}
-        await set(ref(database, 'users/' + userKey), userData);
-        
-        // Também salva referência do uid para o userKey
-        await set(ref(database, 'userKeys/' + user.uid), userKey);
-
-        // 4. Salva no localStorage
-        const accountData = {
-          uid: user.uid,
-          userKey: userKey,
-          email: email,
-          username: username,
-          userType: selectedUserType,
-          deviceId: deviceId,
-          lastLogin: Date.now()
-        };
-
-        localAccounts.push(accountData);
-        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('current_userKey', userKey);
-        document.getElementById('accountCountNumber').textContent = localAccounts.length;
-
-        showSuccess('✅ Conta criada com sucesso! Redirecionando...');
-        
-        setTimeout(() => {
-          window.location.href = `index.html?userKey=${userKey}`;
-        }, 1500);
-
-      } catch(error) {
-        console.error('Erro no registro:', error);
-        if (error.code === 'auth/email-already-in-use') {
-          showError('Este email já está em uso');
-        } else if (error.code === 'auth/weak-password') {
-          showError('Senha muito fraca. Use pelo menos 6 caracteres');
-        } else {
-          showError('Erro ao criar conta: ' + error.message);
-        }
-        btn.disabled = false;
-        btn.textContent = '✨ Criar Conta';
+        // 4. Redirecionar
+        redirectAfterAuth(uid);
+      } catch (error) {
+        const msg = error.code === 'auth/email-already-in-use' ? 'Email já em uso' : 'Erro ao criar conta';
+        showError(msg);
+        btn.disabled = false; btn.textContent = '✨ Criar Conta';
       }
     };
 
-    // ==================== LOGIN ====================
+    // ===== LOGIN (apenas Firebase Auth + localStorage) =====
     window.login = async () => {
       document.getElementById('global-error').classList.remove('show');
-      document.getElementById('global-success').style.display = 'none';
-      
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
-      
       if (!email) return showError('Email obrigatório');
       if (!password) return showError('Senha obrigatória');
 
       const btn = document.getElementById('login-btn');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="loading-spinner"></span> Entrando...';
+      btn.disabled = true; btn.textContent = 'Entrando...';
 
       try {
-        // 1. Autentica no Firebase Authentication
+        // 1. Autenticar no Firebase Auth
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        const uid = user.uid;
 
-        // 2. Busca o userKey pelo uid
-        const userKeySnap = await get(ref(database, 'userKeys/' + user.uid));
-        
-        if (!userKeySnap.exists()) {
-          showError('Usuário não encontrado. Crie uma conta primeiro.');
-          btn.disabled = false;
-          btn.innerHTML = '🔐 Entrar';
-          return;
+        // 2. Recuperar dados do localStorage (ou criar perfil básico se não existir)
+        let accounts = getLocalAccounts();
+        let userData = accounts.find(a => a.uid === uid);
+
+        if (!userData) {
+          // Caso o usuário nunca tenha logado neste dispositivo, cria um perfil mínimo
+          const username = email.split('@')[0];
+          userData = {
+            uid,
+            email,
+            username,
+            userType: 'normal',
+            lastLogin: Date.now(),
+            deviceId
+          };
+          // Se for empreendedor, pode pedir CNPJ? Vamos simplificar: se não tiver dados, é normal.
+          // Mas o login pode exigir CNPJ se o usuário for empreendedor. Como não temos no banco,
+          // podemos verificar se há um campo CNPJ salvo localmente. Se não, não pedimos.
+          // Para manter a funcionalidade, se o usuário tiver tipo 'entrepreneur' no localStorage,
+          // exigimos CNPJ.
         }
 
-        const userKey = userKeySnap.val();
-
-        // 3. Busca dados do usuário pelo userKey
-        const userSnap = await get(ref(database, 'users/' + userKey));
-        
-        if (!userSnap.exists()) {
-          showError('Dados do usuário não encontrados');
-          btn.disabled = false;
-          btn.innerHTML = '🔐 Entrar';
-          return;
-        }
-
-        const userData = userSnap.val();
-
-        // 4. Verifica CNPJ se for empreendedor
-        if (userData.userType === 'entrepreneur') {
+        // 3. Se o usuário for empreendedor e tiver CNPJ salvo, validar
+        if (userData.userType === 'entrepreneur' && userData.cnpj) {
           const cnpjInput = document.getElementById('login-cnpj').value.trim();
           document.getElementById('login-cnpj-group').style.display = 'block';
           if (!cnpjInput || cnpjInput.replace(/\D/g, '') !== userData.cnpj) {
             showError('CNPJ inválido');
-            btn.disabled = false;
-            btn.innerHTML = '🔐 Entrar';
+            btn.disabled = false; btn.textContent = '🔐 Entrar';
             return;
           }
         }
 
-        // 5. Atualiza último login
-        await update(ref(database, 'users/' + userKey), {
-          lastLogin: Date.now()
-        });
+        // 4. Atualizar lastLogin e salvar
+        userData.lastLogin = Date.now();
+        addLocalAccount(userData);
+        localStorage.setItem('current_userKey', uid);
 
-        // 6. Salva no localStorage
-        const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-        const accountData = {
-          uid: user.uid,
-          userKey: userKey,
-          email: userData.email || email,
-          username: userData.username,
-          userType: userData.userType || 'normal',
-          deviceId: deviceId,
-          lastLogin: Date.now()
-        };
-
-        const idx = localAccounts.findIndex(a => a.uid === user.uid);
-        if (idx >= 0) {
-          localAccounts[idx] = accountData;
-        } else {
-          localAccounts.push(accountData);
-        }
-        
-        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('current_userKey', userKey);
-        document.getElementById('accountCountNumber').textContent = localAccounts.length;
-
-        showSuccess('✅ Login realizado! Redirecionando...');
-        
-        setTimeout(() => {
-          window.location.href = `index.html?userKey=${userKey}`;
-        }, 1500);
-
-      } catch(error) {
-        console.error('Erro no login:', error);
-        if (error.code === 'auth/invalid-login-credentials') {
-          showError('Email ou senha incorretos');
-        } else if (error.code === 'auth/user-not-found') {
-          showError('Usuário não encontrado');
-        } else if (error.code === 'auth/wrong-password') {
-          showError('Senha incorreta');
-        } else if (error.code === 'auth/invalid-email') {
-          showError('Email inválido');
-        } else if (error.code === 'auth/user-disabled') {
-          showError('Conta desativada');
-        } else {
-          showError('Erro ao fazer login: ' + error.message);
-        }
-        btn.disabled = false;
-        btn.innerHTML = '🔐 Entrar';
+        // 5. Redirecionar
+        redirectAfterAuth(uid);
+      } catch (error) {
+        const msg = {
+          'auth/user-not-found': 'Usuário não encontrado',
+          'auth/wrong-password': 'Senha incorreta',
+          'auth/invalid-email': 'Email inválido'
+        }[error.code] || 'Erro ao fazer login';
+        showError(msg);
+        btn.disabled = false; btn.textContent = '🔐 Entrar';
       }
     };
 
-    // ==================== GOOGLE LOGIN ====================
+    // ===== LOGIN COM GOOGLE =====
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
-      document.getElementById('global-success').style.display = 'none';
-      
-      const localAccounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
+      const localAccounts = getLocalAccounts();
       if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
 
       try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-        
-        // Verifica se o usuário já existe
-        const userKeySnap = await get(ref(database, 'userKeys/' + user.uid));
-        let userKey;
-        
-        if (!userKeySnap.exists()) {
-          // Primeiro login - cria novo userKey
-          userKey = generateUserKey();
-          const username = user.displayName || user.email.split('@')[0];
-          const userData = {
-            username: username,
-            email: user.email,
+        const uid = user.uid;
+        const email = user.email;
+        const username = user.displayName || email.split('@')[0];
+
+        // Verificar se já existe no localStorage
+        let accounts = getLocalAccounts();
+        let userData = accounts.find(a => a.uid === uid);
+
+        if (!userData) {
+          userData = {
+            uid,
+            email,
+            username,
             userType: 'normal',
-            uid: user.uid,
-            userKey: userKey,
-            deviceId: deviceId,
-            createdAt: Date.now(),
             lastLogin: Date.now(),
+            deviceId,
             provider: 'google'
           };
-          await set(ref(database, 'users/' + userKey), userData);
-          await set(ref(database, 'userKeys/' + user.uid), userKey);
         } else {
-          userKey = userKeySnap.val();
-          // Atualiza último login
-          await update(ref(database, 'users/' + userKey), {
-            lastLogin: Date.now()
-          });
+          userData.lastLogin = Date.now();
         }
 
-        // Busca dados atualizados
-        const updatedSnap = await get(ref(database, 'users/' + userKey));
-        const userData = updatedSnap.val();
+        addLocalAccount(userData);
+        localStorage.setItem('current_userKey', uid);
 
-        // Salva no localStorage
-        const accountData = {
-          uid: user.uid,
-          userKey: userKey,
-          email: user.email,
-          username: userData.username || user.displayName || user.email.split('@')[0],
-          userType: userData.userType || 'normal',
-          deviceId: deviceId,
-          lastLogin: Date.now()
-        };
-
-        localAccounts.push(accountData);
-        localStorage.setItem('codehub_deviceAccounts', JSON.stringify(localAccounts.slice(0, MAX_ACCOUNTS)));
-        localStorage.setItem('current_userKey', userKey);
-        document.getElementById('accountCountNumber').textContent = localAccounts.length;
-
-        showSuccess('✅ Login com Google realizado! Redirecionando...');
-        
-        setTimeout(() => {
-          window.location.href = `index.html?userKey=${userKey}`;
-        }, 1500);
-
-      } catch(error) {
+        redirectAfterAuth(uid);
+      } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
-          console.error('Erro no Google:', error);
-          showError('Erro ao fazer login com Google: ' + error.message);
+          showError('Erro ao fazer login com Google');
         }
       }
     };
-
-    // ==================== VERIFICA USUÁRIO LOGADO ====================
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        console.log('Usuário logado:', user.uid);
-        // Atualiza contador de contas
-        const accounts = JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-        document.getElementById('accountCountNumber').textContent = accounts.length;
-      }
-    });
-
   </script>
 </body>
 </html>
