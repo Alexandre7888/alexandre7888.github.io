@@ -234,8 +234,7 @@
       color: #a0b3c9;
       margin-bottom: 6px;
     }
-    .form-group input,
-    .form-group select {
+    .form-group input {
       width: 100%;
       padding: 10px 14px;
       background: #0d1422;
@@ -246,8 +245,7 @@
       transition: border-color 0.3s, box-shadow 0.3s;
       outline: none;
     }
-    .form-group input:focus,
-    .form-group select:focus {
+    .form-group input:focus {
       border-color: #4361ee;
       box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
     }
@@ -413,6 +411,25 @@
       gap: 8px;
       margin-top: 12px;
       flex-wrap: wrap;
+    }
+    .token-item .copy-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .token-item .copy-actions .btn-copy {
+      background: rgba(67, 97, 238, 0.15);
+      color: #4cc9f0;
+      border: 1px solid rgba(67, 97, 238, 0.2);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .token-item .copy-actions .btn-copy:hover {
+      background: rgba(67, 97, 238, 0.3);
     }
 
     /* EMPTY STATE */
@@ -651,11 +668,6 @@
       color: #4a5a7a;
       font-family: monospace;
     }
-    .account-item-mini .account-id {
-      font-size: 10px;
-      color: #2a3a5c;
-      font-family: monospace;
-    }
 
     /* TOAST */
     .toast {
@@ -701,16 +713,6 @@
     }
     .mt-16 {
       margin-top: 16px;
-    }
-    .mb-8 {
-      margin-bottom: 8px;
-    }
-    .flex {
-      display: flex;
-    }
-    .flex-center {
-      align-items: center;
-      gap: 8px;
     }
     .text-muted {
       color: #4a5a7a;
@@ -798,14 +800,6 @@
             <div class="form-group">
               <label>Tamanho do Token</label>
               <input type="number" id="tokenSize" value="20" min="20" max="200" />
-            </div>
-            <div class="form-group">
-              <label>Scope</label>
-              <select id="tokenScope">
-                <option value="tudo">🔓 Tudo (tokens/ + tokens/token/)</option>
-                <option value="tudo1.0">📌 Tudo 1.0 (apenas tokens/)</option>
-                <option value="service">🔧 Service (apenas tokens/token/)</option>
-              </select>
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-block">🚀 Gerar Token</button>
@@ -928,7 +922,6 @@
     const createForm = document.getElementById('createTokenForm');
     const appName = document.getElementById('appName');
     const tokenSize = document.getElementById('tokenSize');
-    const tokenScope = document.getElementById('tokenScope');
     const userName = document.getElementById('userName');
     const userEmail = document.getElementById('userEmail');
     const userAvatar = document.getElementById('userAvatar');
@@ -1019,14 +1012,12 @@
       return domain;
     }
 
-    // ===== SALVAR TOKEN =====
+    // ===== SALVAR TOKEN (sempre nos dois lugares) =====
     async function saveToken(token, data) {
-      const scope = data.scope;
       const base = {
         appName: data.appName,
         ownerUID: userUID,
         createdAt: new Date().toISOString(),
-        scope: scope,
         icon: data.icon || '',
         contactInfo: data.contactInfo || '',
         customJs: data.customJs || '',
@@ -1035,12 +1026,10 @@
         accounts: {}
       };
 
-      if (scope === 'tudo' || scope === 'tudo1.0') {
-        await set(ref(db, `tokens/${token}`), base);
-      }
-      if (scope === 'tudo' || scope === 'service') {
-        await set(ref(db, `tokens/token/${token}`), base);
-      }
+      // Salva nos dois lugares sempre
+      await set(ref(db, `tokens/${token}`), base);
+      await set(ref(db, `tokens/token/${token}`), base);
+      
       showToast('✅ Token criado com sucesso!', 'success');
       loadTokens();
     }
@@ -1054,6 +1043,7 @@
       const all = [];
       const data1 = snap1.val();
       const data2 = snap2.val();
+      
       if (data1) Object.entries(data1).forEach(([k, v]) => {
         if (v.ownerUID === userUID && k !== 'token') all.push({ token: k, val: v, source: 'tokens/' });
       });
@@ -1082,6 +1072,8 @@
       }
 
       tokenList.innerHTML = '';
+      const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta";
+      
       allTokens.forEach(({ token, val }) => {
         const div = document.createElement('div');
         div.className = 'token-item';
@@ -1089,6 +1081,7 @@
         const hasDomain = domains.length > 0;
         const icon = val.icon || '📱';
         const accountCount = val.accounts ? Object.keys(val.accounts).length : 0;
+        const apiUrl = `${baseURL}?token=${token}`;
 
         div.innerHTML = `
           <div class="top-row">
@@ -1102,7 +1095,11 @@
               <span style="margin-left:8px;background:rgba(67,97,238,0.15);padding:2px 8px;border-radius:12px;font-size:11px;">👥 ${accountCount}</span>
             </div>
           </div>
-          <div class="app-meta">Token: ${token.substring(0, 12)}... • Scope: ${val.scope || 'não definido'}</div>
+          <div class="app-meta">Token: ${token.substring(0, 12)}...</div>
+          <div class="copy-actions">
+            <button class="btn-copy" onclick="copyText('${apiUrl}')">📋 Copiar URL da API</button>
+            <button class="btn-copy" onclick="copyText('${token}')">📋 Copiar Token</button>
+          </div>
           <div class="actions">
             <button class="btn btn-sm btn-warning" onclick="editToken('${token}')">⚙️ Configurar</button>
             <button class="btn btn-sm btn-danger" onclick="deleteToken('${token}')">🗑️ Excluir</button>
@@ -1111,6 +1108,22 @@
         tokenList.appendChild(div);
       });
     }
+
+    // ===== COPIAR TEXTO =====
+    window.copyText = function(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('✅ Copiado para a área de transferência!', 'success');
+      }).catch(() => {
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('✅ Copiado para a área de transferência!', 'success');
+      });
+    };
 
     // ===== EDITAR TOKEN =====
     window.editToken = async function(token) {
@@ -1121,25 +1134,20 @@
 
       modalTitle.textContent = `⚙️ Configurar: ${val.appName}`;
 
-      // Aba Básico
       editAppName.value = val.appName || '';
       editIcon.value = val.icon || '';
       editContact.value = val.contactInfo || '';
       editCustomJs.value = val.customJs || '';
 
-      // Aba Domínios
       currentDomains = val.domains || [];
       renderDomains();
 
-      // Aba IPs
       currentIPs = val.blockedIPs || [];
       renderIPs();
 
-      // Aba Contas (somente nome e email, sem UID)
       currentAccounts = val.accounts ? Object.values(val.accounts) : [];
       renderAccounts();
 
-      // Resetar abas
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.querySelector('[data-tab="basico"]').classList.add('active');
@@ -1184,7 +1192,7 @@
       }
     }
 
-    // ===== RENDER CONTAS (sem UID) =====
+    // ===== RENDER CONTAS =====
     function renderAccounts() {
       accountsContainer.innerHTML = '';
       if (currentAccounts.length === 0) {
@@ -1208,7 +1216,6 @@
           </div>
           <div class="account-actions-mini">
             <span class="ip-info">IP: ${acc.ip || 'N/A'}</span>
-            <span class="account-id">ID: #${acc.id?.substring(0, 6) || 'N/A'}</span>
             <button class="ban-btn" onclick="banAccount('${acc.id}')">🚫 Banir</button>
           </div>
         `;
@@ -1253,7 +1260,7 @@
       renderIPs();
     };
 
-    // ===== BANIR CONTA (bloqueia o IP) =====
+    // ===== BANIR CONTA =====
     window.banAccount = function(accountId) {
       if (!confirm(`Tem certeza que deseja banir esta conta? O IP será bloqueado.`)) return;
 
@@ -1397,7 +1404,6 @@
       e.preventDefault();
       const name = appName.value.trim();
       const size = parseInt(tokenSize.value);
-      const scope = tokenScope.value;
 
       if (!name) {
         showToast('❌ Digite um nome para o aplicativo', 'error');
@@ -1411,7 +1417,6 @@
       const token = generateToken(size);
       const data = {
         appName: name,
-        scope: scope,
         icon: '',
         contactInfo: '',
         customJs: '',
