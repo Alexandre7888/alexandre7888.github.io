@@ -5,7 +5,7 @@ const MAX_ACCOUNTS = 5;
 const apps = [
   { id:'settings', name:'Config', icon:'⚙️', url:'https://alexandre7888.github.io/settings.html' },
   { id:'MENSAGENS', name:'mensagens', icon:'✉️', url:'https://app.mensagens.site.je/' },
-  { id:'home', name:'Home', icon:'🏠', url:'https://alexandre7888.github.io' }  // ← CORRIGIDO
+  { id:'home', name:'Home', icon:'🏠', url:'https://alexandre7888.github.io' }
 ];
 
 function getAvatarColor(name) {
@@ -25,7 +25,6 @@ function AppMenu() {
   const [showPanel, setShowPanel] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Estados do Hover e Fixação
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
@@ -59,12 +58,13 @@ function AppMenu() {
       if (panelRef.current && !panelRef.current.contains(e.target)) setShowPanel(false);
     });
 
+    // Atualiza contas a cada 5 segundos
     const interval = setInterval(async () => {
       const mk = localStorage.getItem('codehub_masterKey');
-      if (mk) await loadAccounts(mk);
-      const uk = localStorage.getItem('current_userKey');
-      if (uk) await loadCurrentUser(uk);
-    }, 4000);
+      if (mk) {
+        await loadAccounts(mk);
+      }
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -74,12 +74,19 @@ function AppMenu() {
     const localKey = localStorage.getItem('current_userKey');
     const key = rawUserKey || localKey;
 
-    console.log('🔍 Iniciando AppMenu com userKey:', key);
+    console.log('🔍 Iniciando AppMenu...');
+    console.log('📌 UserKey da URL:', rawUserKey);
+    console.log('📌 UserKey do localStorage:', localKey);
+    console.log('📌 UserKey final:', key);
 
-    let currentMasterKey = localStorage.getItem('codehub_masterKey');
+    // Carrega a Master Key do localStorage
+    const currentMasterKey = localStorage.getItem('codehub_masterKey');
     if (currentMasterKey) {
+      console.log('🔑 Master Key encontrada:', currentMasterKey);
       setMasterKey(currentMasterKey);
       await loadAccounts(currentMasterKey);
+    } else {
+      console.log('⚠️ Nenhuma Master Key encontrada no localStorage');
     }
 
     if (key) {
@@ -91,6 +98,7 @@ function AppMenu() {
     setLoading(false);
   }
 
+  // ===== CARREGA CONTAS DA MASTER KEY =====
   async function loadAccounts(mk) {
     if (!mk || !dbRef.current) return;
 
@@ -101,12 +109,18 @@ function AppMenu() {
       if (snap.exists()) {
         const contasData = Object.values(snap.val());
         setAccounts(contasData);
-        console.log('📋 Contas carregadas:', contasData.length);
+        console.log(`📋 ${contasData.length} contas carregadas da Master Key:`, mk);
+        
+        // Mostra detalhes das contas
+        contasData.forEach(acc => {
+          console.log(`  - ${acc.email} (${acc.userKey})`);
+        });
       } else {
-        console.log('📋 Nenhuma conta encontrada para masterKey:', mk);
+        setAccounts([]);
+        console.log('📋 Nenhuma conta encontrada para Master Key:', mk);
       }
     } catch(e) {
-      console.error('Erro ao carregar contas:', e);
+      console.error('❌ Erro ao carregar contas:', e);
     }
   }
 
@@ -116,6 +130,7 @@ function AppMenu() {
     await loadAndSyncUserData(key, mk);
   }
 
+  // ===== CARREGA DADOS DO USUÁRIO =====
   async function loadAndSyncUserData(key, activeMasterKey) {
     if (!key || !dbRef.current) return;
 
@@ -124,7 +139,7 @@ function AppMenu() {
     try {
       const { ref, get, update } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
 
-      // 1. TENTA userKeysData/{key} (NOVO CAMINHO)
+      // Tenta buscar em userKeysData/{key}
       let snap = await get(ref(dbRef.current, `userKeysData/${key}`));
       let data = snap.exists() ? snap.val() : null;
       
@@ -132,16 +147,7 @@ function AppMenu() {
         console.log('✅ Dados encontrados em userKeysData/' + key);
       }
 
-      // 2. SE NÃO ENCONTROU, tenta userKeys/{key} (CAMINHO ANTIGO)
-      if (!data) {
-        snap = await get(ref(dbRef.current, `userKeys/${key}`));
-        data = snap.exists() ? snap.val() : null;
-        if (data) {
-          console.log('✅ Dados encontrados em userKeys/' + key);
-        }
-      }
-
-      // 3. SE NÃO ENCONTROU, tenta users/{key} (CAMINHO ALTERNATIVO)
+      // Se não encontrou, tenta users/{key}
       if (!data) {
         snap = await get(ref(dbRef.current, `users/${key}`));
         data = snap.exists() ? snap.val() : null;
@@ -150,19 +156,16 @@ function AppMenu() {
         }
       }
 
-      // 4. SE ENCONTROU OS DADOS
       if (data) {
-        // Extrai os dados do usuário
-        const user = data.authTokenDecoded || data;
-        
-        // Garante que o userData tenha os campos necessários
+        // Extrai dados do usuário
         const userInfo = {
-          uid: user.uid || key,
-          userKey: user.userKey || key,
-          username: user.username || user.nome || user.email || 'Usuário',
-          email: user.email || '',
-          userType: user.userType || 'normal',
-          ...user
+          uid: data.uid || key,
+          userKey: data.userKey || key,
+          username: data.username || data.nome || data.email || 'Usuário',
+          email: data.email || '',
+          userType: data.userType || 'normal',
+          masterKey: data.masterKey || activeMasterKey,
+          ...data
         };
 
         console.log('👤 Dados do usuário:', userInfo);
@@ -171,45 +174,47 @@ function AppMenu() {
         setIsAuth(true);
         setUserKey(key);
 
-        // Obtém o masterKey
-        let mk = user.masterKey || data.masterKey || activeMasterKey || localStorage.getItem('codehub_masterKey');
-
-        if (mk) {
-          setMasterKey(mk);
-          localStorage.setItem('codehub_masterKey', mk);
-
-          // Salva o masterKey no caminho userKeysData também
-          try {
-            await update(ref(dbRef.current, `userKeysData/${key}`), {
-              masterKey: mk,
-              updatedAt: Date.now()
-            });
-          } catch (e) {
-            console.warn('Não foi possível atualizar userKeysData:', e);
-          }
-
-          await loadAccounts(mk);
-        } else {
-          // Se não tem masterKey, cria uma
-          const newMasterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-          localStorage.setItem('codehub_masterKey', newMasterKey);
-          setMasterKey(newMasterKey);
-          await loadAccounts(newMasterKey);
+        // Atualiza Master Key
+        let mk = userInfo.masterKey || activeMasterKey || localStorage.getItem('codehub_masterKey');
+        
+        if (!mk) {
+          // Cria nova Master Key se não existir
+          mk = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+          console.log('🆕 Nova Master Key criada:', mk);
+          
+          // Salva no Firebase
+          await update(ref(dbRef.current, `userKeysData/${key}`), {
+            masterKey: mk,
+            updatedAt: Date.now()
+          });
         }
 
-        console.log('✅ Usuário carregado com sucesso!');
+        // Salva Master Key no localStorage
+        localStorage.setItem('codehub_masterKey', mk);
+        setMasterKey(mk);
+
+        // Carrega contas da Master Key
+        await loadAccounts(mk);
+
+        console.log('✅ Usuário carregado com sucesso! Master Key:', mk);
       } else {
         console.log('❌ Nenhum dado encontrado para o userKey:', key);
         
-        // Tenta criar dados básicos se for um UID válido
+        // Tenta criar dados básicos
         if (key && key.length > 10) {
           console.log('🔄 Criando dados básicos para o UID:', key);
+          
+          const mk = localStorage.getItem('codehub_masterKey') || 
+                     'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+          
           const basicData = {
             uid: key,
             userKey: key,
             email: 'usuario@email.com',
             nome: 'Usuário',
+            username: 'Usuário',
             userType: 'normal',
+            masterKey: mk,
             criadoEm: Date.now(),
             lastLogin: Date.now()
           };
@@ -217,19 +222,25 @@ function AppMenu() {
           try {
             await set(ref(dbRef.current, `userKeysData/${key}`), basicData);
             console.log('✅ Dados básicos criados em userKeysData/' + key);
+            
             setUserData(basicData);
             setIsAuth(true);
             setUserKey(key);
+            setMasterKey(mk);
+            localStorage.setItem('codehub_masterKey', mk);
+            
+            await loadAccounts(mk);
           } catch (e) {
-            console.error('Erro ao criar dados básicos:', e);
+            console.error('❌ Erro ao criar dados básicos:', e);
           }
         }
       }
     } catch(e) {
-      console.error('Erro na sincronização:', e);
+      console.error('❌ Erro na sincronização:', e);
     }
   }
 
+  // ===== REMOVER CONTA =====
   async function removeAccount(uid) {
     const mk = masterKey || localStorage.getItem('codehub_masterKey');
     if (!mk || !dbRef.current) return;
@@ -244,6 +255,7 @@ function AppMenu() {
         delete contas[uid];
         await set(ref(dbRef.current, `contas/${mk}`), contas);
         setAccounts(Object.values(contas));
+        console.log('🗑️ Conta removida:', uid);
       }
 
       if (userData?.uid === uid) {
@@ -253,43 +265,50 @@ function AppMenu() {
         window.location.href = url.toString();
       }
     } catch(e) {
-      console.error('Erro ao remover:', e);
+      console.error('❌ Erro ao remover:', e);
     }
   }
 
+  // ===== ABRIR APP =====
   function openApp(url) {
     const key = userKey || localStorage.getItem('current_userKey');
     const sep = url.includes('?') ? '&' : '?';
     window.location.href = key ? `${url}${sep}userKey=${key}` : url;
   }
 
-  // TROCA DE CONTA: Atualiza a userKey na URL atual e recarrega o site
+  // ===== TROCAR CONTA =====
   async function switchAccount(acc) {
     if (acc.userKey) {
+      console.log('🔄 Trocando para conta:', acc.email);
       localStorage.setItem('current_userKey', acc.userKey);
+      
+      // Carrega os dados da nova conta
+      await loadAndSyncUserData(acc.userKey, masterKey);
 
-      // Constrói a nova URL mantendo a página atual mas substituindo/inserindo a nova userKey
       const url = new URL(window.location.href);
       url.searchParams.set('userKey', acc.userKey);
-
-      // Recarrega o site na nova URL com o userKey trocado
       window.location.href = url.toString();
     }
   }
 
+  // ===== LOGOUT =====
   function handleLogout() {
     if (!confirm('Sair da conta atual?')) return;
     localStorage.removeItem('current_userKey');
+    // NÃO remove a Master Key para manter as contas salvas
 
-    // Remove o parâmetro userKey da URL e recarrega
     const url = new URL(window.location.href);
     url.searchParams.delete('userKey');
     window.location.href = url.toString();
   }
 
+  // ===== ABRIR PAINEL =====
   async function handleOpenPanel() {
     const mk = masterKey || localStorage.getItem('codehub_masterKey');
-    if (mk) await loadAccounts(mk);
+    if (mk) {
+      console.log('📂 Abrindo painel - Master Key:', mk);
+      await loadAccounts(mk);
+    }
     setShowPanel(true);
   }
 
@@ -305,7 +324,7 @@ function AppMenu() {
 
   return React.createElement('div', null,
 
-    // ==================== BARRA NOTCH DINÂMICA ====================
+    // ==================== BARRA NOTCH ====================
     React.createElement('div', {
       onMouseEnter: () => setIsHovered(true),
       onMouseLeave: () => setIsHovered(false),
@@ -337,12 +356,7 @@ function AppMenu() {
       }
     },
       !isOpen ? React.createElement('div', {
-        style: {
-          width: '32px',
-          height: '3px',
-          background: 'rgba(255, 255, 255, 0.5)',
-          borderRadius: '2px'
-        }
+        style: { width: '32px', height: '3px', background: 'rgba(255, 255, 255, 0.5)', borderRadius: '2px' }
       }) : 
 
       React.createElement(React.Fragment, null,
@@ -385,12 +399,7 @@ function AppMenu() {
             }
           },
             React.createElement('span', {
-              style: {
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: isAuth ? '#2ecc71' : '#e74c3c'
-              }
+              style: { width: '6px', height: '6px', borderRadius: '50%', background: isAuth ? '#2ecc71' : '#e74c3c' }
             }),
             React.createElement('span', null, name)
           ),
@@ -441,7 +450,7 @@ function AppMenu() {
       ))
     ) : null,
 
-    // ==================== PAINEL LATERAL DE CONTAS ====================
+    // ==================== PAINEL LATERAL ====================
     showPanel ? React.createElement('div', {
       ref: panelRef,
       style: { position:'fixed',top:0,right:0,width:320,height:'100%',background:'rgba(20,21,25,0.96)',backdropFilter:'blur(20px)',zIndex:10001,boxShadow:'-10px 0 30px rgba(0,0,0,0.5)',borderLeft:'1px solid rgba(255,255,255,0.1)',overflowY:'auto',padding:20 }
@@ -449,12 +458,22 @@ function AppMenu() {
       React.createElement('div', {
         style: { display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,paddingBottom:12,borderBottom:'1px solid rgba(255,255,255,0.1)' }
       },
-        React.createElement('div', { style:{ color:'#fff',fontSize:16,fontWeight:600 } }, '👤 Gerenciar Contas'),
+        React.createElement('div', { style:{ color:'#fff',fontSize:16,fontWeight:600 } }, 
+          `👤 Gerenciar Contas ${masterKey ? '🔑' : ''}`
+        ),
         React.createElement('button', {
           onClick: () => setShowPanel(false),
           style: { background:'transparent',border:'none',color:'rgba(255,255,255,0.6)',cursor:'pointer',fontSize:16 }
         }, '✕')
       ),
+
+      // Mostra a Master Key
+      masterKey ? React.createElement('div', {
+        style: { background:'rgba(76,201,240,0.1)',border:'1px solid rgba(76,201,240,0.3)',borderRadius:8,padding:8,marginBottom:15,textAlign:'center' }
+      },
+        React.createElement('div', { style:{ color:'#4cc9f0',fontSize:11,fontWeight:600 } }, '🔑 Master Key'),
+        React.createElement('div', { style:{ color:'rgba(255,255,255,0.5)',fontSize:10,fontFamily:'monospace',wordBreak:'break-all' } }, masterKey)
+      ) : null,
 
       isAuth && userData ? React.createElement('div', {
         style: { background:'rgba(255,255,255,0.05)',borderRadius:10,padding:12,marginBottom:15,color:'#fff',textAlign:'center',border:'1px solid rgba(255,255,255,0.08)' }
@@ -464,7 +483,7 @@ function AppMenu() {
       ) : null,
 
       React.createElement('div', { style:{ color:'rgba(255,255,255,0.7)',fontSize:12,fontWeight:600,marginBottom:10 } },
-        '📋 Contas Registradas (' + accounts.length + '/' + MAX_ACCOUNTS + ')'
+        `📋 Contas Registradas (${accounts.length}/${MAX_ACCOUNTS})`
       ),
 
       accounts.length === 0 ?
