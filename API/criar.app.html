@@ -2,119 +2,861 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>Criador de Aplicativos v3</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeHub - Developer Dashboard</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; background: #121212; color: #eee; padding: 20px; border-radius: 8px; }
-    input, button, textarea, select { padding: 10px; margin: 5px 0; width: 100%; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
-    input, textarea, select { background: #222; color: #eee; }
-    textarea { min-height: 80px; resize: vertical; }
-    button { background: #4caf50; color: white; cursor: pointer; font-weight: bold; transition: background 0.3s; width: auto; padding: 8px 16px; margin-right: 10px; margin-top: 5px; }
-    button:hover { background: #45a049; }
-    .btn-danger { background: #f44336; }
-    .btn-danger:hover { background: #d32f2f; }
-    .btn-info { background: #2196F3; }
-    .btn-info:hover { background: #1976D2; }
-    .btn-warning { background: #FF9800; }
-    .btn-warning:hover { background: #F57C00; }
-    h1, h2 { text-align: center; color: #4caf50; }
-    .section { background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; color: #81c784; font-weight: bold; }
-    .token-item { background: #222; padding: 15px; margin-bottom: 15px; border-radius: 6px; word-break: break-all; }
-    .tag { display: inline-block; background: #2d3748; color: #90cdf4; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin: 2px; }
-    .url-box { background: #1a1a1a; padding: 8px; border-radius: 4px; border: 1px solid #333; word-break: break-all; margin: 5px 0; }
-    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-    .domain-tag { background: #2d3748; color: #90cdf4; padding: 3px 8px; border-radius: 12px; font-size: 12px; display: inline-block; margin: 2px; }
-    .ip-tag { background: #4a1942; color: #f687b3; padding: 3px 8px; border-radius: 12px; font-size: 12px; display: inline-block; margin: 2px; }
-    .icon-preview { max-height: 40px; border-radius: 8px; margin: 5px 0; }
-    .btn-doc { background: #9C27B0; }
-    .btn-doc:hover { background: #7B1FA2; }
-    .header-links { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; justify-content: center; }
-    .header-links .btn { display: inline-block; padding: 10px 20px; border-radius: 8px; color: #fff; text-decoration: none; font-weight: 600; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0e17;
+      color: #e8edf5;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #141b2b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a3a5c;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4361ee;
+    }
+
+    .dashboard {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0 30px 0;
+      border-bottom: 1px solid rgba(67, 97, 238, 0.15);
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-left .logo {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-left .logo span {
+      font-weight: 300;
+      color: #6b7a9f;
+      -webkit-text-fill-color: #6b7a9f;
+    }
+    .header-left .badge {
+      background: rgba(67, 97, 238, 0.2);
+      border: 1px solid rgba(67, 97, 238, 0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: #4cc9f0;
+      font-weight: 600;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-right .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 8px 16px 8px 12px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .header-right .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+    }
+    .header-right .user-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #c8d0e0;
+    }
+    .header-right .user-email {
+      font-size: 12px;
+      color: #6b7a9f;
+    }
+
+    /* AUTH TOKEN CARD */
+    .auth-token-card {
+      background: linear-gradient(135deg, #111927, #1a2340);
+      border: 1px solid rgba(67, 97, 238, 0.2);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .auth-token-card .token-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .auth-token-card .token-label .icon {
+      font-size: 24px;
+    }
+    .auth-token-card .token-label .title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #c8d0e0;
+    }
+    .auth-token-card .token-label .sub {
+      font-size: 12px;
+      color: #6b7a9f;
+    }
+    .auth-token-card .token-value {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(67, 97, 238, 0.15);
+      flex: 1;
+      min-width: 200px;
+      max-width: 500px;
+    }
+    .auth-token-card .token-value code {
+      font-size: 12px;
+      font-family: 'Consolas', monospace;
+      color: #4cc9f0;
+      word-break: break-all;
+      flex: 1;
+    }
+    .auth-token-card .token-value .copy-btn {
+      background: rgba(67, 97, 238, 0.2);
+      border: none;
+      color: #4cc9f0;
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: 0.2s;
+    }
+    .auth-token-card .token-value .copy-btn:hover {
+      background: rgba(67, 97, 238, 0.4);
+    }
+    .auth-token-card .no-token {
+      color: #f72585;
+      font-size: 14px;
+    }
+
+    /* GRID PRINCIPAL */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+    @media (max-width: 900px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* CARDS */
+    .card {
+      background: #111927;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 24px;
+      transition: border-color 0.3s;
+    }
+    .card:hover {
+      border-color: rgba(67, 97, 238, 0.2);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .card-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #e8edf5;
+    }
+    .card-header .subtitle {
+      font-size: 12px;
+      color: #6b7a9f;
+    }
+    .card-header .badge-count {
+      background: rgba(67, 97, 238, 0.15);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: #4cc9f0;
+    }
+
+    /* FORMULÁRIO */
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #a0b3c9;
+      margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0d1422;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: #e8edf5;
+      font-size: 14px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      outline: none;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: #4361ee;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+    }
+    .form-group input::placeholder {
+      color: #4a5a7a;
+    }
+    .form-group .helper {
+      font-size: 12px;
+      color: #4a5a7a;
+      margin-top: 4px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 500px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .btn-success {
+      background: #2ecc71;
+      color: #fff;
+    }
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(46, 204, 113, 0.3);
+    }
+    .btn-danger {
+      background: #f72585;
+      color: #fff;
+    }
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(247, 37, 133, 0.3);
+    }
+    .btn-warning {
+      background: #f8961e;
+      color: #fff;
+    }
+    .btn-warning:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(248, 150, 30, 0.3);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #a0b3c9;
+    }
+    .btn-outline:hover {
+      border-color: #4361ee;
+      color: #fff;
+    }
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 12px;
+    }
+    .btn-block {
+      width: 100%;
+      justify-content: center;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    /* TOKEN LIST */
+    .token-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .token-item {
+      background: #0d1422;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 16px 20px;
+      transition: border-color 0.3s;
+      cursor: pointer;
+    }
+    .token-item:hover {
+      border-color: rgba(67, 97, 238, 0.3);
+    }
+    .token-item.active {
+      border-color: #4361ee;
+      background: rgba(67, 97, 238, 0.05);
+    }
+    .token-item .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .token-item .app-name {
+      font-weight: 600;
+      font-size: 16px;
+      color: #e8edf5;
+    }
+    .token-item .app-domain {
+      font-size: 13px;
+      color: #4cc9f0;
+      font-family: monospace;
+    }
+    .token-item .app-meta {
+      font-size: 12px;
+      color: #4a5a7a;
+    }
+    .token-item .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .token-item .status .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .token-item .status .dot.active {
+      background: #2ecc71;
+    }
+    .token-item .status .dot.inactive {
+      background: #f72585;
+    }
+    .token-item .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #4a5a7a;
+    }
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .empty-state h3 {
+      font-size: 18px;
+      color: #a0b3c9;
+      margin-bottom: 8px;
+    }
+    .empty-state p {
+      font-size: 14px;
+    }
+
+    /* PREVIEW CARD */
+    .preview-card {
+      background: #0d1422;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .preview-card .preview-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .preview-card .preview-header .preview-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #1a2340;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .preview-card .preview-header .preview-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: #e8edf5;
+    }
+    .preview-card .preview-header .preview-sub {
+      font-size: 12px;
+      color: #4a5a7a;
+    }
+    .preview-card .preview-body {
+      background: #0a0e17;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .preview-card .preview-body .preview-account {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .preview-card .preview-body .preview-account .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+    }
+    .preview-card .preview-body .preview-account .info .name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #e8edf5;
+    }
+    .preview-card .preview-body .preview-account .info .email {
+      font-size: 12px;
+      color: #4a5a7a;
+    }
+    .preview-card .preview-body .preview-btn {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: default;
+      margin-top: 8px;
+    }
+    .preview-card .preview-body .preview-btn .check {
+      margin-right: 8px;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: #111927;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 32px;
+      animation: modalIn 0.3s ease-out;
+    }
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    .modal .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .modal .modal-header h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #e8edf5;
+    }
+    .modal .modal-header .close-btn {
+      background: none;
+      border: none;
+      color: #4a5a7a;
+      font-size: 24px;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+    .modal .modal-header .close-btn:hover {
+      color: #f72585;
+    }
+    .modal .modal-body .form-group textarea {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0d1422;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: #e8edf5;
+      font-size: 14px;
+      font-family: 'Consolas', monospace;
+      resize: vertical;
+      min-height: 60px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .modal .modal-body .form-group textarea:focus {
+      border-color: #4361ee;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-weight: 500;
+      font-size: 14px;
+      z-index: 2000;
+      animation: toastIn 0.4s ease-out;
+      max-width: 400px;
+    }
+    .toast-success {
+      background: #1a3a2a;
+      border: 1px solid #2ecc71;
+      color: #2ecc71;
+    }
+    .toast-error {
+      background: #3a1a2a;
+      border: 1px solid #f72585;
+      color: #f72585;
+    }
+    .toast-info {
+      background: #1a2a3a;
+      border: 1px solid #4361ee;
+      color: #4cc9f0;
+    }
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      .header-left .logo {
+        font-size: 20px;
+      }
+      .header-right .user-info .user-email {
+        display: none;
+      }
+      .auth-token-card .token-value {
+        max-width: 100%;
+      }
+      .modal {
+        padding: 20px;
+      }
+      .preview-card .preview-body .preview-account {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    /* UTILIDADES */
+    .text-muted {
+      color: #4a5a7a;
+    }
+    .text-success {
+      color: #2ecc71;
+    }
+    .text-danger {
+      color: #f72585;
+    }
+    .text-warning {
+      color: #f8961e;
+    }
+    .mt-8 {
+      margin-top: 8px;
+    }
+    .mt-16 {
+      margin-top: 16px;
+    }
+    .mb-8 {
+      margin-bottom: 8px;
+    }
+    .flex {
+      display: flex;
+    }
+    .flex-center {
+      align-items: center;
+      gap: 8px;
+    }
+    .gap-8 {
+      gap: 8px;
+    }
+    .gap-12 {
+      gap: 12px;
+    }
+    .fw-600 {
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
-  <h1>🚀 Criador de Aplicativos v3</h1>
-  
-  <div class="header-links">
-    <a href="documentacao.html" class="btn btn-doc" target="_blank">📖 Documentação</a>
+
+  <div class="dashboard">
+
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">Code<span>Hub</span></div>
+        <span class="badge">DEV</span>
+      </div>
+      <div class="header-right">
+        <div class="user-info">
+          <div class="user-avatar" id="userAvatar">U</div>
+          <div>
+            <div class="user-name" id="userName">Carregando...</div>
+            <div class="user-email" id="userEmail">usuario@email.com</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===== AUTH TOKEN ===== -->
+    <div class="auth-token-card" id="authTokenCard">
+      <div class="token-label">
+        <span class="icon">🔐</span>
+        <div>
+          <div class="title">Token de Autenticação</div>
+          <div class="sub">Seu token permanente para a API</div>
+        </div>
+      </div>
+      <div class="token-value" id="authTokenDisplay">
+        <span class="no-token">⚠️ Carregando...</span>
+      </div>
+    </div>
+
+    <!-- ===== GRID PRINCIPAL ===== -->
+    <div class="main-grid">
+
+      <!-- COLUNA ESQUERDA: CRIAR TOKEN -->
+      <div class="card">
+        <div class="card-header">
+          <h2>✨ Criar Novo Token</h2>
+          <span class="subtitle">Gerar token para seu app</span>
+        </div>
+        <form id="createTokenForm">
+          <div class="form-group">
+            <label>Nome do Aplicativo *</label>
+            <input type="text" id="appName" placeholder="Ex: Meu App Incrível" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tamanho do Token</label>
+              <input type="number" id="tokenSize" value="20" min="20" max="200" />
+            </div>
+            <div class="form-group">
+              <label>Scope</label>
+              <select id="tokenScope">
+                <option value="tudo">🔓 Tudo (tokens/ + tokens/token/)</option>
+                <option value="tudo1.0">📌 Tudo 1.0 (apenas tokens/)</option>
+                <option value="service">🔧 Service (apenas tokens/token/)</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">🚀 Gerar Token</button>
+        </form>
+
+        <!-- PREVIEW DO BOTÃO E DA PÁGINA -->
+        <div class="preview-card" id="previewCard" style="display:none;">
+          <div class="preview-header">
+            <div class="preview-icon" id="previewIcon">📱</div>
+            <div>
+              <div class="preview-title" id="previewTitle">Meu App</div>
+              <div class="preview-sub" id="previewDomain">meudominio.com</div>
+            </div>
+          </div>
+          <div class="preview-body">
+            <div class="preview-account">
+              <div class="avatar" id="previewAvatar">U</div>
+              <div class="info">
+                <div class="name" id="previewName">Usuário Teste</div>
+                <div class="email" id="previewEmail">usuario@teste.com</div>
+              </div>
+            </div>
+            <button class="preview-btn" id="previewButton">
+              <span class="check">🔐</span> Continuar com esta conta
+            </button>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+              <button class="btn btn-sm btn-outline" style="flex:1;font-size:11px;padding:6px;">📞 Contato</button>
+              <button class="btn btn-sm btn-outline" style="flex:1;font-size:11px;padding:6px;">⚡ Ação</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUNA DIREITA: LISTA DE TOKENS -->
+      <div class="card">
+        <div class="card-header">
+          <h2>📋 Seus Tokens</h2>
+          <span class="badge-count" id="tokenCount">0</span>
+        </div>
+        <div class="token-list" id="tokenList">
+          <div class="empty-state">
+            <div class="icon">📭</div>
+            <h3>Nenhum token criado</h3>
+            <p>Crie seu primeiro token ao lado</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
-  <!-- TOKEN DE AUTENTICAÇÃO -->
-  <div class="section" style="border:2px solid #ffd700;">
-    <h2>🔐 Seu Token de Autenticação</h2>
-    <div id="authTokenDisplay">Carregando...</div>
-  </div>
-
-  <!-- FORMULÁRIO DE CRIAÇÃO -->
-  <div class="section">
-    <h2>✨ Criar Novo Aplicativo</h2>
-    <form id="appForm">
-      <div class="form-group">
-        <label>Nome do Aplicativo *</label>
-        <input type="text" id="appName" placeholder="Meu App" required />
+  <!-- ===== MODAL DE EDIÇÃO ===== -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⚙️ Configurar Aplicativo</h2>
+        <button class="close-btn" onclick="closeModal()">✕</button>
       </div>
-      <div class="form-group">
-        <label>Domínio Personalizado * (ex: meusite.com)</label>
-        <input type="text" id="customDomain" placeholder="meusite.com" required />
-        <small style="color:#888;">O usuário será redirecionado para https://{dominio}/index.html ou para a URL com ?redirecturl=</small>
+      <div class="modal-body">
+        <form id="editForm">
+          <div class="form-group">
+            <label>Nome do Aplicativo</label>
+            <input type="text" id="editAppName" placeholder="Nome do app" />
+          </div>
+          <div class="form-group">
+            <label>Domínio Personalizado *</label>
+            <input type="text" id="editDomain" placeholder="meusite.com" />
+            <div class="helper">Digite apenas o domínio (ex: meusite.com). URLs com index serão convertidas automaticamente.</div>
+          </div>
+          <div class="form-group">
+            <label>Ícone (URL da imagem)</label>
+            <input type="url" id="editIcon" placeholder="https://exemplo.com/icone.png" />
+          </div>
+          <div class="form-group">
+            <label>Domínios Permitidos (máx 20) - Separe por vírgula</label>
+            <textarea id="editAllowedDomains" placeholder="meusite.com, outro.com"></textarea>
+          </div>
+          <div class="form-group">
+            <label>IPs Bloqueados (máx 50) - Separe por vírgula</label>
+            <textarea id="editBlockedIPs" placeholder="192.168.1.1, 10.0.0.5"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Contato do Desenvolvedor (email, telefone ou URL)</label>
+            <input type="text" id="editContact" placeholder="contato@meuapp.com" />
+          </div>
+          <div class="form-group">
+            <label>Código JavaScript (botão personalizado)</label>
+            <textarea id="editCustomJs" rows="3" placeholder="alert('Olá, mundo!');"></textarea>
+          </div>
+          <div class="btn-group">
+            <button type="submit" class="btn btn-success" style="flex:1;">💾 Salvar Configurações</button>
+            <button type="button" class="btn btn-danger" onclick="closeModal()" style="flex:1;">Cancelar</button>
+          </div>
+        </form>
       </div>
-      <div class="form-group">
-        <label>Tamanho do Token (20-200)</label>
-        <input type="number" id="tokenSize" value="20" min="20" max="200" step="1" />
-      </div>
-      <div class="form-group">
-        <label>Scope do Token</label>
-        <select id="tokenScope">
-          <option value="tudo">🔓 Tudo (tokens/ + tokens/token/)</option>
-          <option value="tudo1.0">📌 Tudo 1.0 (apenas tokens/)</option>
-          <option value="service">🔧 Service (apenas tokens/token/)</option>
-        </select>
-      </div>
-
-      <hr style="border-color:#333;margin:20px 0;">
-
-      <div class="form-group">
-        <label>Ícone (URL da imagem)</label>
-        <input type="url" id="appIcon" placeholder="https://exemplo.com/icone.png" />
-      </div>
-
-      <div class="form-group">
-        <label>Domínios Permitidos (máx 20) - Separe por vírgula ou quebra de linha</label>
-        <textarea id="allowedDomains" placeholder="meusite.com, outro.com" rows="2"></textarea>
-        <small style="color:#888;">Deixe em branco para permitir qualquer domínio.</small>
-      </div>
-
-      <div class="form-group">
-        <label>IPs Bloqueados (máx 50) - Separe por vírgula ou quebra de linha</label>
-        <textarea id="blockedIPs" placeholder="192.168.1.1, 10.0.0.5" rows="2"></textarea>
-        <small style="color:#888;">IPs nesta lista não poderão acessar a API.</small>
-      </div>
-
-      <div class="form-group">
-        <label>Contato do Desenvolvedor (ex: email, telefone, URL)</label>
-        <input type="text" id="contactInfo" placeholder="contato@meuapp.com" />
-      </div>
-
-      <div class="form-group">
-        <label>Código JavaScript para o botão personalizado (opcional)</label>
-        <textarea id="customJs" rows="3" placeholder="alert('Olá, mundo!');"></textarea>
-        <small style="color:#888;">Este código será executado quando o botão for clicado na API.</small>
-      </div>
-
-      <button type="submit">✅ Gerar Token e Salvar</button>
-    </form>
-  </div>
-
-  <!-- LISTA DE APLICATIVOS -->
-  <div class="section">
-    <h2>📋 Seus Aplicativos</h2>
-    <div id="tokensContainer">Carregando...</div>
+    </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -132,57 +874,95 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
+    // Elementos
     const authTokenDisplay = document.getElementById('authTokenDisplay');
-    const tokensContainer = document.getElementById('tokensContainer');
-    const appForm = document.getElementById('appForm');
+    const tokenList = document.getElementById('tokenList');
+    const tokenCount = document.getElementById('tokenCount');
+    const createForm = document.getElementById('createTokenForm');
     const appName = document.getElementById('appName');
-    const customDomain = document.getElementById('customDomain');
     const tokenSize = document.getElementById('tokenSize');
     const tokenScope = document.getElementById('tokenScope');
-    const appIcon = document.getElementById('appIcon');
-    const allowedDomains = document.getElementById('allowedDomains');
-    const blockedIPs = document.getElementById('blockedIPs');
-    const contactInfo = document.getElementById('contactInfo');
-    const customJs = document.getElementById('customJs');
+    const userName = document.getElementById('userName');
+    const userEmail = document.getElementById('userEmail');
+    const userAvatar = document.getElementById('userAvatar');
+
+    // Preview
+    const previewCard = document.getElementById('previewCard');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewDomain = document.getElementById('previewDomain');
+    const previewIcon = document.getElementById('previewIcon');
+    const previewButton = document.getElementById('previewButton');
+    const previewName = document.getElementById('previewName');
+    const previewEmail = document.getElementById('previewEmail');
+    const previewAvatar = document.getElementById('previewAvatar');
+
+    // Modal
+    const editModal = document.getElementById('editModal');
+    const editForm = document.getElementById('editForm');
+    const editAppName = document.getElementById('editAppName');
+    const editDomain = document.getElementById('editDomain');
+    const editIcon = document.getElementById('editIcon');
+    const editAllowedDomains = document.getElementById('editAllowedDomains');
+    const editBlockedIPs = document.getElementById('editBlockedIPs');
+    const editContact = document.getElementById('editContact');
+    const editCustomJs = document.getElementById('editCustomJs');
 
     let userUID = null;
+    let currentEditingToken = null;
+    let allTokens = [];
 
-    // ===== TOKEN DE AUTENTICAÇÃO =====
+    // ===== TOAST =====
+    function showToast(message, type = 'success') {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // ===== DECODIFICAR TOKEN =====
     function decodeAuthToken(token) {
       try { return JSON.parse(decodeURIComponent(escape(atob(token)))); } catch { return null; }
     }
+
+    // ===== AUTH TOKEN =====
     async function fetchUserAuthToken(userId) {
       const snap = await get(ref(db, `tokens/${userId}`));
       return snap.exists() ? snap.val() : null;
     }
+
     function getLocalAuthToken() {
       const t = localStorage.getItem('auth_token');
       return t ? { token: t } : null;
     }
+
     async function displayAuthToken(user) {
-      if (!user) { authTokenDisplay.innerHTML = '<div style="color:#ff9800;">⚠️ Faça login para ver seu token.</div>'; return; }
+      if (!user) {
+        authTokenDisplay.innerHTML = '<span class="no-token">⚠️ Faça login para ver seu token</span>';
+        return;
+      }
       let info = await fetchUserAuthToken(user.uid) || getLocalAuthToken();
       if (info && info.token) {
         const dec = decodeAuthToken(info.token);
         authTokenDisplay.innerHTML = `
-          <div style="background:#0a0a0a;border-radius:8px;padding:15px;border-left:4px solid #ffd700;">
-            <strong style="color:#ffd700;">👤 ${dec?.username || user.displayName || user.email}</strong><br>
-            <span style="font-size:12px;color:#aaa;">${user.email}</span><br>
-            <div style="font-family:monospace;background:#1a1a1a;padding:8px;border-radius:4px;margin:8px 0;word-break:break-all;font-size:11px;border:1px solid #4caf50;">${info.token}</div>
-            <button onclick="copyAuthToken('${info.token.replace(/'/g,"\\'")}')" style="background:#00BCD4;padding:4px 12px;border:none;border-radius:4px;color:#fff;cursor:pointer;">📋 Copiar</button>
-          </div>
+          <code>${info.token}</code>
+          <button class="copy-btn" onclick="copyToken('${info.token.replace(/'/g, "\\'")}')">📋 Copiar</button>
         `;
       } else {
-        authTokenDisplay.innerHTML = '<div style="color:#ff9800;">⚠️ Nenhum token de autenticação encontrado.</div>';
+        authTokenDisplay.innerHTML = '<span class="no-token">⚠️ Nenhum token encontrado</span>';
       }
     }
-    window.copyAuthToken = (t) => { navigator.clipboard.writeText(t).then(()=>alert('✅ Copiado!')); };
+    window.copyToken = (t) => {
+      navigator.clipboard.writeText(t).then(() => showToast('✅ Token copiado!', 'success'));
+    };
 
-    // ===== GERADOR DE TOKEN =====
+    // ===== GERAR TOKEN =====
     function generateToken(len) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       let tok = '';
-      for (let i=0; i<len; i++) tok += chars.charAt(Math.floor(Math.random()*chars.length));
+      for (let i = 0; i < len; i++) tok += chars.charAt(Math.floor(Math.random() * chars.length));
       return tok;
     }
 
@@ -191,23 +971,16 @@
       const scope = data.scope;
       const base = {
         appName: data.appName,
-        customDomain: data.customDomain,
         ownerUID: userUID,
         createdAt: new Date().toISOString(),
         scope: scope,
         icon: data.icon || '',
+        customDomain: data.customDomain || '',
         allowedDomains: data.allowedDomains || [],
         blockedIPs: data.blockedIPs || [],
         contactInfo: data.contactInfo || '',
         customJs: data.customJs || ''
       };
-
-      // Salvar local
-      const localTokens = JSON.parse(localStorage.getItem('userTokens') || '[]');
-      if (!localTokens.some(t => t.value === token)) {
-        localTokens.push({ value: token, appName: data.appName, customDomain: data.customDomain, createdAt: new Date().toISOString() });
-        localStorage.setItem('userTokens', JSON.stringify(localTokens));
-      }
 
       if (scope === 'tudo' || scope === 'tudo1.0') {
         await set(ref(db, `tokens/${token}`), base);
@@ -215,8 +988,9 @@
       if (scope === 'tudo' || scope === 'service') {
         await set(ref(db, `tokens/token/${token}`), base);
       }
-      alert('✅ Token criado com sucesso!');
+      showToast('✅ Token criado com sucesso!', 'success');
       loadTokens();
+      updatePreview(token);
     }
 
     // ===== CARREGAR TOKENS =====
@@ -228,106 +1002,238 @@
       const all = [];
       const data1 = snap1.val();
       const data2 = snap2.val();
-      if (data1) Object.entries(data1).forEach(([k,v]) => { if (v.ownerUID === userUID && k !== 'token') all.push({ token: k, val: v, source: 'tokens/' }); });
-      if (data2) Object.entries(data2).forEach(([k,v]) => { if (v.ownerUID === userUID) all.push({ token: k, val: v, source: 'tokens/token/' }); });
-      
+      if (data1) Object.entries(data1).forEach(([k, v]) => {
+        if (v.ownerUID === userUID && k !== 'token') all.push({ token: k, val: v, source: 'tokens/' });
+      });
+      if (data2) Object.entries(data2).forEach(([k, v]) => {
+        if (v.ownerUID === userUID) all.push({ token: k, val: v, source: 'tokens/token/' });
+      });
+
       const seen = new Set();
-      const unique = all.filter(item => { if (seen.has(item.token)) return false; seen.add(item.token); return true; });
+      allTokens = all.filter(item => {
+        if (seen.has(item.token)) return false;
+        seen.add(item.token);
+        return true;
+      });
 
-      if (unique.length === 0) { tokensContainer.textContent = 'Nenhum token criado ainda.'; return; }
+      tokenCount.textContent = allTokens.length;
 
-      tokensContainer.innerHTML = '';
-      for (const { token, val } of unique) {
-        const div = document.createElement('div');
-        div.className = 'token-item';
-        const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta";
-        const domains = val.allowedDomains || [];
-        const blocked = val.blockedIPs || [];
-        const icon = val.icon || '';
-        const contact = val.contactInfo || '';
-        const jsCode = val.customJs || '';
-        const domain = val.customDomain || 'não definido';
-
-        div.innerHTML = `
-          <strong>📱 ${val.appName}</strong><br>
-          <strong>Domínio:</strong> ${domain}<br>
-          <strong>Token:</strong> ${token}<br>
-          <strong>Scope:</strong> ${val.scope || 'não definido'}<br>
-          ${icon ? `<img src="${icon}" style="max-height:30px;border-radius:4px;margin:4px 0;" /><br>` : ''}
-          <div class="url-box">🔗 ${baseURL}?token=${token}</div>
-          <div><strong>Domínios permitidos:</strong> ${domains.length ? domains.map(d=>`<span class="domain-tag">${d}</span>`).join(' ') : '✅ Todos'}</div>
-          <div><strong>IPs bloqueados:</strong> ${blocked.length ? blocked.map(ip=>`<span class="ip-tag">${ip}</span>`).join(' ') : '✅ Nenhum'}</div>
-          <div><strong>Contato:</strong> ${contact || 'Não definido'}</div>
-          <div><strong>JS customizado:</strong> ${jsCode ? '✅ Sim' : '❌ Não'}</div>
-          <div class="btn-group">
-            <button onclick="window.open('${baseURL}?token=${token}','_blank')" style="background:#FF9800;">🔗 Abrir API</button>
-            <button onclick="copyText('${baseURL}?token=${token}')" style="background:#00BCD4;">📋 Copiar URL</button>
-            <button onclick="deleteToken('${token}')" class="btn-danger">🗑️ Excluir</button>
+      if (allTokens.length === 0) {
+        tokenList.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📭</div>
+            <h3>Nenhum token criado</h3>
+            <p>Crie seu primeiro token ao lado</p>
           </div>
         `;
-        tokensContainer.appendChild(div);
+        previewCard.style.display = 'none';
+        return;
       }
+
+      tokenList.innerHTML = '';
+      allTokens.forEach(({ token, val }) => {
+        const div = document.createElement('div');
+        div.className = 'token-item';
+        const domain = val.customDomain || '⏳ Aguardando domínio';
+        const hasConfig = val.customDomain && val.customDomain.trim() !== '';
+        const icon = val.icon || '📱';
+
+        div.innerHTML = `
+          <div class="top-row">
+            <div>
+              <div class="app-name">${val.appName}</div>
+              <div class="app-domain">${domain}</div>
+            </div>
+            <div class="status">
+              <span class="dot ${hasConfig ? 'active' : 'inactive'}"></span>
+              ${hasConfig ? 'Configurado' : 'Pendente'}
+            </div>
+          </div>
+          <div class="app-meta">Token: ${token.substring(0, 12)}... • Scope: ${val.scope || 'não definido'}</div>
+          <div class="actions">
+            <button class="btn btn-sm btn-warning" onclick="editToken('${token}')">⚙️ Configurar</button>
+            <button class="btn btn-sm btn-outline" onclick="previewToken('${token}')">👁️ Preview</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteToken('${token}')">🗑️ Excluir</button>
+          </div>
+        `;
+        tokenList.appendChild(div);
+      });
     }
-    window.copyText = (t) => { navigator.clipboard.writeText(t).then(()=>alert('✅ Copiado!')); };
-    window.deleteToken = async (token) => {
-      if (!confirm(`Excluir token "${token}" permanentemente?`)) return;
-      await remove(ref(db, `tokens/${token}`));
-      await remove(ref(db, `tokens/token/${token}`));
-      alert('🗑️ Token excluído.');
-      loadTokens();
+
+    // ===== EDITAR TOKEN (ABRIR MODAL) =====
+    window.editToken = function(token) {
+      const item = allTokens.find(t => t.token === token);
+      if (!item) return;
+      currentEditingToken = token;
+      const val = item.val;
+
+      editAppName.value = val.appName || '';
+      editDomain.value = val.customDomain || '';
+      editIcon.value = val.icon || '';
+      editAllowedDomains.value = (val.allowedDomains || []).join(', ');
+      editBlockedIPs.value = (val.blockedIPs || []).join(', ');
+      editContact.value = val.contactInfo || '';
+      editCustomJs.value = val.customJs || '';
+
+      editModal.classList.add('active');
     };
 
-    // ===== SUBMISSÃO DO FORM =====
-    appForm.addEventListener('submit', async (e) => {
+    // ===== SALVAR EDIÇÃO =====
+    editForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentEditingToken) return;
+
+      let domain = editDomain.value.trim();
+      // Converter URL com index para domínio puro
+      if (domain.includes('://')) {
+        try {
+          const url = new URL(domain);
+          domain = url.hostname.replace(/^www\./, '');
+        } catch {
+          // se não for URL válida, mantém como está
+        }
+      }
+      // Remover /index.html, /, etc.
+      domain = domain.replace(/\/index\.html$/, '').replace(/\/$/, '');
+
+      // Verificar se o domínio já existe em outro token
+      const domainExists = allTokens.some(t => 
+        t.token !== currentEditingToken && 
+        t.val.customDomain && 
+        t.val.customDomain.replace(/^www\./, '') === domain.replace(/^www\./, '')
+      );
+      if (domainExists) {
+        showToast('❌ Este domínio já está em uso por outro token!', 'error');
+        return;
+      }
+
+      const allowedDomains = editAllowedDomains.value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
+      const blockedIPs = editBlockedIPs.value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 50);
+
+      const updates = {
+        appName: editAppName.value.trim(),
+        customDomain: domain,
+        icon: editIcon.value.trim(),
+        allowedDomains: allowedDomains,
+        blockedIPs: blockedIPs,
+        contactInfo: editContact.value.trim(),
+        customJs: editCustomJs.value.trim(),
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        await update(ref(db, `tokens/${currentEditingToken}`), updates);
+        await update(ref(db, `tokens/token/${currentEditingToken}`), updates);
+        showToast('✅ Configurações salvas!', 'success');
+        closeModal();
+        loadTokens();
+        updatePreview(currentEditingToken);
+      } catch (error) {
+        showToast('❌ Erro ao salvar: ' + error.message, 'error');
+      }
+    });
+
+    // ===== FECHAR MODAL =====
+    window.closeModal = function() {
+      editModal.classList.remove('active');
+      currentEditingToken = null;
+    };
+
+    // ===== PREVIEW TOKEN =====
+    window.previewToken = function(token) {
+      const item = allTokens.find(t => t.token === token);
+      if (!item) return;
+      updatePreview(token);
+      showToast('👁️ Preview atualizado', 'info');
+    };
+
+    function updatePreview(token) {
+      const item = allTokens.find(t => t.token === token);
+      if (!item) {
+        previewCard.style.display = 'none';
+        return;
+      }
+      const val = item.val;
+      const domain = val.customDomain || 'domínio não configurado';
+      const icon = val.icon || '📱';
+      const name = val.appName || 'Meu App';
+
+      previewCard.style.display = 'block';
+      previewIcon.textContent = icon;
+      previewTitle.textContent = name;
+      previewDomain.textContent = domain;
+
+      // Atualizar preview do botão com as configurações
+      if (val.customJs && val.customJs.trim()) {
+        previewButton.textContent = '⚡ Ação Customizada';
+      } else {
+        previewButton.textContent = '🔐 Continuar com esta conta';
+      }
+    }
+
+    // ===== DELETAR TOKEN =====
+    window.deleteToken = async function(token) {
+      if (!confirm(`Tem certeza que deseja excluir o token "${token}"?`)) return;
+      try {
+        await remove(ref(db, `tokens/${token}`));
+        await remove(ref(db, `tokens/token/${token}`));
+        showToast('🗑️ Token excluído!', 'success');
+        loadTokens();
+        if (allTokens.length === 0) previewCard.style.display = 'none';
+      } catch (error) {
+        showToast('❌ Erro ao excluir: ' + error.message, 'error');
+      }
+    };
+
+    // ===== CRIAR TOKEN =====
+    createForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = appName.value.trim();
-      const domain = customDomain.value.trim();
       const size = parseInt(tokenSize.value);
       const scope = tokenScope.value;
-      const icon = appIcon.value.trim();
-      const domainsRaw = allowedDomains.value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean).slice(0,20);
-      const ipsRaw = blockedIPs.value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean).slice(0,50);
-      const contact = contactInfo.value.trim();
-      const js = customJs.value.trim();
 
-      if (!name || !domain) return alert('Preencha nome e domínio personalizado.');
-      if (size < 20 || size > 200) return alert('Tamanho do token deve ser entre 20 e 200.');
-
-      // Validação básica de domínio
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9-.]*\.[a-zA-Z]{2,}$/.test(domain)) {
-        return alert('Domínio inválido. Exemplo: meusite.com');
+      if (!name) {
+        showToast('❌ Digite um nome para o aplicativo', 'error');
+        return;
+      }
+      if (size < 20 || size > 200) {
+        showToast('❌ Tamanho do token deve ser entre 20 e 200', 'error');
+        return;
       }
 
       const token = generateToken(size);
-      const data = { 
-        appName: name, 
-        customDomain: domain, 
-        scope, 
-        icon, 
-        allowedDomains: domainsRaw, 
-        blockedIPs: ipsRaw, 
-        contactInfo: contact, 
-        customJs: js 
+      const data = {
+        appName: name,
+        scope: scope,
+        icon: '',
+        customDomain: '',
+        allowedDomains: [],
+        blockedIPs: [],
+        contactInfo: '',
+        customJs: ''
       };
+
       await saveToken(token, data);
-      appName.value = ''; 
-      customDomain.value = ''; 
-      tokenSize.value = '20'; 
-      appIcon.value = ''; 
-      allowedDomains.value = ''; 
-      blockedIPs.value = ''; 
-      contactInfo.value = ''; 
-      customJs.value = '';
+      appName.value = '';
+      tokenSize.value = '20';
+    });
+
+    // ===== CLICK FORA DO MODAL =====
+    editModal.addEventListener('click', (e) => {
+      if (e.target === editModal) closeModal();
     });
 
     // ===== AUTH STATE =====
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { 
-        alert('Você precisa estar logado.'); 
-        window.location.href = 'https://alexandre7888.github.io/auth'; 
-        return; 
+      if (!user) {
+        alert('Você precisa estar logado.');
+        window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth';
+        return;
       }
       userUID = user.uid;
+      userName.textContent = user.displayName || user.email?.split('@')[0] || 'Usuário';
+      userEmail.textContent = user.email || '';
+      userAvatar.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
       await displayAuthToken(user);
       loadTokens();
     });
