@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeHub - Autenticação G</title>
+  <title>CodeHub - Autenticação</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
@@ -60,6 +60,7 @@
     .diagnostic-box{background:rgba(247,37,133,0.1);border:1px solid #f72585;border-radius:8px;padding:10px;margin-top:10px;display:none}
     .diagnostic-box.show{display:block}
     .diagnostic-box p{color:#a0b3c9;font-size:11px;margin:3px 0}
+    .diagnostic-box .highlight{color:#f72585;font-weight:bold}
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -136,12 +137,14 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
       projectId: "html-15e80",
       storageBucket: "html-15e80.firebasestorage.app",
       messagingSenderId: "1068148640439",
@@ -150,22 +153,11 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
     let selectedUserType = 'normal';
     const MAX_ACCOUNTS = 5;
-
-    // ===== GERADOR DE USERKEY =====
-    function generateUserKey(username, email) {
-      // Gera um userKey único baseado no username e email
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 8);
-      // Remove caracteres especiais e espaços
-      const cleanUsername = username.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const cleanEmail = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-      // Formato: user_[username]_[timestamp]_[random]
-      return `user_${cleanUsername || cleanEmail}_${timestamp}_${random}`;
-    }
 
     // ===== Função de debug =====
     function showDebug(error) {
@@ -281,16 +273,16 @@
 
     function addLocalAccount(userData) {
       const accounts = getLocalAccounts();
-      const idx = accounts.findIndex(a => a.userKey === userData.userKey);
+      const idx = accounts.findIndex(a => a.uid === userData.uid);
       if (idx >= 0) accounts[idx] = userData;
       else accounts.push(userData);
       saveLocalAccounts(accounts);
     }
 
-    function redirectAfterAuth(userKey) {
-      showSuccess(`✅ Autenticado! UserKey: ${userKey}`);
+    function redirectAfterAuth(uid) {
+      showSuccess(`✅ Autenticado! UserKey: ${uid}`);
       setTimeout(() => {
-        window.location.href = `index.html?userKey=${userKey}`;
+        window.location.href = `index.html?userKey=${uid}`;
       }, 1000);
     }
 
@@ -390,9 +382,43 @@
         const user = userCredential.user;
         const uid = user.uid;
 
-        // ✅ GERANDO USERKEY
-        const userKey = generateUserKey(username, email);
-        console.log('✅ UserKey gerado:', userKey);
+        // ✅ userKey = uid (exatamente o UID do Firebase)
+        const userKey = uid;
+
+        console.log('✅ UID do Firebase:', uid);
+        console.log('✅ UserKey (igual ao UID):', userKey);
+
+        // ✅ Salva no Firebase em userKeysData/{uid}
+        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
+        await set(userKeyDataRef, {
+          uid: uid,
+          userKey: userKey,
+          email: email,
+          nome: username,
+          userType: selectedUserType,
+          criadoEm: Date.now(),
+          lastLogin: Date.now(),
+          deviceId: deviceId,
+          ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
+        });
+
+        console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
+
+        // Também salva em users/{uid} para compatibilidade
+        const userRef = ref(db, `users/${uid}`);
+        await set(userRef, {
+          uid: uid,
+          userKey: userKey,
+          email: email,
+          username: username,
+          userType: selectedUserType,
+          createdAt: Date.now(),
+          lastLogin: Date.now(),
+          deviceId: deviceId,
+          ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
+        });
+
+        console.log('✅ Dados salvos no Firebase em users/' + uid);
 
         const userData = {
           uid,
@@ -456,12 +482,20 @@
         const user = userCredential.user;
         const uid = user.uid;
 
-        let accounts = getLocalAccounts();
-        let userData = accounts.find(a => a.uid === uid);
+        // ✅ userKey = uid
+        const userKey = uid;
 
-        if (!userData) {
+        console.log('✅ Login - UID:', uid);
+        console.log('✅ Login - UserKey (igual ao UID):', userKey);
+
+        // ✅ Verifica se já existe no Firebase e salva/atualiza
+        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
+        const snapshot = await get(userKeyDataRef);
+        
+        let userData;
+        if (!snapshot.exists()) {
+          // Se não existir, cria um novo registro
           const username = email.split('@')[0];
-          const userKey = generateUserKey(username, email);
           userData = {
             uid,
             userKey,
@@ -469,12 +503,20 @@
             username,
             userType: 'normal',
             lastLogin: Date.now(),
-            deviceId
+            deviceId,
+            criadoEm: Date.now()
           };
+          await set(userKeyDataRef, userData);
+          console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
         } else {
+          userData = snapshot.val();
           userData.lastLogin = Date.now();
+          // Atualiza lastLogin
+          await set(userKeyDataRef, userData);
+          console.log('✅ Dados atualizados no Firebase em userKeysData/' + uid);
         }
 
+        // Verifica CNPJ se for empreendedor
         if (userData.userType === 'entrepreneur' && userData.cnpj) {
           const cnpjInput = document.getElementById('login-cnpj').value.trim();
           document.getElementById('login-cnpj-group').style.display = 'block';
@@ -485,11 +527,12 @@
           }
         }
 
+        // Salva localmente
         addLocalAccount(userData);
-        localStorage.setItem('current_userKey', userData.userKey);
+        localStorage.setItem('current_userKey', userKey);
         localStorage.setItem('current_uid', uid);
 
-        redirectAfterAuth(userData.userKey);
+        redirectAfterAuth(userKey);
 
       } catch (error) {
         let msg;
@@ -534,12 +577,18 @@
         const email = user.email;
         const username = user.displayName || email.split('@')[0];
 
-        let accounts = getLocalAccounts();
-        let userData = accounts.find(a => a.uid === uid);
+        // ✅ userKey = uid
+        const userKey = uid;
 
-        if (!userData) {
-          // ✅ GERANDO USERKEY PARA GOOGLE
-          const userKey = generateUserKey(username, email);
+        console.log('✅ Google - UID:', uid);
+        console.log('✅ Google - UserKey (igual ao UID):', userKey);
+
+        // ✅ Verifica se já existe no Firebase
+        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
+        const snapshot = await get(userKeyDataRef);
+        
+        let userData;
+        if (!snapshot.exists()) {
           userData = {
             uid,
             userKey,
@@ -548,17 +597,23 @@
             userType: 'normal',
             lastLogin: Date.now(),
             deviceId,
-            provider: 'google'
+            provider: 'google',
+            criadoEm: Date.now()
           };
+          await set(userKeyDataRef, userData);
+          console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
         } else {
+          userData = snapshot.val();
           userData.lastLogin = Date.now();
+          await set(userKeyDataRef, userData);
+          console.log('✅ Dados atualizados no Firebase em userKeysData/' + uid);
         }
 
         addLocalAccount(userData);
-        localStorage.setItem('current_userKey', userData.userKey);
+        localStorage.setItem('current_userKey', userKey);
         localStorage.setItem('current_uid', uid);
 
-        redirectAfterAuth(userData.userKey);
+        redirectAfterAuth(userKey);
 
       } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
