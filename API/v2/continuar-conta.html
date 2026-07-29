@@ -110,6 +110,20 @@
       gap: 10px;
       justify-content: center;
     }
+    .debug-info {
+      background: #1a1a2e;
+      color: #00ff88;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 15px;
+      text-align: left;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
@@ -153,13 +167,16 @@
         <a id="loginLink" href="#" class="login-link">Fazer Login</a>
       </div>
       <p id="error" class="error-message"></p>
+
+      <!-- Área de debug -->
+      <div id="debugArea" class="debug-info" style="display:none;"></div>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -179,6 +196,7 @@
     // Elementos
     const statusEl = document.getElementById('status');
     const errorEl = document.getElementById('error');
+    const errorDisplay = document.getElementById('errorDisplay');
     const loginRedirectEl = document.getElementById('login-redirect');
     const loginLinkEl = document.getElementById('loginLink');
     const accountSelectionDiv = document.getElementById('account-selection');
@@ -193,6 +211,7 @@
     const customActionBtn = document.getElementById('customActionBtn');
     const reportBtn = document.getElementById('reportBtn');
     const extraButtonsDiv = document.getElementById('extraButtons');
+    const debugArea = document.getElementById('debugArea');
 
     const urlParams = new URLSearchParams(window.location.search);
     const appToken = urlParams.get('token');
@@ -203,6 +222,16 @@
     let selectedAccountUid = null;
     let tokenData = null;
     let clientIP = '';
+    let currentEditingToken = null;
+
+    // ===== DEBUG =====
+    function logDebug(message, data = null) {
+      console.log('🐛 DEBUG:', message, data || '');
+      debugArea.style.display = 'block';
+      debugArea.textContent += `\n[${new Date().toLocaleTimeString()}] ${message}`;
+      if (data) debugArea.textContent += `\n${JSON.stringify(data, null, 2)}`;
+      debugArea.scrollTop = debugArea.scrollHeight;
+    }
 
     // ===== FUNÇÕES =====
     function getClientIP() {
@@ -239,7 +268,7 @@
     }
     window.reportError = reportError;
 
-    // ===== GERAR ID INTERNO PARA CONTA =====
+    // ===== GERAR ID INTERNO =====
     function generateAccountId() {
       return 'acc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     }
@@ -247,15 +276,21 @@
     // ===== CARREGAR TOKEN =====
     async function loadTokenData(token) {
       try {
+        logDebug('🔍 Buscando token:', token);
         let snap = await get(ref(db, `tokens/${token}`));
-        if (!snap.exists()) snap = await get(ref(db, `tokens/token/${token}`));
+        if (!snap.exists()) {
+          logDebug('⚠️ Token não encontrado em tokens/, tentando tokens/token/');
+          snap = await get(ref(db, `tokens/token/${token}`));
+        }
         if (snap.exists()) {
           tokenData = snap.val();
+          logDebug('✅ Token encontrado:', tokenData);
           return tokenData;
         }
+        logDebug('❌ Token NÃO encontrado!');
         return null;
       } catch (e) {
-        console.error('Erro ao carregar token:', e);
+        logDebug('❌ Erro ao carregar token:', e.message);
         return null;
       }
     }
@@ -277,29 +312,39 @@
         const url = new URL(redirectUrl);
         const hostname = url.hostname.replace(/^www\./, '');
         const cleanDomain = customDomain.replace(/^www\./, '');
-        return hostname === cleanDomain;
-      } catch {
+        const isValid = hostname === cleanDomain;
+        logDebug(`🔍 Validando URL: ${redirectUrl} -> hostname: ${hostname}, customDomain: ${cleanDomain}, válido: ${isValid}`);
+        return isValid;
+      } catch (e) {
+        logDebug('❌ Erro ao validar URL:', e.message);
         return false;
       }
     }
 
     function getFinalRedirectUrl(customDomain) {
+      logDebug('🔍 Calculando URL final com customDomain:', customDomain);
+      logDebug('🔍 redirectUrlParam:', redirectUrlParam);
+      
       if (redirectUrlParam) {
         if (validateRedirectUrl(redirectUrlParam, customDomain)) {
+          logDebug('✅ Usando redirectUrlParam:', redirectUrlParam);
           return redirectUrlParam;
+        } else {
+          logDebug('❌ redirectUrlParam não é válido para este domínio');
+          return null;
         }
-        return null;
       }
-      return `https://${customDomain}/index.html`;
+      
+      const fallbackUrl = `https://${customDomain}/index.html`;
+      logDebug('✅ Usando fallback URL:', fallbackUrl);
+      return fallbackUrl;
     }
 
-    // ===== SALVAR CONTA CAPTURADA (sem UID) =====
+    // ===== SALVAR CONTA CAPTURADA =====
     async function saveCapturedAccount(uid, email, nome, ip) {
       if (!currentEditingToken) return;
 
-      // Gera um ID interno para a conta (não expõe o UID)
       const accountId = generateAccountId();
-
       const accountData = {
         id: accountId,
         nome: nome || 'Usuário',
@@ -308,25 +353,31 @@
         capturedAt: new Date().toISOString()
       };
 
-      // Salva no Firebase dentro do token, usando o ID interno como chave
-      const accountRef = ref(db, `tokens/${currentEditingToken}/accounts/${accountId}`);
-      await set(accountRef, accountData);
+      logDebug('💾 Salvando conta capturada:', accountData);
 
-      // Também salva no caminho tokens/token/ se existir
       try {
-        const accountRef2 = ref(db, `tokens/token/${currentEditingToken}/accounts/${accountId}`);
-        await set(accountRef2, accountData);
+        const accountRef = ref(db, `tokens/${currentEditingToken}/accounts/${accountId}`);
+        await set(accountRef, accountData);
+        
+        try {
+          const accountRef2 = ref(db, `tokens/token/${currentEditingToken}/accounts/${accountId}`);
+          await set(accountRef2, accountData);
+        } catch (e) {
+          logDebug('⚠️ Não foi possível salvar em tokens/token/', e.message);
+        }
+        
+        logDebug('✅ Conta salva com sucesso! ID:', accountId);
+        return accountId;
       } catch (e) {
-        // Ignora se não existir o caminho
+        logDebug('❌ Erro ao salvar conta:', e.message);
+        return null;
       }
-
-      return accountId;
     }
 
     // ===== APLICAR CONFIGURAÇÕES =====
     function applyTokenSettings(data) {
       if (!data) return;
-      const domain = data.customDomain || 'domínio não definido';
+      const domain = data.customDomain || data.domains?.[0] || 'domínio não definido';
       appTitle.textContent = data.appName || 'Continuar Login';
       appSubtitle.textContent = `🔗 ${domain}`;
 
@@ -371,13 +422,17 @@
     // ===== CARREGAR CONTAS DA MASTER KEY =====
     async function loadAccountsFromMasterKey(masterKey) {
       try {
+        logDebug('🔍 Buscando contas da Master Key:', masterKey);
         const snap = await get(ref(db, `contas/${masterKey}`));
         if (snap.exists()) {
-          return Object.values(snap.val());
+          const accounts = Object.values(snap.val());
+          logDebug(`✅ ${accounts.length} contas encontradas`);
+          return accounts;
         }
+        logDebug('⚠️ Nenhuma conta encontrada');
         return [];
       } catch (e) {
-        console.error('Erro ao carregar contas:', e);
+        logDebug('❌ Erro ao carregar contas:', e.message);
         return [];
       }
     }
@@ -449,46 +504,68 @@
     // ===== PROSSEGUIR COM CONTA =====
     async function proceedWithAccount(uid) {
       try {
+        logDebug('🚀 Prosseguindo com conta UID:', uid);
         statusEl.textContent = 'Preparando sessão...';
 
-        // Buscar dados do usuário para capturar
+        // Buscar dados do usuário
         const userDataRef = ref(db, `userKeysData/${uid}`);
         const snap = await get(userDataRef);
         const userData = snap.exists() ? snap.val() : null;
 
-        const nome = userData?.nome || userData?.username || 'Usuário';
+        const nome = userData?.nome || userData?.username || currentUser?.displayName || 'Usuário';
         const email = userData?.email || currentUser?.email || '';
 
-        // SALVAR CONTA CAPTURADA (sem UID, apenas nome e email)
+        logDebug('👤 Dados do usuário:', { nome, email });
+
+        // SALVAR CONTA CAPTURADA
         await saveCapturedAccount(uid, email, nome, clientIP);
 
-        // Determinar URL final
-        const finalRedirectUrl = getFinalRedirectUrl(tokenData.customDomain);
+        // DETERMINAR URL FINAL
+        const customDomain = tokenData.customDomain || tokenData.domains?.[0];
+        logDebug('🔍 customDomain:', customDomain);
+        
+        if (!customDomain) {
+          throw new Error('Nenhum domínio configurado para este token. Configure um domínio no Criador de Aplicativos.');
+        }
+
+        const finalRedirectUrl = getFinalRedirectUrl(customDomain);
+        logDebug('🔍 finalRedirectUrl:', finalRedirectUrl);
+        
         if (!finalRedirectUrl) {
           throw new Error('URL de redirecionamento inválida ou domínio não autorizado.');
         }
 
-        // Verificar domínios permitidos
+        // VERIFICAR DOMÍNIOS PERMITIDOS
         if (tokenData.domains && tokenData.domains.length > 0) {
           try {
             const url = new URL(finalRedirectUrl);
             const hostname = url.hostname.replace(/^www\./, '');
+            logDebug('🔍 Verificando domínio permitido:', hostname);
+            logDebug('🔍 Domínios permitidos:', tokenData.domains);
+            
             if (!isDomainAllowed(hostname, tokenData.domains)) {
               throw new Error(`Domínio "${hostname}" não está na lista de domínios permitidos.`);
             }
+            logDebug('✅ Domínio permitido!');
           } catch (e) {
             throw new Error('Domínio de redirecionamento não permitido: ' + e.message);
           }
         }
 
+        // SALVAR LOCALMENTE E REDIRECIONAR
         localStorage.setItem('current_userKey', uid);
         await set(ref(db, `userKeysData/${uid}/lastLogin`), Date.now());
 
         const sep = finalRedirectUrl.includes('?') ? '&' : '?';
         const urlFinal = finalRedirectUrl + sep + `userKey=${encodeURIComponent(uid)}`;
+        
+        logDebug('🔄 Redirecionando para:', urlFinal);
+        statusEl.textContent = 'Redirecionando...';
+        
         window.location.href = urlFinal;
 
       } catch (err) {
+        logDebug('❌ Erro ao prosseguir:', err.message);
         statusEl.textContent = 'Erro ao prosseguir';
         errorEl.textContent = err.message || 'Erro desconhecido';
         reportError('Erro ao prosseguir: ' + err.message);
@@ -496,68 +573,92 @@
     }
 
     // ===== INÍCIO =====
-    let currentEditingToken = null;
-
     async function init() {
       clientIP = await getClientIP();
-      console.log('IP do cliente:', clientIP);
+      logDebug('🌐 IP do cliente:', clientIP);
 
       if (!appToken) {
+        logDebug('❌ Token não encontrado na URL');
         statusEl.textContent = 'Token não encontrado.';
         errorEl.textContent = 'Redirecionando para login...';
         setTimeout(redirectToLogin, 2000);
         return;
       }
 
+      logDebug('🔑 Token da aplicação:', appToken);
       currentEditingToken = appToken;
 
       tokenData = await loadTokenData(appToken);
       if (!tokenData) {
+        logDebug('❌ Token inválido');
         statusEl.textContent = 'Token inválido.';
         errorEl.textContent = 'Token não encontrado no Firebase.';
         return;
       }
 
+      logDebug('📦 Dados do token carregados:', tokenData);
       applyTokenSettings(tokenData);
 
+      // Verificar IP bloqueado
       if (tokenData.blockedIPs && tokenData.blockedIPs.length > 0) {
+        logDebug('🔍 Verificando IP bloqueado:', clientIP);
+        logDebug('🔍 IPs bloqueados:', tokenData.blockedIPs);
+        
         if (isIPBlocked(clientIP, tokenData.blockedIPs)) {
+          logDebug('🚫 IP BLOQUEADO!');
           accessDeniedDiv.style.display = 'block';
           statusEl.textContent = 'Acesso negado';
           accountSelectionDiv.style.display = 'none';
           return;
         }
+        logDebug('✅ IP não está bloqueado');
       }
 
+      // Aguardar autenticação
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
+          logDebug('❌ Usuário não autenticado');
           statusEl.textContent = 'Você não está autenticado';
           loginRedirectEl.style.display = 'block';
           accountSelectionDiv.style.display = 'none';
           return;
         }
 
+        logDebug('✅ Usuário autenticado:', user.email);
         currentUser = user;
         loginRedirectEl.style.display = 'none';
         accountSelectionDiv.style.display = 'block';
 
+        // Buscar Master Key
         let masterKey = localStorage.getItem('codehub_masterKey');
+        logDebug('🔍 Master Key do localStorage:', masterKey);
+        
         if (!masterKey) {
+          logDebug('🔍 Buscando Master Key no Firebase...');
           const snap = await get(ref(db, `userKeysData/${user.uid}`));
-          if (snap.exists()) masterKey = snap.val().masterKey || null;
+          if (snap.exists()) {
+            masterKey = snap.val().masterKey || null;
+            logDebug('✅ Master Key encontrada em userKeysData:', masterKey);
+          }
         }
         if (!masterKey) {
+          logDebug('🔍 Buscando em users/...');
           const snap2 = await get(ref(db, `users/${user.uid}`));
-          if (snap2.exists()) masterKey = snap2.val().masterKey || null;
+          if (snap2.exists()) {
+            masterKey = snap2.val().masterKey || null;
+            logDebug('✅ Master Key encontrada em users:', masterKey);
+          }
         }
         if (!masterKey) {
           masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2,12);
           await set(ref(db, `userKeysData/${user.uid}/masterKey`), masterKey);
           localStorage.setItem('codehub_masterKey', masterKey);
+          logDebug('🆕 Nova Master Key criada:', masterKey);
         } else {
           localStorage.setItem('codehub_masterKey', masterKey);
         }
 
+        // Carregar contas
         const accounts = await loadAccountsFromMasterKey(masterKey);
         accountsList = accounts;
         renderAccountList(accounts);
@@ -567,6 +668,7 @@
         if (accounts.length === 1) {
           selectedAccountUid = accounts[0].uid;
           document.querySelector('.account-item')?.classList.add('selected');
+          logDebug('✅ Única conta selecionada automaticamente:', selectedAccountUid);
         }
       });
     }
@@ -596,6 +698,7 @@
     };
     document.querySelector('.auth-content').appendChild(logoutBtn);
 
+    // ===== INICIAR =====
     init();
   </script>
 </body>
