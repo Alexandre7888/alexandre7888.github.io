@@ -31,8 +31,6 @@
     .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
     .btn-secondary{background:rgba(255,255,255,0.1);color:#a0b3c9;border:1px solid rgba(255,255,255,0.2)}
     .btn-secondary:hover{background:rgba(255,255,255,0.2)}
-    .btn-diagnostic{background:rgba(247,37,133,0.3);color:#f72585;border:1px solid #f72585}
-    .btn-diagnostic:hover{background:rgba(247,37,133,0.5)}
     .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
     .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.2);margin:0 10px}
     .error-message{color:#f72585;font-size:12px;display:none;background:rgba(247,37,133,0.1);padding:8px;border-radius:6px;margin-bottom:10px}
@@ -49,18 +47,6 @@
     .company-fields{display:none}
     .company-fields.show{display:block}
     .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
-    .debug-area{margin-top:15px;background:rgba(0,0,0,0.5);border-radius:8px;padding:10px;display:none;border:1px solid #f72585}
-    .debug-area.show{display:block}
-    .debug-area summary{cursor:pointer;color:#a0b3c9;font-size:12px}
-    .debug-area pre{color:#f8f9fa;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto}
-    .suggest-box{background:rgba(76,201,240,0.1);border:1px solid #4cc9f0;border-radius:8px;padding:10px;margin-top:10px;display:none}
-    .suggest-box.show{display:block}
-    .suggest-box p{color:#a0b3c9;font-size:12px}
-    .suggest-box strong{color:#4cc9f0}
-    .diagnostic-box{background:rgba(247,37,133,0.1);border:1px solid #f72585;border-radius:8px;padding:10px;margin-top:10px;display:none}
-    .diagnostic-box.show{display:block}
-    .diagnostic-box p{color:#a0b3c9;font-size:11px;margin:3px 0}
-    .diagnostic-box .highlight{color:#f72585;font-weight:bold}
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -77,22 +63,6 @@
     <div id="global-error" class="error-message"></div>
     <div id="global-success" class="success-message" style="display:none;"></div>
 
-    <div id="suggest-box" class="suggest-box">
-      <p>💡 <strong>Não encontrou sua conta?</strong> Clique em <strong>"Criar Conta"</strong> acima para se registrar.</p>
-    </div>
-
-    <div id="diagnostic-box" class="diagnostic-box">
-      <p>📊 <strong>Diagnóstico:</strong></p>
-      <div id="diagnostic-content"></div>
-    </div>
-
-    <div id="debug-area" class="debug-area">
-      <details>
-        <summary>🔍 Mostrar detalhes do erro (debug)</summary>
-        <pre id="debug-content">Nenhum erro registrado.</pre>
-      </details>
-    </div>
-
     <div class="tabs">
       <div class="tab active" id="tab-login" onclick="switchTab('login')">Entrar</div>
       <div class="tab" id="tab-register" onclick="switchTab('register')">Criar Conta</div>
@@ -101,14 +71,10 @@
     <div id="login-tab" class="tab-content active">
       <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" class="form-control" placeholder="digite seu email"></div>
       <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
-      <div id="login-cnpj-group" class="form-group" style="display:none;"><label for="login-cnpj">CNPJ</label><input type="text" id="login-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)"></div>
       <button class="btn btn-primary" id="login-btn" onclick="login()">🔐 Entrar</button>
-      
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="btn btn-secondary" onclick="resetPassword()" style="flex:1;font-size:12px;padding:8px;">🔑 Esqueci a senha</button>
-        <button class="btn btn-diagnostic" onclick="showDiagnostic()" style="flex:1;font-size:12px;padding:8px;">🔍 Verificar contas</button>
+      <div style="margin-top:10px;">
+        <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">🔑 Esqueci minha senha</button>
       </div>
-      
       <div class="divider">ou</div>
       <button class="btn btn-google" onclick="loginWithGoogle()">🟢 Google</button>
       <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
@@ -125,10 +91,6 @@
       <div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" class="form-control" placeholder="seu email"></div>
       <div class="form-group"><label for="register-password">Senha</label><input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres"></div>
       <div class="form-group"><label for="register-confirm-password">Confirmar</label><input type="password" id="register-confirm-password" class="form-control" placeholder="confirme"></div>
-      <div id="company-fields" class="company-fields">
-        <div class="form-group"><label for="register-company-name">Empresa</label><input type="text" id="register-company-name" class="form-control" placeholder="Nome da empresa"></div>
-        <div class="form-group"><label for="register-cnpj">CNPJ</label><input type="text" id="register-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)"></div>
-      </div>
       <button class="btn btn-primary" id="register-btn" onclick="register()">✨ Criar Conta</button>
       <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
     </div>
@@ -159,107 +121,10 @@
     let selectedUserType = 'normal';
     const MAX_ACCOUNTS = 5;
 
-    // ===== Função de debug =====
-    function showDebug(error) {
-      const area = document.getElementById('debug-area');
-      const content = document.getElementById('debug-content');
-      if (error) {
-        let msg = `🔥 ERRO DETALHADO:\n`;
-        msg += `- Nome: ${error.name || 'Não definido'}\n`;
-        msg += `- Mensagem: ${error.message || 'Sem mensagem'}\n`;
-        msg += `- Código: ${error.code || 'Nenhum'}\n`;
-        if (error.stack) msg += `- Stack:\n${error.stack}\n`;
-        if (error.customData) msg += `- customData: ${JSON.stringify(error.customData, null, 2)}\n`;
-        content.textContent = msg;
-        area.classList.add('show');
-        console.error('🔥 DEBUG ERROR:', error);
-      } else {
-        area.classList.remove('show');
-        content.textContent = 'Nenhum erro registrado.';
-      }
-    }
-
-    function showError(m, errorObj = null) {
-      const e = document.getElementById('global-error');
-      e.textContent = m;
-      e.classList.add('show');
-      if (errorObj) showDebug(errorObj);
-      else showDebug(null);
-      
-      const suggestBox = document.getElementById('suggest-box');
-      if (errorObj && errorObj.code === 'auth/invalid-login-credentials') {
-        suggestBox.classList.add('show');
-      } else {
-        suggestBox.classList.remove('show');
-      }
-    }
-
-    function showSuccess(m) {
-      const e = document.getElementById('global-success');
-      e.textContent = m;
-      e.style.display = 'block';
-      showDebug(null);
-      document.getElementById('suggest-box').classList.remove('show');
-    }
-
-    // ===== DIAGNÓSTICO =====
-    window.showDiagnostic = async () => {
-      const box = document.getElementById('diagnostic-box');
-      const content = document.getElementById('diagnostic-content');
-      const email = document.getElementById('login-email').value.trim();
-      
-      let html = '';
-      
-      const localAccounts = getLocalAccounts();
-      html += `<p>📱 <strong>Contas locais (${localAccounts.length}):</strong></p>`;
-      if (localAccounts.length === 0) {
-        html += `<p style="color:#f72585;">Nenhuma conta salva localmente.</p>`;
-      } else {
-        localAccounts.forEach((acc, i) => {
-          html += `<p>${i+1}. ${acc.email} (UserKey: ${acc.userKey})</p>`;
-        });
-      }
-      
-      if (email) {
-        html += `<p>🔍 <strong>Verificando email: ${email}</strong></p>`;
-        try {
-          const methods = await fetchSignInMethodsForEmail(auth, email);
-          if (methods.length > 0) {
-            html += `<p style="color:#4cc9f0;">✅ Email encontrado no Firebase!</p>`;
-          } else {
-            html += `<p style="color:#f72585;">❌ Email NÃO encontrado no Firebase.</p>`;
-          }
-        } catch (error) {
-          html += `<p style="color:#f72585;">❌ Erro ao verificar: ${error.message}</p>`;
-        }
-      } else {
-        html += `<p>⚠️ Digite um email no campo para verificar.</p>`;
-      }
-      
-      const currentUser = auth.currentUser;
-      html += `<p>👤 <strong>Usuário atual:</strong> ${currentUser ? currentUser.email : 'Nenhum logado'}</p>`;
-      
-      content.innerHTML = html;
-      box.classList.add('show');
-    };
-
     function generateDeviceId() {
       let id = localStorage.getItem('codehub_deviceId');
       if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
       return id;
-    }
-
-    function validateCNPJ(cnpj) {
-      cnpj = cnpj.replace(/\D/g, '');
-      if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
-      let s = 0, w = 5;
-      for (let i = 0; i < 12; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
-      let d = 11 - (s % 11); d = d >= 10 ? 0 : d;
-      if (d !== parseInt(cnpj[12])) return false;
-      s = 0; w = 6;
-      for (let i = 0; i < 13; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
-      d = 11 - (s % 11); d = d >= 10 ? 0 : d;
-      return d === parseInt(cnpj[13]);
     }
 
     function getLocalAccounts() {
@@ -279,8 +144,20 @@
       saveLocalAccounts(accounts);
     }
 
+    function showError(m) {
+      const e = document.getElementById('global-error');
+      e.textContent = m;
+      e.classList.add('show');
+    }
+
+    function showSuccess(m) {
+      const e = document.getElementById('global-success');
+      e.textContent = m;
+      e.style.display = 'block';
+    }
+
     function redirectAfterAuth(uid) {
-      showSuccess(`✅ Autenticado! UserKey: ${uid}`);
+      showSuccess(`✅ Autenticado! Redirecionando...`);
       setTimeout(() => {
         window.location.href = `index.html?userKey=${uid}`;
       }, 1000);
@@ -299,26 +176,12 @@
       document.getElementById(`${id}-tab`).classList.add('active');
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
-      document.getElementById('suggest-box').classList.remove('show');
-      document.getElementById('diagnostic-box').classList.remove('show');
-      showDebug(null);
     };
 
     window.selectUserType = (type) => {
       selectedUserType = type;
       document.querySelectorAll('.user-type-option').forEach(o => o.classList.remove('selected'));
       document.querySelector(`[data-type="${type}"]`).classList.add('selected');
-      document.getElementById('company-fields').classList.toggle('show', type === 'entrepreneur');
-    };
-
-    window.formatCNPJ = (input) => {
-      let v = input.value.replace(/\D/g, '');
-      if (v.length > 14) v = v.slice(0, 14);
-      if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-      else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})$/, '$1.$2.$3/$4');
-      else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{3})$/, '$1.$2.$3');
-      else if (v.length > 2) v = v.replace(/^(\d{2})(\d{3})$/, '$1.$2');
-      input.value = v;
     };
 
     window.resetPassword = async () => {
@@ -335,30 +198,20 @@
           'auth/user-not-found': 'Email não encontrado.',
           'auth/invalid-email': 'Email inválido.'
         }[error.code] || 'Erro ao enviar email';
-        showError(msg, error);
+        showError(msg);
       }
     };
 
     // ===== REGISTRO =====
     window.register = async () => {
       document.getElementById('global-error').classList.remove('show');
-      document.getElementById('suggest-box').classList.remove('show');
-      document.getElementById('diagnostic-box').classList.remove('show');
-      showDebug(null);
+      document.getElementById('global-success').style.display = 'none';
 
       const username = document.getElementById('register-username').value.trim();
       const email = document.getElementById('register-email').value.trim();
       const password = document.getElementById('register-password').value;
       const confirm = document.getElementById('register-confirm-password').value;
-      let companyName = '', cnpj = '';
 
-      if (selectedUserType === 'entrepreneur') {
-        companyName = document.getElementById('register-company-name').value.trim();
-        cnpj = document.getElementById('register-cnpj').value.trim();
-        if (!companyName) return showError('Nome da empresa obrigatório');
-        if (!cnpj) return showError('CNPJ obrigatório');
-        if (!validateCNPJ(cnpj)) return showError('CNPJ inválido');
-      }
       if (!username) return showError('Usuário obrigatório');
       if (!email) return showError('Email obrigatório');
       if (!password || password.length < 6) return showError('Senha: mín. 6 caracteres');
@@ -371,24 +224,17 @@
       btn.disabled = true; btn.textContent = 'Criando...';
 
       try {
-        const methods = await fetchSignInMethodsForEmail(auth, email);
-        if (methods.length > 0) {
-          showError('❌ Este email já está cadastrado!');
-          btn.disabled = false; btn.textContent = '✨ Criar Conta';
-          return;
-        }
-
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
 
-        // ✅ userKey = uid (exatamente o UID do Firebase)
+        // ✅ userKey = uid (UID do Firebase)
         const userKey = uid;
 
-        console.log('✅ UID do Firebase:', uid);
-        console.log('✅ UserKey (igual ao UID):', userKey);
+        console.log('✅ REGISTRO - UID:', uid);
+        console.log('✅ REGISTRO - UserKey (UID):', userKey);
 
-        // ✅ Salva no Firebase em userKeysData/{uid}
+        // ✅ SALVA NO FIREBASE em userKeysData/{uid}
         const userKeyDataRef = ref(db, `userKeysData/${uid}`);
         await set(userKeyDataRef, {
           uid: uid,
@@ -398,13 +244,11 @@
           userType: selectedUserType,
           criadoEm: Date.now(),
           lastLogin: Date.now(),
-          deviceId: deviceId,
-          ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
+          deviceId: deviceId
         });
+        console.log('✅ Dados salvos em userKeysData/' + uid);
 
-        console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
-
-        // Também salva em users/{uid} para compatibilidade
+        // ✅ TAMBÉM SALVA em users/{uid} (para compatibilidade)
         const userRef = ref(db, `users/${uid}`);
         await set(userRef, {
           uid: uid,
@@ -414,12 +258,11 @@
           userType: selectedUserType,
           createdAt: Date.now(),
           lastLogin: Date.now(),
-          deviceId: deviceId,
-          ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
+          deviceId: deviceId
         });
+        console.log('✅ Dados salvos em users/' + uid);
 
-        console.log('✅ Dados salvos no Firebase em users/' + uid);
-
+        // ✅ SALVA LOCALMENTE
         const userData = {
           uid,
           userKey,
@@ -427,19 +270,33 @@
           username,
           userType: selectedUserType,
           lastLogin: Date.now(),
-          deviceId,
-          ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
+          deviceId
         };
 
         addLocalAccount(userData);
         localStorage.setItem('current_userKey', userKey);
         localStorage.setItem('current_uid', uid);
 
-        showSuccess(`✅ Conta criada! UserKey: ${userKey}`);
-        
-        setTimeout(() => {
-          redirectAfterAuth(userKey);
-        }, 1500);
+        // Gera um masterKey se não existir
+        let masterKey = localStorage.getItem('codehub_masterKey');
+        if (!masterKey) {
+          masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+          localStorage.setItem('codehub_masterKey', masterKey);
+        }
+
+        // Salva na lista de contas do masterKey
+        const contasRef = ref(db, `contas/${masterKey}/${uid}`);
+        await set(contasRef, {
+          uid: uid,
+          userKey: userKey,
+          email: email,
+          username: username,
+          userType: selectedUserType,
+          lastLogin: Date.now()
+        });
+        console.log('✅ Conta adicionada à masterKey:', masterKey);
+
+        redirectAfterAuth(userKey);
 
       } catch (error) {
         let msg = 'Erro ao criar conta';
@@ -450,7 +307,7 @@
         } else if (error.code === 'auth/invalid-email') {
           msg = '❌ Email inválido.';
         }
-        showError(msg, error);
+        showError(msg);
         btn.disabled = false; btn.textContent = '✨ Criar Conta';
       }
     };
@@ -458,9 +315,7 @@
     // ===== LOGIN =====
     window.login = async () => {
       document.getElementById('global-error').classList.remove('show');
-      document.getElementById('suggest-box').classList.remove('show');
-      document.getElementById('diagnostic-box').classList.remove('show');
-      showDebug(null);
+      document.getElementById('global-success').style.display = 'none';
 
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
@@ -471,66 +326,65 @@
       btn.disabled = true; btn.textContent = 'Entrando...';
 
       try {
-        const methods = await fetchSignInMethodsForEmail(auth, email);
-        if (methods.length === 0) {
-          showError(`❌ Email "${email}" não encontrado. Crie uma conta.`);
-          btn.disabled = false; btn.textContent = '🔐 Entrar';
-          return;
-        }
-
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
 
-        // ✅ userKey = uid
+        // ✅ userKey = uid (UID do Firebase)
         const userKey = uid;
 
-        console.log('✅ Login - UID:', uid);
-        console.log('✅ Login - UserKey (igual ao UID):', userKey);
+        console.log('✅ LOGIN - UID:', uid);
+        console.log('✅ LOGIN - UserKey (UID):', userKey);
 
-        // ✅ Verifica se já existe no Firebase e salva/atualiza
+        // ✅ VERIFICA E SALVA NO FIREBASE
         const userKeyDataRef = ref(db, `userKeysData/${uid}`);
         const snapshot = await get(userKeyDataRef);
         
         let userData;
         if (!snapshot.exists()) {
-          // Se não existir, cria um novo registro
           const username = email.split('@')[0];
           userData = {
-            uid,
-            userKey,
-            email,
-            username,
+            uid: uid,
+            userKey: userKey,
+            email: email,
+            nome: username,
             userType: 'normal',
             lastLogin: Date.now(),
-            deviceId,
+            deviceId: deviceId,
             criadoEm: Date.now()
           };
           await set(userKeyDataRef, userData);
-          console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
+          console.log('✅ Dados criados em userKeysData/' + uid);
         } else {
           userData = snapshot.val();
           userData.lastLogin = Date.now();
-          // Atualiza lastLogin
           await set(userKeyDataRef, userData);
-          console.log('✅ Dados atualizados no Firebase em userKeysData/' + uid);
+          console.log('✅ Dados atualizados em userKeysData/' + uid);
         }
 
-        // Verifica CNPJ se for empreendedor
-        if (userData.userType === 'entrepreneur' && userData.cnpj) {
-          const cnpjInput = document.getElementById('login-cnpj').value.trim();
-          document.getElementById('login-cnpj-group').style.display = 'block';
-          if (!cnpjInput || cnpjInput.replace(/\D/g, '') !== userData.cnpj) {
-            showError('CNPJ inválido');
-            btn.disabled = false; btn.textContent = '🔐 Entrar';
-            return;
-          }
-        }
-
-        // Salva localmente
+        // ✅ SALVA LOCALMENTE
         addLocalAccount(userData);
         localStorage.setItem('current_userKey', userKey);
         localStorage.setItem('current_uid', uid);
+
+        // Gera masterKey se não existir
+        let masterKey = localStorage.getItem('codehub_masterKey');
+        if (!masterKey) {
+          masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+          localStorage.setItem('codehub_masterKey', masterKey);
+        }
+
+        // Salva na lista de contas do masterKey
+        const contasRef = ref(db, `contas/${masterKey}/${uid}`);
+        await set(contasRef, {
+          uid: uid,
+          userKey: userKey,
+          email: email,
+          username: userData.nome || email.split('@')[0],
+          userType: userData.userType || 'normal',
+          lastLogin: Date.now()
+        });
+        console.log('✅ Conta adicionada/atualizada na masterKey:', masterKey);
 
         redirectAfterAuth(userKey);
 
@@ -549,13 +403,10 @@
           case 'auth/invalid-email':
             msg = '❌ Email inválido.';
             break;
-          case 'auth/too-many-requests':
-            msg = '❌ Muitas tentativas. Aguarde.';
-            break;
           default:
             msg = `❌ Erro: ${error.code || error.message}`;
         }
-        showError(msg, error);
+        showError(msg);
         btn.disabled = false; btn.textContent = '🔐 Entrar';
       }
     };
@@ -563,9 +414,7 @@
     // ===== LOGIN COM GOOGLE =====
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
-      document.getElementById('suggest-box').classList.remove('show');
-      document.getElementById('diagnostic-box').classList.remove('show');
-      showDebug(null);
+      document.getElementById('global-success').style.display = 'none';
 
       const localAccounts = getLocalAccounts();
       if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
@@ -577,47 +426,68 @@
         const email = user.email;
         const username = user.displayName || email.split('@')[0];
 
-        // ✅ userKey = uid
+        // ✅ userKey = uid (UID do Firebase)
         const userKey = uid;
 
-        console.log('✅ Google - UID:', uid);
-        console.log('✅ Google - UserKey (igual ao UID):', userKey);
+        console.log('✅ GOOGLE - UID:', uid);
+        console.log('✅ GOOGLE - UserKey (UID):', userKey);
 
-        // ✅ Verifica se já existe no Firebase
+        // ✅ VERIFICA E SALVA NO FIREBASE
         const userKeyDataRef = ref(db, `userKeysData/${uid}`);
         const snapshot = await get(userKeyDataRef);
         
         let userData;
         if (!snapshot.exists()) {
           userData = {
-            uid,
-            userKey,
-            email,
-            username,
+            uid: uid,
+            userKey: userKey,
+            email: email,
+            nome: username,
             userType: 'normal',
             lastLogin: Date.now(),
-            deviceId,
+            deviceId: deviceId,
             provider: 'google',
             criadoEm: Date.now()
           };
           await set(userKeyDataRef, userData);
-          console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
+          console.log('✅ Dados criados em userKeysData/' + uid);
         } else {
           userData = snapshot.val();
           userData.lastLogin = Date.now();
           await set(userKeyDataRef, userData);
-          console.log('✅ Dados atualizados no Firebase em userKeysData/' + uid);
+          console.log('✅ Dados atualizados em userKeysData/' + uid);
         }
 
+        // ✅ SALVA LOCALMENTE
         addLocalAccount(userData);
         localStorage.setItem('current_userKey', userKey);
         localStorage.setItem('current_uid', uid);
+
+        // Gera masterKey se não existir
+        let masterKey = localStorage.getItem('codehub_masterKey');
+        if (!masterKey) {
+          masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+          localStorage.setItem('codehub_masterKey', masterKey);
+        }
+
+        // Salva na lista de contas do masterKey
+        const contasRef = ref(db, `contas/${masterKey}/${uid}`);
+        await set(contasRef, {
+          uid: uid,
+          userKey: userKey,
+          email: email,
+          username: username,
+          userType: 'normal',
+          lastLogin: Date.now(),
+          provider: 'google'
+        });
+        console.log('✅ Conta adicionada à masterKey:', masterKey);
 
         redirectAfterAuth(userKey);
 
       } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
-          showError('Erro ao fazer login com Google', error);
+          showError('Erro ao fazer login com Google');
         }
       }
     };
