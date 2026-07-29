@@ -6,6 +6,8 @@ const apps = [
   { id:'settings', name:'Config', icon:'⚙️', url:'https://alexandre7888.github.io/settings.html' },
   { id:'MENSAGENS', name:'mensagens', icon:'✉️', url:'https://app.mensagens.site.je/' }
 ];
+  { id:'home', home', icon:'🏠', url:'https://alexandre7888.github.io' }
+];
 
 function getAvatarColor(name) {
   const colors = ['#4361ee','#f72585','#4cc9f0','#7209b7','#f8961e','#43aa8b','#e63946','#277da1'];
