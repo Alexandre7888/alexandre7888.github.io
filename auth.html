@@ -31,6 +31,8 @@
     .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
     .btn-secondary{background:rgba(255,255,255,0.1);color:#a0b3c9;border:1px solid rgba(255,255,255,0.2)}
     .btn-secondary:hover{background:rgba(255,255,255,0.2)}
+    .btn-diagnostic{background:rgba(247,37,133,0.3);color:#f72585;border:1px solid #f72585}
+    .btn-diagnostic:hover{background:rgba(247,37,133,0.5)}
     .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
     .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.2);margin:0 10px}
     .error-message{color:#f72585;font-size:12px;display:none;background:rgba(247,37,133,0.1);padding:8px;border-radius:6px;margin-bottom:10px}
@@ -55,6 +57,9 @@
     .suggest-box.show{display:block}
     .suggest-box p{color:#a0b3c9;font-size:12px}
     .suggest-box strong{color:#4cc9f0}
+    .diagnostic-box{background:rgba(247,37,133,0.1);border:1px solid #f72585;border-radius:8px;padding:10px;margin-top:10px;display:none}
+    .diagnostic-box.show{display:block}
+    .diagnostic-box p{color:#a0b3c9;font-size:11px;margin:3px 0}
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -64,19 +69,22 @@
   <div class="auth-container">
     <div class="auth-header">
       <h1>Bem-vindo ao CodeHub</h1>
-      <p>Autenticação com Firebase Auth</p>
+      <p>Autenticação Multi-Conta</p>
       <div class="account-indicator">👤 Contas: <span id="accountCountNumber">0</span>/5</div>
     </div>
 
     <div id="global-error" class="error-message"></div>
     <div id="global-success" class="success-message" style="display:none;"></div>
 
-    <!-- Área de sugestões (ex: "Deseja criar uma conta?") -->
     <div id="suggest-box" class="suggest-box">
       <p>💡 <strong>Não encontrou sua conta?</strong> Clique em <strong>"Criar Conta"</strong> acima para se registrar.</p>
     </div>
 
-    <!-- Área de debug -->
+    <div id="diagnostic-box" class="diagnostic-box">
+      <p>📊 <strong>Diagnóstico:</strong></p>
+      <div id="diagnostic-content"></div>
+    </div>
+
     <div id="debug-area" class="debug-area">
       <details>
         <summary>🔍 Mostrar detalhes do erro (debug)</summary>
@@ -94,9 +102,12 @@
       <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
       <div id="login-cnpj-group" class="form-group" style="display:none;"><label for="login-cnpj">CNPJ</label><input type="text" id="login-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)"></div>
       <button class="btn btn-primary" id="login-btn" onclick="login()">🔐 Entrar</button>
-      <div style="margin-top:10px;">
-        <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">🔑 Esqueci minha senha</button>
+      
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn btn-secondary" onclick="resetPassword()" style="flex:1;font-size:12px;padding:8px;">🔑 Esqueci a senha</button>
+        <button class="btn btn-diagnostic" onclick="showDiagnostic()" style="flex:1;font-size:12px;padding:8px;">🔍 Verificar contas</button>
       </div>
+      
       <div class="divider">ou</div>
       <button class="btn btn-google" onclick="loginWithGoogle()">🟢 Google</button>
       <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
@@ -126,7 +137,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -137,14 +148,24 @@
       appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
     };
 
-    // Inicializa o Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // ===== Variáveis globais =====
     let selectedUserType = 'normal';
     const MAX_ACCOUNTS = 5;
+
+    // ===== GERADOR DE USERKEY =====
+    function generateUserKey(username, email) {
+      // Gera um userKey único baseado no username e email
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8);
+      // Remove caracteres especiais e espaços
+      const cleanUsername = username.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanEmail = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      // Formato: user_[username]_[timestamp]_[random]
+      return `user_${cleanUsername || cleanEmail}_${timestamp}_${random}`;
+    }
 
     // ===== Função de debug =====
     function showDebug(error) {
@@ -166,7 +187,6 @@
       }
     }
 
-    // ===== Funções de exibição de erro/sucesso =====
     function showError(m, errorObj = null) {
       const e = document.getElementById('global-error');
       e.textContent = m;
@@ -174,7 +194,6 @@
       if (errorObj) showDebug(errorObj);
       else showDebug(null);
       
-      // Mostra sugestão se for erro de credenciais
       const suggestBox = document.getElementById('suggest-box');
       if (errorObj && errorObj.code === 'auth/invalid-login-credentials') {
         suggestBox.classList.add('show');
@@ -191,7 +210,47 @@
       document.getElementById('suggest-box').classList.remove('show');
     }
 
-    // ===== Utilitários =====
+    // ===== DIAGNÓSTICO =====
+    window.showDiagnostic = async () => {
+      const box = document.getElementById('diagnostic-box');
+      const content = document.getElementById('diagnostic-content');
+      const email = document.getElementById('login-email').value.trim();
+      
+      let html = '';
+      
+      const localAccounts = getLocalAccounts();
+      html += `<p>📱 <strong>Contas locais (${localAccounts.length}):</strong></p>`;
+      if (localAccounts.length === 0) {
+        html += `<p style="color:#f72585;">Nenhuma conta salva localmente.</p>`;
+      } else {
+        localAccounts.forEach((acc, i) => {
+          html += `<p>${i+1}. ${acc.email} (UserKey: ${acc.userKey})</p>`;
+        });
+      }
+      
+      if (email) {
+        html += `<p>🔍 <strong>Verificando email: ${email}</strong></p>`;
+        try {
+          const methods = await fetchSignInMethodsForEmail(auth, email);
+          if (methods.length > 0) {
+            html += `<p style="color:#4cc9f0;">✅ Email encontrado no Firebase!</p>`;
+          } else {
+            html += `<p style="color:#f72585;">❌ Email NÃO encontrado no Firebase.</p>`;
+          }
+        } catch (error) {
+          html += `<p style="color:#f72585;">❌ Erro ao verificar: ${error.message}</p>`;
+        }
+      } else {
+        html += `<p>⚠️ Digite um email no campo para verificar.</p>`;
+      }
+      
+      const currentUser = auth.currentUser;
+      html += `<p>👤 <strong>Usuário atual:</strong> ${currentUser ? currentUser.email : 'Nenhum logado'}</p>`;
+      
+      content.innerHTML = html;
+      box.classList.add('show');
+    };
+
     function generateDeviceId() {
       let id = localStorage.getItem('codehub_deviceId');
       if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
@@ -222,25 +281,23 @@
 
     function addLocalAccount(userData) {
       const accounts = getLocalAccounts();
-      const idx = accounts.findIndex(a => a.uid === userData.uid);
+      const idx = accounts.findIndex(a => a.userKey === userData.userKey);
       if (idx >= 0) accounts[idx] = userData;
       else accounts.push(userData);
       saveLocalAccounts(accounts);
     }
 
-    function redirectAfterAuth(uid) {
-      showSuccess('✅ Autenticado! Redirecionando...');
+    function redirectAfterAuth(userKey) {
+      showSuccess(`✅ Autenticado! UserKey: ${userKey}`);
       setTimeout(() => {
-        window.location.href = `index.html?userKey=${uid}`;
+        window.location.href = `index.html?userKey=${userKey}`;
       }, 1000);
     }
 
-    // ===== Inicialização =====
     const deviceId = generateDeviceId();
     document.getElementById('deviceInfo').innerHTML = `📱 ${deviceId.substring(0, 25)}...`;
     document.getElementById('accountCountNumber').textContent = getLocalAccounts().length;
 
-    // ===== Funções globais (expostas) =====
     window.goToIndex = () => window.location.href = 'index.html';
 
     window.switchTab = (id) => {
@@ -251,6 +308,7 @@
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
       document.getElementById('suggest-box').classList.remove('show');
+      document.getElementById('diagnostic-box').classList.remove('show');
       showDebug(null);
     };
 
@@ -271,7 +329,6 @@
       input.value = v;
     };
 
-    // ===== RESETAR SENHA =====
     window.resetPassword = async () => {
       const email = document.getElementById('login-email').value.trim();
       if (!email) {
@@ -280,12 +337,12 @@
       
       try {
         await sendPasswordResetEmail(auth, email);
-        showSuccess(`📧 Email de recuperação enviado para ${email}. Verifique sua caixa de entrada.`);
+        showSuccess(`📧 Email de recuperação enviado para ${email}.`);
       } catch (error) {
         const msg = {
-          'auth/user-not-found': 'Email não encontrado. Verifique se está correto.',
+          'auth/user-not-found': 'Email não encontrado.',
           'auth/invalid-email': 'Email inválido.'
-        }[error.code] || 'Erro ao enviar email de recuperação';
+        }[error.code] || 'Erro ao enviar email';
         showError(msg, error);
       }
     };
@@ -294,6 +351,7 @@
     window.register = async () => {
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('suggest-box').classList.remove('show');
+      document.getElementById('diagnostic-box').classList.remove('show');
       showDebug(null);
 
       const username = document.getElementById('register-username').value.trim();
@@ -321,12 +379,24 @@
       btn.disabled = true; btn.textContent = 'Criando...';
 
       try {
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        if (methods.length > 0) {
+          showError('❌ Este email já está cadastrado!');
+          btn.disabled = false; btn.textContent = '✨ Criar Conta';
+          return;
+        }
+
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
 
+        // ✅ GERANDO USERKEY
+        const userKey = generateUserKey(username, email);
+        console.log('✅ UserKey gerado:', userKey);
+
         const userData = {
           uid,
+          userKey,
           email,
           username,
           userType: selectedUserType,
@@ -336,11 +406,24 @@
         };
 
         addLocalAccount(userData);
-        localStorage.setItem('current_userKey', uid);
+        localStorage.setItem('current_userKey', userKey);
+        localStorage.setItem('current_uid', uid);
 
-        redirectAfterAuth(uid);
+        showSuccess(`✅ Conta criada! UserKey: ${userKey}`);
+        
+        setTimeout(() => {
+          redirectAfterAuth(userKey);
+        }, 1500);
+
       } catch (error) {
-        const msg = error.code === 'auth/email-already-in-use' ? 'Email já em uso' : 'Erro ao criar conta';
+        let msg = 'Erro ao criar conta';
+        if (error.code === 'auth/email-already-in-use') {
+          msg = '❌ Email já em uso. Tente fazer login.';
+        } else if (error.code === 'auth/weak-password') {
+          msg = '❌ Senha muito fraca. Use pelo menos 6 caracteres.';
+        } else if (error.code === 'auth/invalid-email') {
+          msg = '❌ Email inválido.';
+        }
         showError(msg, error);
         btn.disabled = false; btn.textContent = '✨ Criar Conta';
       }
@@ -350,6 +433,7 @@
     window.login = async () => {
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('suggest-box').classList.remove('show');
+      document.getElementById('diagnostic-box').classList.remove('show');
       showDebug(null);
 
       const email = document.getElementById('login-email').value.trim();
@@ -361,6 +445,13 @@
       btn.disabled = true; btn.textContent = 'Entrando...';
 
       try {
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        if (methods.length === 0) {
+          showError(`❌ Email "${email}" não encontrado. Crie uma conta.`);
+          btn.disabled = false; btn.textContent = '🔐 Entrar';
+          return;
+        }
+
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
@@ -370,14 +461,18 @@
 
         if (!userData) {
           const username = email.split('@')[0];
+          const userKey = generateUserKey(username, email);
           userData = {
             uid,
+            userKey,
             email,
             username,
             userType: 'normal',
             lastLogin: Date.now(),
             deviceId
           };
+        } else {
+          userData.lastLogin = Date.now();
         }
 
         if (userData.userType === 'entrepreneur' && userData.cnpj) {
@@ -390,28 +485,32 @@
           }
         }
 
-        userData.lastLogin = Date.now();
         addLocalAccount(userData);
-        localStorage.setItem('current_userKey', uid);
+        localStorage.setItem('current_userKey', userData.userKey);
+        localStorage.setItem('current_uid', uid);
 
-        redirectAfterAuth(uid);
+        redirectAfterAuth(userData.userKey);
+
       } catch (error) {
         let msg;
         switch(error.code) {
           case 'auth/invalid-login-credentials':
-            msg = '❌ Email ou senha incorretos. Verifique suas credenciais.';
+            msg = '❌ Email ou senha incorretos.';
             break;
           case 'auth/user-not-found':
-            msg = '❌ Usuário não encontrado. Deseja criar uma conta?';
+            msg = '❌ Usuário não encontrado.';
             break;
           case 'auth/wrong-password':
-            msg = '❌ Senha incorreta. Tente novamente.';
+            msg = '❌ Senha incorreta.';
             break;
           case 'auth/invalid-email':
-            msg = '❌ Email inválido. Verifique o formato.';
+            msg = '❌ Email inválido.';
+            break;
+          case 'auth/too-many-requests':
+            msg = '❌ Muitas tentativas. Aguarde.';
             break;
           default:
-            msg = 'Erro ao fazer login';
+            msg = `❌ Erro: ${error.code || error.message}`;
         }
         showError(msg, error);
         btn.disabled = false; btn.textContent = '🔐 Entrar';
@@ -422,6 +521,7 @@
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('suggest-box').classList.remove('show');
+      document.getElementById('diagnostic-box').classList.remove('show');
       showDebug(null);
 
       const localAccounts = getLocalAccounts();
@@ -438,8 +538,11 @@
         let userData = accounts.find(a => a.uid === uid);
 
         if (!userData) {
+          // ✅ GERANDO USERKEY PARA GOOGLE
+          const userKey = generateUserKey(username, email);
           userData = {
             uid,
+            userKey,
             email,
             username,
             userType: 'normal',
@@ -452,9 +555,11 @@
         }
 
         addLocalAccount(userData);
-        localStorage.setItem('current_userKey', uid);
+        localStorage.setItem('current_userKey', userData.userKey);
+        localStorage.setItem('current_uid', uid);
 
-        redirectAfterAuth(uid);
+        redirectAfterAuth(userData.userKey);
+
       } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
           showError('Erro ao fazer login com Google', error);
