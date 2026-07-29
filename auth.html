@@ -121,10 +121,44 @@
     let selectedUserType = 'normal';
     const MAX_ACCOUNTS = 5;
 
+    // ===== GERENCIAMENTO DE MASTER KEY =====
+    function getOrCreateMasterKey() {
+      let mk = localStorage.getItem('codehub_masterKey');
+      if (!mk) {
+        mk = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('codehub_masterKey', mk);
+        console.log('🆕 Nova Master Key criada:', mk);
+      } else {
+        console.log('🔑 Master Key existente:', mk);
+      }
+      return mk;
+    }
+
     function generateDeviceId() {
       let id = localStorage.getItem('codehub_deviceId');
       if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
       return id;
+    }
+
+    // ===== SALVAR CONTA NA MASTER KEY =====
+    async function saveAccountToMasterKey(masterKey, userData) {
+      if (!masterKey || !db) return;
+      
+      try {
+        const contasRef = ref(db, `contas/${masterKey}/${userData.uid}`);
+        await set(contasRef, {
+          uid: userData.uid,
+          userKey: userData.userKey || userData.uid,
+          email: userData.email,
+          username: userData.username || userData.nome,
+          userType: userData.userType || 'normal',
+          lastLogin: Date.now(),
+          deviceId: userData.deviceId || deviceId
+        });
+        console.log('✅ Conta salva na Master Key:', masterKey);
+      } catch (error) {
+        console.error('❌ Erro ao salvar conta na Master Key:', error);
+      }
     }
 
     function getLocalAccounts() {
@@ -202,7 +236,7 @@
       }
     };
 
-    // ===== REGISTRO =====
+    // ===== REGISTRO COM MASTER KEY =====
     window.register = async () => {
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
@@ -224,79 +258,52 @@
       btn.disabled = true; btn.textContent = 'Criando...';
 
       try {
+        // 1. CRIA USUÁRIO NO FIREBASE AUTH
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
 
-        // ✅ userKey = uid (UID do Firebase)
-        const userKey = uid;
+        // 2. OBTÉM OU CRIA MASTER KEY
+        const masterKey = getOrCreateMasterKey();
 
-        console.log('✅ REGISTRO - UID:', uid);
-        console.log('✅ REGISTRO - UserKey (UID):', userKey);
-
-        // ✅ SALVA NO FIREBASE em userKeysData/{uid}
-        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
-        await set(userKeyDataRef, {
+        // 3. PREPARA DADOS DO USUÁRIO
+        const userData = {
           uid: uid,
-          userKey: userKey,
+          userKey: uid, // userKey = uid
           email: email,
+          username: username,
           nome: username,
           userType: selectedUserType,
+          masterKey: masterKey,
+          deviceId: deviceId,
           criadoEm: Date.now(),
-          lastLogin: Date.now(),
-          deviceId: deviceId
-        });
-        console.log('✅ Dados salvos em userKeysData/' + uid);
-
-        // ✅ TAMBÉM SALVA em users/{uid} (para compatibilidade)
-        const userRef = ref(db, `users/${uid}`);
-        await set(userRef, {
-          uid: uid,
-          userKey: userKey,
-          email: email,
-          username: username,
-          userType: selectedUserType,
-          createdAt: Date.now(),
-          lastLogin: Date.now(),
-          deviceId: deviceId
-        });
-        console.log('✅ Dados salvos em users/' + uid);
-
-        // ✅ SALVA LOCALMENTE
-        const userData = {
-          uid,
-          userKey,
-          email,
-          username,
-          userType: selectedUserType,
-          lastLogin: Date.now(),
-          deviceId
+          lastLogin: Date.now()
         };
 
+        console.log('📝 Registrando usuário:', userData);
+
+        // 4. SALVA NO FIREBASE - userKeysData/{uid}
+        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
+        await set(userKeyDataRef, userData);
+        console.log('✅ Dados salvos em userKeysData/' + uid);
+
+        // 5. SALVA NO FIREBASE - users/{uid}
+        const userRef = ref(db, `users/${uid}`);
+        await set(userRef, userData);
+        console.log('✅ Dados salvos em users/' + uid);
+
+        // 6. SALVA NA MASTER KEY - contas/{masterKey}/{uid}
+        await saveAccountToMasterKey(masterKey, userData);
+
+        // 7. SALVA LOCALMENTE
         addLocalAccount(userData);
-        localStorage.setItem('current_userKey', userKey);
+        localStorage.setItem('current_userKey', uid);
         localStorage.setItem('current_uid', uid);
+        localStorage.setItem('codehub_masterKey', masterKey);
 
-        // Gera um masterKey se não existir
-        let masterKey = localStorage.getItem('codehub_masterKey');
-        if (!masterKey) {
-          masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-          localStorage.setItem('codehub_masterKey', masterKey);
-        }
+        console.log('✅ Conta criada com sucesso! Master Key:', masterKey);
 
-        // Salva na lista de contas do masterKey
-        const contasRef = ref(db, `contas/${masterKey}/${uid}`);
-        await set(contasRef, {
-          uid: uid,
-          userKey: userKey,
-          email: email,
-          username: username,
-          userType: selectedUserType,
-          lastLogin: Date.now()
-        });
-        console.log('✅ Conta adicionada à masterKey:', masterKey);
-
-        redirectAfterAuth(userKey);
+        redirectAfterAuth(uid);
 
       } catch (error) {
         let msg = 'Erro ao criar conta';
@@ -312,7 +319,7 @@
       }
     };
 
-    // ===== LOGIN =====
+    // ===== LOGIN COM MASTER KEY =====
     window.login = async () => {
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
@@ -326,67 +333,56 @@
       btn.disabled = true; btn.textContent = 'Entrando...';
 
       try {
+        // 1. AUTENTICA NO FIREBASE AUTH
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
 
-        // ✅ userKey = uid (UID do Firebase)
-        const userKey = uid;
+        // 2. OBTÉM OU CRIA MASTER KEY
+        const masterKey = getOrCreateMasterKey();
 
-        console.log('✅ LOGIN - UID:', uid);
-        console.log('✅ LOGIN - UserKey (UID):', userKey);
-
-        // ✅ VERIFICA E SALVA NO FIREBASE
+        // 3. BUSCA DADOS DO USUÁRIO
         const userKeyDataRef = ref(db, `userKeysData/${uid}`);
         const snapshot = await get(userKeyDataRef);
         
         let userData;
         if (!snapshot.exists()) {
+          // Se não existir, cria dados básicos
           const username = email.split('@')[0];
           userData = {
             uid: uid,
-            userKey: userKey,
+            userKey: uid,
             email: email,
+            username: username,
             nome: username,
             userType: 'normal',
-            lastLogin: Date.now(),
+            masterKey: masterKey,
             deviceId: deviceId,
-            criadoEm: Date.now()
+            criadoEm: Date.now(),
+            lastLogin: Date.now()
           };
           await set(userKeyDataRef, userData);
           console.log('✅ Dados criados em userKeysData/' + uid);
         } else {
           userData = snapshot.val();
           userData.lastLogin = Date.now();
+          userData.masterKey = masterKey;
           await set(userKeyDataRef, userData);
           console.log('✅ Dados atualizados em userKeysData/' + uid);
         }
 
-        // ✅ SALVA LOCALMENTE
+        // 4. SALVA NA MASTER KEY
+        await saveAccountToMasterKey(masterKey, userData);
+
+        // 5. SALVA LOCALMENTE
         addLocalAccount(userData);
-        localStorage.setItem('current_userKey', userKey);
+        localStorage.setItem('current_userKey', uid);
         localStorage.setItem('current_uid', uid);
+        localStorage.setItem('codehub_masterKey', masterKey);
 
-        // Gera masterKey se não existir
-        let masterKey = localStorage.getItem('codehub_masterKey');
-        if (!masterKey) {
-          masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-          localStorage.setItem('codehub_masterKey', masterKey);
-        }
+        console.log('✅ Login realizado! Master Key:', masterKey);
 
-        // Salva na lista de contas do masterKey
-        const contasRef = ref(db, `contas/${masterKey}/${uid}`);
-        await set(contasRef, {
-          uid: uid,
-          userKey: userKey,
-          email: email,
-          username: userData.nome || email.split('@')[0],
-          userType: userData.userType || 'normal',
-          lastLogin: Date.now()
-        });
-        console.log('✅ Conta adicionada/atualizada na masterKey:', masterKey);
-
-        redirectAfterAuth(userKey);
+        redirectAfterAuth(uid);
 
       } catch (error) {
         let msg;
@@ -426,13 +422,10 @@
         const email = user.email;
         const username = user.displayName || email.split('@')[0];
 
-        // ✅ userKey = uid (UID do Firebase)
-        const userKey = uid;
+        // OBTÉM OU CRIA MASTER KEY
+        const masterKey = getOrCreateMasterKey();
 
-        console.log('✅ GOOGLE - UID:', uid);
-        console.log('✅ GOOGLE - UserKey (UID):', userKey);
-
-        // ✅ VERIFICA E SALVA NO FIREBASE
+        // VERIFICA SE JÁ EXISTE
         const userKeyDataRef = ref(db, `userKeysData/${uid}`);
         const snapshot = await get(userKeyDataRef);
         
@@ -440,50 +433,39 @@
         if (!snapshot.exists()) {
           userData = {
             uid: uid,
-            userKey: userKey,
+            userKey: uid,
             email: email,
+            username: username,
             nome: username,
             userType: 'normal',
-            lastLogin: Date.now(),
+            masterKey: masterKey,
             deviceId: deviceId,
             provider: 'google',
-            criadoEm: Date.now()
+            criadoEm: Date.now(),
+            lastLogin: Date.now()
           };
           await set(userKeyDataRef, userData);
           console.log('✅ Dados criados em userKeysData/' + uid);
         } else {
           userData = snapshot.val();
           userData.lastLogin = Date.now();
+          userData.masterKey = masterKey;
           await set(userKeyDataRef, userData);
           console.log('✅ Dados atualizados em userKeysData/' + uid);
         }
 
-        // ✅ SALVA LOCALMENTE
+        // SALVA NA MASTER KEY
+        await saveAccountToMasterKey(masterKey, userData);
+
+        // SALVA LOCALMENTE
         addLocalAccount(userData);
-        localStorage.setItem('current_userKey', userKey);
+        localStorage.setItem('current_userKey', uid);
         localStorage.setItem('current_uid', uid);
+        localStorage.setItem('codehub_masterKey', masterKey);
 
-        // Gera masterKey se não existir
-        let masterKey = localStorage.getItem('codehub_masterKey');
-        if (!masterKey) {
-          masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-          localStorage.setItem('codehub_masterKey', masterKey);
-        }
+        console.log('✅ Google Login! Master Key:', masterKey);
 
-        // Salva na lista de contas do masterKey
-        const contasRef = ref(db, `contas/${masterKey}/${uid}`);
-        await set(contasRef, {
-          uid: uid,
-          userKey: userKey,
-          email: email,
-          username: username,
-          userType: 'normal',
-          lastLogin: Date.now(),
-          provider: 'google'
-        });
-        console.log('✅ Conta adicionada à masterKey:', masterKey);
-
-        redirectAfterAuth(userKey);
+        redirectAfterAuth(uid);
 
       } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
