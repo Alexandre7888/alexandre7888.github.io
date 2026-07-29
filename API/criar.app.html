@@ -14,6 +14,8 @@
     .btn-danger:hover { background: #d32f2f; }
     .btn-info { background: #2196F3; }
     .btn-info:hover { background: #1976D2; }
+    .btn-warning { background: #FF9800; }
+    .btn-warning:hover { background: #F57C00; }
     h1, h2 { text-align: center; color: #4caf50; }
     .section { background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
     .form-group { margin-bottom: 15px; }
@@ -24,20 +26,27 @@
     .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .domain-tag { background: #2d3748; color: #90cdf4; padding: 3px 8px; border-radius: 12px; font-size: 12px; display: inline-block; margin: 2px; }
     .ip-tag { background: #4a1942; color: #f687b3; padding: 3px 8px; border-radius: 12px; font-size: 12px; display: inline-block; margin: 2px; }
+    .icon-preview { max-height: 40px; border-radius: 8px; margin: 5px 0; }
+    .btn-doc { background: #9C27B0; }
+    .btn-doc:hover { background: #7B1FA2; }
+    .header-links { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; justify-content: center; }
+    .header-links .btn { display: inline-block; padding: 10px 20px; border-radius: 8px; color: #fff; text-decoration: none; font-weight: 600; }
   </style>
 </head>
 <body>
   <h1>🚀 Criador de Aplicativos v3</h1>
-  <a href="documentacao.html" class="btn" target="_blank">📖 Documentação</a>
-  <a href="file-manager.html" class="btn" style="background:#9C27B0;">📁 Gerenciador</a>
+  
+  <div class="header-links">
+    <a href="documentacao.html" class="btn btn-doc" target="_blank">📖 Documentação</a>
+  </div>
 
-  <!-- TOKEN DE AUTENTICAÇÃO DO USUÁRIO (igual ao anterior) -->
+  <!-- TOKEN DE AUTENTICAÇÃO -->
   <div class="section" style="border:2px solid #ffd700;">
     <h2>🔐 Seu Token de Autenticação</h2>
     <div id="authTokenDisplay">Carregando...</div>
   </div>
 
-  <!-- FORMULÁRIO DE CRIAÇÃO (com novos campos) -->
+  <!-- FORMULÁRIO DE CRIAÇÃO -->
   <div class="section">
     <h2>✨ Criar Novo Aplicativo</h2>
     <form id="appForm">
@@ -46,8 +55,9 @@
         <input type="text" id="appName" placeholder="Meu App" required />
       </div>
       <div class="form-group">
-        <label>URL de Redirecionamento * (ex: https://meusite.com/dashboard)</label>
-        <input type="url" id="redirectURL" placeholder="https://meusite.com/dashboard" required />
+        <label>Domínio Personalizado * (ex: meusite.com)</label>
+        <input type="text" id="customDomain" placeholder="meusite.com" required />
+        <small style="color:#888;">O usuário será redirecionado para https://{dominio}/index.html ou para a URL com ?redirecturl=</small>
       </div>
       <div class="form-group">
         <label>Tamanho do Token (20-200)</label>
@@ -62,17 +72,16 @@
         </select>
       </div>
 
-      <!-- NOVOS CAMPOS -->
       <hr style="border-color:#333;margin:20px 0;">
 
       <div class="form-group">
-        <label>Ícone (URL da imagem) - aparecerá na API</label>
+        <label>Ícone (URL da imagem)</label>
         <input type="url" id="appIcon" placeholder="https://exemplo.com/icone.png" />
       </div>
 
       <div class="form-group">
         <label>Domínios Permitidos (máx 20) - Separe por vírgula ou quebra de linha</label>
-        <textarea id="allowedDomains" placeholder="https://meusite.com, https://outro.com" rows="2"></textarea>
+        <textarea id="allowedDomains" placeholder="meusite.com, outro.com" rows="2"></textarea>
         <small style="color:#888;">Deixe em branco para permitir qualquer domínio.</small>
       </div>
 
@@ -97,7 +106,7 @@
     </form>
   </div>
 
-  <!-- LISTA DE APLICATIVOS CRIADOS -->
+  <!-- LISTA DE APLICATIVOS -->
   <div class="section">
     <h2>📋 Seus Aplicativos</h2>
     <div id="tokensContainer">Carregando...</div>
@@ -105,7 +114,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -123,12 +132,11 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // Elementos
     const authTokenDisplay = document.getElementById('authTokenDisplay');
     const tokensContainer = document.getElementById('tokensContainer');
     const appForm = document.getElementById('appForm');
     const appName = document.getElementById('appName');
-    const redirectURL = document.getElementById('redirectURL');
+    const customDomain = document.getElementById('customDomain');
     const tokenSize = document.getElementById('tokenSize');
     const tokenScope = document.getElementById('tokenScope');
     const appIcon = document.getElementById('appIcon');
@@ -152,7 +160,7 @@
       return t ? { token: t } : null;
     }
     async function displayAuthToken(user) {
-      if (!user) { authTokenDisplay.innerHTML = '<div class="auth-warning">⚠️ Faça login para ver seu token.</div>'; return; }
+      if (!user) { authTokenDisplay.innerHTML = '<div style="color:#ff9800;">⚠️ Faça login para ver seu token.</div>'; return; }
       let info = await fetchUserAuthToken(user.uid) || getLocalAuthToken();
       if (info && info.token) {
         const dec = decodeAuthToken(info.token);
@@ -183,7 +191,7 @@
       const scope = data.scope;
       const base = {
         appName: data.appName,
-        redirectURL: data.redirectURL,
+        customDomain: data.customDomain,
         ownerUID: userUID,
         createdAt: new Date().toISOString(),
         scope: scope,
@@ -197,7 +205,7 @@
       // Salvar local
       const localTokens = JSON.parse(localStorage.getItem('userTokens') || '[]');
       if (!localTokens.some(t => t.value === token)) {
-        localTokens.push({ value: token, appName: data.appName, redirectURL: data.redirectURL, createdAt: new Date().toISOString() });
+        localTokens.push({ value: token, appName: data.appName, customDomain: data.customDomain, createdAt: new Date().toISOString() });
         localStorage.setItem('userTokens', JSON.stringify(localTokens));
       }
 
@@ -222,7 +230,7 @@
       const data2 = snap2.val();
       if (data1) Object.entries(data1).forEach(([k,v]) => { if (v.ownerUID === userUID && k !== 'token') all.push({ token: k, val: v, source: 'tokens/' }); });
       if (data2) Object.entries(data2).forEach(([k,v]) => { if (v.ownerUID === userUID) all.push({ token: k, val: v, source: 'tokens/token/' }); });
-      // remove duplicatas
+      
       const seen = new Set();
       const unique = all.filter(item => { if (seen.has(item.token)) return false; seen.add(item.token); return true; });
 
@@ -232,17 +240,18 @@
       for (const { token, val } of unique) {
         const div = document.createElement('div');
         div.className = 'token-item';
-        const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta"; // v3
+        const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta";
         const domains = val.allowedDomains || [];
         const blocked = val.blockedIPs || [];
         const icon = val.icon || '';
         const contact = val.contactInfo || '';
         const jsCode = val.customJs || '';
+        const domain = val.customDomain || 'não definido';
 
         div.innerHTML = `
           <strong>📱 ${val.appName}</strong><br>
+          <strong>Domínio:</strong> ${domain}<br>
           <strong>Token:</strong> ${token}<br>
-          <strong>Redirecionador:</strong> ${val.redirectURL}<br>
           <strong>Scope:</strong> ${val.scope || 'não definido'}<br>
           ${icon ? `<img src="${icon}" style="max-height:30px;border-radius:4px;margin:4px 0;" /><br>` : ''}
           <div class="url-box">🔗 ${baseURL}?token=${token}</div>
@@ -272,7 +281,7 @@
     appForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = appName.value.trim();
-      const redirect = redirectURL.value.trim();
+      const domain = customDomain.value.trim();
       const size = parseInt(tokenSize.value);
       const scope = tokenScope.value;
       const icon = appIcon.value.trim();
@@ -281,19 +290,43 @@
       const contact = contactInfo.value.trim();
       const js = customJs.value.trim();
 
-      if (!name || !redirect) return alert('Preencha nome e URL de redirecionamento.');
+      if (!name || !domain) return alert('Preencha nome e domínio personalizado.');
       if (size < 20 || size > 200) return alert('Tamanho do token deve ser entre 20 e 200.');
 
+      // Validação básica de domínio
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9-.]*\.[a-zA-Z]{2,}$/.test(domain)) {
+        return alert('Domínio inválido. Exemplo: meusite.com');
+      }
+
       const token = generateToken(size);
-      const data = { appName: name, redirectURL: redirect, scope, icon, allowedDomains: domainsRaw, blockedIPs: ipsRaw, contactInfo: contact, customJs: js };
+      const data = { 
+        appName: name, 
+        customDomain: domain, 
+        scope, 
+        icon, 
+        allowedDomains: domainsRaw, 
+        blockedIPs: ipsRaw, 
+        contactInfo: contact, 
+        customJs: js 
+      };
       await saveToken(token, data);
-      // limpar campos
-      appName.value = ''; redirectURL.value = ''; tokenSize.value = '20'; appIcon.value = ''; allowedDomains.value = ''; blockedIPs.value = ''; contactInfo.value = ''; customJs.value = '';
+      appName.value = ''; 
+      customDomain.value = ''; 
+      tokenSize.value = '20'; 
+      appIcon.value = ''; 
+      allowedDomains.value = ''; 
+      blockedIPs.value = ''; 
+      contactInfo.value = ''; 
+      customJs.value = '';
     });
 
     // ===== AUTH STATE =====
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { alert('Você precisa estar logado.'); window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth'; return; }
+      if (!user) { 
+        alert('Você precisa estar logado.'); 
+        window.location.href = 'https://alexandre7888.github.io/auth'; 
+        return; 
+      }
       userUID = user.uid;
       await displayAuthToken(user);
       loadTokens();
