@@ -4,9 +4,8 @@ const MAX_ACCOUNTS = 5;
 
 const apps = [
   { id:'settings', name:'Config', icon:'⚙️', url:'https://alexandre7888.github.io/settings.html' },
-  { id:'MENSAGENS', name:'mensagens', icon:'✉️', url:'https://app.mensagens.site.je/' }
-];
-  { id:'home', home', icon:'🏠', url:'https://alexandre7888.github.io' }
+  { id:'MENSAGENS', name:'mensagens', icon:'✉️', url:'https://app.mensagens.site.je/' },
+  { id:'home', name:'Home', icon:'🏠', url:'https://alexandre7888.github.io' }  // ← CORRIGIDO
 ];
 
 function getAvatarColor(name) {
@@ -39,7 +38,7 @@ function AppMenu() {
     async function initFirebase() {
       const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js');
       const { getDatabase } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
-      
+
       const app = initializeApp({
         apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
         authDomain: "html-15e80.firebaseapp.com",
@@ -49,24 +48,24 @@ function AppMenu() {
         messagingSenderId: "1068148640439",
         appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
       });
-      
+
       dbRef.current = getDatabase(app);
       await init();
     }
-    
+
     initFirebase();
-    
+
     document.addEventListener('mousedown', (e) => {
       if (panelRef.current && !panelRef.current.contains(e.target)) setShowPanel(false);
     });
-    
+
     const interval = setInterval(async () => {
       const mk = localStorage.getItem('codehub_masterKey');
       if (mk) await loadAccounts(mk);
       const uk = localStorage.getItem('current_userKey');
       if (uk) await loadCurrentUser(uk);
     }, 4000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -74,31 +73,37 @@ function AppMenu() {
     const rawUserKey = new URLSearchParams(window.location.search).get('userKey');
     const localKey = localStorage.getItem('current_userKey');
     const key = rawUserKey || localKey;
-    
+
+    console.log('🔍 Iniciando AppMenu com userKey:', key);
+
     let currentMasterKey = localStorage.getItem('codehub_masterKey');
     if (currentMasterKey) {
       setMasterKey(currentMasterKey);
       await loadAccounts(currentMasterKey);
     }
-    
+
     if (key) {
       setUserKey(key);
       localStorage.setItem('current_userKey', key);
       await loadAndSyncUserData(key, currentMasterKey);
     }
-    
+
     setLoading(false);
   }
 
   async function loadAccounts(mk) {
     if (!mk || !dbRef.current) return;
-    
+
     try {
       const { ref, get } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
       const snap = await get(ref(dbRef.current, `contas/${mk}`));
-      
+
       if (snap.exists()) {
-        setAccounts(Object.values(snap.val()));
+        const contasData = Object.values(snap.val());
+        setAccounts(contasData);
+        console.log('📋 Contas carregadas:', contasData.length);
+      } else {
+        console.log('📋 Nenhuma conta encontrada para masterKey:', mk);
       }
     } catch(e) {
       console.error('Erro ao carregar contas:', e);
@@ -113,36 +118,111 @@ function AppMenu() {
 
   async function loadAndSyncUserData(key, activeMasterKey) {
     if (!key || !dbRef.current) return;
-    
+
+    console.log('🔍 Buscando dados para userKey:', key);
+
     try {
       const { ref, get, update } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
-      
+
+      // 1. TENTA userKeysData/{key} (NOVO CAMINHO)
       let snap = await get(ref(dbRef.current, `userKeysData/${key}`));
       let data = snap.exists() ? snap.val() : null;
       
+      if (data) {
+        console.log('✅ Dados encontrados em userKeysData/' + key);
+      }
+
+      // 2. SE NÃO ENCONTROU, tenta userKeys/{key} (CAMINHO ANTIGO)
       if (!data) {
         snap = await get(ref(dbRef.current, `userKeys/${key}`));
         data = snap.exists() ? snap.val() : null;
+        if (data) {
+          console.log('✅ Dados encontrados em userKeys/' + key);
+        }
       }
-      
+
+      // 3. SE NÃO ENCONTROU, tenta users/{key} (CAMINHO ALTERNATIVO)
+      if (!data) {
+        snap = await get(ref(dbRef.current, `users/${key}`));
+        data = snap.exists() ? snap.val() : null;
+        if (data) {
+          console.log('✅ Dados encontrados em users/' + key);
+        }
+      }
+
+      // 4. SE ENCONTROU OS DADOS
       if (data) {
+        // Extrai os dados do usuário
         const user = data.authTokenDecoded || data;
-        setUserData(user);
+        
+        // Garante que o userData tenha os campos necessários
+        const userInfo = {
+          uid: user.uid || key,
+          userKey: user.userKey || key,
+          username: user.username || user.nome || user.email || 'Usuário',
+          email: user.email || '',
+          userType: user.userType || 'normal',
+          ...user
+        };
+
+        console.log('👤 Dados do usuário:', userInfo);
+
+        setUserData(userInfo);
         setIsAuth(true);
         setUserKey(key);
-        
+
+        // Obtém o masterKey
         let mk = user.masterKey || data.masterKey || activeMasterKey || localStorage.getItem('codehub_masterKey');
-        
+
         if (mk) {
           setMasterKey(mk);
           localStorage.setItem('codehub_masterKey', mk);
 
-          await update(ref(dbRef.current, `userKeys/${key}`), {
-            masterKey: mk,
-            updatedAt: Date.now()
-          });
+          // Salva o masterKey no caminho userKeysData também
+          try {
+            await update(ref(dbRef.current, `userKeysData/${key}`), {
+              masterKey: mk,
+              updatedAt: Date.now()
+            });
+          } catch (e) {
+            console.warn('Não foi possível atualizar userKeysData:', e);
+          }
 
           await loadAccounts(mk);
+        } else {
+          // Se não tem masterKey, cria uma
+          const newMasterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+          localStorage.setItem('codehub_masterKey', newMasterKey);
+          setMasterKey(newMasterKey);
+          await loadAccounts(newMasterKey);
+        }
+
+        console.log('✅ Usuário carregado com sucesso!');
+      } else {
+        console.log('❌ Nenhum dado encontrado para o userKey:', key);
+        
+        // Tenta criar dados básicos se for um UID válido
+        if (key && key.length > 10) {
+          console.log('🔄 Criando dados básicos para o UID:', key);
+          const basicData = {
+            uid: key,
+            userKey: key,
+            email: 'usuario@email.com',
+            nome: 'Usuário',
+            userType: 'normal',
+            criadoEm: Date.now(),
+            lastLogin: Date.now()
+          };
+          
+          try {
+            await set(ref(dbRef.current, `userKeysData/${key}`), basicData);
+            console.log('✅ Dados básicos criados em userKeysData/' + key);
+            setUserData(basicData);
+            setIsAuth(true);
+            setUserKey(key);
+          } catch (e) {
+            console.error('Erro ao criar dados básicos:', e);
+          }
         }
       }
     } catch(e) {
@@ -154,18 +234,18 @@ function AppMenu() {
     const mk = masterKey || localStorage.getItem('codehub_masterKey');
     if (!mk || !dbRef.current) return;
     if (!confirm('Remover esta conta?')) return;
-    
+
     try {
       const { ref, get, set } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js');
       const snap = await get(ref(dbRef.current, `contas/${mk}`));
-      
+
       if (snap.exists()) {
         const contas = snap.val();
         delete contas[uid];
         await set(ref(dbRef.current, `contas/${mk}`), contas);
         setAccounts(Object.values(contas));
       }
-      
+
       if (userData?.uid === uid) {
         localStorage.removeItem('current_userKey');
         const url = new URL(window.location.href);
@@ -187,11 +267,11 @@ function AppMenu() {
   async function switchAccount(acc) {
     if (acc.userKey) {
       localStorage.setItem('current_userKey', acc.userKey);
-      
+
       // Constrói a nova URL mantendo a página atual mas substituindo/inserindo a nova userKey
       const url = new URL(window.location.href);
       url.searchParams.set('userKey', acc.userKey);
-      
+
       // Recarrega o site na nova URL com o userKey trocado
       window.location.href = url.toString();
     }
@@ -200,7 +280,7 @@ function AppMenu() {
   function handleLogout() {
     if (!confirm('Sair da conta atual?')) return;
     localStorage.removeItem('current_userKey');
-    
+
     // Remove o parâmetro userKey da URL e recarrega
     const url = new URL(window.location.href);
     url.searchParams.delete('userKey');
@@ -219,7 +299,7 @@ function AppMenu() {
     }, '⏳ Carregando...');
   }
 
-  const name = userData?.username || userData?.email || 'CodeHUB';
+  const name = userData?.username || userData?.nome || userData?.email || 'CodeHUB';
   const siteTitle = document.title || 'CodeHUB';
   const isOpen = isHovered || isPinned;
 
@@ -264,7 +344,7 @@ function AppMenu() {
           borderRadius: '2px'
         }
       }) : 
-      
+
       React.createElement(React.Fragment, null,
         React.createElement('div', {
           onClick: (e) => { e.stopPropagation(); setShowMenu(true); },
@@ -360,7 +440,7 @@ function AppMenu() {
         )
       ))
     ) : null,
-                             
+
     // ==================== PAINEL LATERAL DE CONTAS ====================
     showPanel ? React.createElement('div', {
       ref: panelRef,
@@ -379,7 +459,7 @@ function AppMenu() {
       isAuth && userData ? React.createElement('div', {
         style: { background:'rgba(255,255,255,0.05)',borderRadius:10,padding:12,marginBottom:15,color:'#fff',textAlign:'center',border:'1px solid rgba(255,255,255,0.08)' }
       },
-        React.createElement('div', { style:{ fontWeight:600,fontSize:14 } }, '✅ ' + (userData.username || userData.email)),
+        React.createElement('div', { style:{ fontWeight:600,fontSize:14 } }, '✅ ' + (userData.username || userData.nome || userData.email)),
         React.createElement('div', { style:{ fontSize:10,opacity:0.6,marginTop:4 } }, 'Key: ' + (userKey||'').substring(0,22) + '...')
       ) : null,
 
