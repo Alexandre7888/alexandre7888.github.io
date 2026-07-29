@@ -178,6 +178,119 @@
             text-align: left;
         }
 
+        /* Estilos para a lista de contas (seletor) */
+        .account-list {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .account-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s, border 0.2s;
+            border: 2px solid transparent;
+            background: #f8f9fa;
+            margin-bottom: 10px;
+        }
+
+        .account-item:hover {
+            background: #e9ecef;
+            border-color: var(--accent-color);
+        }
+
+        .account-item.selected {
+            border-color: var(--primary-color);
+            background: #e7f3ff;
+        }
+
+        .account-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+            flex-shrink: 0;
+            text-transform: uppercase;
+        }
+
+        .account-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .account-name {
+            font-weight: 600;
+            color: var(--dark-color);
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .account-email {
+            color: var(--gray-color);
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .account-check {
+            color: var(--primary-color);
+            font-size: 20px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .account-item.selected .account-check {
+            opacity: 1;
+        }
+
+        .account-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .account-actions button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--gray-color);
+            color: var(--gray-color);
+        }
+
+        .btn-outline:hover {
+            background: #f1f3f5;
+        }
+
         @media (max-width: 480px) {
             .auth-container {
                 border-radius: 12px;
@@ -219,7 +332,18 @@
             <p id="username"></p>
             <div id="user-info"></div>
             <div id="auth-token-display" class="token-info" style="display: none;"></div>
-            <button id="continueBtn">Continuar</button>
+            <!-- Área para a lista de contas -->
+            <div id="account-selection" style="display: none;">
+                <div style="margin-bottom: 12px; font-size: 14px; color: var(--dark-color); font-weight: 500;">
+                    Selecione uma conta para continuar
+                </div>
+                <div id="account-list-container" class="account-list"></div>
+                <div class="account-actions">
+                    <button id="confirmAccountBtn" class="btn-primary">Continuar com esta conta</button>
+                    <button id="cancelSelectionBtn" class="btn-outline">Cancelar</button>
+                </div>
+            </div>
+            <button id="continueBtn" style="display: none;">Continuar</button>
             <div id="login-redirect" class="login-redirect" style="display: none;">
                 <p>Você precisa fazer login para continuar</p>
                 <a id="loginLink" href="#" class="login-link">Fazer Login</a>
@@ -256,10 +380,19 @@
         const loginRedirectEl = document.getElementById('login-redirect');
         const loginLinkEl = document.getElementById('loginLink');
         const authTokenDisplay = document.getElementById('auth-token-display');
+        const accountSelectionDiv = document.getElementById('account-selection');
+        const accountListContainer = document.getElementById('account-list-container');
+        const confirmAccountBtn = document.getElementById('confirmAccountBtn');
+        const cancelSelectionBtn = document.getElementById('cancelSelectionBtn');
 
         // Pega token da URL
         const urlParams = new URLSearchParams(window.location.search);
         const appToken = urlParams.get('token');
+
+        // Variáveis de estado
+        let currentUser = null;
+        let accountsList = [];
+        let selectedAccountUid = null;
 
         // Função para decodificar token base64
         function decodeAuthToken(token) {
@@ -337,6 +470,168 @@
             redirectToLogin();
         });
 
+        // Cancelar seleção
+        cancelSelectionBtn.addEventListener('click', () => {
+            // Volta para a tela de login
+            redirectToLogin();
+        });
+
+        // Confirmar seleção
+        confirmAccountBtn.addEventListener('click', () => {
+            if (!selectedAccountUid) {
+                errorEl.textContent = 'Selecione uma conta primeiro.';
+                return;
+            }
+
+            // Redirecionar com a conta selecionada
+            proceedWithAccount(selectedAccountUid);
+        });
+
+        // Função para prosseguir com uma conta específica
+        async function proceedWithAccount(uid) {
+            try {
+                statusEl.textContent = 'Preparando sua sessão...';
+
+                // Buscar dados do usuário selecionado para garantir que temos tudo
+                const userDataRef = ref(db, `userKeysData/${uid}`);
+                const snap = await get(userDataRef);
+                let userData = snap.exists() ? snap.val() : null;
+
+                if (!userData) {
+                    // Se não existir, criar dados básicos
+                    userData = {
+                        uid: uid,
+                        userKey: uid,
+                        email: 'usuario@email.com',
+                        nome: 'Usuário',
+                        criadoEm: Date.now()
+                    };
+                    await set(userDataRef, userData);
+                }
+
+                // Salvar no localStorage o userKey selecionado
+                localStorage.setItem('current_userKey', uid);
+
+                // Buscar o token de autenticação (opcional)
+                const userAuthToken = await getUserAuthToken(uid);
+
+                // Salvar/atualizar no Firebase o último uso
+                await set(ref(db, `userKeysData/${uid}/lastLogin`), Date.now());
+
+                // Pegar redirectURL do token da aplicação
+                const tokenRef = ref(db, `tokens/${appToken}`);
+                const tokenSnap = await get(tokenRef);
+                if (!tokenSnap.exists()) {
+                    throw new Error('Token da aplicação inválido');
+                }
+                const tokenData = tokenSnap.val();
+                const redirectURL = tokenData.redirectURL;
+
+                if (!redirectURL) {
+                    throw new Error('URL de redirecionamento não encontrada');
+                }
+
+                statusEl.textContent = 'Redirecionando...';
+
+                // Redireciona com o userKey da conta selecionada
+                const sep = redirectURL.includes('?') ? '&' : '?';
+                const urlFinal = redirectURL + sep + `userKey=${encodeURIComponent(uid)}`;
+
+                window.location.href = urlFinal;
+
+            } catch (err) {
+                statusEl.textContent = 'Erro ao preparar sua sessão';
+                errorEl.textContent = err.message || 'Erro desconhecido';
+                console.error(err);
+            }
+        }
+
+        // Função para carregar contas da Master Key
+        async function loadAccountsFromMasterKey(masterKey) {
+            try {
+                const contasRef = ref(db, `contas/${masterKey}`);
+                const snap = await get(contasRef);
+                if (snap.exists()) {
+                    const data = snap.val();
+                    // Transforma em array
+                    const accounts = Object.values(data);
+                    return accounts;
+                }
+                return [];
+            } catch (error) {
+                console.error('Erro ao carregar contas da Master Key:', error);
+                return [];
+            }
+        }
+
+        // Função para exibir a lista de contas
+        function renderAccountList(accounts) {
+            accountListContainer.innerHTML = '';
+            if (accounts.length === 0) {
+                accountListContainer.innerHTML = `
+                    <div style="text-align: center; color: var(--gray-color); padding: 20px;">
+                        <p>Nenhuma conta encontrada para esta Master Key.</p>
+                        <p style="font-size: 13px;">Você pode adicionar contas na página de autenticação.</p>
+                    </div>
+                `;
+                confirmAccountBtn.disabled = true;
+                return;
+            }
+
+            confirmAccountBtn.disabled = false;
+            selectedAccountUid = null; // reset
+
+            accounts.forEach(acc => {
+                const item = document.createElement('div');
+                item.className = 'account-item';
+                // Se for a conta atual (do Firebase Auth), marcar como selecionada
+                if (currentUser && acc.uid === currentUser.uid) {
+                    item.classList.add('selected');
+                    selectedAccountUid = acc.uid;
+                }
+
+                const avatar = document.createElement('div');
+                avatar.className = 'account-avatar';
+                const initial = (acc.username || acc.email || '?').charAt(0).toUpperCase();
+                avatar.textContent = initial;
+                // Cor do avatar baseada no nome
+                const colors = ['#4361ee','#f72585','#4cc9f0','#7209b7','#f8961e','#43aa8b','#e63946','#277da1'];
+                let hash = 0;
+                const name = acc.username || acc.email || '?';
+                for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                avatar.style.background = colors[Math.abs(hash) % colors.length];
+
+                const info = document.createElement('div');
+                info.className = 'account-info';
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'account-name';
+                nameDiv.textContent = acc.username || acc.email || 'Usuário';
+                const emailDiv = document.createElement('div');
+                emailDiv.className = 'account-email';
+                emailDiv.textContent = acc.email || '';
+
+                info.appendChild(nameDiv);
+                info.appendChild(emailDiv);
+
+                const check = document.createElement('div');
+                check.className = 'account-check';
+                check.textContent = '✓';
+
+                item.appendChild(avatar);
+                item.appendChild(info);
+                item.appendChild(check);
+
+                // Clique para selecionar
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.account-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    selectedAccountUid = acc.uid;
+                });
+
+                accountListContainer.appendChild(item);
+            });
+        }
+
         // Se não houver token, redirecionar para auth
         if (!appToken) {
             statusEl.textContent = 'Token não encontrado. Redirecionando para login...';
@@ -355,12 +650,15 @@
                 continueBtn.style.display = 'none';
                 loginRedirectEl.style.display = 'block';
                 authTokenDisplay.style.display = 'none';
+                accountSelectionDiv.style.display = 'none';
                 return;
             }
 
             // Usuário ESTÁ logado
+            currentUser = user;
             loginRedirectEl.style.display = 'none';
-            continueBtn.style.display = 'block';
+            continueBtn.style.display = 'none'; // Não usaremos mais o botão único
+            accountSelectionDiv.style.display = 'block';
 
             // Verificar token da aplicação
             if (!appToken) {
@@ -368,114 +666,86 @@
                 setTimeout(() => {
                     window.location.href = '../index.html';
                 }, 2000);
-                disableContinue();
                 return;
             }
 
+            // Buscar token da aplicação para obter redirectURL
             const tokenRef = ref(db, `tokens/${appToken}`);
-
             try {
-                const snapshot = await get(tokenRef);
-
-                if (!snapshot.exists()) {
+                const tokenSnap = await get(tokenRef);
+                if (!tokenSnap.exists()) {
                     statusEl.textContent = 'Token da aplicação inválido.';
-                    disableContinue();
+                    errorEl.textContent = 'Token não encontrado no Firebase.';
                     return;
                 }
-
-                const tokenData = snapshot.val();
+                const tokenData = tokenSnap.val();
                 const redirectURL = tokenData.redirectURL;
-
                 if (!redirectURL) {
                     statusEl.textContent = 'Link de redirecionamento não encontrado.';
-                    disableContinue();
+                    errorEl.textContent = 'URL de redirecionamento ausente.';
                     return;
                 }
 
-                // Pegar token de autenticação do usuário
-                const userAuthToken = await getUserAuthToken(user.uid);
+                // 1. Buscar a Master Key do usuário atual
+                // Primeiro, verificar no localStorage
+                let masterKey = localStorage.getItem('codehub_masterKey');
 
-                // Mostrar informações do usuário
-                const hasEmail = user.email && !user.isAnonymous;
-                const nome = hasEmail ? user.email.split('@')[0] : `Usuário-${user.uid.substring(0,6)}`;
-                const userEmail = hasEmail ? user.email : null;
-
-                usernameEl.textContent = `Olá, ${nome}!`;
-                statusEl.textContent = 'Pronto para continuar';
-                errorEl.textContent = '';
-
-                // Exibir token de autenticação se existir
-                if (userAuthToken) {
-                    authTokenDisplay.style.display = 'block';
-                    authTokenDisplay.innerHTML = `
-                        <strong>🔐 Token de Autenticação encontrado:</strong><br>
-                        <span style="font-family: monospace; font-size: 10px;">${userAuthToken.substring(0, 80)}...</span><br>
-                        <small>✅ Token será salvo na sessão</small>
-                    `;
-                } else {
-                    authTokenDisplay.style.display = 'block';
-                    authTokenDisplay.innerHTML = `
-                        <strong>⚠️ Token de Autenticação:</strong><br>
-                        Nenhum token encontrado. Um novo será gerado no login.
-                    `;
+                // Se não tiver, buscar no Firebase (userKeysData do usuário atual)
+                if (!masterKey) {
+                    const userDataRef = ref(db, `userKeysData/${user.uid}`);
+                    const snap = await get(userDataRef);
+                    if (snap.exists()) {
+                        const data = snap.val();
+                        masterKey = data.masterKey || null;
+                    }
                 }
 
-                // Exibir informações adicionais
-                userInfoEl.innerHTML = `
-                    <div style="text-align: left; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">
-                        <p><strong>ID do Usuário:</strong> ${user.uid.substring(0, 8)}...</p>
-                        ${userEmail ? `<p><strong>Email:</strong> ${userEmail}</p>` : ''}
-                        <p><strong>Tipo:</strong> ${user.isAnonymous ? 'Sessão Temporária' : 'Conta Registrada'}</p>
-                        ${userAuthToken ? `<p><strong>✅ Token Auth:</strong> Presente</p>` : '<p><strong>❌ Token Auth:</strong> Não encontrado</p>'}
-                    </div>
-                `;
-
-                // Configurar botão de continuar
-                continueBtn.onclick = async () => {
-                    continueBtn.disabled = true;
-                    statusEl.textContent = 'Preparando sua sessão...';
-
-                    try {
-                        // ✅ CORRIGIDO: Agora salva diretamente em userKeysData com o UID
-                        const userKeyDataRef = ref(db, `userKeysData/${user.uid}`);
-
-                        // Monta o objeto com todas as informações
-                        const userDataToSave = {
-                            nome: nome,
-                            uid: user.uid,
-                            email: userEmail,
-                            criadoEm: Date.now(),
-                            isAnonymous: user.isAnonymous,
-                            authToken: userAuthToken || null,
-                            authTokenDecoded: userAuthToken ? decodeAuthToken(userAuthToken) : null,
-                            hasAuthToken: !!userAuthToken,
-                            appToken: appToken
-                        };
-
-                        // Salva no Firebase diretamente com o UID
-                        await set(userKeyDataRef, userDataToSave);
-
-                        console.log('✅ Dados salvos no Firebase em userKeysData/' + user.uid, userDataToSave);
-
-                        statusEl.textContent = 'Redirecionando...';
-
-                        // Redireciona apenas com o UID
-                        const sep = redirectURL.includes('?') ? '&' : '?';
-                        let urlFinal = redirectURL + sep + `userKey=${encodeURIComponent(user.uid)}`;
-
-                        window.location.href = urlFinal;
-
-                    } catch (err) {
-                        statusEl.textContent = 'Erro ao preparar sua sessão';
-                        errorEl.textContent = err.message || 'Erro desconhecido';
-                        continueBtn.disabled = false;
+                // Se ainda não tiver, talvez esteja em userKeys (caminho antigo) ou users
+                if (!masterKey) {
+                    const userDataRef = ref(db, `users/${user.uid}`);
+                    const snap = await get(userDataRef);
+                    if (snap.exists()) {
+                        const data = snap.val();
+                        masterKey = data.masterKey || null;
                     }
-                };
+                }
+
+                // Se não tiver, cria uma nova Master Key
+                if (!masterKey) {
+                    masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+                    // Salvar no usuário atual
+                    await set(ref(db, `userKeysData/${user.uid}/masterKey`), masterKey);
+                    localStorage.setItem('codehub_masterKey', masterKey);
+                } else {
+                    localStorage.setItem('codehub_masterKey', masterKey);
+                }
+
+                // 2. Carregar contas da Master Key
+                const accounts = await loadAccountsFromMasterKey(masterKey);
+                accountsList = accounts;
+
+                // 3. Exibir a lista de contas
+                renderAccountList(accounts);
+
+                // Atualizar status
+                statusEl.textContent = 'Selecione uma conta para continuar';
+                usernameEl.textContent = ''; // limpa
+                userInfoEl.innerHTML = ''; // limpa
+                authTokenDisplay.style.display = 'none';
+
+                // Se houver apenas uma conta, selecionar automaticamente?
+                if (accounts.length === 1) {
+                    selectedAccountUid = accounts[0].uid;
+                    document.querySelector('.account-item')?.classList.add('selected');
+                }
+
+                // Botão de logout continua disponível (será adicionado depois)
+                // Adicionar botão de logout (já existe no final)
 
             } catch (error) {
-                statusEl.textContent = 'Erro ao buscar informações';
+                statusEl.textContent = 'Erro ao carregar contas';
                 errorEl.textContent = error.message;
-                disableContinue();
+                console.error(error);
             }
         });
 
