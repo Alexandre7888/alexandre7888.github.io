@@ -3,7 +3,7 @@ const { useState, useEffect, useRef } = React;
 const MAX_ACCOUNTS = 5;
 
 const apps = [
-  { id:'settings', name:'Config', icon:'⚙️', url:'settings.html' },
+  { id:'settings', name:'Config', icon:'⚙️', url:'https://alexandre7888.github.io/settings.html' },
   { id:'MENSAGENS', name:'mensagens', icon:'✉️', url:'https://app.mensagens.site.je/' }
 ];
 
