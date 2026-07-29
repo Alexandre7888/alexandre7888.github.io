@@ -1,601 +1,510 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeHub - Autenticação</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
-    .auth-container{width:100%;max-width:480px;background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-    .auth-header{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;padding:25px;text-align:center}
-    .auth-header h1{font-size:24px;margin-bottom:5px}
-    .auth-header p{font-size:13px;opacity:0.9}
-    .account-indicator{background:rgba(0,0,0,0.2);padding:6px 14px;border-radius:20px;display:inline-block;margin-top:8px;font-size:12px}
-    .tabs{display:flex;background:rgba(0,0,0,0.3)}
-    .tab{flex:1;text-align:center;padding:14px;cursor:pointer;font-weight:600;color:#a0b3c9;transition:0.3s;position:relative}
-    .tab.active{color:#fff;background:rgba(67,97,238,0.3)}
-    .tab.active::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:3px;background:#4361ee}
-    .tab-content{padding:25px;display:none}
-    .tab-content.active{display:block}
-    .form-group{margin-bottom:16px}
-    .form-group label{display:block;margin-bottom:6px;font-weight:600;color:#e2e9f0;font-size:13px}
-    .form-control{width:100%;padding:11px 14px;background:rgba(0,0,0,0.3);border:2px solid rgba(67,97,238,0.3);border-radius:8px;font-size:14px;color:#fff;transition:0.3s}
-    .form-control:focus{border-color:#4895ef;outline:none;box-shadow:0 0 0 3px rgba(67,97,238,0.2);background:rgba(0,0,0,0.5)}
-    .form-control::placeholder{color:#6b7280}
-    .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:0.3s;display:flex;align-items:center;justify-content:center;gap:8px}
-    .btn-primary{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff}
-    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(67,97,238,0.3)}
-    .btn-google{background:#fff;color:#212529;border:1px solid #dee2e6}
-    .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
-    .btn-secondary{background:rgba(255,255,255,0.1);color:#a0b3c9;border:1px solid rgba(255,255,255,0.2)}
-    .btn-secondary:hover{background:rgba(255,255,255,0.2)}
-    .btn-diagnostic{background:rgba(247,37,133,0.3);color:#f72585;border:1px solid #f72585}
-    .btn-diagnostic:hover{background:rgba(247,37,133,0.5)}
-    .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
-    .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.2);margin:0 10px}
-    .error-message{color:#f72585;font-size:12px;display:none;background:rgba(247,37,133,0.1);padding:8px;border-radius:6px;margin-bottom:10px}
-    .error-message.show{display:block}
-    .success-message{color:#4cc9f0;font-size:13px;margin-top:12px;text-align:center;font-weight:600;background:rgba(76,201,240,0.1);padding:8px;border-radius:6px}
-    .footer-text{text-align:center;margin-top:18px;font-size:13px;color:#a0b3c9}
-    .footer-text a{color:#4361ee;text-decoration:none;font-weight:600;cursor:pointer}
-    .header-actions{position:fixed;top:20px;right:20px;z-index:1000}
-    .home-btn{background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;transition:0.3s;backdrop-filter:blur(10px)}
-    .home-btn:hover{background:rgba(255,255,255,0.2)}
-    .user-type-selector{display:flex;gap:12px;margin-bottom:16px;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px}
-    .user-type-option{flex:1;text-align:center;padding:8px;border:2px solid rgba(67,97,238,0.3);border-radius:8px;cursor:pointer;transition:0.3s;color:#fff;font-size:13px}
-    .user-type-option.selected{border-color:#4361ee;background:rgba(67,97,238,0.3)}
-    .company-fields{display:none}
-    .company-fields.show{display:block}
-    .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
-    .debug-area{margin-top:15px;background:rgba(0,0,0,0.5);border-radius:8px;padding:10px;display:none;border:1px solid #f72585}
-    .debug-area.show{display:block}
-    .debug-area summary{cursor:pointer;color:#a0b3c9;font-size:12px}
-    .debug-area pre{color:#f8f9fa;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto}
-    .suggest-box{background:rgba(76,201,240,0.1);border:1px solid #4cc9f0;border-radius:8px;padding:10px;margin-top:10px;display:none}
-    .suggest-box.show{display:block}
-    .suggest-box p{color:#a0b3c9;font-size:12px}
-    .suggest-box strong{color:#4cc9f0}
-    .diagnostic-box{background:rgba(247,37,133,0.1);border:1px solid #f72585;border-radius:8px;padding:10px;margin-top:10px;display:none}
-    .diagnostic-box.show{display:block}
-    .diagnostic-box p{color:#a0b3c9;font-size:11px;margin:3px 0}
-    .diagnostic-box .highlight{color:#f72585;font-weight:bold}
-    @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Continuar Login com Usuário v2</title>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --danger-color: #f72585;
+            --success-color: #4cc9f0;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --gray-color: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            background-color: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-header {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .auth-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .auth-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .auth-content {
+            padding: 30px;
+            text-align: center;
+        }
+
+        #status {
+            margin: 20px 0;
+            font-weight: bold;
+            color: var(--dark-color);
+            font-size: 16px;
+        }
+
+        #username {
+            font-size: 1.2rem;
+            margin: 15px 0;
+            color: var(--dark-color);
+        }
+
+        #continueBtn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        #continueBtn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        #continueBtn:disabled {
+            background-color: var(--gray-color);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            font-size: 13px;
+            margin-top: 15px;
+        }
+
+        .login-redirect {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .login-redirect p {
+            margin-bottom: 10px;
+            color: var(--dark-color);
+        }
+
+        .login-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .login-link:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        .header-actions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+
+        .home-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .home-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .token-info {
+            background: #e7f3ff;
+            border-left: 4px solid var(--primary-color);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            font-size: 12px;
+            word-break: break-all;
+            text-align: left;
+        }
+
+        @media (max-width: 480px) {
+            .auth-container {
+                border-radius: 12px;
+            }
+
+            .auth-header {
+                padding: 20px;
+            }
+
+            .auth-content {
+                padding: 20px;
+            }
+
+            .header-actions {
+                top: 10px;
+                left: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="header-actions"><button class="home-btn" onclick="goToIndex()">🏠 Voltar</button></div>
-
-  <div class="auth-container">
-    <div class="auth-header">
-      <h1>Bem-vindo ao CodeHub</h1>
-      <p>Autenticação Multi-Conta</p>
-      <div class="account-indicator">👤 Contas: <span id="accountCountNumber">0</span>/5</div>
+    <div class="header-actions">
+        <button class="home-btn" onclick="goToIndex()">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Início
+        </button>
     </div>
 
-    <div id="global-error" class="error-message"></div>
-    <div id="global-success" class="success-message" style="display:none;"></div>
-
-    <div id="suggest-box" class="suggest-box">
-      <p>💡 <strong>Não encontrou sua conta?</strong> Clique em <strong>"Criar Conta"</strong> acima para se registrar.</p>
-    </div>
-
-    <div id="diagnostic-box" class="diagnostic-box">
-      <p>📊 <strong>Diagnóstico:</strong></p>
-      <div id="diagnostic-content"></div>
-    </div>
-
-    <div id="debug-area" class="debug-area">
-      <details>
-        <summary>🔍 Mostrar detalhes do erro (debug)</summary>
-        <pre id="debug-content">Nenhum erro registrado.</pre>
-      </details>
-    </div>
-
-    <div class="tabs">
-      <div class="tab active" id="tab-login" onclick="switchTab('login')">Entrar</div>
-      <div class="tab" id="tab-register" onclick="switchTab('register')">Criar Conta</div>
-    </div>
-
-    <div id="login-tab" class="tab-content active">
-      <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" class="form-control" placeholder="digite seu email"></div>
-      <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
-      <div id="login-cnpj-group" class="form-group" style="display:none;"><label for="login-cnpj">CNPJ</label><input type="text" id="login-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)"></div>
-      <button class="btn btn-primary" id="login-btn" onclick="login()">🔐 Entrar</button>
-      
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="btn btn-secondary" onclick="resetPassword()" style="flex:1;font-size:12px;padding:8px;">🔑 Esqueci a senha</button>
-        <button class="btn btn-diagnostic" onclick="showDiagnostic()" style="flex:1;font-size:12px;padding:8px;">🔍 Verificar contas</button>
-      </div>
-      
-      <div class="divider">ou</div>
-      <button class="btn btn-google" onclick="loginWithGoogle()">🟢 Google</button>
-      <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
-    </div>
-
-    <div id="register-tab" class="tab-content">
-      <div class="form-group"><label>Tipo de Conta</label>
-        <div class="user-type-selector">
-          <div class="user-type-option selected" data-type="normal" onclick="selectUserType('normal')">👤 Normal</div>
-          <div class="user-type-option" data-type="entrepreneur" onclick="selectUserType('entrepreneur')">🏢 Empreendedor</div>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Continuar Login</h1>
+            <p>Complete o processo de autenticação</p>
         </div>
-      </div>
-      <div class="form-group"><label for="register-username">Usuário</label><input type="text" id="register-username" class="form-control" placeholder="ex: dev123"></div>
-      <div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" class="form-control" placeholder="seu email"></div>
-      <div class="form-group"><label for="register-password">Senha</label><input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres"></div>
-      <div class="form-group"><label for="register-confirm-password">Confirmar</label><input type="password" id="register-confirm-password" class="form-control" placeholder="confirme"></div>
-      <div id="company-fields" class="company-fields">
-        <div class="form-group"><label for="register-company-name">Empresa</label><input type="text" id="register-company-name" class="form-control" placeholder="Nome da empresa"></div>
-        <div class="form-group"><label for="register-cnpj">CNPJ</label><input type="text" id="register-cnpj" class="form-control" placeholder="00.000.000/0000-00" oninput="formatCNPJ(this)"></div>
-      </div>
-      <button class="btn btn-primary" id="register-btn" onclick="register()">✨ Criar Conta</button>
-      <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
+
+        <div class="auth-content">
+            <p id="status">Verificando autenticação...</p>
+            <p id="username"></p>
+            <div id="user-info"></div>
+            <div id="auth-token-display" class="token-info" style="display: none;"></div>
+            <button id="continueBtn">Continuar</button>
+            <div id="login-redirect" class="login-redirect" style="display: none;">
+                <p>Você precisa fazer login para continuar</p>
+                <a id="loginLink" href="#" class="login-link">Fazer Login</a>
+            </div>
+            <p id="error" class="error-message"></p>
+        </div>
     </div>
 
-    <div class="device-info" id="deviceInfo"></div>
-  </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.firebasestorage.app",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-    const provider = new GoogleAuthProvider();
-
-    let selectedUserType = 'normal';
-    const MAX_ACCOUNTS = 5;
-
-    // ===== Função de debug =====
-    function showDebug(error) {
-      const area = document.getElementById('debug-area');
-      const content = document.getElementById('debug-content');
-      if (error) {
-        let msg = `🔥 ERRO DETALHADO:\n`;
-        msg += `- Nome: ${error.name || 'Não definido'}\n`;
-        msg += `- Mensagem: ${error.message || 'Sem mensagem'}\n`;
-        msg += `- Código: ${error.code || 'Nenhum'}\n`;
-        if (error.stack) msg += `- Stack:\n${error.stack}\n`;
-        if (error.customData) msg += `- customData: ${JSON.stringify(error.customData, null, 2)}\n`;
-        content.textContent = msg;
-        area.classList.add('show');
-        console.error('🔥 DEBUG ERROR:', error);
-      } else {
-        area.classList.remove('show');
-        content.textContent = 'Nenhum erro registrado.';
-      }
-    }
-
-    function showError(m, errorObj = null) {
-      const e = document.getElementById('global-error');
-      e.textContent = m;
-      e.classList.add('show');
-      if (errorObj) showDebug(errorObj);
-      else showDebug(null);
-      
-      const suggestBox = document.getElementById('suggest-box');
-      if (errorObj && errorObj.code === 'auth/invalid-login-credentials') {
-        suggestBox.classList.add('show');
-      } else {
-        suggestBox.classList.remove('show');
-      }
-    }
-
-    function showSuccess(m) {
-      const e = document.getElementById('global-success');
-      e.textContent = m;
-      e.style.display = 'block';
-      showDebug(null);
-      document.getElementById('suggest-box').classList.remove('show');
-    }
-
-    // ===== DIAGNÓSTICO =====
-    window.showDiagnostic = async () => {
-      const box = document.getElementById('diagnostic-box');
-      const content = document.getElementById('diagnostic-content');
-      const email = document.getElementById('login-email').value.trim();
-      
-      let html = '';
-      
-      const localAccounts = getLocalAccounts();
-      html += `<p>📱 <strong>Contas locais (${localAccounts.length}):</strong></p>`;
-      if (localAccounts.length === 0) {
-        html += `<p style="color:#f72585;">Nenhuma conta salva localmente.</p>`;
-      } else {
-        localAccounts.forEach((acc, i) => {
-          html += `<p>${i+1}. ${acc.email} (UserKey: ${acc.userKey})</p>`;
-        });
-      }
-      
-      if (email) {
-        html += `<p>🔍 <strong>Verificando email: ${email}</strong></p>`;
-        try {
-          const methods = await fetchSignInMethodsForEmail(auth, email);
-          if (methods.length > 0) {
-            html += `<p style="color:#4cc9f0;">✅ Email encontrado no Firebase!</p>`;
-          } else {
-            html += `<p style="color:#f72585;">❌ Email NÃO encontrado no Firebase.</p>`;
-          }
-        } catch (error) {
-          html += `<p style="color:#f72585;">❌ Erro ao verificar: ${error.message}</p>`;
-        }
-      } else {
-        html += `<p>⚠️ Digite um email no campo para verificar.</p>`;
-      }
-      
-      const currentUser = auth.currentUser;
-      html += `<p>👤 <strong>Usuário atual:</strong> ${currentUser ? currentUser.email : 'Nenhum logado'}</p>`;
-      
-      content.innerHTML = html;
-      box.classList.add('show');
-    };
-
-    function generateDeviceId() {
-      let id = localStorage.getItem('codehub_deviceId');
-      if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
-      return id;
-    }
-
-    function validateCNPJ(cnpj) {
-      cnpj = cnpj.replace(/\D/g, '');
-      if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
-      let s = 0, w = 5;
-      for (let i = 0; i < 12; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
-      let d = 11 - (s % 11); d = d >= 10 ? 0 : d;
-      if (d !== parseInt(cnpj[12])) return false;
-      s = 0; w = 6;
-      for (let i = 0; i < 13; i++) { s += parseInt(cnpj[i]) * w; w = w === 2 ? 9 : w - 1; }
-      d = 11 - (s % 11); d = d >= 10 ? 0 : d;
-      return d === parseInt(cnpj[13]);
-    }
-
-    function getLocalAccounts() {
-      return JSON.parse(localStorage.getItem('codehub_deviceAccounts') || '[]');
-    }
-
-    function saveLocalAccounts(accounts) {
-      localStorage.setItem('codehub_deviceAccounts', JSON.stringify(accounts.slice(0, MAX_ACCOUNTS)));
-      document.getElementById('accountCountNumber').textContent = accounts.length;
-    }
-
-    function addLocalAccount(userData) {
-      const accounts = getLocalAccounts();
-      const idx = accounts.findIndex(a => a.uid === userData.uid);
-      if (idx >= 0) accounts[idx] = userData;
-      else accounts.push(userData);
-      saveLocalAccounts(accounts);
-    }
-
-    function redirectAfterAuth(uid) {
-      showSuccess(`✅ Autenticado! UserKey: ${uid}`);
-      setTimeout(() => {
-        window.location.href = `index.html?userKey=${uid}`;
-      }, 1000);
-    }
-
-    const deviceId = generateDeviceId();
-    document.getElementById('deviceInfo').innerHTML = `📱 ${deviceId.substring(0, 25)}...`;
-    document.getElementById('accountCountNumber').textContent = getLocalAccounts().length;
-
-    window.goToIndex = () => window.location.href = 'index.html';
-
-    window.switchTab = (id) => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.getElementById(`tab-${id}`).classList.add('active');
-      document.getElementById(`${id}-tab`).classList.add('active');
-      document.getElementById('global-error').classList.remove('show');
-      document.getElementById('global-success').style.display = 'none';
-      document.getElementById('suggest-box').classList.remove('show');
-      document.getElementById('diagnostic-box').classList.remove('show');
-      showDebug(null);
-    };
-
-    window.selectUserType = (type) => {
-      selectedUserType = type;
-      document.querySelectorAll('.user-type-option').forEach(o => o.classList.remove('selected'));
-      document.querySelector(`[data-type="${type}"]`).classList.add('selected');
-      document.getElementById('company-fields').classList.toggle('show', type === 'entrepreneur');
-    };
-
-    window.formatCNPJ = (input) => {
-      let v = input.value.replace(/\D/g, '');
-      if (v.length > 14) v = v.slice(0, 14);
-      if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-      else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})$/, '$1.$2.$3/$4');
-      else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{3})$/, '$1.$2.$3');
-      else if (v.length > 2) v = v.replace(/^(\d{2})(\d{3})$/, '$1.$2');
-      input.value = v;
-    };
-
-    window.resetPassword = async () => {
-      const email = document.getElementById('login-email').value.trim();
-      if (!email) {
-        return showError('Digite seu email para recuperar a senha');
-      }
-      
-      try {
-        await sendPasswordResetEmail(auth, email);
-        showSuccess(`📧 Email de recuperação enviado para ${email}.`);
-      } catch (error) {
-        const msg = {
-          'auth/user-not-found': 'Email não encontrado.',
-          'auth/invalid-email': 'Email inválido.'
-        }[error.code] || 'Erro ao enviar email';
-        showError(msg, error);
-      }
-    };
-
-    // ===== REGISTRO =====
-    window.register = async () => {
-      document.getElementById('global-error').classList.remove('show');
-      document.getElementById('suggest-box').classList.remove('show');
-      document.getElementById('diagnostic-box').classList.remove('show');
-      showDebug(null);
-
-      const username = document.getElementById('register-username').value.trim();
-      const email = document.getElementById('register-email').value.trim();
-      const password = document.getElementById('register-password').value;
-      const confirm = document.getElementById('register-confirm-password').value;
-      let companyName = '', cnpj = '';
-
-      if (selectedUserType === 'entrepreneur') {
-        companyName = document.getElementById('register-company-name').value.trim();
-        cnpj = document.getElementById('register-cnpj').value.trim();
-        if (!companyName) return showError('Nome da empresa obrigatório');
-        if (!cnpj) return showError('CNPJ obrigatório');
-        if (!validateCNPJ(cnpj)) return showError('CNPJ inválido');
-      }
-      if (!username) return showError('Usuário obrigatório');
-      if (!email) return showError('Email obrigatório');
-      if (!password || password.length < 6) return showError('Senha: mín. 6 caracteres');
-      if (password !== confirm) return showError('Senhas não coincidem');
-
-      const localAccounts = getLocalAccounts();
-      if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
-
-      const btn = document.getElementById('register-btn');
-      btn.disabled = true; btn.textContent = 'Criando...';
-
-      try {
-        const methods = await fetchSignInMethodsForEmail(auth, email);
-        if (methods.length > 0) {
-          showError('❌ Este email já está cadastrado!');
-          btn.disabled = false; btn.textContent = '✨ Criar Conta';
-          return;
-        }
-
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        const uid = user.uid;
-
-        // ✅ userKey = uid (como no seu HTML original)
-        const userKey = uid;
-
-        // ✅ Salva no Firebase em userKeysData/{uid}
-        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
-        await set(userKeyDataRef, {
-          uid: uid,
-          userKey: userKey,
-          email: email,
-          nome: username,
-          userType: selectedUserType,
-          criadoEm: Date.now(),
-          lastLogin: Date.now(),
-          deviceId: deviceId,
-          ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
-        });
-
-        console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
-
-        const userData = {
-          uid,
-          userKey,
-          email,
-          username,
-          userType: selectedUserType,
-          lastLogin: Date.now(),
-          deviceId,
-          ...(selectedUserType === 'entrepreneur' && { companyName, cnpj: cnpj.replace(/\D/g, '') })
+        const firebaseConfig = {
+            apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+            authDomain: "html-15e80.firebaseapp.com",
+            databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+            projectId: "html-15e80",
+            storageBucket: "html-15e80.appspot.com",
+            messagingSenderId: "1068148640439",
+            appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32",
+            measurementId: "G-V57KRZ02HJ"
         };
 
-        addLocalAccount(userData);
-        localStorage.setItem('current_userKey', userKey);
-        localStorage.setItem('current_uid', uid);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
 
-        showSuccess(`✅ Conta criada! UserKey: ${userKey}`);
-        
-        setTimeout(() => {
-          redirectAfterAuth(userKey);
-        }, 1500);
+        const statusEl = document.getElementById('status');
+        const usernameEl = document.getElementById('username');
+        const userInfoEl = document.getElementById('user-info');
+        const continueBtn = document.getElementById('continueBtn');
+        const errorEl = document.getElementById('error');
+        const loginRedirectEl = document.getElementById('login-redirect');
+        const loginLinkEl = document.getElementById('loginLink');
+        const authTokenDisplay = document.getElementById('auth-token-display');
 
-      } catch (error) {
-        let msg = 'Erro ao criar conta';
-        if (error.code === 'auth/email-already-in-use') {
-          msg = '❌ Email já em uso. Tente fazer login.';
-        } else if (error.code === 'auth/weak-password') {
-          msg = '❌ Senha muito fraca. Use pelo menos 6 caracteres.';
-        } else if (error.code === 'auth/invalid-email') {
-          msg = '❌ Email inválido.';
-        }
-        showError(msg, error);
-        btn.disabled = false; btn.textContent = '✨ Criar Conta';
-      }
-    };
+        // Pega token da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const appToken = urlParams.get('token');
 
-    // ===== LOGIN =====
-    window.login = async () => {
-      document.getElementById('global-error').classList.remove('show');
-      document.getElementById('suggest-box').classList.remove('show');
-      document.getElementById('diagnostic-box').classList.remove('show');
-      showDebug(null);
-
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value;
-      if (!email) return showError('Email obrigatório');
-      if (!password) return showError('Senha obrigatória');
-
-      const btn = document.getElementById('login-btn');
-      btn.disabled = true; btn.textContent = 'Entrando...';
-
-      try {
-        const methods = await fetchSignInMethodsForEmail(auth, email);
-        if (methods.length === 0) {
-          showError(`❌ Email "${email}" não encontrado. Crie uma conta.`);
-          btn.disabled = false; btn.textContent = '🔐 Entrar';
-          return;
+        // Função para decodificar token base64
+        function decodeAuthToken(token) {
+            try {
+                const jsonString = decodeURIComponent(escape(atob(token)));
+                return JSON.parse(jsonString);
+            } catch (error) {
+                console.error("Erro ao decodificar token:", error);
+                return null;
+            }
         }
 
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        const uid = user.uid;
-
-        // ✅ userKey = uid
-        const userKey = uid;
-
-        // ✅ Verifica se já existe no Firebase e salva/atualiza
-        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
-        const snapshot = await get(userKeyDataRef);
-        
-        let userData;
-        if (!snapshot.exists()) {
-          // Se não existir, cria um novo registro
-          const username = email.split('@')[0];
-          userData = {
-            uid,
-            userKey,
-            email,
-            username,
-            userType: 'normal',
-            lastLogin: Date.now(),
-            deviceId,
-            criadoEm: Date.now()
-          };
-          await set(userKeyDataRef, userData);
-          console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
-        } else {
-          userData = snapshot.val();
-          userData.lastLogin = Date.now();
-          // Atualiza lastLogin
-          await set(userKeyDataRef, userData);
-          console.log('✅ Dados atualizados no Firebase em userKeysData/' + uid);
+        // Busca token do usuário no Firebase
+        async function fetchUserAuthTokenFromFirebase(userId) {
+            try {
+                const tokenRef = ref(db, `tokens/${userId}`);
+                const snapshot = await get(tokenRef);
+                if (snapshot.exists()) {
+                    const tokenData = snapshot.val();
+                    if (tokenData.token) {
+                        return tokenData.token;
+                    }
+                }
+                return null;
+            } catch (error) {
+                console.error("Erro ao buscar token do Firebase:", error);
+                return null;
+            }
         }
 
-        // Verifica CNPJ se for empreendedor
-        if (userData.userType === 'entrepreneur' && userData.cnpj) {
-          const cnpjInput = document.getElementById('login-cnpj').value.trim();
-          document.getElementById('login-cnpj-group').style.display = 'block';
-          if (!cnpjInput || cnpjInput.replace(/\D/g, '') !== userData.cnpj) {
-            showError('CNPJ inválido');
-            btn.disabled = false; btn.textContent = '🔐 Entrar';
-            return;
-          }
+        // Busca token do localStorage
+        function getLocalAuthToken() {
+            try {
+                const localToken = localStorage.getItem('auth_token');
+                if (localToken) {
+                    return localToken;
+                }
+                return null;
+            } catch (error) {
+                console.error("Erro ao ler localStorage:", error);
+                return null;
+            }
         }
 
-        // Salva localmente
-        addLocalAccount(userData);
-        localStorage.setItem('current_userKey', userKey);
-        localStorage.setItem('current_uid', uid);
-
-        redirectAfterAuth(userKey);
-
-      } catch (error) {
-        let msg;
-        switch(error.code) {
-          case 'auth/invalid-login-credentials':
-            msg = '❌ Email ou senha incorretos.';
-            break;
-          case 'auth/user-not-found':
-            msg = '❌ Usuário não encontrado.';
-            break;
-          case 'auth/wrong-password':
-            msg = '❌ Senha incorreta.';
-            break;
-          case 'auth/invalid-email':
-            msg = '❌ Email inválido.';
-            break;
-          case 'auth/too-many-requests':
-            msg = '❌ Muitas tentativas. Aguarde.';
-            break;
-          default:
-            msg = `❌ Erro: ${error.code || error.message}`;
-        }
-        showError(msg, error);
-        btn.disabled = false; btn.textContent = '🔐 Entrar';
-      }
-    };
-
-    // ===== LOGIN COM GOOGLE =====
-    window.loginWithGoogle = async () => {
-      document.getElementById('global-error').classList.remove('show');
-      document.getElementById('suggest-box').classList.remove('show');
-      document.getElementById('diagnostic-box').classList.remove('show');
-      showDebug(null);
-
-      const localAccounts = getLocalAccounts();
-      if (localAccounts.length >= MAX_ACCOUNTS) return showError('Limite de 5 contas!');
-
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const uid = user.uid;
-        const email = user.email;
-        const username = user.displayName || email.split('@')[0];
-
-        // ✅ userKey = uid
-        const userKey = uid;
-
-        // ✅ Verifica se já existe no Firebase
-        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
-        const snapshot = await get(userKeyDataRef);
-        
-        let userData;
-        if (!snapshot.exists()) {
-          userData = {
-            uid,
-            userKey,
-            email,
-            username,
-            userType: 'normal',
-            lastLogin: Date.now(),
-            deviceId,
-            provider: 'google',
-            criadoEm: Date.now()
-          };
-          await set(userKeyDataRef, userData);
-          console.log('✅ Dados salvos no Firebase em userKeysData/' + uid);
-        } else {
-          userData = snapshot.val();
-          userData.lastLogin = Date.now();
-          await set(userKeyDataRef, userData);
-          console.log('✅ Dados atualizados no Firebase em userKeysData/' + uid);
+        // Função para obter o token de autenticação do usuário
+        async function getUserAuthToken(userId) {
+            let authToken = await fetchUserAuthTokenFromFirebase(userId);
+            if (!authToken) {
+                authToken = getLocalAuthToken();
+            }
+            return authToken;
         }
 
-        addLocalAccount(userData);
-        localStorage.setItem('current_userKey', userKey);
-        localStorage.setItem('current_uid', uid);
+        // Função para ir para index.html
+        window.goToIndex = function() {
+            window.location.href = 'https://alexandre7888.github.io/auth.html';
+        };
 
-        redirectAfterAuth(userKey);
-
-      } catch (error) {
-        if (error.code !== 'auth/popup-closed-by-user') {
-          showError('Erro ao fazer login com Google', error);
+        function disableContinue() {
+            continueBtn.disabled = true;
+            errorEl.textContent = 'Não é possível continuar no momento.';
         }
-      }
-    };
-  </script>
+
+        function redirectToLogin() {
+            if (appToken) {
+                window.location.href = `https://alexandre7888.github.io/auth.html?token=${appToken}`;
+            } else {
+                window.location.href = 'https://alexandre7888.github.io/auth.html';
+            }
+        }
+
+        // Configura o link de login
+        loginLinkEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            redirectToLogin();
+        });
+
+        // Se não houver token, redirecionar para auth
+        if (!appToken) {
+            statusEl.textContent = 'Token não encontrado. Redirecionando para login...';
+            setTimeout(() => {
+                window.location.href = 'https://alexandre7888.github.io/auth.html';
+            }, 2000);
+        }
+
+        // Monitora o estado de autenticação
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                // Usuário NÃO está logado
+                statusEl.textContent = 'Você não está autenticado';
+                usernameEl.textContent = '';
+                userInfoEl.innerHTML = '';
+                continueBtn.style.display = 'none';
+                loginRedirectEl.style.display = 'block';
+                authTokenDisplay.style.display = 'none';
+                return;
+            }
+
+            // Usuário ESTÁ logado
+            loginRedirectEl.style.display = 'none';
+            continueBtn.style.display = 'block';
+
+            // Verificar token da aplicação
+            if (!appToken) {
+                statusEl.textContent = 'Token da aplicação não informado. Redirecionando...';
+                setTimeout(() => {
+                    window.location.href = '../index.html';
+                }, 2000);
+                disableContinue();
+                return;
+            }
+
+            const tokenRef = ref(db, `tokens/${appToken}`);
+
+            try {
+                const snapshot = await get(tokenRef);
+
+                if (!snapshot.exists()) {
+                    statusEl.textContent = 'Token da aplicação inválido.';
+                    disableContinue();
+                    return;
+                }
+
+                const tokenData = snapshot.val();
+                const redirectURL = tokenData.redirectURL;
+
+                if (!redirectURL) {
+                    statusEl.textContent = 'Link de redirecionamento não encontrado.';
+                    disableContinue();
+                    return;
+                }
+
+                // Pegar token de autenticação do usuário
+                const userAuthToken = await getUserAuthToken(user.uid);
+
+                // Mostrar informações do usuário
+                const hasEmail = user.email && !user.isAnonymous;
+                const nome = hasEmail ? user.email.split('@')[0] : `Usuário-${user.uid.substring(0,6)}`;
+                const userEmail = hasEmail ? user.email : null;
+
+                usernameEl.textContent = `Olá, ${nome}!`;
+                statusEl.textContent = 'Pronto para continuar';
+                errorEl.textContent = '';
+
+                // Exibir token de autenticação se existir
+                if (userAuthToken) {
+                    authTokenDisplay.style.display = 'block';
+                    authTokenDisplay.innerHTML = `
+                        <strong>🔐 Token de Autenticação encontrado:</strong><br>
+                        <span style="font-family: monospace; font-size: 10px;">${userAuthToken.substring(0, 80)}...</span><br>
+                        <small>✅ Token será salvo na sessão</small>
+                    `;
+                } else {
+                    authTokenDisplay.style.display = 'block';
+                    authTokenDisplay.innerHTML = `
+                        <strong>⚠️ Token de Autenticação:</strong><br>
+                        Nenhum token encontrado. Um novo será gerado no login.
+                    `;
+                }
+
+                // Exibir informações adicionais
+                userInfoEl.innerHTML = `
+                    <div style="text-align: left; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                        <p><strong>ID do Usuário:</strong> ${user.uid.substring(0, 8)}...</p>
+                        ${userEmail ? `<p><strong>Email:</strong> ${userEmail}</p>` : ''}
+                        <p><strong>Tipo:</strong> ${user.isAnonymous ? 'Sessão Temporária' : 'Conta Registrada'}</p>
+                        ${userAuthToken ? `<p><strong>✅ Token Auth:</strong> Presente</p>` : '<p><strong>❌ Token Auth:</strong> Não encontrado</p>'}
+                    </div>
+                `;
+
+                // Configurar botão de continuar
+                continueBtn.onclick = async () => {
+                    continueBtn.disabled = true;
+                    statusEl.textContent = 'Preparando sua sessão...';
+
+                    try {
+                        // ✅ CORRIGIDO: Agora salva diretamente em userKeysData com o UID
+                        const userKeyDataRef = ref(db, `userKeysData/${user.uid}`);
+
+                        // Monta o objeto com todas as informações
+                        const userDataToSave = {
+                            nome: nome,
+                            uid: user.uid,
+                            email: userEmail,
+                            criadoEm: Date.now(),
+                            isAnonymous: user.isAnonymous,
+                            authToken: userAuthToken || null,
+                            authTokenDecoded: userAuthToken ? decodeAuthToken(userAuthToken) : null,
+                            hasAuthToken: !!userAuthToken,
+                            appToken: appToken
+                        };
+
+                        // Salva no Firebase diretamente com o UID
+                        await set(userKeyDataRef, userDataToSave);
+
+                        console.log('✅ Dados salvos no Firebase em userKeysData/' + user.uid, userDataToSave);
+
+                        statusEl.textContent = 'Redirecionando...';
+
+                        // Redireciona apenas com o UID
+                        const sep = redirectURL.includes('?') ? '&' : '?';
+                        let urlFinal = redirectURL + sep + `userKey=${encodeURIComponent(user.uid)}`;
+
+                        window.location.href = urlFinal;
+
+                    } catch (err) {
+                        statusEl.textContent = 'Erro ao preparar sua sessão';
+                        errorEl.textContent = err.message || 'Erro desconhecido';
+                        continueBtn.disabled = false;
+                    }
+                };
+
+            } catch (error) {
+                statusEl.textContent = 'Erro ao buscar informações';
+                errorEl.textContent = error.message;
+                disableContinue();
+            }
+        });
+
+        // Adicionar botão de logout
+        const logoutBtn = document.createElement('button');
+        logoutBtn.textContent = 'Trocar Usuário';
+        logoutBtn.style.cssText = `
+            margin-top: 10px;
+            padding: 8px 15px;
+            background-color: var(--gray-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        `;
+        logoutBtn.onclick = async () => {
+            try {
+                await signOut(auth);
+                statusEl.textContent = 'Sessão encerrada. Redirecionando para login...';
+                setTimeout(() => {
+                    redirectToLogin();
+                }, 1500);
+            } catch (error) {
+                console.error('Erro ao fazer logout:', error);
+            }
+        };
+
+        document.querySelector('.auth-content').appendChild(logoutBtn);
+    </script>
 </body>
 </html>
