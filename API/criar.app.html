@@ -597,6 +597,8 @@
       border-radius: 8px;
       margin-bottom: 6px;
       border: 1px solid rgba(255, 255, 255, 0.04);
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .account-item-mini .account-info {
       display: flex;
@@ -624,6 +626,12 @@
       font-size: 12px;
       color: #4a5a7a;
     }
+    .account-item-mini .account-actions-mini {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
     .account-item-mini .ban-btn {
       background: rgba(247, 37, 133, 0.15);
       color: #f72585;
@@ -641,6 +649,11 @@
     .account-item-mini .ip-info {
       font-size: 11px;
       color: #4a5a7a;
+      font-family: monospace;
+    }
+    .account-item-mini .account-id {
+      font-size: 10px;
+      color: #2a3a5c;
       font-family: monospace;
     }
 
@@ -723,8 +736,11 @@
         padding: 20px;
       }
       .account-item-mini {
-        flex-wrap: wrap;
-        gap: 8px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .account-item-mini .account-info {
+        justify-content: center;
       }
     }
   </style>
@@ -876,7 +892,7 @@
       <div id="tabContas" class="tab-content">
         <div class="form-group">
           <label>Contas Capturadas</label>
-          <div class="helper">Todas as contas que usaram este token.</div>
+          <div class="helper">Todas as contas que usaram este token. Apenas nome e email são exibidos.</div>
           <div id="accountsContainer" style="margin-top:12px;">
             <div class="text-muted" style="padding:20px;text-align:center;">Carregando contas...</div>
           </div>
@@ -887,7 +903,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, remove, update, push } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -996,13 +1012,9 @@
     function urlToDomain(input) {
       let domain = input.trim();
       if (!domain) return '';
-      // Remove http:// https://
       domain = domain.replace(/^https?:\/\//, '');
-      // Remove www.
       domain = domain.replace(/^www\./, '');
-      // Remove /index.html, /, etc.
       domain = domain.replace(/\/index\.html$/, '').replace(/\/$/, '');
-      // Pega apenas a primeira parte antes de / ou ?
       domain = domain.split('/')[0].split('?')[0];
       return domain;
     }
@@ -1100,7 +1112,7 @@
       });
     }
 
-    // ===== EDITAR TOKEN (ABRIR MODAL) =====
+    // ===== EDITAR TOKEN =====
     window.editToken = async function(token) {
       const item = allTokens.find(t => t.token === token);
       if (!item) return;
@@ -1123,7 +1135,7 @@
       currentIPs = val.blockedIPs || [];
       renderIPs();
 
-      // Aba Contas
+      // Aba Contas (somente nome e email, sem UID)
       currentAccounts = val.accounts ? Object.values(val.accounts) : [];
       renderAccounts();
 
@@ -1172,7 +1184,7 @@
       }
     }
 
-    // ===== RENDER CONTAS =====
+    // ===== RENDER CONTAS (sem UID) =====
     function renderAccounts() {
       accountsContainer.innerHTML = '';
       if (currentAccounts.length === 0) {
@@ -1194,9 +1206,10 @@
               <div class="account-email-mini">${acc.email || ''}</div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div class="account-actions-mini">
             <span class="ip-info">IP: ${acc.ip || 'N/A'}</span>
-            <button class="ban-btn" onclick="banAccount('${acc.uid}')">🚫 Banir</button>
+            <span class="account-id">ID: #${acc.id?.substring(0, 6) || 'N/A'}</span>
+            <button class="ban-btn" onclick="banAccount('${acc.id}')">🚫 Banir</button>
           </div>
         `;
         list.appendChild(div);
@@ -1212,7 +1225,6 @@
       }
       currentDomains.push('');
       renderDomains();
-      // Foca no último input
       const inputs = domainsContainer.querySelectorAll('input');
       if (inputs.length > 0) inputs[inputs.length - 1].focus();
     };
@@ -1241,12 +1253,15 @@
       renderIPs();
     };
 
-    // ===== BANIR CONTA =====
-    window.banAccount = function(uid) {
+    // ===== BANIR CONTA (bloqueia o IP) =====
+    window.banAccount = function(accountId) {
       if (!confirm(`Tem certeza que deseja banir esta conta? O IP será bloqueado.`)) return;
 
-      const account = currentAccounts.find(a => a.uid === uid);
-      if (!account) return;
+      const account = currentAccounts.find(a => a.id === accountId);
+      if (!account) {
+        showToast('❌ Conta não encontrada.', 'error');
+        return;
+      }
 
       const ip = account.ip;
       if (!ip) {
@@ -1254,7 +1269,6 @@
         return;
       }
 
-      // Adiciona o IP à lista de bloqueados
       if (!currentIPs.includes(ip)) {
         currentIPs.push(ip);
         showToast(`✅ IP ${ip} bloqueado com sucesso!`, 'success');
@@ -1267,19 +1281,16 @@
 
     // ===== SALVAR DOMÍNIOS =====
     window.saveDomains = async function() {
-      // Coletar valores dos inputs
       const inputs = domainsContainer.querySelectorAll('input');
       const domains = [];
       inputs.forEach(input => {
         let val = input.value.trim();
         if (val) {
-          // Converter URL para domínio
           val = urlToDomain(val);
           if (val) domains.push(val);
         }
       });
 
-      // Remover duplicatas
       const uniqueDomains = [...new Set(domains)];
 
       if (uniqueDomains.length === 0) {
