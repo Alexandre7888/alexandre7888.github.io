@@ -97,35 +97,11 @@
     .btn-report { background: #f44336; color: white; }
     .btn-report:hover { background: #d32f2f; }
 
-    .error-box {
-      background: #fff3f3;
-      border-left: 4px solid var(--danger-color);
-      padding: 15px;
-      border-radius: 8px;
-      margin: 15px 0;
-      text-align: left;
-    }
-    .error-box pre {
-      background: #f8f8f8;
-      padding: 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
     .access-denied {
       color: var(--danger-color);
       font-size: 24px;
       font-weight: 700;
       padding: 40px 20px;
-    }
-    .contact-info {
-      background: #f0f8ff;
-      padding: 10px;
-      border-radius: 8px;
-      margin: 10px 0;
-      border-left: 4px solid #2196F3;
     }
     .extra-buttons {
       margin-top: 20px;
@@ -183,7 +159,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -228,7 +204,7 @@
     let tokenData = null;
     let clientIP = '';
 
-    // ===== FUNÇÕES AUXILIARES =====
+    // ===== FUNÇÕES =====
     function getClientIP() {
       return fetch('https://api.ipify.org?format=json')
         .then(r => r.json())
@@ -263,11 +239,12 @@
     }
     window.reportError = reportError;
 
-    function decodeAuthToken(token) {
-      try { return JSON.parse(decodeURIComponent(escape(atob(token)))); } catch { return null; }
+    // ===== GERAR ID INTERNO PARA CONTA =====
+    function generateAccountId() {
+      return 'acc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     }
 
-    // ===== CARREGAR DADOS DO TOKEN =====
+    // ===== CARREGAR TOKEN =====
     async function loadTokenData(token) {
       try {
         let snap = await get(ref(db, `tokens/${token}`));
@@ -289,42 +266,64 @@
       return blockedList.includes(ip);
     }
 
-    // ===== VERIFICAR DOMÍNIO PERMITIDO =====
+    // ===== VERIFICAR DOMÍNIO =====
     function isDomainAllowed(domain, allowedDomains) {
       if (!allowedDomains || allowedDomains.length === 0) return true;
       return allowedDomains.some(d => d === domain);
     }
 
-    // ===== VALIDAR DOMÍNIO DA URL DE REDIRECIONAMENTO =====
     function validateRedirectUrl(redirectUrl, customDomain) {
       try {
         const url = new URL(redirectUrl);
-        const hostname = url.hostname;
-        // Remove www. se existir
-        const cleanDomain = hostname.replace(/^www\./, '');
-        const cleanCustomDomain = customDomain.replace(/^www\./, '');
-        return cleanDomain === cleanCustomDomain;
+        const hostname = url.hostname.replace(/^www\./, '');
+        const cleanDomain = customDomain.replace(/^www\./, '');
+        return hostname === cleanDomain;
       } catch {
         return false;
       }
     }
 
-    // ===== DETERMINAR URL DE REDIRECIONAMENTO FINAL =====
     function getFinalRedirectUrl(customDomain) {
-      // Se tiver redirecturl na URL, usa ela (após validar o domínio)
       if (redirectUrlParam) {
         if (validateRedirectUrl(redirectUrlParam, customDomain)) {
           return redirectUrlParam;
-        } else {
-          console.warn('Domínio da URL de redirecionamento não corresponde ao domínio configurado.');
-          return null;
         }
+        return null;
       }
-      // Senão, redireciona para https://dominio/index.html
       return `https://${customDomain}/index.html`;
     }
 
-    // ===== EXIBIR CONFIGURAÇÕES =====
+    // ===== SALVAR CONTA CAPTURADA (sem UID) =====
+    async function saveCapturedAccount(uid, email, nome, ip) {
+      if (!currentEditingToken) return;
+
+      // Gera um ID interno para a conta (não expõe o UID)
+      const accountId = generateAccountId();
+
+      const accountData = {
+        id: accountId,
+        nome: nome || 'Usuário',
+        email: email || '',
+        ip: ip || 'N/A',
+        capturedAt: new Date().toISOString()
+      };
+
+      // Salva no Firebase dentro do token, usando o ID interno como chave
+      const accountRef = ref(db, `tokens/${currentEditingToken}/accounts/${accountId}`);
+      await set(accountRef, accountData);
+
+      // Também salva no caminho tokens/token/ se existir
+      try {
+        const accountRef2 = ref(db, `tokens/token/${currentEditingToken}/accounts/${accountId}`);
+        await set(accountRef2, accountData);
+      } catch (e) {
+        // Ignora se não existir o caminho
+      }
+
+      return accountId;
+    }
+
+    // ===== APLICAR CONFIGURAÇÕES =====
     function applyTokenSettings(data) {
       if (!data) return;
       const domain = data.customDomain || 'domínio não definido';
@@ -390,7 +389,6 @@
         accountListContainer.innerHTML = `
           <div style="text-align:center;color:#888;padding:20px;">
             <p>Nenhuma conta encontrada para esta Master Key.</p>
-            <p style="font-size:13px;">Você pode adicionar contas na página de autenticação.</p>
           </div>
         `;
         confirmAccountBtn.disabled = true;
@@ -448,24 +446,34 @@
       });
     }
 
-    // ===== PROSSEGUIR COM CONTA SELECIONADA =====
+    // ===== PROSSEGUIR COM CONTA =====
     async function proceedWithAccount(uid) {
       try {
         statusEl.textContent = 'Preparando sessão...';
 
-        // Determinar URL final de redirecionamento
+        // Buscar dados do usuário para capturar
+        const userDataRef = ref(db, `userKeysData/${uid}`);
+        const snap = await get(userDataRef);
+        const userData = snap.exists() ? snap.val() : null;
+
+        const nome = userData?.nome || userData?.username || 'Usuário';
+        const email = userData?.email || currentUser?.email || '';
+
+        // SALVAR CONTA CAPTURADA (sem UID, apenas nome e email)
+        await saveCapturedAccount(uid, email, nome, clientIP);
+
+        // Determinar URL final
         const finalRedirectUrl = getFinalRedirectUrl(tokenData.customDomain);
-        
         if (!finalRedirectUrl) {
           throw new Error('URL de redirecionamento inválida ou domínio não autorizado.');
         }
 
-        // Verificar domínios permitidos (se houver)
-        if (tokenData.allowedDomains && tokenData.allowedDomains.length > 0) {
+        // Verificar domínios permitidos
+        if (tokenData.domains && tokenData.domains.length > 0) {
           try {
             const url = new URL(finalRedirectUrl);
             const hostname = url.hostname.replace(/^www\./, '');
-            if (!isDomainAllowed(hostname, tokenData.allowedDomains)) {
+            if (!isDomainAllowed(hostname, tokenData.domains)) {
               throw new Error(`Domínio "${hostname}" não está na lista de domínios permitidos.`);
             }
           } catch (e) {
@@ -473,13 +481,9 @@
           }
         }
 
-        // Salvar userKey
         localStorage.setItem('current_userKey', uid);
-
-        // Atualizar lastLogin
         await set(ref(db, `userKeysData/${uid}/lastLogin`), Date.now());
 
-        // Redirecionar
         const sep = finalRedirectUrl.includes('?') ? '&' : '?';
         const urlFinal = finalRedirectUrl + sep + `userKey=${encodeURIComponent(uid)}`;
         window.location.href = urlFinal;
@@ -492,6 +496,8 @@
     }
 
     // ===== INÍCIO =====
+    let currentEditingToken = null;
+
     async function init() {
       clientIP = await getClientIP();
       console.log('IP do cliente:', clientIP);
@@ -502,6 +508,8 @@
         setTimeout(redirectToLogin, 2000);
         return;
       }
+
+      currentEditingToken = appToken;
 
       tokenData = await loadTokenData(appToken);
       if (!tokenData) {
@@ -578,7 +586,6 @@
       redirectToLogin();
     });
 
-    // Botão de logout
     const logoutBtn = document.createElement('button');
     logoutBtn.textContent = 'Trocar Usuário';
     logoutBtn.style.cssText = 'margin-top:10px;padding:8px 15px;background:#6c757d;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;';
