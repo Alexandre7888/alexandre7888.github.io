@@ -2,355 +2,110 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>Criador de Aplicativos com Token 2</title>
+  <title>Criador de Aplicativos v3</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 40px auto;
-      background: #121212;
-      color: #eee;
-      padding: 20px;
-      border-radius: 8px;
-    }
-    input, button, textarea {
-      padding: 10px;
-      margin: 5px 0;
-      width: 100%;
-      border-radius: 5px;
-      border: none;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-    input, textarea {
-      background: #222;
-      color: #eee;
-    }
-    textarea {
-      min-height: 100px;
-      resize: vertical;
-    }
-    button {
-      background: #4caf50;
-      color: white;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background 0.3s;
-      width: auto;
-      padding: 8px 16px;
-      margin-right: 10px;
-      margin-top: 5px;
-    }
-    button:hover {
-      background: #45a049;
-    }
-    button.file-manager-btn {
-      background: #9C27B0;
-    }
-    button.file-manager-btn:hover {
-      background: #7B1FA2;
-    }
-    button.url-btn {
-      background: #FF9800;
-    }
-    button.url-btn:hover {
-      background: #F57C00;
-    }
-    button.api-btn {
-      background: #607D8B;
-    }
-    button.api-btn:hover {
-      background: #455A64;
-    }
-    button.delete-btn {
-      background: #f44336;
-    }
-    button.delete-btn:hover {
-      background: #d32f2f;
-    }
-    button.settings-btn {
-      background: #2196F3;
-    }
-    button.settings-btn:hover {
-      background: #1976D2;
-    }
-    h1, h2 {
-      text-align: center;
-      margin-bottom: 20px;
-      color: #4caf50;
-    }
-    #tokenList {
-      margin-top: 30px;
-    }
-    .token-item {
-      background: #222;
-      padding: 15px;
-      margin-bottom: 15px;
-      border-radius: 6px;
-      word-break: break-all;
-    }
-    .token-item strong {
-      display: block;
-      margin-bottom: 4px;
-      color: #81c784;
-    }
-    .api-url {
-      color: #64b5f6;
-      text-decoration: none;
-      word-break: break-all;
-      display: block;
-      margin: 10px 0;
-      padding: 8px;
-      background: #1a1a1a;
-      border-radius: 4px;
-      border: 1px solid #333;
-    }
-    .api-download-url {
-      color: #81c784;
-      text-decoration: none;
-      word-break: break-all;
-      display: block;
-      margin: 10px 0;
-      padding: 8px;
-      background: #1a1a1a;
-      border-radius: 4px;
-      border: 1px solid #4caf50;
-    }
-    .download-btn {
-      background: #9C27B0;
-      margin-top: 5px;
-    }
-    .download-btn:hover {
-      background: #7B1FA2;
-    }
-    .section {
-      background: #1a1a1a;
-      padding: 20px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    .url-container {
-      margin: 10px 0;
-    }
-    .url-type {
-      color: #81c784;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    .form-group {
-      margin-bottom: 15px;
-    }
-    .form-group label {
-      display: block;
-      margin-bottom: 5px;
-      color: #81c784;
-      font-weight: bold;
-    }
-    .form-group input, .form-group textarea, .form-group select {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      padding: 8px;
-      border-radius: 4px;
-      color: #eee;
-      width: 100%;
-    }
-    .api-info {
-      background: #1a1a1a;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 4px;
-      border-left: 4px solid #607D8B;
-    }
-    .api-info-item {
-      margin: 5px 0;
-      padding: 5px;
-      background: #2a2a2a;
-      border-radius: 3px;
-    }
-    .api-key {
-      font-family: monospace;
-      background: #333;
-      padding: 5px 10px;
-      border-radius: 3px;
-      margin: 5px 0;
-      display: inline-block;
-      word-break: break-all;
-    }
-    .rules-display {
-      white-space: pre-wrap;
-      font-family: monospace;
-      font-size: 14px;
-      background: #2a2a2a;
-      padding: 10px;
-      border-radius: 4px;
-      max-height: 200px;
-      overflow-y: auto;
-      margin: 5px 0;
-    }
-    .domains-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin: 5px 0;
-    }
-    .domain-tag {
-      background: #2d3748;
-      color: #90cdf4;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 12px;
-    }
-    .btn{
-      display:inline-block;
-      padding:10px 18px;
-      background:#2b6cb0;
-      color:#fff;
-      text-decoration:none;
-      border-radius:8px;
-      font-weight:600;
-      box-shadow:0 4px 10px rgba(0,0,0,0.08);
-      margin-bottom: 20px;
-    }
-    .btn:hover{ opacity:0.95; transform:translateY(-1px); }
-    .token-actions {
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 1px solid #333;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .config-form {
-      margin-top: 15px;
-      padding: 15px;
-      background: #2a2a2a;
-      border-radius: 5px;
-      border: 1px solid #333;
-    }
-    .config-form h3 {
-      margin-top: 0;
-      color: #2196F3;
-    }
-    .no-config {
-      color: #ff9800;
-      font-style: italic;
-      padding: 8px;
-      background: #2a2a2a;
-      border-radius: 4px;
-      border: 1px solid #ff9800;
-      margin: 10px 0;
-    }
-    /* Estilos para o token de autenticação */
-    .auth-token-section {
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-      border: 2px solid #ffd700;
-      margin-bottom: 20px;
-    }
-    .auth-token-section h2 {
-      color: #ffd700;
-      margin-bottom: 15px;
-    }
-    .auth-token-card {
-      background: #0a0a0a;
-      border-radius: 8px;
-      padding: 15px;
-      border-left: 4px solid #ffd700;
-    }
-    .auth-token-value {
-      font-family: monospace;
-      background: #1a1a1a;
-      padding: 10px;
-      border-radius: 6px;
-      word-break: break-all;
-      font-size: 11px;
-      margin: 10px 0;
-      border: 1px solid #4caf50;
-    }
-    .copy-auth-btn {
-      background: #00BCD4;
-      font-size: 14px;
-      padding: 6px 12px;
-    }
-    .copy-auth-btn:hover {
-      background: #0097A7;
-    }
-    .auth-warning {
-      color: #ff9800;
-      background: #2a2a2a;
-      padding: 10px;
-      border-radius: 4px;
-      margin: 10px 0;
-    }
-    .token-size-group {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-    .token-size-group input {
-      flex: 1;
-    }
-    .token-size-group span {
-      color: #81c784;
-      font-size: 14px;
-    }
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; background: #121212; color: #eee; padding: 20px; border-radius: 8px; }
+    input, button, textarea, select { padding: 10px; margin: 5px 0; width: 100%; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
+    input, textarea, select { background: #222; color: #eee; }
+    textarea { min-height: 80px; resize: vertical; }
+    button { background: #4caf50; color: white; cursor: pointer; font-weight: bold; transition: background 0.3s; width: auto; padding: 8px 16px; margin-right: 10px; margin-top: 5px; }
+    button:hover { background: #45a049; }
+    .btn-danger { background: #f44336; }
+    .btn-danger:hover { background: #d32f2f; }
+    .btn-info { background: #2196F3; }
+    .btn-info:hover { background: #1976D2; }
+    h1, h2 { text-align: center; color: #4caf50; }
+    .section { background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; color: #81c784; font-weight: bold; }
+    .token-item { background: #222; padding: 15px; margin-bottom: 15px; border-radius: 6px; word-break: break-all; }
+    .tag { display: inline-block; background: #2d3748; color: #90cdf4; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin: 2px; }
+    .url-box { background: #1a1a1a; padding: 8px; border-radius: 4px; border: 1px solid #333; word-break: break-all; margin: 5px 0; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .domain-tag { background: #2d3748; color: #90cdf4; padding: 3px 8px; border-radius: 12px; font-size: 12px; display: inline-block; margin: 2px; }
+    .ip-tag { background: #4a1942; color: #f687b3; padding: 3px 8px; border-radius: 12px; font-size: 12px; display: inline-block; margin: 2px; }
   </style>
 </head>
 <body>
-  <h1>Criador de Aplicativos com Token</h1>
-  <a href="https://alexandre7888.github.io/CodeHUB/documentacao.html"
-     class="btn"
-     target="_blank"
-     rel="noopener noreferrer">
-    Abrir Documentação
-  </a>
-  <a href="file-manager.html"
-     class="btn"
-     style="background: #9C27B0;">
-    📁 Gerenciador de Arquivos
-  </a>
+  <h1>🚀 Criador de Aplicativos v3</h1>
+  <a href="documentacao.html" class="btn" target="_blank">📖 Documentação</a>
+  <a href="file-manager.html" class="btn" style="background:#9C27B0;">📁 Gerenciador</a>
 
-  <!-- SEÇÃO DO TOKEN DE AUTENTICAÇÃO DO USUÁRIO -->
-  <div class="section auth-token-section" id="authTokenSection">
+  <!-- TOKEN DE AUTENTICAÇÃO DO USUÁRIO (igual ao anterior) -->
+  <div class="section" style="border:2px solid #ffd700;">
     <h2>🔐 Seu Token de Autenticação</h2>
-    <div id="authTokenDisplay">Carregando token...</div>
+    <div id="authTokenDisplay">Carregando...</div>
   </div>
 
+  <!-- FORMULÁRIO DE CRIAÇÃO (com novos campos) -->
   <div class="section">
-    <h2>Criar Novo Aplicativo</h2>
+    <h2>✨ Criar Novo Aplicativo</h2>
     <form id="appForm">
       <div class="form-group">
-        <input type="text" id="appName" placeholder="Nome do Aplicativo" required />
+        <label>Nome do Aplicativo *</label>
+        <input type="text" id="appName" placeholder="Meu App" required />
       </div>
       <div class="form-group">
-        <input type="url" id="redirectURL" placeholder="URL do Redirecionador (ex: dashboard.html)" required />
+        <label>URL de Redirecionamento * (ex: https://meusite.com/dashboard)</label>
+        <input type="url" id="redirectURL" placeholder="https://meusite.com/dashboard" required />
       </div>
       <div class="form-group">
-        <label>Tamanho do Token (20 a 200 caracteres)</label>
-        <div class="token-size-group">
-          <input type="number" id="tokenSize" min="20" max="200" value="20" step="1" />
-          <span>caracteres</span>
-        </div>
+        <label>Tamanho do Token (20-200)</label>
+        <input type="number" id="tokenSize" value="20" min="20" max="200" step="1" />
       </div>
       <div class="form-group">
         <label>Scope do Token</label>
         <select id="tokenScope">
-          <option value="tudo">🔓 Tudo - Salva nos dois lugares (original + tokens/token/)</option>
-          <option value="tudo1.0">📌 Tudo 1.0 - Salva apenas no caminho original (tokens/)</option>
-          <option value="service">🔧 Service - Salva apenas no caminho tokens/token/</option>
+          <option value="tudo">🔓 Tudo (tokens/ + tokens/token/)</option>
+          <option value="tudo1.0">📌 Tudo 1.0 (apenas tokens/)</option>
+          <option value="service">🔧 Service (apenas tokens/token/)</option>
         </select>
       </div>
-      <button type="submit">Gerar Token e Salvar</button>
+
+      <!-- NOVOS CAMPOS -->
+      <hr style="border-color:#333;margin:20px 0;">
+
+      <div class="form-group">
+        <label>Ícone (URL da imagem) - aparecerá na API</label>
+        <input type="url" id="appIcon" placeholder="https://exemplo.com/icone.png" />
+      </div>
+
+      <div class="form-group">
+        <label>Domínios Permitidos (máx 20) - Separe por vírgula ou quebra de linha</label>
+        <textarea id="allowedDomains" placeholder="https://meusite.com, https://outro.com" rows="2"></textarea>
+        <small style="color:#888;">Deixe em branco para permitir qualquer domínio.</small>
+      </div>
+
+      <div class="form-group">
+        <label>IPs Bloqueados (máx 50) - Separe por vírgula ou quebra de linha</label>
+        <textarea id="blockedIPs" placeholder="192.168.1.1, 10.0.0.5" rows="2"></textarea>
+        <small style="color:#888;">IPs nesta lista não poderão acessar a API.</small>
+      </div>
+
+      <div class="form-group">
+        <label>Contato do Desenvolvedor (ex: email, telefone, URL)</label>
+        <input type="text" id="contactInfo" placeholder="contato@meuapp.com" />
+      </div>
+
+      <div class="form-group">
+        <label>Código JavaScript para o botão personalizado (opcional)</label>
+        <textarea id="customJs" rows="3" placeholder="alert('Olá, mundo!');"></textarea>
+        <small style="color:#888;">Este código será executado quando o botão for clicado na API.</small>
+      </div>
+
+      <button type="submit">✅ Gerar Token e Salvar</button>
     </form>
   </div>
 
-  <div id="tokenList" class="section">
-    <h2>APIs Criadas</h2>
+  <!-- LISTA DE APLICATIVOS CRIADOS -->
+  <div class="section">
+    <h2>📋 Seus Aplicativos</h2>
     <div id="tokensContainer">Carregando...</div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -368,385 +123,181 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    const appForm = document.getElementById('appForm');
-    const appNameInput = document.getElementById('appName');
-    const redirectInput = document.getElementById('redirectURL');
-    const tokenSizeInput = document.getElementById('tokenSize');
-    const tokenScopeSelect = document.getElementById('tokenScope');
-    const tokensContainer = document.getElementById('tokensContainer');
+    // Elementos
     const authTokenDisplay = document.getElementById('authTokenDisplay');
+    const tokensContainer = document.getElementById('tokensContainer');
+    const appForm = document.getElementById('appForm');
+    const appName = document.getElementById('appName');
+    const redirectURL = document.getElementById('redirectURL');
+    const tokenSize = document.getElementById('tokenSize');
+    const tokenScope = document.getElementById('tokenScope');
+    const appIcon = document.getElementById('appIcon');
+    const allowedDomains = document.getElementById('allowedDomains');
+    const blockedIPs = document.getElementById('blockedIPs');
+    const contactInfo = document.getElementById('contactInfo');
+    const customJs = document.getElementById('customJs');
 
     let userUID = null;
 
-    // Função para decodificar token base64
+    // ===== TOKEN DE AUTENTICAÇÃO =====
     function decodeAuthToken(token) {
-      try {
-        const jsonString = decodeURIComponent(escape(atob(token)));
-        return JSON.parse(jsonString);
-      } catch (error) {
-        return null;
-      }
+      try { return JSON.parse(decodeURIComponent(escape(atob(token)))); } catch { return null; }
     }
-
-    // Buscar token do usuário no Firebase
     async function fetchUserAuthToken(userId) {
-      try {
-        const tokenRef = ref(db, `tokens/${userId}`);
-        const snapshot = await get(tokenRef);
-
-        if (snapshot.exists()) {
-          const tokenData = snapshot.val();
-          if (tokenData.token) {
-            return tokenData;
-          }
-        }
-        return null;
-      } catch (error) {
-        console.error("Erro ao buscar token:", error);
-        return null;
-      }
+      const snap = await get(ref(db, `tokens/${userId}`));
+      return snap.exists() ? snap.val() : null;
     }
-
-    // Buscar token do localStorage
     function getLocalAuthToken() {
-      try {
-        const localToken = localStorage.getItem('auth_token');
-        if (localToken) {
-          return { token: localToken };
-        }
-        return null;
-      } catch (error) {
-        return null;
-      }
+      const t = localStorage.getItem('auth_token');
+      return t ? { token: t } : null;
     }
-
-    // Exibir token de autenticação
     async function displayAuthToken(user) {
-      if (!user) {
+      if (!user) { authTokenDisplay.innerHTML = '<div class="auth-warning">⚠️ Faça login para ver seu token.</div>'; return; }
+      let info = await fetchUserAuthToken(user.uid) || getLocalAuthToken();
+      if (info && info.token) {
+        const dec = decodeAuthToken(info.token);
         authTokenDisplay.innerHTML = `
-          <div class="auth-warning">
-            ⚠️ Você não está logado. Faça login para ver seu token de autenticação.
-          </div>
-        `;
-        return;
-      }
-
-      let tokenInfo = await fetchUserAuthToken(user.uid);
-      let localToken = getLocalAuthToken();
-
-      if (!tokenInfo && localToken) {
-        tokenInfo = localToken;
-      }
-
-      if (tokenInfo && tokenInfo.token) {
-        const decodedToken = decodeAuthToken(tokenInfo.token);
-
-        authTokenDisplay.innerHTML = `
-          <div class="auth-token-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
-              <strong style="color: #ffd700;">👤 ${decodedToken?.username || user.displayName || user.email}</strong>
-              <span style="background: #4caf50; padding: 2px 8px; border-radius: 12px; font-size: 11px;">PERMANENTE</span>
-            </div>
-            <div style="margin: 10px 0;">
-              <strong>📧 Email:</strong> ${user.email}<br>
-              <strong>🆔 UID:</strong> ${user.uid}
-            </div>
-            <div>
-              <strong>🔑 Token:</strong>
-              <div class="auth-token-value">${tokenInfo.token}</div>
-              <button class="copy-auth-btn" onclick="copyAuthToken('${tokenInfo.token.replace(/'/g, "\\'")}')">📋 Copiar Token</button>
-            </div>
+          <div style="background:#0a0a0a;border-radius:8px;padding:15px;border-left:4px solid #ffd700;">
+            <strong style="color:#ffd700;">👤 ${dec?.username || user.displayName || user.email}</strong><br>
+            <span style="font-size:12px;color:#aaa;">${user.email}</span><br>
+            <div style="font-family:monospace;background:#1a1a1a;padding:8px;border-radius:4px;margin:8px 0;word-break:break-all;font-size:11px;border:1px solid #4caf50;">${info.token}</div>
+            <button onclick="copyAuthToken('${info.token.replace(/'/g,"\\'")}')" style="background:#00BCD4;padding:4px 12px;border:none;border-radius:4px;color:#fff;cursor:pointer;">📋 Copiar</button>
           </div>
         `;
       } else {
-        authTokenDisplay.innerHTML = `
-          <div class="auth-warning">
-            ⚠️ Nenhum token de autenticação encontrado.
-            <br><br>
-            <small>Faça login na página de autenticação para gerar seu token permanente.</small>
-          </div>
-        `;
+        authTokenDisplay.innerHTML = '<div style="color:#ff9800;">⚠️ Nenhum token de autenticação encontrado.</div>';
       }
     }
+    window.copyAuthToken = (t) => { navigator.clipboard.writeText(t).then(()=>alert('✅ Copiado!')); };
 
-    // Gera token aleatório com tamanho personalizado
-    function generateToken(length = 20) {
+    // ===== GERADOR DE TOKEN =====
+    function generateToken(len) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let token = '';
-      for(let i=0; i<length; i++) {
-        token += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return token;
+      let tok = '';
+      for (let i=0; i<len; i++) tok += chars.charAt(Math.floor(Math.random()*chars.length));
+      return tok;
     }
 
-    // Gera uma chave de API aleatória
-    function generateApiKey(length = 32) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=';
-      let key = '';
-      for(let i=0; i<length; i++) {
-        key += chars.charAt(Math.floor(Math.random() * chars.length));
+    // ===== SALVAR TOKEN =====
+    async function saveToken(token, data) {
+      const scope = data.scope;
+      const base = {
+        appName: data.appName,
+        redirectURL: data.redirectURL,
+        ownerUID: userUID,
+        createdAt: new Date().toISOString(),
+        scope: scope,
+        icon: data.icon || '',
+        allowedDomains: data.allowedDomains || [],
+        blockedIPs: data.blockedIPs || [],
+        contactInfo: data.contactInfo || '',
+        customJs: data.customJs || ''
+      };
+
+      // Salvar local
+      const localTokens = JSON.parse(localStorage.getItem('userTokens') || '[]');
+      if (!localTokens.some(t => t.value === token)) {
+        localTokens.push({ value: token, appName: data.appName, redirectURL: data.redirectURL, createdAt: new Date().toISOString() });
+        localStorage.setItem('userTokens', JSON.stringify(localTokens));
       }
-      return key;
-    }
 
-    // Salvar token no localStorage
-    function saveTokenToLocalStorage(token, appName, redirectURL) {
-      try {
-        const existingTokens = JSON.parse(localStorage.getItem('userTokens') || '[]');
-        const tokenExists = existingTokens.some(t => t.value === token);
-        if (!tokenExists) {
-          const newToken = {
-            value: token,
-            appName: appName,
-            redirectURL: redirectURL,
-            createdAt: new Date().toISOString()
-          };
-          existingTokens.push(newToken);
-          localStorage.setItem('userTokens', JSON.stringify(existingTokens));
-        }
-      } catch (error) {
-        console.error('Erro ao salvar token no localStorage:', error);
+      if (scope === 'tudo' || scope === 'tudo1.0') {
+        await set(ref(db, `tokens/${token}`), base);
       }
-    }
-
-    // Verifica login
-    onAuthStateChanged(auth, async user => {
-      if (!user) {
-        alert("Você precisa estar logado para criar aplicativos.");
-        window.location.href = "https://alexandre7888.github.io/CodeHUB/auth";
-        return;
+      if (scope === 'tudo' || scope === 'service') {
+        await set(ref(db, `tokens/token/${token}`), base);
       }
-      userUID = user.uid;
-
-      // Exibir token de autenticação
-      await displayAuthToken(user);
-
+      alert('✅ Token criado com sucesso!');
       loadTokens();
-    });
-
-    // Salvar token baseado no scope
-    async function saveToken(token, appName, redirectURL, scope) {
-      try {
-        const tokenData = {
-          appName,
-          redirectURL,
-          ownerUID: userUID,
-          createdAt: new Date().toISOString(),
-          scope: scope
-        };
-
-        // Sempre salva no localStorage
-        saveTokenToLocalStorage(token, appName, redirectURL);
-
-        // Comportamento baseado no scope
-        if (scope === 'tudo') {
-          // Salva nos dois lugares: caminho original E tokens/token/
-          await set(ref(db, `tokens/${token}`), tokenData);
-          await set(ref(db, `tokens/token/${token}`), tokenData);
-          alert('Token criado com sucesso! (Salvo nos dois lugares: tokens/ e tokens/token/)');
-        } 
-        else if (scope === 'tudo1.0') {
-          // Salva apenas no caminho original (tokens/)
-          await set(ref(db, `tokens/${token}`), tokenData);
-          alert('Token criado com sucesso! (Salvo apenas no caminho original tokens/)');
-        }
-        else if (scope === 'service') {
-          // Salva apenas no caminho tokens/token/
-          await set(ref(db, `tokens/token/${token}`), tokenData);
-          alert('Token criado com sucesso! (Salvo apenas no caminho tokens/token/)');
-        }
-
-        loadTokens();
-        return true;
-      } catch(e) {
-        alert('Erro ao salvar token: ' + e.message);
-        return false;
-      }
     }
 
-    // Carregar tokens do usuário (buscando de todos os caminhos possíveis)
+    // ===== CARREGAR TOKENS =====
     async function loadTokens() {
-      // Buscar tokens do caminho original (tokens/)
-      const tokensRef1 = ref(db, 'tokens');
-      // Buscar tokens do caminho tokens/token/
-      const tokensRef2 = ref(db, 'tokens/token');
-      
-      const [snapshot1, snapshot2] = await Promise.all([
-        get(tokensRef1),
-        get(tokensRef2)
+      const [snap1, snap2] = await Promise.all([
+        get(ref(db, 'tokens')),
+        get(ref(db, 'tokens/token'))
       ]);
-      
-      const data1 = snapshot1.val();
-      const data2 = snapshot2.val();
-      
+      const all = [];
+      const data1 = snap1.val();
+      const data2 = snap2.val();
+      if (data1) Object.entries(data1).forEach(([k,v]) => { if (v.ownerUID === userUID && k !== 'token') all.push({ token: k, val: v, source: 'tokens/' }); });
+      if (data2) Object.entries(data2).forEach(([k,v]) => { if (v.ownerUID === userUID) all.push({ token: k, val: v, source: 'tokens/token/' }); });
+      // remove duplicatas
+      const seen = new Set();
+      const unique = all.filter(item => { if (seen.has(item.token)) return false; seen.add(item.token); return true; });
+
+      if (unique.length === 0) { tokensContainer.textContent = 'Nenhum token criado ainda.'; return; }
+
       tokensContainer.innerHTML = '';
-      
-      const allTokens = [];
-      
-      // Coletar tokens do primeiro caminho (tokens/)
-      if (data1) {
-        Object.entries(data1).forEach(([token, val]) => {
-          if (val.ownerUID === userUID && token !== 'token') {
-            allTokens.push({ token, val, source: 'tokens/' });
-          }
-        });
-      }
-      
-      // Coletar tokens do segundo caminho (tokens/token/)
-      if (data2) {
-        Object.entries(data2).forEach(([token, val]) => {
-          if (val.ownerUID === userUID) {
-            allTokens.push({ token, val, source: 'tokens/token/' });
-          }
-        });
-      }
-      
-      // Remover duplicatas (mesmo token)
-      const uniqueTokens = [];
-      const tokenSet = new Set();
-      for (const item of allTokens) {
-        if (!tokenSet.has(item.token)) {
-          tokenSet.add(item.token);
-          uniqueTokens.push(item);
-        }
-      }
-      
-      if (uniqueTokens.length === 0) {
-        tokensContainer.textContent = 'Nenhum token criado ainda.';
-        return;
-      }
-      
-      for (const { token, val } of uniqueTokens) {
+      for (const { token, val } of unique) {
         const div = document.createElement('div');
         div.className = 'token-item';
-        
-        const baseURL = "https://alexandre7888.github.io/API/v2/continuar-conta";
-        const apiDownloadURL = `https://script.google.com/macros/s/AKfycbzxZ4H1DeRbcZiaT9KiUPRQu2ajayUSabYY-NxLcdda9teZF60v0KwIqAhG-BlOem2EQg/exec?token=${token}`;
-        
-        const hasConfig = val.apiKey || val.rules || val.allowedDomains;
-        const decryptedApiKey = val.apiKey ? atob(val.apiKey) : null;
-        const rulesDisplay = val.rules ? JSON.stringify(val.rules, null, 2) : 'Nenhuma regra definida';
-        
-        let domainsDisplay = 'Nenhum domínio restrito';
-        if (val.allowedDomains && val.allowedDomains.length > 0) {
-          domainsDisplay = val.allowedDomains.map(domain => `<span class="domain-tag">${domain}</span>`).join('');
-        }
-        
+        const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta"; // v3
+        const domains = val.allowedDomains || [];
+        const blocked = val.blockedIPs || [];
+        const icon = val.icon || '';
+        const contact = val.contactInfo || '';
+        const jsCode = val.customJs || '';
+
         div.innerHTML = `
-          <strong>Aplicativo:</strong> ${val.appName}<br/>
-          <strong>Token:</strong> ${token}<br/>
-          <strong>Redirecionador:</strong> ${val.redirectURL}<br/>
-          <strong>Criado em:</strong> ${new Date(val.createdAt).toLocaleString()}<br/>
-          <strong>Scope:</strong> ${val.scope || 'não definido'}<br/>
-              
-          <div class="url-container">
-            <div class="url-type">URL para Continuar Conta:</div>
-            <div class="api-url">${baseURL}?token=${token}</div>
-          </div>
-          
-          <div class="url-container">
-            <div class="url-type">URL para API/SDK:</div>
-            <div class="api-download-url">${apiDownloadURL}</div>
+          <strong>📱 ${val.appName}</strong><br>
+          <strong>Token:</strong> ${token}<br>
+          <strong>Redirecionador:</strong> ${val.redirectURL}<br>
+          <strong>Scope:</strong> ${val.scope || 'não definido'}<br>
+          ${icon ? `<img src="${icon}" style="max-height:30px;border-radius:4px;margin:4px 0;" /><br>` : ''}
+          <div class="url-box">🔗 ${baseURL}?token=${token}</div>
+          <div><strong>Domínios permitidos:</strong> ${domains.length ? domains.map(d=>`<span class="domain-tag">${d}</span>`).join(' ') : '✅ Todos'}</div>
+          <div><strong>IPs bloqueados:</strong> ${blocked.length ? blocked.map(ip=>`<span class="ip-tag">${ip}</span>`).join(' ') : '✅ Nenhum'}</div>
+          <div><strong>Contato:</strong> ${contact || 'Não definido'}</div>
+          <div><strong>JS customizado:</strong> ${jsCode ? '✅ Sim' : '❌ Não'}</div>
+          <div class="btn-group">
+            <button onclick="window.open('${baseURL}?token=${token}','_blank')" style="background:#FF9800;">🔗 Abrir API</button>
+            <button onclick="copyText('${baseURL}?token=${token}')" style="background:#00BCD4;">📋 Copiar URL</button>
+            <button onclick="deleteToken('${token}')" class="btn-danger">🗑️ Excluir</button>
           </div>
         `;
-        
-        if (hasConfig) {
-          div.innerHTML += `
-            <div class="api-info">
-              <div class="api-info-item">
-                <strong>Chave de API:</strong><br>
-                <div class="api-key">${decryptedApiKey || 'Não definida'}</div>
-              </div>
-              <div class="api-info-item">
-                <strong>Regras da API:</strong><br>
-                <div class="rules-display">${rulesDisplay}</div>
-              </div>
-              <div class="api-info-item">
-                <strong>Domínios Autorizados:</strong><br>
-                <div class="domains-list">${domainsDisplay}</div>
-              </div>
-            </div>
-          `;
-        } else {
-          div.innerHTML += `
-            <div class="no-config">
-              ⚠️ Este aplicativo não tem configurações de API definidas.
-            </div>
-          `;
-        }
-        
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'token-actions';
-        
-        const copyUrlBtn = document.createElement('button');
-        copyUrlBtn.className = 'url-btn';
-        copyUrlBtn.textContent = 'Copiar URL';
-        copyUrlBtn.onclick = () => {
-          navigator.clipboard.writeText(`${baseURL}?token=${token}`);
-          alert('URL copiada!');
-        };
-        
-        const fileManagerBtn = document.createElement('button');
-        fileManagerBtn.className = 'file-manager-btn';
-        fileManagerBtn.textContent = '📁 Gerenciar Arquivos';
-        fileManagerBtn.onclick = () => {
-          window.location.href = `file-manager.html?token=${token}`;
-        };
-        
-        const configBtn = document.createElement('button');
-        configBtn.className = 'settings-btn';
-        configBtn.textContent = hasConfig ? 'Editar Configurações' : 'Configurar API';
-        configBtn.onclick = () => alert('Função de configuração será implementada em breve!');
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.textContent = 'Excluir Aplicativo';
-        deleteBtn.onclick = () => alert('Função de exclusão será implementada em breve!');
-        
-        actionsDiv.appendChild(copyUrlBtn);
-        actionsDiv.appendChild(fileManagerBtn);
-        actionsDiv.appendChild(configBtn);
-        actionsDiv.appendChild(deleteBtn);
-        div.appendChild(actionsDiv);
-        
         tokensContainer.appendChild(div);
       }
     }
-    
-    // Quando enviar o formulário
-    appForm.addEventListener('submit', e => {
-      e.preventDefault();
-      const appName = appNameInput.value.trim();
-      const redirectURL = redirectInput.value.trim();
-      const tokenSize = parseInt(tokenSizeInput.value);
-      const tokenScope = tokenScopeSelect.value;
-      
-      if (!appName || !redirectURL) {
-        alert('Preencha todos os campos!');
-        return;
-      }
-      
-      if (tokenSize < 20 || tokenSize > 200) {
-        alert('O tamanho do token deve ser entre 20 e 200 caracteres!');
-        return;
-      }
-      
-      const token = generateToken(tokenSize);
-      saveToken(token, appName, redirectURL, tokenScope);
-      
-      appNameInput.value = '';
-      redirectInput.value = '';
-      tokenSizeInput.value = '20';
-    });
-    
-    // Função global para copiar token de autenticação
-    window.copyAuthToken = function(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        alert('✅ Token de autenticação copiado!');
-      }).catch(() => {
-        alert('❌ Erro ao copiar.');
-      });
+    window.copyText = (t) => { navigator.clipboard.writeText(t).then(()=>alert('✅ Copiado!')); };
+    window.deleteToken = async (token) => {
+      if (!confirm(`Excluir token "${token}" permanentemente?`)) return;
+      await remove(ref(db, `tokens/${token}`));
+      await remove(ref(db, `tokens/token/${token}`));
+      alert('🗑️ Token excluído.');
+      loadTokens();
     };
+
+    // ===== SUBMISSÃO DO FORM =====
+    appForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = appName.value.trim();
+      const redirect = redirectURL.value.trim();
+      const size = parseInt(tokenSize.value);
+      const scope = tokenScope.value;
+      const icon = appIcon.value.trim();
+      const domainsRaw = allowedDomains.value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean).slice(0,20);
+      const ipsRaw = blockedIPs.value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean).slice(0,50);
+      const contact = contactInfo.value.trim();
+      const js = customJs.value.trim();
+
+      if (!name || !redirect) return alert('Preencha nome e URL de redirecionamento.');
+      if (size < 20 || size > 200) return alert('Tamanho do token deve ser entre 20 e 200.');
+
+      const token = generateToken(size);
+      const data = { appName: name, redirectURL: redirect, scope, icon, allowedDomains: domainsRaw, blockedIPs: ipsRaw, contactInfo: contact, customJs: js };
+      await saveToken(token, data);
+      // limpar campos
+      appName.value = ''; redirectURL.value = ''; tokenSize.value = '20'; appIcon.value = ''; allowedDomains.value = ''; blockedIPs.value = ''; contactInfo.value = ''; customJs.value = '';
+    });
+
+    // ===== AUTH STATE =====
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { alert('Você precisa estar logado.'); window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth'; return; }
+      userUID = user.uid;
+      await displayAuthToken(user);
+      loadTokens();
+    });
   </script>
 </body>
 </html>
