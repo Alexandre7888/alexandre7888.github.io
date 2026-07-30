@@ -1,40 +1,174 @@
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { 
-  getAuth, 
-  onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compartilhador de Token Firebase</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-  authDomain: "html-15e80.firebaseapp.com",
-  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-  projectId: "html-15e80",
-  storageBucket: "html-15e80.firebasestorage.app",
-  messagingSenderId: "1068148640439",
-  appId: "1:1068148640439:web:1ac651348e624f6be41b32"
-};
+    body {
+      background-color: #f4f7fe;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+    .card {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      max-width: 480px;
+      width: 100%;
+    }
 
-onAuthStateChanged(auth, async (user) => {
+    h1 {
+      font-size: 1.5rem;
+      color: #1b2559;
+      margin-bottom: 20px;
+      text-align: center;
+    }
 
-  if (user) {
+    .status-box {
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      margin-bottom: 20px;
+    }
 
-    const token = await user.getIdToken();
+    .status-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #a3ed20;
+      color: #707ebe;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
 
-    document.cookie =
-      "firebaseToken=" + token +
-      "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+    .status-value {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #2b3674;
+    }
 
-    console.log("Token enviado para cookie");
+    .user-info {
+      display: none;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px dashed #e0e0e0;
+    }
 
-  } else {
+    .user-info p {
+      font-size: 0.9rem;
+      color: #4a5568;
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
 
-    console.log("Nenhum usuário conectado");
+    .log-box {
+      background-color: #1b2559;
+      color: #4318ff;
+      color: #6ad2ff;
+      font-family: monospace;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      max-height: 120px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
 
-  }
+  <div class="card">
+    <h1>Firebase Auth Sync</h1>
 
-});
-</script>
+    <div class="status-box">
+      <div class="status-title">Status da Sessão</div>
+      <div id="status" class="status-value">Verificando autenticação...</div>
+
+      <div id="userInfo" class="user-info">
+        <p><strong>Usuário:</strong> <span id="userEmail">-</span></p>
+        <p><strong>Cookie Definido:</strong> <span style="color: #05cd99;">Domain=.codehub.site.je</span></p>
+      </div>
+    </div>
+
+    <div class="status-title">Log de Eventos</div>
+    <div id="log" class="log-box">> Inicializando script...</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { 
+      getAuth, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const statusEl = document.getElementById("status");
+    const userInfoEl = document.getElementById("userInfo");
+    const userEmailEl = document.getElementById("userEmail");
+    const logEl = document.getElementById("log");
+
+    function addLog(message) {
+      logEl.innerHTML += `<br>> ${message}`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    addLog("Firebase inicializado com sucesso.");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        addLog("Usuário detectado. Gerando ID Token...");
+        
+        const token = await user.getIdToken();
+
+        // Configuração do cookie compartilhado entre subdomínios
+        document.cookie =
+          "firebaseToken=" + token +
+          "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+
+        addLog("Token enviado para o cookie (.codehub.site.je)!");
+        console.log("Token enviado para cookie");
+
+        // Atualiza a Interface
+        statusEl.innerText = "Conectado ✅";
+        statusEl.style.color = "#05cd99";
+        userEmailEl.innerText = user.email || user.uid;
+        userInfoEl.style.display = "block";
+
+      } else {
+        addLog("Nenhum usuário conectado.");
+        console.log("Nenhum usuário conectado");
+
+        // Atualiza a Interface
+        statusEl.innerText = "Desconectado ❌";
+        statusEl.style.color = "#ee5d50";
+        userInfoEl.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>
