@@ -1,123 +1,45 @@
 <!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>360 Ar</title>
-    <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; color: white; font-family: sans-serif; }
-        #overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 1000; background: rgba(0,0,0,0.5); cursor: pointer;
-        }
-        .msg { border: 2px solid white; padding: 20px; text-transform: uppercase; font-weight: bold; }
-    </style>
-</head>
+<html>
 <body>
 
-    <div id="overlay">
-        <div class="msg">Toque para Ativar Sensores e Câmera</div>
-    </div>
+<h2>Firebase Token → Cookie</h2>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+<button onclick="salvarToken()">Enviar token para cookie</button>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { DeviceOrientationControls } from 'three/addons/controls/DeviceOrientationControls.js';
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-        let scene, camera, renderer, controls;
-        const overlay = document.getElementById('overlay');
+const firebaseConfig = {
+  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+  authDomain: "html-15e80.firebaseapp.com",
+  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+  projectId: "html-15e80",
+  storageBucket: "html-15e80.firebasestorage.app",
+  messagingSenderId: "1068148640439",
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32",
+  measurementId: "G-7E1VWN07GM"
+};
 
-        // Função principal disparada pelo toque
-        async function start() {
-            console.log("Iniciando...");
-            
-            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-                alert("ERRO: O giroscópio e a câmera só funcionam em sites com HTTPS.");
-                return;
-            }
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-            try {
-                // 1. Pedir Câmera Traseira
-                console.log("Pedindo câmera...");
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" } 
-                });
+window.salvarToken = async function() {
 
-                // 2. Pedir Orientação (Crucial para iPhone)
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    console.log("Pedindo permissão de giroscópio (iOS)...");
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    if (permission !== 'granted') {
-                        alert("Você precisa permitir o acesso aos sensores de movimento.");
-                        return;
-                    }
-                }
+  await signInAnonymously(auth);
 
-                initScene(stream);
-                overlay.style.display = 'none';
-                
-            } catch (err) {
-                console.error(err);
-                alert("Erro ao iniciar: " + err.name + " - " + err.message);
-            }
-        }
+  const user = auth.currentUser;
 
-        function initScene(stream) {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+  const token = await user.getIdToken();
 
-            // Criar vídeo e textura
-            const video = document.createElement('video');
-            video.srcObject = stream;
-            video.setAttribute('playsinline', 'true'); // Importante para mobile
-            video.play();
+  document.cookie =
+    "firebaseToken=" + token +
+    "; Domain=.codehub.site.je; Path=/; Secure; SameSite=Lax";
 
-            const texture = new THREE.VideoTexture(video);
-            
-            // Esfera 360
-            const geometry = new THREE.SphereGeometry(500, 60, 40);
-            geometry.scale(-1, 1, 1); 
-            const material = new THREE.MeshBasicMaterial({ map: texture });
-            const mesh = new THREE.Mesh(geometry, material);
-            scene.add(mesh);
+  alert("Token salvo no cookie compartilhado!");
+};
 
-            // Giroscópio
-            controls = new DeviceOrientationControls(camera);
+</script>
 
-            animate();
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if (controls) controls.update();
-            renderer.render(scene, camera);
-        }
-
-        // Eventos para dispositivos móveis
-        overlay.addEventListener('click', start);
-        overlay.addEventListener('touchstart', start);
-
-        window.addEventListener('resize', () => {
-            if (camera && renderer) {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }
-        });
-    </script>
 </body>
 </html>
