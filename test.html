@@ -1,14 +1,9 @@
-<!DOCTYPE html>
-<html>
-<body>
-
-<h2>Firebase Token → Cookie</h2>
-
-<button onclick="salvarToken()">Enviar token para cookie</button>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { 
+  getAuth, 
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -17,29 +12,29 @@ const firebaseConfig = {
   projectId: "html-15e80",
   storageBucket: "html-15e80.firebasestorage.app",
   messagingSenderId: "1068148640439",
-  appId: "1:1068148640439:web:1ac651348e624f6be41b32",
-  measurementId: "G-7E1VWN07GM"
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-window.salvarToken = async function() {
+onAuthStateChanged(auth, async (user) => {
 
-  await signInAnonymously(auth);
+  if (user) {
 
-  const user = auth.currentUser;
+    const token = await user.getIdToken();
 
-  const token = await user.getIdToken();
+    document.cookie =
+      "firebaseToken=" + token +
+      "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
 
-  document.cookie =
-    "firebaseToken=" + token +
-    "; Domain=.codehub.site.je; Path=/; Secure; SameSite=Lax";
+    console.log("Token enviado para cookie");
 
-  alert("Token salvo no cookie compartilhado!");
-};
+  } else {
 
+    console.log("Nenhum usuário conectado");
+
+  }
+
+});
 </script>
-
-</body>
-</html>
