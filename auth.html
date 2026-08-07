@@ -4,164 +4,50 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CodeHub - Autenticação</title>
-  
-  <!-- CSS UNIFICADO -->
-  <link rel="stylesheet" href="https://alexandre7888.github.io/style.css">
-  
   <style>
-    /* ESTILOS ESPECÍFICOS DA PÁGINA DE AUTENTICAÇÃO */
-    .auth-container {
-      width: 100%;
-      max-width: 480px;
-      margin: 0 auto;
-      background: var(--bg-secondary);
-      border-radius: var(--radius-xl);
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border-color);
-      animation: fadeIn 0.5s;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .auth-header {
-      background: var(--primary-gradient);
-      color: #fff;
-      padding: 25px;
-      text-align: center;
-    }
-    .auth-header h1 { font-size: 24px; margin-bottom: 5px; }
-    .auth-header p { font-size: 13px; opacity: 0.9; }
-    .account-indicator {
-      background: rgba(0,0,0,0.2);
-      padding: 6px 14px;
-      border-radius: var(--radius-full);
-      display: inline-block;
-      margin-top: 8px;
-      font-size: 12px;
-    }
-    .tabs {
-      display: flex;
-      background: rgba(0,0,0,0.3);
-      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-      overflow: hidden;
-    }
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 14px;
-      cursor: pointer;
-      font-weight: 600;
-      color: var(--text-muted);
-      transition: var(--transition);
-      position: relative;
-    }
-    .tab.active {
-      color: #fff;
-      background: rgba(67, 97, 238, 0.3);
-    }
-    .tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 3px;
-      background: var(--primary);
-    }
-    .tab-content {
-      padding: 25px;
-      display: none;
-    }
-    .tab-content.active { display: block; }
-    .error-message {
-      color: var(--danger);
-      font-size: 12px;
-      display: none;
-      background: rgba(247,37,133,0.1);
-      padding: 8px;
-      border-radius: var(--radius-sm);
-      margin-bottom: 10px;
-    }
-    .error-message.show { display: block; }
-    .success-message {
-      color: var(--secondary);
-      font-size: 13px;
-      margin-top: 12px;
-      text-align: center;
-      font-weight: 600;
-      background: rgba(76,201,240,0.1);
-      padding: 8px;
-      border-radius: var(--radius-sm);
-    }
-    .footer-text {
-      text-align: center;
-      margin-top: 18px;
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-    .footer-text a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .header-actions {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 1000;
-    }
-    .home-btn {
-      background: rgba(255,255,255,0.1);
-      color: #fff;
-      border: none;
-      padding: 10px 20px;
-      border-radius: var(--radius-full);
-      font-size: 14px;
-      cursor: pointer;
-      transition: var(--transition);
-      backdrop-filter: blur(10px);
-    }
-    .home-btn:hover { background: rgba(255,255,255,0.2); }
-    .user-type-selector {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding: 8px;
-      background: rgba(0,0,0,0.3);
-      border-radius: var(--radius-sm);
-    }
-    .user-type-option {
-      flex: 1;
-      text-align: center;
-      padding: 8px;
-      border: 2px solid rgba(67,97,238,0.3);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: var(--transition);
-      color: #fff;
-      font-size: 13px;
-    }
-    .user-type-option.selected {
-      border-color: var(--primary);
-      background: rgba(67,97,238,0.3);
-    }
-    .device-info {
-      background: rgba(0,0,0,0.3);
-      border-radius: var(--radius-sm);
-      padding: 8px;
-      margin: 15px;
-      font-size: 11px;
-      color: var(--text-muted);
-      text-align: center;
-    }
-    @media(max-width:480px) {
-      .auth-container { border-radius: var(--radius-md); }
-      .auth-header { padding: 20px; }
-      .tab-content { padding: 20px; }
-    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+    .auth-container{width:100%;max-width:480px;background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .auth-header{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;padding:25px;text-align:center}
+    .auth-header h1{font-size:24px;margin-bottom:5px}
+    .auth-header p{font-size:13px;opacity:0.9}
+    .account-indicator{background:rgba(0,0,0,0.2);padding:6px 14px;border-radius:20px;display:inline-block;margin-top:8px;font-size:12px}
+    .tabs{display:flex;background:rgba(0,0,0,0.3)}
+    .tab{flex:1;text-align:center;padding:14px;cursor:pointer;font-weight:600;color:#a0b3c9;transition:0.3s;position:relative}
+    .tab.active{color:#fff;background:rgba(67,97,238,0.3)}
+    .tab.active::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:3px;background:#4361ee}
+    .tab-content{padding:25px;display:none}
+    .tab-content.active{display:block}
+    .form-group{margin-bottom:16px}
+    .form-group label{display:block;margin-bottom:6px;font-weight:600;color:#e2e9f0;font-size:13px}
+    .form-control{width:100%;padding:11px 14px;background:rgba(0,0,0,0.3);border:2px solid rgba(67,97,238,0.3);border-radius:8px;font-size:14px;color:#fff;transition:0.3s}
+    .form-control:focus{border-color:#4895ef;outline:none;box-shadow:0 0 0 3px rgba(67,97,238,0.2);background:rgba(0,0,0,0.5)}
+    .form-control::placeholder{color:#6b7280}
+    .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:0.3s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn-primary{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(67,97,238,0.3)}
+    .btn-google{background:#fff;color:#212529;border:1px solid #dee2e6}
+    .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
+    .btn-secondary{background:rgba(255,255,255,0.1);color:#a0b3c9;border:1px solid rgba(255,255,255,0.2)}
+    .btn-secondary:hover{background:rgba(255,255,255,0.2)}
+    .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.2);margin:0 10px}
+    .error-message{color:#f72585;font-size:12px;display:none;background:rgba(247,37,133,0.1);padding:8px;border-radius:6px;margin-bottom:10px}
+    .error-message.show{display:block}
+    .success-message{color:#4cc9f0;font-size:13px;margin-top:12px;text-align:center;font-weight:600;background:rgba(76,201,240,0.1);padding:8px;border-radius:6px}
+    .footer-text{text-align:center;margin-top:18px;font-size:13px;color:#a0b3c9}
+    .footer-text a{color:#4361ee;text-decoration:none;font-weight:600;cursor:pointer}
+    .header-actions{position:fixed;top:20px;right:20px;z-index:1000}
+    .home-btn{background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;transition:0.3s;backdrop-filter:blur(10px)}
+    .home-btn:hover{background:rgba(255,255,255,0.2)}
+    .user-type-selector{display:flex;gap:12px;margin-bottom:16px;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px}
+    .user-type-option{flex:1;text-align:center;padding:8px;border:2px solid rgba(67,97,238,0.3);border-radius:8px;cursor:pointer;transition:0.3s;color:#fff;font-size:13px}
+    .user-type-option.selected{border-color:#4361ee;background:rgba(67,97,238,0.3)}
+    .company-fields{display:none}
+    .company-fields.show{display:block}
+    .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
+    @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
 <body>
@@ -185,12 +71,12 @@
     <div id="login-tab" class="tab-content active">
       <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" class="form-control" placeholder="digite seu email"></div>
       <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
-      <button class="btn btn-primary btn-block" id="login-btn" onclick="login()">🔐 Entrar</button>
+      <button class="btn btn-primary" id="login-btn" onclick="login()">🔐 Entrar</button>
       <div style="margin-top:10px;">
-        <button class="btn btn-outline btn-block" onclick="resetPassword()" style="font-size:12px;padding:8px;">🔑 Esqueci minha senha</button>
+        <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">🔑 Esqueci minha senha</button>
       </div>
       <div class="divider">ou</div>
-      <button class="btn btn-google btn-block" onclick="loginWithGoogle()">🟢 Google</button>
+      <button class="btn btn-google" onclick="loginWithGoogle()">🟢 Google</button>
       <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
     </div>
 
@@ -205,7 +91,7 @@
       <div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" class="form-control" placeholder="seu email"></div>
       <div class="form-group"><label for="register-password">Senha</label><input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres"></div>
       <div class="form-group"><label for="register-confirm-password">Confirmar</label><input type="password" id="register-confirm-password" class="form-control" placeholder="confirme"></div>
-      <button class="btn btn-primary btn-block" id="register-btn" onclick="register()">✨ Criar Conta</button>
+      <button class="btn btn-primary" id="register-btn" onclick="register()">✨ Criar Conta</button>
       <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
     </div>
 
@@ -214,7 +100,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
     import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -235,15 +121,11 @@
     let selectedUserType = 'normal';
     const MAX_ACCOUNTS = 5;
 
-    // ===== GERENCIAMENTO DE MASTER KEY =====
     function getOrCreateMasterKey() {
       let mk = localStorage.getItem('codehub_masterKey');
       if (!mk) {
         mk = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
         localStorage.setItem('codehub_masterKey', mk);
-        console.log('🆕 Nova Master Key criada:', mk);
-      } else {
-        console.log('🔑 Master Key existente:', mk);
       }
       return mk;
     }
@@ -254,10 +136,8 @@
       return id;
     }
 
-    // ===== SALVAR CONTA NA MASTER KEY =====
     async function saveAccountToMasterKey(masterKey, userData) {
       if (!masterKey || !db) return;
-      
       try {
         const contasRef = ref(db, `contas/${masterKey}/${userData.uid}`);
         await set(contasRef, {
@@ -269,10 +149,7 @@
           lastLogin: Date.now(),
           deviceId: userData.deviceId || deviceId
         });
-        console.log('✅ Conta salva na Master Key:', masterKey);
-      } catch (error) {
-        console.error('❌ Erro ao salvar conta na Master Key:', error);
-      }
+      } catch (error) { console.error('Erro ao salvar conta:', error); }
     }
 
     function getLocalAccounts() {
@@ -334,23 +211,15 @@
 
     window.resetPassword = async () => {
       const email = document.getElementById('login-email').value.trim();
-      if (!email) {
-        return showError('Digite seu email para recuperar a senha');
-      }
-      
+      if (!email) return showError('Digite seu email');
       try {
         await sendPasswordResetEmail(auth, email);
-        showSuccess(`📧 Email de recuperação enviado para ${email}.`);
+        showSuccess(`📧 Email de recuperação enviado.`);
       } catch (error) {
-        const msg = {
-          'auth/user-not-found': 'Email não encontrado.',
-          'auth/invalid-email': 'Email inválido.'
-        }[error.code] || 'Erro ao enviar email';
-        showError(msg);
+        showError('Erro ao enviar email');
       }
     };
 
-    // ===== REGISTRO COM MASTER KEY =====
     window.register = async () => {
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
@@ -360,9 +229,8 @@
       const password = document.getElementById('register-password').value;
       const confirm = document.getElementById('register-confirm-password').value;
 
-      if (!username) return showError('Usuário obrigatório');
-      if (!email) return showError('Email obrigatório');
-      if (!password || password.length < 6) return showError('Senha: mín. 6 caracteres');
+      if (!username || !email) return showError('Preencha todos os campos');
+      if (password.length < 6) return showError('Senha: mín. 6 caracteres');
       if (password !== confirm) return showError('Senhas não coincidem');
 
       const localAccounts = getLocalAccounts();
@@ -372,15 +240,11 @@
       btn.disabled = true; btn.textContent = 'Criando...';
 
       try {
-        // 1. CRIA USUÁRIO NO FIREBASE AUTH
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
-
-        // 2. OBTÉM OU CRIA MASTER KEY
         const masterKey = getOrCreateMasterKey();
 
-        // 3. PREPARA DADOS DO USUÁRIO
         const userData = {
           uid: uid,
           userKey: uid,
@@ -394,74 +258,47 @@
           lastLogin: Date.now()
         };
 
-        console.log('📝 Registrando usuário:', userData);
-
-        // 4. SALVA NO FIREBASE - userKeysData/{uid}
-        const userKeyDataRef = ref(db, `userKeysData/${uid}`);
-        await set(userKeyDataRef, userData);
-        console.log('✅ Dados salvos em userKeysData/' + uid);
-
-        // 5. SALVA NO FIREBASE - users/{uid}
-        const userRef = ref(db, `users/${uid}`);
-        await set(userRef, userData);
-        console.log('✅ Dados salvos em users/' + uid);
-
-        // 6. SALVA NA MASTER KEY - contas/{masterKey}/{uid}
+        await set(ref(db, `userKeysData/${uid}`), userData);
+        await set(ref(db, `users/${uid}`), userData);
         await saveAccountToMasterKey(masterKey, userData);
 
-        // 7. SALVA LOCALMENTE
         addLocalAccount(userData);
         localStorage.setItem('current_userKey', uid);
         localStorage.setItem('current_uid', uid);
         localStorage.setItem('codehub_masterKey', masterKey);
 
-        console.log('✅ Conta criada com sucesso! Master Key:', masterKey);
-
         redirectAfterAuth(uid);
-
       } catch (error) {
         let msg = 'Erro ao criar conta';
-        if (error.code === 'auth/email-already-in-use') {
-          msg = '❌ Email já em uso. Tente fazer login.';
-        } else if (error.code === 'auth/weak-password') {
-          msg = '❌ Senha muito fraca. Use pelo menos 6 caracteres.';
-        } else if (error.code === 'auth/invalid-email') {
-          msg = '❌ Email inválido.';
-        }
+        if (error.code === 'auth/email-already-in-use') msg = 'Email já em uso.';
+        else if (error.code === 'auth/weak-password') msg = 'Senha muito fraca.';
         showError(msg);
         btn.disabled = false; btn.textContent = '✨ Criar Conta';
       }
     };
 
-    // ===== LOGIN COM MASTER KEY =====
     window.login = async () => {
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
 
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
-      if (!email) return showError('Email obrigatório');
-      if (!password) return showError('Senha obrigatória');
+      if (!email || !password) return showError('Preencha todos os campos');
 
       const btn = document.getElementById('login-btn');
       btn.disabled = true; btn.textContent = 'Entrando...';
 
       try {
-        // 1. AUTENTICA NO FIREBASE AUTH
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const uid = user.uid;
-
-        // 2. OBTÉM OU CRIA MASTER KEY
         const masterKey = getOrCreateMasterKey();
 
-        // 3. BUSCA DADOS DO USUÁRIO
         const userKeyDataRef = ref(db, `userKeysData/${uid}`);
         const snapshot = await get(userKeyDataRef);
-        
-        let userData;
-        if (!snapshot.exists()) {
-          // Se não existir, cria dados básicos
+        let userData = snapshot.exists() ? snapshot.val() : null;
+
+        if (!userData) {
           const username = email.split('@')[0];
           userData = {
             uid: uid,
@@ -476,52 +313,26 @@
             lastLogin: Date.now()
           };
           await set(userKeyDataRef, userData);
-          console.log('✅ Dados criados em userKeysData/' + uid);
         } else {
-          userData = snapshot.val();
           userData.lastLogin = Date.now();
           userData.masterKey = masterKey;
           await set(userKeyDataRef, userData);
-          console.log('✅ Dados atualizados em userKeysData/' + uid);
         }
 
-        // 4. SALVA NA MASTER KEY
         await saveAccountToMasterKey(masterKey, userData);
-
-        // 5. SALVA LOCALMENTE
         addLocalAccount(userData);
         localStorage.setItem('current_userKey', uid);
         localStorage.setItem('current_uid', uid);
         localStorage.setItem('codehub_masterKey', masterKey);
 
-        console.log('✅ Login realizado! Master Key:', masterKey);
-
         redirectAfterAuth(uid);
-
       } catch (error) {
-        let msg;
-        switch(error.code) {
-          case 'auth/invalid-login-credentials':
-            msg = '❌ Email ou senha incorretos.';
-            break;
-          case 'auth/user-not-found':
-            msg = '❌ Usuário não encontrado.';
-            break;
-          case 'auth/wrong-password':
-            msg = '❌ Senha incorreta.';
-            break;
-          case 'auth/invalid-email':
-            msg = '❌ Email inválido.';
-            break;
-          default:
-            msg = `❌ Erro: ${error.code || error.message}`;
-        }
+        let msg = '❌ Email ou senha incorretos.';
         showError(msg);
         btn.disabled = false; btn.textContent = '🔐 Entrar';
       }
     };
 
-    // ===== LOGIN COM GOOGLE =====
     window.loginWithGoogle = async () => {
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
@@ -535,16 +346,13 @@
         const uid = user.uid;
         const email = user.email;
         const username = user.displayName || email.split('@')[0];
-
-        // OBTÉM OU CRIA MASTER KEY
         const masterKey = getOrCreateMasterKey();
 
-        // VERIFICA SE JÁ EXISTE
         const userKeyDataRef = ref(db, `userKeysData/${uid}`);
         const snapshot = await get(userKeyDataRef);
-        
-        let userData;
-        if (!snapshot.exists()) {
+        let userData = snapshot.exists() ? snapshot.val() : null;
+
+        if (!userData) {
           userData = {
             uid: uid,
             userKey: uid,
@@ -559,32 +367,21 @@
             lastLogin: Date.now()
           };
           await set(userKeyDataRef, userData);
-          console.log('✅ Dados criados em userKeysData/' + uid);
         } else {
-          userData = snapshot.val();
           userData.lastLogin = Date.now();
           userData.masterKey = masterKey;
           await set(userKeyDataRef, userData);
-          console.log('✅ Dados atualizados em userKeysData/' + uid);
         }
 
-        // SALVA NA MASTER KEY
         await saveAccountToMasterKey(masterKey, userData);
-
-        // SALVA LOCALMENTE
         addLocalAccount(userData);
         localStorage.setItem('current_userKey', uid);
         localStorage.setItem('current_uid', uid);
         localStorage.setItem('codehub_masterKey', masterKey);
 
-        console.log('✅ Google Login! Master Key:', masterKey);
-
         redirectAfterAuth(uid);
-
       } catch (error) {
-        if (error.code !== 'auth/popup-closed-by-user') {
-          showError('Erro ao fazer login com Google');
-        }
+        if (error.code !== 'auth/popup-closed-by-user') showError('Erro ao fazer login com Google');
       }
     };
   </script>
