@@ -4,7 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Continuar Login v3</title>
+  
+  <!-- CSS UNIFICADO -->
+  <link rel="stylesheet" href="https://alexandre7888.github.io/style.css">
+  
   <style>
+    /* ESTILOS ESPECÍFICOS DO CONTINUAR CONTA */
     :root {
       --primary-color: #4361ee;
       --secondary-color: #3f37c9;
@@ -13,9 +18,7 @@
       --success-color: #4cc9f0;
       --gray-color: #6c757d;
     }
-    * { margin:0; padding:0; box-sizing:border-box; }
     body {
-      font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       display: flex;
       justify-content: center;
@@ -26,15 +29,15 @@
     .auth-container {
       width: 100%;
       max-width: 480px;
-      background: white;
-      border-radius: 16px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
       overflow: hidden;
-      box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+      box-shadow: var(--shadow);
       animation: fadeIn 0.5s ease-out;
     }
     @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
     .auth-header {
-      background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+      background: var(--primary-gradient);
       color: white;
       padding: 25px;
       text-align: center;
@@ -59,37 +62,66 @@
       padding: 5px;
     }
     .auth-content { padding: 30px; text-align: center; }
-    #status { margin: 20px 0; font-weight: bold; color: #212529; font-size: 16px; }
-    .error-message { color: var(--danger-color); font-size: 13px; margin-top: 15px; }
-    .login-redirect { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--accent-color); }
-    .login-link { display: inline-block; padding: 10px 20px; background: var(--primary-color); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; transition: 0.3s; }
-    .login-link:hover { background: var(--secondary-color); transform: translateY(-2px); }
+    #status { margin: 20px 0; font-weight: bold; color: var(--text-primary); font-size: 16px; }
+    .login-redirect {
+      margin-top: 20px;
+      padding: 15px;
+      background: var(--bg-input);
+      border-radius: var(--radius-sm);
+      border-left: 4px solid var(--accent-color);
+    }
+    .login-link {
+      display: inline-block;
+      padding: 10px 20px;
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+    .login-link:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
     .header-actions { position: absolute; top: 20px; left: 20px; }
-    .home-btn { background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 6px; }
+    .home-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
     .home-btn:hover { background: rgba(255,255,255,0.3); }
 
     .account-list { margin-top: 20px; text-align: left; }
     .account-item {
-      display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px;
-      cursor: pointer; transition: 0.2s; border: 2px solid transparent; background: #f8f9fa; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: var(--radius-sm);
+      cursor: pointer; transition: var(--transition); border: 2px solid transparent; background: var(--bg-input); margin-bottom: 10px;
     }
-    .account-item:hover { background: #e9ecef; border-color: var(--accent-color); }
-    .account-item.selected { border-color: var(--primary-color); background: #e7f3ff; }
+    .account-item:hover { background: var(--bg-hover); border-color: var(--accent-color); }
+    .account-item.selected { border-color: var(--primary); background: rgba(67,97,238,0.1); }
     .account-avatar {
       width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
       color: white; font-weight: 700; font-size: 20px; flex-shrink: 0; text-transform: uppercase;
     }
     .account-info { flex:1; min-width:0; }
-    .account-name { font-weight: 600; color: #212529; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .account-email { color: var(--gray-color); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .account-check { color: var(--primary-color); font-size: 20px; opacity: 0; transition: 0.2s; }
+    .account-name { font-weight: 600; color: var(--text-primary); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .account-email { color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .account-check { color: var(--primary); font-size: 20px; opacity: 0; transition: var(--transition); }
     .account-item.selected .account-check { opacity: 1; }
     .account-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-    .account-actions button { flex:1; padding: 12px; border-radius: 8px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; min-width: 100px; }
-    .btn-primary { background: var(--primary-color); color: white; }
-    .btn-primary:hover { background: var(--secondary-color); }
-    .btn-outline { background: transparent; border: 2px solid var(--gray-color); color: var(--gray-color); }
-    .btn-outline:hover { background: #f1f3f5; }
+    .account-actions button { flex:1; padding: 12px; border-radius: var(--radius-sm); border: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: var(--transition); min-width: 100px; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-outline { background: transparent; border: 2px solid var(--text-muted); color: var(--text-muted); }
+    .btn-outline:hover { background: var(--bg-input); }
     .btn-custom { background: #9C27B0; color: white; }
     .btn-custom:hover { background: #7B1FA2; }
     .btn-contact { background: #FF9800; color: white; }
@@ -100,7 +132,7 @@
     .btn-support:hover { background: #27ae60; }
 
     .access-denied {
-      color: var(--danger-color);
+      color: var(--danger);
       font-size: 24px;
       font-weight: 700;
       padding: 40px 20px;
@@ -115,9 +147,9 @@
 
     /* ERROR BOX */
     .error-box {
-      background: #fff3f3;
-      border: 2px solid var(--danger-color);
-      border-radius: 12px;
+      background: rgba(247,37,133,0.1);
+      border: 2px solid var(--danger);
+      border-radius: var(--radius-md);
       padding: 20px;
       margin: 15px 0;
       text-align: left;
@@ -125,15 +157,15 @@
     .error-box .error-title {
       font-weight: 700;
       font-size: 16px;
-      color: var(--danger-color);
+      color: var(--danger);
       margin-bottom: 8px;
     }
     .error-box .error-detail {
       font-size: 13px;
-      color: #333;
-      background: #f8f8f8;
+      color: var(--text-primary);
+      background: var(--bg-input);
       padding: 10px;
-      border-radius: 6px;
+      border-radius: var(--radius-sm);
       font-family: monospace;
       word-break: break-all;
       margin: 8px 0;
@@ -142,7 +174,7 @@
     }
     .error-box .error-type {
       font-size: 12px;
-      color: var(--gray-color);
+      color: var(--text-muted);
       margin-top: 8px;
     }
     .error-box .error-actions {
@@ -155,11 +187,11 @@
       flex: 1;
       padding: 10px 16px;
       border: none;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       font-weight: 600;
       font-size: 13px;
       cursor: pointer;
-      transition: 0.3s;
+      transition: var(--transition);
       min-width: 120px;
     }
     .error-box .error-actions .btn-support {
@@ -177,14 +209,12 @@
       background: #d32f2f;
     }
     .error-box .error-actions .btn-retry {
-      background: var(--primary-color);
+      background: var(--primary);
       color: white;
     }
     .error-box .error-actions .btn-retry:hover {
-      background: var(--secondary-color);
+      background: var(--primary-dark);
     }
-
-    .debug-hidden { display: none; }
   </style>
 </head>
 <body>
@@ -211,27 +241,27 @@
 
       <div id="accessDenied" style="display:none;">
         <div class="access-denied">🚫 Acesso Negado</div>
-        <p>Seu IP está bloqueado neste aplicativo.</p>
-        <button class="btn-report" onclick="reportError('IP bloqueado', true)">📧 Reportar erro</button>
+        <p class="text-muted">Seu IP está bloqueado neste aplicativo.</p>
+        <button class="btn btn-danger btn-block" onclick="reportError('IP bloqueado', true)">📧 Reportar erro</button>
       </div>
 
       <div id="account-selection" style="display:none;">
-        <div style="margin-bottom:12px;font-size:14px;color:#212529;font-weight:500;">Selecione uma conta para continuar</div>
+        <div style="margin-bottom:12px;font-size:14px;color:var(--text-secondary);font-weight:500;">Selecione uma conta para continuar</div>
         <div id="account-list-container" class="account-list"></div>
         <div class="account-actions">
-          <button id="confirmAccountBtn" class="btn-primary">Continuar com esta conta</button>
-          <button id="cancelSelectionBtn" class="btn-outline">Cancelar</button>
+          <button id="confirmAccountBtn" class="btn btn-primary">Continuar com esta conta</button>
+          <button id="cancelSelectionBtn" class="btn btn-outline">Cancelar</button>
         </div>
       </div>
 
       <div id="extraButtons" class="extra-buttons" style="display:none;">
-        <button id="contactBtn" class="btn-contact" style="display:none;">📞 Contato</button>
-        <button id="customActionBtn" class="btn-custom" style="display:none;">⚡ Ação</button>
-        <button id="reportBtn" class="btn-report" style="display:none;">📧 Reportar erro</button>
+        <button id="contactBtn" class="btn btn-contact" style="display:none;">📞 Contato</button>
+        <button id="customActionBtn" class="btn btn-custom" style="display:none;">⚡ Ação</button>
+        <button id="reportBtn" class="btn btn-report" style="display:none;">📧 Reportar erro</button>
       </div>
 
       <div id="login-redirect" class="login-redirect" style="display:none;">
-        <p>Você precisa fazer login para continuar</p>
+        <p class="text-muted">Você precisa fazer login para continuar</p>
         <a id="loginLink" href="#" class="login-link">Fazer Login</a>
       </div>
     </div>
@@ -623,7 +653,7 @@
       accountListContainer.innerHTML = '';
       if (accounts.length === 0) {
         accountListContainer.innerHTML = `
-          <div style="text-align:center;color:#888;padding:20px;">
+          <div style="text-align:center;color:var(--text-muted);padding:20px;">
             <p>Nenhuma conta encontrada para esta Master Key.</p>
           </div>
         `;
@@ -838,7 +868,8 @@
 
     const logoutBtn = document.createElement('button');
     logoutBtn.textContent = 'Trocar Usuário';
-    logoutBtn.style.cssText = 'margin-top:10px;padding:8px 15px;background:#6c757d;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;';
+    logoutBtn.className = 'btn btn-outline';
+    logoutBtn.style.marginTop = '10px';
     logoutBtn.onclick = async () => {
       await signOut(auth);
       statusEl.textContent = 'Sessão encerrada.';
