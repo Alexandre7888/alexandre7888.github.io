@@ -3,285 +3,97 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CodeHub - Criar App</title>
-  
-  <!-- CSS UNIFICADO -->
-  <link rel="stylesheet" href="https://alexandre7888.github.io/style.css">
-  
+  <title>CodeHub - Developer Dashboard</title>
   <style>
-    /* ESTILOS ESPECÍFICOS DO CRIADOR DE APPS */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0e17; color: #e8edf5; padding: 20px; }
     .dashboard { max-width: 1200px; margin: 0 auto; }
-    .token-item .copy-actions .btn-copy {
-      background: rgba(67,97,238,0.15);
-      color: var(--secondary);
-      border: 1px solid rgba(67,97,238,0.2);
-      padding: 4px 12px;
-      border-radius: 6px;
-      font-size: 11px;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-    .token-item .copy-actions .btn-copy:hover {
-      background: rgba(67,97,238,0.3);
-    }
-    .domain-item, .ip-item {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .domain-item input, .ip-item input {
-      flex: 1;
-      padding: 8px 12px;
-      background: var(--bg-input);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-sm);
-      color: var(--text-primary);
-      font-size: 14px;
-      outline: none;
-    }
-    .domain-item input:focus, .ip-item input:focus {
-      border-color: var(--primary);
-    }
-    .domain-item .remove-btn, .ip-item .remove-btn {
-      background: rgba(247,37,133,0.15);
-      color: var(--danger);
-      border: none;
-      padding: 4px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    .domain-item .remove-btn:hover, .ip-item .remove-btn:hover {
-      background: rgba(247,37,133,0.3);
-    }
-    .add-btn {
-      background: rgba(67,97,238,0.15);
-      color: var(--secondary);
-      border: 1px dashed rgba(67,97,238,0.3);
-      padding: 8px 16px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-size: 13px;
-      transition: var(--transition);
-      margin-top: 8px;
-    }
-    .add-btn:hover {
-      background: rgba(67,97,238,0.25);
-    }
-    .account-item-mini {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      background: var(--bg-input);
-      border-radius: var(--radius-sm);
-      margin-bottom: 6px;
-      border: 1px solid var(--border-light);
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .account-item-mini .account-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .account-item-mini .account-avatar-mini {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--primary-gradient);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 12px;
-      color: #fff;
-    }
-    .account-item-mini .account-name-mini {
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-    .account-item-mini .account-email-mini {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-    .account-item-mini .account-actions-mini {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .account-item-mini .ban-btn {
-      background: rgba(247,37,133,0.15);
-      color: var(--danger);
-      border: none;
-      padding: 4px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 600;
-      transition: var(--transition);
-    }
-    .account-item-mini .ban-btn:hover {
-      background: rgba(247,37,133,0.3);
-    }
-    .account-item-mini .ip-info {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: monospace;
-    }
-    .accounts-list {
-      max-height: 300px;
-      overflow-y: auto;
-    }
+    .header { display: flex; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid rgba(67,97,238,0.15); }
+    .logo { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #4361ee, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 30px; }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+    .card { background: #111927; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group input { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; }
+    .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; transition: 0.3s; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(67,97,238,0.3); }
+    .btn-block { width: 100%; }
+    .btn-danger { background: #f72585; }
+    .btn-warning { background: #f8961e; }
+    .token-list { max-height: 600px; overflow-y: auto; padding-right: 5px; }
+    .token-item { background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .empty-state { text-align: center; padding: 40px; color: #4a5a7a; }
+    .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; z-index: 2000; animation: slideIn 0.3s; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .toast-success { background: #1a3a2a; border: 1px solid #2ecc71; color: #2ecc71; }
+    .toast-error { background: #3a1a2a; border: 1px solid #f72585; color: #f72585; }
+    .toast-info { background: #1a2a3a; border: 1px solid #4361ee; color: #4cc9f0; }
+    
+    /* MODAL SIMPLES */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; color: #e8edf5; }
+    .modal-box h2 { margin-bottom: 16px; }
+    .modal-box input, .modal-box textarea { width: 100%; margin-bottom: 10px; padding: 8px 12px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 12px; }
   </style>
 </head>
 <body>
-
   <div class="dashboard">
-
-    <!-- HEADER -->
     <header class="header">
-      <div class="header-left">
-        <div class="logo">Code<span>Hub</span></div>
-        <span class="logo-badge">DEV</span>
-      </div>
-      <div class="header-right">
-        <div class="user-info">
-          <div class="user-avatar" id="userAvatar">U</div>
-          <div>
-            <div class="user-name" id="userName">Carregando...</div>
-            <div class="user-email" id="userEmail">usuario@email.com</div>
-          </div>
-        </div>
-      </div>
+      <div class="logo">Code<span style="color:#6b7a9f;">Hub</span></div>
     </header>
 
-    <!-- AUTH TOKEN -->
-    <div class="auth-token-card" id="authTokenCard">
-      <div class="token-label">
-        <span class="icon">🔐</span>
-        <div>
-          <div class="title">Token de Autenticação</div>
-          <div class="sub">Seu token permanente para a API</div>
-        </div>
-      </div>
-      <div class="token-value" id="authTokenDisplay">
-        <span class="no-token">⚠️ Carregando...</span>
-      </div>
-    </div>
-
-    <!-- GRID PRINCIPAL -->
-    <div class="grid-2">
-
-      <!-- COLUNA ESQUERDA: CRIAR TOKEN -->
+    <div class="main-grid">
       <div class="card">
-        <div class="card-header">
-          <h2>✨ Criar Novo Token</h2>
-          <span class="subtitle">Gerar token para seu app</span>
-        </div>
+        <h2>✨ Criar Novo Token</h2>
         <form id="createTokenForm">
           <div class="form-group">
-            <label>Nome do Aplicativo *</label>
-            <input type="text" id="appName" class="form-control" placeholder="Ex: Meu App Incrível" required />
+            <label>Nome do App *</label>
+            <input type="text" id="appName" placeholder="Ex: Meu App Incrível" required />
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Tamanho do Token</label>
-              <input type="number" id="tokenSize" class="form-control" value="20" min="20" max="200" />
-            </div>
+          <div class="form-group">
+            <label>Tamanho do Token</label>
+            <input type="number" id="tokenSize" value="20" min="20" max="200" />
           </div>
-          <button type="submit" class="btn btn-primary btn-block">🚀 Gerar Token</button>
+          <button type="submit" class="btn btn-block">🚀 Gerar Token</button>
         </form>
       </div>
 
-      <!-- COLUNA DIREITA: LISTA DE TOKENS -->
       <div class="card">
-        <div class="card-header">
+        <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
           <h2>📋 Seus Tokens</h2>
-          <span class="badge" id="tokenCount">0</span>
+          <span class="badge-count" id="tokenCount">0</span>
         </div>
-        <div class="list" id="tokenList">
+        <div class="token-list" id="tokenList">
           <div class="empty-state">
-            <div class="icon">📭</div>
+            <div class="icon" style="font-size:48px;">📭</div>
             <h3>Nenhum token criado</h3>
-            <p>Crie seu primeiro token ao lado</p>
           </div>
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- MODAL DE CONFIGURAÇÃO -->
+  <!-- MODAL DE EDIÇÃO SIMPLES -->
   <div class="modal-overlay" id="editModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modalTitle">⚙️ Configurar Aplicativo</h2>
-        <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-box">
+      <h2 id="modalTitle">⚙️ Configurar App</h2>
+      <div class="form-group">
+        <label>Domínios Permitidos (separados por vírgula)</label>
+        <input type="text" id="editDomains" placeholder="ex: meusite.com, app.com" />
       </div>
-
-      <!-- ABAS -->
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="basico" onclick="switchTab('basico')">📝 Básico</button>
-        <button class="tab-btn" data-tab="dominios" onclick="switchTab('dominios')">🌐 Domínios</button>
-        <button class="tab-btn" data-tab="ips" onclick="switchTab('ips')">🚫 IPs</button>
-        <button class="tab-btn" data-tab="contas" onclick="switchTab('contas')">👥 Contas</button>
+      <div class="form-group">
+        <label>IPs Bloqueados (separados por vírgula)</label>
+        <input type="text" id="editIPs" placeholder="ex: 192.168.1.1, 10.0.0.1" />
       </div>
-
-      <!-- CONTEÚDO DAS ABAS -->
-      <div id="tabBasico" class="tab-content active">
-        <form id="editForm">
-          <div class="form-group">
-            <label>Nome do Aplicativo</label>
-            <input type="text" id="editAppName" class="form-control" placeholder="Nome do app" />
-          </div>
-          <div class="form-group">
-            <label>Ícone (URL da imagem)</label>
-            <input type="url" id="editIcon" class="form-control" placeholder="https://exemplo.com/icone.png" />
-          </div>
-          <div class="form-group">
-            <label>Contato do Desenvolvedor (email, telefone ou URL)</label>
-            <input type="text" id="editContact" class="form-control" placeholder="contato@meuapp.com" />
-          </div>
-          <div class="form-group">
-            <label>Código JavaScript (botão personalizado)</label>
-            <textarea id="editCustomJs" class="form-control" rows="3" placeholder="alert('Olá, mundo!');"></textarea>
-          </div>
-          <button type="submit" class="btn btn-success btn-block">💾 Salvar Configurações</button>
-        </form>
+      <div class="form-group">
+        <label>Nome do App</label>
+        <input type="text" id="editAppName" />
       </div>
-
-      <div id="tabDominios" class="tab-content">
-        <div class="form-group">
-          <label>Domínios Permitidos (máx 20)</label>
-          <div class="form-helper">Digite um domínio por vez. URLs serão convertidas automaticamente para domínio puro.</div>
-          <div id="domainsContainer" style="margin-top:12px;"></div>
-          <button type="button" class="add-btn" onclick="addDomainField()">➕ Adicionar Domínio</button>
-          <button type="button" class="btn btn-success btn-block mt-16" id="saveDomainsBtn" onclick="saveDomains()">💾 Salvar Domínios</button>
-        </div>
-      </div>
-
-      <div id="tabIps" class="tab-content">
-        <div class="form-group">
-          <label>IPs Bloqueados (máx 50)</label>
-          <div class="form-helper">IPs nesta lista não poderão acessar a API.</div>
-          <div id="ipsContainer" style="margin-top:12px;"></div>
-          <button type="button" class="add-btn" onclick="addIPField()">➕ Adicionar IP</button>
-          <button type="button" class="btn btn-success btn-block mt-16" id="saveIPsBtn" onclick="saveIPs()">💾 Salvar IPs</button>
-        </div>
-      </div>
-
-      <div id="tabContas" class="tab-content">
-        <div class="form-group">
-          <label>Contas Capturadas</label>
-          <div class="form-helper">Todas as contas que usaram este token. Apenas nome e email são exibidos.</div>
-          <div id="accountsContainer" style="margin-top:12px;">
-            <div class="text-muted" style="padding:20px;text-align:center;">Carregando contas...</div>
-          </div>
-        </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="saveEdit()">💾 Salvar</button>
+        <button class="btn btn-danger" onclick="closeModal()">Cancelar</button>
       </div>
     </div>
   </div>
@@ -298,47 +110,23 @@
       projectId: "html-15e80",
       storageBucket: "html-15e80.appspot.com",
       messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32",
-      measurementId: "G-V57KRZ02HJ"
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // Elementos
-    const authTokenDisplay = document.getElementById('authTokenDisplay');
+    let userUID = null;
+    let currentEditToken = null;
     const tokenList = document.getElementById('tokenList');
     const tokenCount = document.getElementById('tokenCount');
-    const createForm = document.getElementById('createTokenForm');
-    const appName = document.getElementById('appName');
-    const tokenSize = document.getElementById('tokenSize');
-    const userName = document.getElementById('userName');
-    const userEmail = document.getElementById('userEmail');
-    const userAvatar = document.getElementById('userAvatar');
-
-    // Modal
     const editModal = document.getElementById('editModal');
-    const editForm = document.getElementById('editForm');
+    const editDomains = document.getElementById('editDomains');
+    const editIPs = document.getElementById('editIPs');
     const editAppName = document.getElementById('editAppName');
-    const editIcon = document.getElementById('editIcon');
-    const editContact = document.getElementById('editContact');
-    const editCustomJs = document.getElementById('editCustomJs');
     const modalTitle = document.getElementById('modalTitle');
 
-    // Containers
-    const domainsContainer = document.getElementById('domainsContainer');
-    const ipsContainer = document.getElementById('ipsContainer');
-    const accountsContainer = document.getElementById('accountsContainer');
-
-    let userUID = null;
-    let currentEditingToken = null;
-    let allTokens = [];
-    let currentDomains = [];
-    let currentIPs = [];
-    let currentAccounts = [];
-
-    // ===== TOAST =====
     function showToast(message, type = 'success') {
       const existing = document.querySelector('.toast');
       if (existing) existing.remove();
@@ -349,42 +137,6 @@
       setTimeout(() => toast.remove(), 4000);
     }
 
-    // ===== DECODIFICAR TOKEN =====
-    function decodeAuthToken(token) {
-      try { return JSON.parse(decodeURIComponent(escape(atob(token)))); } catch { return null; }
-    }
-
-    // ===== AUTH TOKEN =====
-    async function fetchUserAuthToken(userId) {
-      const snap = await get(ref(db, `tokens/${userId}`));
-      return snap.exists() ? snap.val() : null;
-    }
-
-    function getLocalAuthToken() {
-      const t = localStorage.getItem('auth_token');
-      return t ? { token: t } : null;
-    }
-
-    async function displayAuthToken(user) {
-      if (!user) {
-        authTokenDisplay.innerHTML = '<span class="no-token">⚠️ Faça login para ver seu token</span>';
-        return;
-      }
-      let info = await fetchUserAuthToken(user.uid) || getLocalAuthToken();
-      if (info && info.token) {
-        authTokenDisplay.innerHTML = `
-          <code>${info.token}</code>
-          <button class="copy-btn" onclick="copyToken('${info.token.replace(/'/g, "\\'")}')">📋 Copiar</button>
-        `;
-      } else {
-        authTokenDisplay.innerHTML = '<span class="no-token">⚠️ Nenhum token encontrado</span>';
-      }
-    }
-    window.copyToken = (t) => {
-      navigator.clipboard.writeText(t).then(() => showToast('✅ Token copiado!', 'success'));
-    };
-
-    // ===== GERAR TOKEN =====
     function generateToken(len) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       let tok = '';
@@ -392,41 +144,23 @@
       return tok;
     }
 
-    // ===== CONVERTER URL PARA DOMÍNIO =====
-    function urlToDomain(input) {
-      let domain = input.trim();
-      if (!domain) return '';
-      domain = domain.replace(/^https?:\/\//, '');
-      domain = domain.replace(/^www\./, '');
-      domain = domain.replace(/\/index\.html$/, '').replace(/\/$/, '');
-      domain = domain.split('/')[0].split('?')[0];
-      return domain;
-    }
-
-    // ===== SALVAR TOKEN (sempre nos dois lugares) =====
     async function saveToken(token, data) {
       const base = {
         appName: data.appName,
         ownerUID: userUID,
         createdAt: new Date().toISOString(),
-        icon: data.icon || '',
-        contactInfo: data.contactInfo || '',
-        customJs: data.customJs || '',
         domains: data.domains || [],
         blockedIPs: data.blockedIPs || [],
         accounts: {}
       };
-
-      // Salva nos dois lugares sempre
       await set(ref(db, `tokens/${token}`), base);
       await set(ref(db, `tokens/token/${token}`), base);
-      
-      showToast('✅ Token criado com sucesso!', 'success');
+      showToast('✅ Token criado!', 'success');
       loadTokens();
     }
 
-    // ===== CARREGAR TOKENS =====
     async function loadTokens() {
+      if (!userUID) return;
       const [snap1, snap2] = await Promise.all([
         get(ref(db, 'tokens')),
         get(ref(db, 'tokens/token'))
@@ -434,16 +168,15 @@
       const all = [];
       const data1 = snap1.val();
       const data2 = snap2.val();
-      
       if (data1) Object.entries(data1).forEach(([k, v]) => {
-        if (v.ownerUID === userUID && k !== 'token') all.push({ token: k, val: v, source: 'tokens/' });
+        if ((v.ownerUID === userUID || !v.ownerUID) && k !== 'token') all.push({ token: k, val: v });
       });
       if (data2) Object.entries(data2).forEach(([k, v]) => {
-        if (v.ownerUID === userUID) all.push({ token: k, val: v, source: 'tokens/token/' });
+        if (v.ownerUID === userUID || !v.ownerUID) all.push({ token: k, val: v });
       });
 
       const seen = new Set();
-      allTokens = all.filter(item => {
+      const allTokens = all.filter(item => {
         if (seen.has(item.token)) return false;
         seen.add(item.token);
         return true;
@@ -452,13 +185,7 @@
       tokenCount.textContent = allTokens.length;
 
       if (allTokens.length === 0) {
-        tokenList.innerHTML = `
-          <div class="empty-state">
-            <div class="icon">📭</div>
-            <h3>Nenhum token criado</h3>
-            <p>Crie seu primeiro token ao lado</p>
-          </div>
-        `;
+        tokenList.innerHTML = `<div class="empty-state"><div class="icon" style="font-size:48px;">📭</div><h3>Nenhum token criado</h3></div>`;
         return;
       }
 
@@ -467,7 +194,7 @@
       
       allTokens.forEach(({ token, val }) => {
         const div = document.createElement('div');
-        div.className = 'list-item';
+        div.className = 'token-item';
         const domains = val.domains || [];
         const hasDomain = domains.length > 0;
         const icon = val.icon || '📱';
@@ -475,368 +202,86 @@
         const apiUrl = `${baseURL}?token=${token}`;
 
         div.innerHTML = `
-          <div class="top-row">
-            <div>
-              <div class="item-title">${icon} ${val.appName}</div>
-              <div class="item-sub">${hasDomain ? domains.join(', ') : '⏳ Nenhum domínio configurado'}</div>
-            </div>
-            <div class="status">
-              <span class="dot ${hasDomain ? 'active' : 'inactive'}"></span>
-              ${hasDomain ? 'Configurado' : 'Pendente'}
-              <span style="margin-left:8px;background:rgba(67,97,238,0.15);padding:2px 8px;border-radius:12px;font-size:11px;">👥 ${accountCount}</span>
-            </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <div><strong>${icon} ${val.appName}</strong> <br> <span style="color:#4cc9f0;font-size:13px;">${hasDomain ? domains.join(', ') : 'Sem domínio'}</span></div>
+            <div><span style="background:rgba(67,97,238,0.15);padding:2px 8px;border-radius:12px;font-size:11px;">👥 ${accountCount}</span></div>
           </div>
-          <div class="item-meta">Token: ${token.substring(0, 12)}...</div>
-          <div class="copy-actions">
-            <button class="btn-copy" onclick="copyText('${apiUrl}')">📋 Copiar URL da API</button>
-            <button class="btn-copy" onclick="copyText('${token}')">📋 Copiar Token</button>
-          </div>
-          <div class="actions">
-            <button class="btn btn-sm btn-warning" onclick="editToken('${token}')">⚙️ Configurar</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteToken('${token}')">🗑️ Excluir</button>
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+            <button class="btn" style="padding:6px 12px;font-size:12px;" onclick="navigator.clipboard.writeText('${apiUrl}')">📋 URL</button>
+            <button class="btn btn-warning" style="padding:6px 12px;font-size:12px;" onclick="openEdit('${token}')">⚙️</button>
+            <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="deleteToken('${token}')">🗑️</button>
           </div>
         `;
         tokenList.appendChild(div);
       });
     }
 
-    // ===== COPIAR TEXTO =====
-    window.copyText = function(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        showToast('✅ Copiado para a área de transferência!', 'success');
-      }).catch(() => {
-        // Fallback
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        showToast('✅ Copiado para a área de transferência!', 'success');
-      });
-    };
-
-    // ===== EDITAR TOKEN =====
-    window.editToken = async function(token) {
+    window.openEdit = function(token) {
+      currentEditToken = token;
       const item = allTokens.find(t => t.token === token);
       if (!item) return;
-      currentEditingToken = token;
-      const val = item.val;
-
-      modalTitle.textContent = `⚙️ Configurar: ${val.appName}`;
-
-      editAppName.value = val.appName || '';
-      editIcon.value = val.icon || '';
-      editContact.value = val.contactInfo || '';
-      editCustomJs.value = val.customJs || '';
-
-      currentDomains = val.domains || [];
-      renderDomains();
-
-      currentIPs = val.blockedIPs || [];
-      renderIPs();
-
-      currentAccounts = val.accounts ? Object.values(val.accounts) : [];
-      renderAccounts();
-
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector('[data-tab="basico"]').classList.add('active');
-      document.getElementById('tabBasico').classList.add('active');
-
+      editAppName.value = item.val.appName || '';
+      editDomains.value = (item.val.domains || []).join(', ');
+      editIPs.value = (item.val.blockedIPs || []).join(', ');
+      modalTitle.textContent = `⚙️ Configurar: ${item.val.appName}`;
       editModal.classList.add('active');
     };
 
-    // ===== RENDER DOMÍNIOS =====
-    function renderDomains() {
-      domainsContainer.innerHTML = '';
-      if (currentDomains.length === 0) {
-        domainsContainer.innerHTML = '<div class="text-muted" style="padding:12px;text-align:center;">Nenhum domínio adicionado.</div>';
-      } else {
-        currentDomains.forEach((domain, index) => {
-          const div = document.createElement('div');
-          div.className = 'domain-item';
-          div.innerHTML = `
-            <input type="text" value="${domain}" placeholder="ex: meusite.com" data-index="${index}" />
-            <button class="remove-btn" onclick="removeDomain(${index})">✕</button>
-          `;
-          domainsContainer.appendChild(div);
-        });
-      }
-    }
-
-    // ===== RENDER IPs =====
-    function renderIPs() {
-      ipsContainer.innerHTML = '';
-      if (currentIPs.length === 0) {
-        ipsContainer.innerHTML = '<div class="text-muted" style="padding:12px;text-align:center;">Nenhum IP bloqueado.</div>';
-      } else {
-        currentIPs.forEach((ip, index) => {
-          const div = document.createElement('div');
-          div.className = 'ip-item';
-          div.innerHTML = `
-            <input type="text" value="${ip}" placeholder="ex: 192.168.1.1" data-index="${index}" />
-            <button class="remove-btn" onclick="removeIP(${index})">✕</button>
-          `;
-          ipsContainer.appendChild(div);
-        });
-      }
-    }
-
-    // ===== RENDER CONTAS =====
-    function renderAccounts() {
-      accountsContainer.innerHTML = '';
-      if (currentAccounts.length === 0) {
-        accountsContainer.innerHTML = '<div class="text-muted" style="padding:20px;text-align:center;">Nenhuma conta capturada ainda.</div>';
-        return;
-      }
-
-      const list = document.createElement('div');
-      list.className = 'accounts-list';
-      currentAccounts.forEach((acc) => {
-        const div = document.createElement('div');
-        div.className = 'account-item-mini';
-        const initial = (acc.nome || acc.email || 'U')[0].toUpperCase();
-        div.innerHTML = `
-          <div class="account-info">
-            <div class="account-avatar-mini">${initial}</div>
-            <div>
-              <div class="account-name-mini">${acc.nome || 'Usuário'}</div>
-              <div class="account-email-mini">${acc.email || ''}</div>
-            </div>
-          </div>
-          <div class="account-actions-mini">
-            <span class="ip-info">IP: ${acc.ip || 'N/A'}</span>
-            <button class="ban-btn" onclick="banAccount('${acc.id}')">🚫 Banir</button>
-          </div>
-        `;
-        list.appendChild(div);
-      });
-      accountsContainer.appendChild(list);
-    }
-
-    // ===== ADICIONAR DOMÍNIO =====
-    window.addDomainField = function() {
-      if (currentDomains.length >= 20) {
-        showToast('❌ Máximo de 20 domínios atingido!', 'error');
-        return;
-      }
-      currentDomains.push('');
-      renderDomains();
-      const inputs = domainsContainer.querySelectorAll('input');
-      if (inputs.length > 0) inputs[inputs.length - 1].focus();
-    };
-
-    // ===== REMOVER DOMÍNIO =====
-    window.removeDomain = function(index) {
-      currentDomains.splice(index, 1);
-      renderDomains();
-    };
-
-    // ===== ADICIONAR IP =====
-    window.addIPField = function() {
-      if (currentIPs.length >= 50) {
-        showToast('❌ Máximo de 50 IPs atingido!', 'error');
-        return;
-      }
-      currentIPs.push('');
-      renderIPs();
-      const inputs = ipsContainer.querySelectorAll('input');
-      if (inputs.length > 0) inputs[inputs.length - 1].focus();
-    };
-
-    // ===== REMOVER IP =====
-    window.removeIP = function(index) {
-      currentIPs.splice(index, 1);
-      renderIPs();
-    };
-
-    // ===== BANIR CONTA =====
-    window.banAccount = function(accountId) {
-      if (!confirm(`Tem certeza que deseja banir esta conta? O IP será bloqueado.`)) return;
-
-      const account = currentAccounts.find(a => a.id === accountId);
-      if (!account) {
-        showToast('❌ Conta não encontrada.', 'error');
-        return;
-      }
-
-      const ip = account.ip;
-      if (!ip) {
-        showToast('❌ IP da conta não disponível para banir.', 'error');
-        return;
-      }
-
-      if (!currentIPs.includes(ip)) {
-        currentIPs.push(ip);
-        showToast(`✅ IP ${ip} bloqueado com sucesso!`, 'success');
-        renderIPs();
-        saveIPs();
-      } else {
-        showToast(`ℹ️ IP ${ip} já está bloqueado.`, 'info');
-      }
-    };
-
-    // ===== SALVAR DOMÍNIOS =====
-    window.saveDomains = async function() {
-      const inputs = domainsContainer.querySelectorAll('input');
-      const domains = [];
-      inputs.forEach(input => {
-        let val = input.value.trim();
-        if (val) {
-          val = urlToDomain(val);
-          if (val) domains.push(val);
-        }
-      });
-
-      const uniqueDomains = [...new Set(domains)];
-
-      if (uniqueDomains.length === 0) {
-        showToast('⚠️ Adicione pelo menos um domínio válido.', 'error');
-        return;
-      }
-
-      currentDomains = uniqueDomains;
+    window.saveEdit = async function() {
+      if (!currentEditToken) return;
+      const domains = editDomains.value.split(',').map(s => s.trim()).filter(s => s);
+      const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
+      const appName = editAppName.value.trim();
 
       try {
-        await update(ref(db, `tokens/${currentEditingToken}`), { domains: uniqueDomains });
-        await update(ref(db, `tokens/token/${currentEditingToken}`), { domains: uniqueDomains });
-        showToast(`✅ ${uniqueDomains.length} domínio(s) salvo(s)!`, 'success');
-        renderDomains();
-        loadTokens();
-      } catch (error) {
-        showToast('❌ Erro ao salvar: ' + error.message, 'error');
-      }
-    };
-
-    // ===== SALVAR IPs =====
-    window.saveIPs = async function() {
-      const inputs = ipsContainer.querySelectorAll('input');
-      const ips = [];
-      inputs.forEach(input => {
-        const val = input.value.trim();
-        if (val) ips.push(val);
-      });
-
-      const uniqueIPs = [...new Set(ips)];
-
-      if (uniqueIPs.length === 0) {
-        showToast('⚠️ Adicione pelo menos um IP para bloquear.', 'error');
-        return;
-      }
-
-      currentIPs = uniqueIPs;
-
-      try {
-        await update(ref(db, `tokens/${currentEditingToken}`), { blockedIPs: uniqueIPs });
-        await update(ref(db, `tokens/token/${currentEditingToken}`), { blockedIPs: uniqueIPs });
-        showToast(`✅ ${uniqueIPs.length} IP(s) bloqueado(s)!`, 'success');
-        renderIPs();
-        loadTokens();
-      } catch (error) {
-        showToast('❌ Erro ao salvar: ' + error.message, 'error');
-      }
-    };
-
-    // ===== SALVAR CONFIGURAÇÕES BÁSICAS =====
-    editForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!currentEditingToken) return;
-
-      const updates = {
-        appName: editAppName.value.trim(),
-        icon: editIcon.value.trim(),
-        contactInfo: editContact.value.trim(),
-        customJs: editCustomJs.value.trim(),
-        updatedAt: new Date().toISOString()
-      };
-
-      try {
-        await update(ref(db, `tokens/${currentEditingToken}`), updates);
-        await update(ref(db, `tokens/token/${currentEditingToken}`), updates);
+        await update(ref(db, `tokens/${currentEditToken}`), { appName, domains, blockedIPs: ips });
+        await update(ref(db, `tokens/token/${currentEditToken}`), { appName, domains, blockedIPs: ips });
         showToast('✅ Configurações salvas!', 'success');
+        closeModal();
         loadTokens();
-        modalTitle.textContent = `⚙️ Configurar: ${updates.appName}`;
-      } catch (error) {
-        showToast('❌ Erro ao salvar: ' + error.message, 'error');
+      } catch (e) {
+        showToast('❌ Erro: ' + e.message, 'error');
       }
-    });
+    };
 
-    // ===== FECHAR MODAL =====
     window.closeModal = function() {
       editModal.classList.remove('active');
-      currentEditingToken = null;
+      currentEditToken = null;
     };
 
-    // ===== TROCAR ABA =====
-    window.switchTab = function(tab) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-      document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
-    };
-
-    // ===== DELETAR TOKEN =====
     window.deleteToken = async function(token) {
-      if (!confirm(`Tem certeza que deseja excluir o token "${token}"?`)) return;
+      if (!confirm(`Excluir token?`)) return;
       try {
         await remove(ref(db, `tokens/${token}`));
         await remove(ref(db, `tokens/token/${token}`));
-        showToast('🗑️ Token excluído!', 'success');
+        showToast('🗑️ Excluído!', 'success');
         loadTokens();
       } catch (error) {
-        showToast('❌ Erro ao excluir: ' + error.message, 'error');
+        showToast('❌ Erro: ' + error.message, 'error');
       }
     };
 
-    // ===== CRIAR TOKEN =====
-    createForm.addEventListener('submit', async (e) => {
+    document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name = appName.value.trim();
-      const size = parseInt(tokenSize.value);
-
-      if (!name) {
-        showToast('❌ Digite um nome para o aplicativo', 'error');
-        return;
-      }
-      if (size < 20 || size > 200) {
-        showToast('❌ Tamanho do token deve ser entre 20 e 200', 'error');
-        return;
-      }
-
+      const name = document.getElementById('appName').value.trim();
+      const size = parseInt(document.getElementById('tokenSize').value);
+      if (!name) return showToast('❌ Digite um nome', 'error');
+      if (size < 20 || size > 200) return showToast('❌ Tamanho entre 20 e 200', 'error');
       const token = generateToken(size);
-      const data = {
-        appName: name,
-        icon: '',
-        contactInfo: '',
-        customJs: '',
-        domains: [],
-        blockedIPs: []
-      };
-
-      await saveToken(token, data);
-      appName.value = '';
-      tokenSize.value = '20';
+      await saveToken(token, { appName: name });
+      document.getElementById('appName').value = '';
     });
 
-    // ===== CLICK FORA DO MODAL =====
     editModal.addEventListener('click', (e) => {
       if (e.target === editModal) closeModal();
     });
 
-    // ===== AUTH STATE =====
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        alert('Você precisa estar logado.');
         window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth';
         return;
       }
       userUID = user.uid;
-      userName.textContent = user.displayName || user.email?.split('@')[0] || 'Usuário';
-      userEmail.textContent = user.email || '';
-      userAvatar.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
-      await displayAuthToken(user);
       loadTokens();
     });
   </script>
