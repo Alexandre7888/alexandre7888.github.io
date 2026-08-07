@@ -3,617 +3,81 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CodeHub - Developer Dashboard</title>
+  <title>CodeHub - Criar App</title>
+  
+  <!-- CSS UNIFICADO -->
+  <link rel="stylesheet" href="https://alexandre7888.github.io/style.css">
+  
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0a0e17;
-      color: #e8edf5;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #141b2b;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #2a3a5c;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #4361ee;
-    }
-
-    .dashboard {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    /* HEADER */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 0 30px 0;
-      border-bottom: 1px solid rgba(67, 97, 238, 0.15);
-      flex-wrap: wrap;
-      gap: 15px;
-    }
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .header-left .logo {
-      font-size: 28px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #4361ee, #7c3aed);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .header-left .logo span {
-      font-weight: 300;
-      color: #6b7a9f;
-      -webkit-text-fill-color: #6b7a9f;
-    }
-    .header-left .badge {
-      background: rgba(67, 97, 238, 0.2);
-      border: 1px solid rgba(67, 97, 238, 0.3);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 11px;
-      color: #4cc9f0;
-      font-weight: 600;
-    }
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .header-right .user-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 8px 16px 8px 12px;
-      border-radius: 30px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-    .header-right .user-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #4361ee, #7c3aed);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 14px;
-      color: #fff;
-    }
-    .header-right .user-name {
-      font-size: 14px;
-      font-weight: 500;
-      color: #c8d0e0;
-    }
-    .header-right .user-email {
-      font-size: 12px;
-      color: #6b7a9f;
-    }
-
-    /* AUTH TOKEN CARD */
-    .auth-token-card {
-      background: linear-gradient(135deg, #111927, #1a2340);
-      border: 1px solid rgba(67, 97, 238, 0.2);
-      border-radius: 16px;
-      padding: 20px 24px;
-      margin-bottom: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 15px;
-    }
-    .auth-token-card .token-label {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .auth-token-card .token-label .icon {
-      font-size: 24px;
-    }
-    .auth-token-card .token-label .title {
-      font-size: 14px;
-      font-weight: 600;
-      color: #c8d0e0;
-    }
-    .auth-token-card .token-label .sub {
-      font-size: 12px;
-      color: #6b7a9f;
-    }
-    .auth-token-card .token-value {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 8px 16px;
-      border-radius: 10px;
-      border: 1px solid rgba(67, 97, 238, 0.15);
-      flex: 1;
-      min-width: 200px;
-      max-width: 500px;
-    }
-    .auth-token-card .token-value code {
-      font-size: 12px;
-      font-family: 'Consolas', monospace;
-      color: #4cc9f0;
-      word-break: break-all;
-      flex: 1;
-    }
-    .auth-token-card .token-value .copy-btn {
-      background: rgba(67, 97, 238, 0.2);
-      border: none;
-      color: #4cc9f0;
-      padding: 4px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      transition: 0.2s;
-    }
-    .auth-token-card .token-value .copy-btn:hover {
-      background: rgba(67, 97, 238, 0.4);
-    }
-    .auth-token-card .no-token {
-      color: #f72585;
-      font-size: 14px;
-    }
-
-    /* GRID PRINCIPAL */
-    .main-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-bottom: 30px;
-    }
-    @media (max-width: 900px) {
-      .main-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* CARDS */
-    .card {
-      background: #111927;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 16px;
-      padding: 24px;
-      transition: border-color 0.3s;
-    }
-    .card:hover {
-      border-color: rgba(67, 97, 238, 0.2);
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    .card-header h2 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #e8edf5;
-    }
-    .card-header .subtitle {
-      font-size: 12px;
-      color: #6b7a9f;
-    }
-    .card-header .badge-count {
-      background: rgba(67, 97, 238, 0.15);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      color: #4cc9f0;
-    }
-
-    /* FORMULÁRIO */
-    .form-group {
-      margin-bottom: 16px;
-    }
-    .form-group label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: #a0b3c9;
-      margin-bottom: 6px;
-    }
-    .form-group input {
-      width: 100%;
-      padding: 10px 14px;
-      background: #0d1422;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      color: #e8edf5;
-      font-size: 14px;
-      transition: border-color 0.3s, box-shadow 0.3s;
-      outline: none;
-    }
-    .form-group input:focus {
-      border-color: #4361ee;
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
-    }
-    .form-group input::placeholder {
-      color: #4a5a7a;
-    }
-    .form-group .helper {
-      font-size: 12px;
-      color: #4a5a7a;
-      margin-top: 4px;
-    }
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    @media (max-width: 500px) {
-      .form-row {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .btn {
-      padding: 10px 24px;
-      border: none;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.3s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #4361ee, #7c3aed);
-      color: #fff;
-    }
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
-    }
-    .btn-primary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-    .btn-success {
-      background: #2ecc71;
-      color: #fff;
-    }
-    .btn-success:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(46, 204, 113, 0.3);
-    }
-    .btn-success:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-    .btn-danger {
-      background: #f72585;
-      color: #fff;
-    }
-    .btn-danger:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(247, 37, 133, 0.3);
-    }
-    .btn-warning {
-      background: #f8961e;
-      color: #fff;
-    }
-    .btn-warning:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(248, 150, 30, 0.3);
-    }
-    .btn-outline {
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #a0b3c9;
-    }
-    .btn-outline:hover {
-      border-color: #4361ee;
-      color: #fff;
-    }
-    .btn-sm {
-      padding: 6px 14px;
-      font-size: 12px;
-    }
-    .btn-block {
-      width: 100%;
-      justify-content: center;
-    }
-    .btn-group {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 16px;
-    }
-
-    /* TOKEN LIST */
-    .token-list {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      max-height: 600px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-    .token-item {
-      background: #0d1422;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      padding: 16px 20px;
-      transition: border-color 0.3s;
-    }
-    .token-item:hover {
-      border-color: rgba(67, 97, 238, 0.3);
-    }
-    .token-item .top-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .token-item .app-name {
-      font-weight: 600;
-      font-size: 16px;
-      color: #e8edf5;
-    }
-    .token-item .app-domain {
-      font-size: 13px;
-      color: #4cc9f0;
-      font-family: monospace;
-    }
-    .token-item .app-meta {
-      font-size: 12px;
-      color: #4a5a7a;
-      margin-top: 4px;
-    }
-    .token-item .status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-    }
-    .token-item .status .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .token-item .status .dot.active {
-      background: #2ecc71;
-    }
-    .token-item .status .dot.inactive {
-      background: #f72585;
-    }
-    .token-item .actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-      flex-wrap: wrap;
-    }
-    .token-item .copy-actions {
-      display: flex;
-      gap: 6px;
-      margin-top: 8px;
-      flex-wrap: wrap;
-    }
+    /* ESTILOS ESPECÍFICOS DO CRIADOR DE APPS */
+    .dashboard { max-width: 1200px; margin: 0 auto; }
     .token-item .copy-actions .btn-copy {
-      background: rgba(67, 97, 238, 0.15);
-      color: #4cc9f0;
-      border: 1px solid rgba(67, 97, 238, 0.2);
+      background: rgba(67,97,238,0.15);
+      color: var(--secondary);
+      border: 1px solid rgba(67,97,238,0.2);
       padding: 4px 12px;
       border-radius: 6px;
       font-size: 11px;
       cursor: pointer;
-      transition: 0.2s;
+      transition: var(--transition);
     }
     .token-item .copy-actions .btn-copy:hover {
-      background: rgba(67, 97, 238, 0.3);
+      background: rgba(67,97,238,0.3);
     }
-
-    /* EMPTY STATE */
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-      color: #4a5a7a;
-    }
-    .empty-state .icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-    .empty-state h3 {
-      font-size: 18px;
-      color: #a0b3c9;
-      margin-bottom: 8px;
-    }
-    .empty-state p {
-      font-size: 14px;
-    }
-
-    /* MODAL */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(8px);
-      z-index: 1000;
-      display: none;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-    .modal-overlay.active {
-      display: flex;
-    }
-    .modal {
-      background: #111927;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      max-width: 750px;
-      width: 100%;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 32px;
-      animation: modalIn 0.3s ease-out;
-    }
-    @keyframes modalIn {
-      from {
-        opacity: 0;
-        transform: scale(0.95) translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-      }
-    }
-    .modal .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-    .modal .modal-header h2 {
-      font-size: 20px;
-      font-weight: 600;
-      color: #e8edf5;
-    }
-    .modal .modal-header .close-btn {
-      background: none;
-      border: none;
-      color: #4a5a7a;
-      font-size: 24px;
-      cursor: pointer;
-      transition: color 0.3s;
-    }
-    .modal .modal-header .close-btn:hover {
-      color: #f72585;
-    }
-
-    /* ABAS */
-    .tabs {
-      display: flex;
-      gap: 4px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-    .tab-btn {
-      padding: 10px 20px;
-      background: transparent;
-      border: none;
-      color: #4a5a7a;
-      font-weight: 500;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 8px 8px 0 0;
-      transition: all 0.3s;
-    }
-    .tab-btn:hover {
-      color: #a0b3c9;
-    }
-    .tab-btn.active {
-      color: #4cc9f0;
-      background: rgba(67, 97, 238, 0.1);
-      border-bottom: 2px solid #4361ee;
-    }
-    .tab-content {
-      display: none;
-      padding: 8px 0;
-    }
-    .tab-content.active {
-      display: block;
-    }
-
-    /* DOMÍNIOS E IPs */
-    .domain-item,
-    .ip-item {
+    .domain-item, .ip-item {
       display: flex;
       gap: 10px;
       align-items: center;
       margin-bottom: 8px;
     }
-    .domain-item input,
-    .ip-item input {
+    .domain-item input, .ip-item input {
       flex: 1;
       padding: 8px 12px;
-      background: #0d1422;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 8px;
-      color: #e8edf5;
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
       font-size: 14px;
       outline: none;
     }
-    .domain-item input:focus,
-    .ip-item input:focus {
-      border-color: #4361ee;
+    .domain-item input:focus, .ip-item input:focus {
+      border-color: var(--primary);
     }
-    .domain-item .remove-btn,
-    .ip-item .remove-btn {
-      background: rgba(247, 37, 133, 0.15);
-      color: #f72585;
+    .domain-item .remove-btn, .ip-item .remove-btn {
+      background: rgba(247,37,133,0.15);
+      color: var(--danger);
       border: none;
       padding: 4px 10px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
     }
-    .domain-item .remove-btn:hover,
-    .ip-item .remove-btn:hover {
-      background: rgba(247, 37, 133, 0.3);
+    .domain-item .remove-btn:hover, .ip-item .remove-btn:hover {
+      background: rgba(247,37,133,0.3);
     }
     .add-btn {
-      background: rgba(67, 97, 238, 0.15);
-      color: #4cc9f0;
-      border: 1px dashed rgba(67, 97, 238, 0.3);
+      background: rgba(67,97,238,0.15);
+      color: var(--secondary);
+      border: 1px dashed rgba(67,97,238,0.3);
       padding: 8px 16px;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
       font-size: 13px;
-      transition: 0.3s;
+      transition: var(--transition);
       margin-top: 8px;
     }
     .add-btn:hover {
-      background: rgba(67, 97, 238, 0.25);
-    }
-
-    /* CONTAS CAPTURADAS */
-    .accounts-list {
-      max-height: 300px;
-      overflow-y: auto;
+      background: rgba(67,97,238,0.25);
     }
     .account-item-mini {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 10px 14px;
-      background: #0d1422;
-      border-radius: 8px;
+      background: var(--bg-input);
+      border-radius: var(--radius-sm);
       margin-bottom: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-light);
       flex-wrap: wrap;
       gap: 8px;
     }
@@ -626,7 +90,7 @@
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      background: var(--primary-gradient);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -637,11 +101,11 @@
     .account-item-mini .account-name-mini {
       font-size: 14px;
       font-weight: 500;
-      color: #e8edf5;
+      color: var(--text-primary);
     }
     .account-item-mini .account-email-mini {
       font-size: 12px;
-      color: #4a5a7a;
+      color: var(--text-muted);
     }
     .account-item-mini .account-actions-mini {
       display: flex;
@@ -650,100 +114,27 @@
       flex-wrap: wrap;
     }
     .account-item-mini .ban-btn {
-      background: rgba(247, 37, 133, 0.15);
-      color: #f72585;
+      background: rgba(247,37,133,0.15);
+      color: var(--danger);
       border: none;
       padding: 4px 12px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 11px;
       font-weight: 600;
-      transition: 0.3s;
+      transition: var(--transition);
     }
     .account-item-mini .ban-btn:hover {
-      background: rgba(247, 37, 133, 0.3);
+      background: rgba(247,37,133,0.3);
     }
     .account-item-mini .ip-info {
       font-size: 11px;
-      color: #4a5a7a;
+      color: var(--text-muted);
       font-family: monospace;
     }
-
-    /* TOAST */
-    .toast {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      padding: 14px 24px;
-      border-radius: 12px;
-      font-weight: 500;
-      font-size: 14px;
-      z-index: 2000;
-      animation: toastIn 0.4s ease-out;
-      max-width: 400px;
-    }
-    .toast-success {
-      background: #1a3a2a;
-      border: 1px solid #2ecc71;
-      color: #2ecc71;
-    }
-    .toast-error {
-      background: #3a1a2a;
-      border: 1px solid #f72585;
-      color: #f72585;
-    }
-    .toast-info {
-      background: #1a2a3a;
-      border: 1px solid #4361ee;
-      color: #4cc9f0;
-    }
-    @keyframes toastIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .mt-8 {
-      margin-top: 8px;
-    }
-    .mt-16 {
-      margin-top: 16px;
-    }
-    .text-muted {
-      color: #4a5a7a;
-    }
-    .text-success {
-      color: #2ecc71;
-    }
-    .text-danger {
-      color: #f72585;
-    }
-
-    @media (max-width: 600px) {
-      .header-left .logo {
-        font-size: 20px;
-      }
-      .header-right .user-info .user-email {
-        display: none;
-      }
-      .auth-token-card .token-value {
-        max-width: 100%;
-      }
-      .modal {
-        padding: 20px;
-      }
-      .account-item-mini {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .account-item-mini .account-info {
-        justify-content: center;
-      }
+    .accounts-list {
+      max-height: 300px;
+      overflow-y: auto;
     }
   </style>
 </head>
@@ -755,7 +146,7 @@
     <header class="header">
       <div class="header-left">
         <div class="logo">Code<span>Hub</span></div>
-        <span class="badge">DEV</span>
+        <span class="logo-badge">DEV</span>
       </div>
       <div class="header-right">
         <div class="user-info">
@@ -783,7 +174,7 @@
     </div>
 
     <!-- GRID PRINCIPAL -->
-    <div class="main-grid">
+    <div class="grid-2">
 
       <!-- COLUNA ESQUERDA: CRIAR TOKEN -->
       <div class="card">
@@ -794,12 +185,12 @@
         <form id="createTokenForm">
           <div class="form-group">
             <label>Nome do Aplicativo *</label>
-            <input type="text" id="appName" placeholder="Ex: Meu App Incrível" required />
+            <input type="text" id="appName" class="form-control" placeholder="Ex: Meu App Incrível" required />
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Tamanho do Token</label>
-              <input type="number" id="tokenSize" value="20" min="20" max="200" />
+              <input type="number" id="tokenSize" class="form-control" value="20" min="20" max="200" />
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-block">🚀 Gerar Token</button>
@@ -810,9 +201,9 @@
       <div class="card">
         <div class="card-header">
           <h2>📋 Seus Tokens</h2>
-          <span class="badge-count" id="tokenCount">0</span>
+          <span class="badge" id="tokenCount">0</span>
         </div>
-        <div class="token-list" id="tokenList">
+        <div class="list" id="tokenList">
           <div class="empty-state">
             <div class="icon">📭</div>
             <h3>Nenhum token criado</h3>
@@ -829,7 +220,7 @@
     <div class="modal">
       <div class="modal-header">
         <h2 id="modalTitle">⚙️ Configurar Aplicativo</h2>
-        <button class="close-btn" onclick="closeModal()">✕</button>
+        <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
 
       <!-- ABAS -->
@@ -845,19 +236,19 @@
         <form id="editForm">
           <div class="form-group">
             <label>Nome do Aplicativo</label>
-            <input type="text" id="editAppName" placeholder="Nome do app" />
+            <input type="text" id="editAppName" class="form-control" placeholder="Nome do app" />
           </div>
           <div class="form-group">
             <label>Ícone (URL da imagem)</label>
-            <input type="url" id="editIcon" placeholder="https://exemplo.com/icone.png" />
+            <input type="url" id="editIcon" class="form-control" placeholder="https://exemplo.com/icone.png" />
           </div>
           <div class="form-group">
             <label>Contato do Desenvolvedor (email, telefone ou URL)</label>
-            <input type="text" id="editContact" placeholder="contato@meuapp.com" />
+            <input type="text" id="editContact" class="form-control" placeholder="contato@meuapp.com" />
           </div>
           <div class="form-group">
             <label>Código JavaScript (botão personalizado)</label>
-            <textarea id="editCustomJs" rows="3" placeholder="alert('Olá, mundo!');" style="width:100%;padding:10px 14px;background:#0d1422;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#e8edf5;font-size:14px;font-family:'Consolas',monospace;resize:vertical;min-height:60px;outline:none;"></textarea>
+            <textarea id="editCustomJs" class="form-control" rows="3" placeholder="alert('Olá, mundo!');"></textarea>
           </div>
           <button type="submit" class="btn btn-success btn-block">💾 Salvar Configurações</button>
         </form>
@@ -866,7 +257,7 @@
       <div id="tabDominios" class="tab-content">
         <div class="form-group">
           <label>Domínios Permitidos (máx 20)</label>
-          <div class="helper">Digite um domínio por vez. URLs serão convertidas automaticamente para domínio puro.</div>
+          <div class="form-helper">Digite um domínio por vez. URLs serão convertidas automaticamente para domínio puro.</div>
           <div id="domainsContainer" style="margin-top:12px;"></div>
           <button type="button" class="add-btn" onclick="addDomainField()">➕ Adicionar Domínio</button>
           <button type="button" class="btn btn-success btn-block mt-16" id="saveDomainsBtn" onclick="saveDomains()">💾 Salvar Domínios</button>
@@ -876,7 +267,7 @@
       <div id="tabIps" class="tab-content">
         <div class="form-group">
           <label>IPs Bloqueados (máx 50)</label>
-          <div class="helper">IPs nesta lista não poderão acessar a API.</div>
+          <div class="form-helper">IPs nesta lista não poderão acessar a API.</div>
           <div id="ipsContainer" style="margin-top:12px;"></div>
           <button type="button" class="add-btn" onclick="addIPField()">➕ Adicionar IP</button>
           <button type="button" class="btn btn-success btn-block mt-16" id="saveIPsBtn" onclick="saveIPs()">💾 Salvar IPs</button>
@@ -886,7 +277,7 @@
       <div id="tabContas" class="tab-content">
         <div class="form-group">
           <label>Contas Capturadas</label>
-          <div class="helper">Todas as contas que usaram este token. Apenas nome e email são exibidos.</div>
+          <div class="form-helper">Todas as contas que usaram este token. Apenas nome e email são exibidos.</div>
           <div id="accountsContainer" style="margin-top:12px;">
             <div class="text-muted" style="padding:20px;text-align:center;">Carregando contas...</div>
           </div>
@@ -1076,7 +467,7 @@
       
       allTokens.forEach(({ token, val }) => {
         const div = document.createElement('div');
-        div.className = 'token-item';
+        div.className = 'list-item';
         const domains = val.domains || [];
         const hasDomain = domains.length > 0;
         const icon = val.icon || '📱';
@@ -1086,8 +477,8 @@
         div.innerHTML = `
           <div class="top-row">
             <div>
-              <div class="app-name">${icon} ${val.appName}</div>
-              <div class="app-domain">${hasDomain ? domains.join(', ') : '⏳ Nenhum domínio configurado'}</div>
+              <div class="item-title">${icon} ${val.appName}</div>
+              <div class="item-sub">${hasDomain ? domains.join(', ') : '⏳ Nenhum domínio configurado'}</div>
             </div>
             <div class="status">
               <span class="dot ${hasDomain ? 'active' : 'inactive'}"></span>
@@ -1095,7 +486,7 @@
               <span style="margin-left:8px;background:rgba(67,97,238,0.15);padding:2px 8px;border-radius:12px;font-size:11px;">👥 ${accountCount}</span>
             </div>
           </div>
-          <div class="app-meta">Token: ${token.substring(0, 12)}...</div>
+          <div class="item-meta">Token: ${token.substring(0, 12)}...</div>
           <div class="copy-actions">
             <button class="btn-copy" onclick="copyText('${apiUrl}')">📋 Copiar URL da API</button>
             <button class="btn-copy" onclick="copyText('${token}')">📋 Copiar Token</button>
