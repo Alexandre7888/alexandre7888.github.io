@@ -31,7 +31,7 @@ function AppMenu() {
   const panelRef = useRef(null);
   const dbRef = useRef(null);
 
-  const isAllowedDomain = window.location.hostname === 'app.codehub.site.je';
+  const isAllowedDomain = window.location.hostname === 'alexandre7888.github.io';
 
   useEffect(() => {
     async function initFirebase() {
