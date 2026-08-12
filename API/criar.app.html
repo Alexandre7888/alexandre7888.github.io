@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CodeHub - Developer Dashboard</title>
+  <title>CodeHub - Criar App</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', sans-serif; background: #0a0e17; color: #e8edf5; padding: 20px; }
@@ -15,27 +15,14 @@
     .card { background: #111927; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; }
     .form-group { margin-bottom: 16px; }
     .form-group input { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; }
-    .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; transition: 0.3s; }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(67,97,238,0.3); }
+    .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; }
     .btn-block { width: 100%; }
-    .btn-danger { background: #f72585; }
-    .btn-warning { background: #f8961e; }
     .token-list { max-height: 600px; overflow-y: auto; padding-right: 5px; }
     .token-item { background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
     .empty-state { text-align: center; padding: 40px; color: #4a5a7a; }
-    .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; z-index: 2000; animation: slideIn 0.3s; }
-    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; z-index: 2000; }
     .toast-success { background: #1a3a2a; border: 1px solid #2ecc71; color: #2ecc71; }
     .toast-error { background: #3a1a2a; border: 1px solid #f72585; color: #f72585; }
-    .toast-info { background: #1a2a3a; border: 1px solid #4361ee; color: #4cc9f0; }
-    
-    /* MODAL SIMPLES */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-overlay.active { display: flex; }
-    .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; color: #e8edf5; }
-    .modal-box h2 { margin-bottom: 16px; }
-    .modal-box input, .modal-box textarea { width: 100%; margin-bottom: 10px; padding: 8px 12px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; }
-    .modal-actions { display: flex; gap: 10px; margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -75,32 +62,9 @@
     </div>
   </div>
 
-  <!-- MODAL DE EDIÇÃO SIMPLES -->
-  <div class="modal-overlay" id="editModal">
-    <div class="modal-box">
-      <h2 id="modalTitle">⚙️ Configurar App</h2>
-      <div class="form-group">
-        <label>Domínios Permitidos (separados por vírgula)</label>
-        <input type="text" id="editDomains" placeholder="ex: meusite.com, app.com" />
-      </div>
-      <div class="form-group">
-        <label>IPs Bloqueados (separados por vírgula)</label>
-        <input type="text" id="editIPs" placeholder="ex: 192.168.1.1, 10.0.0.1" />
-      </div>
-      <div class="form-group">
-        <label>Nome do App</label>
-        <input type="text" id="editAppName" />
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="saveEdit()">💾 Salvar</button>
-        <button class="btn btn-danger" onclick="closeModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -118,14 +82,8 @@
     const auth = getAuth(app);
 
     let userUID = null;
-    let currentEditToken = null;
     const tokenList = document.getElementById('tokenList');
     const tokenCount = document.getElementById('tokenCount');
-    const editModal = document.getElementById('editModal');
-    const editDomains = document.getElementById('editDomains');
-    const editIPs = document.getElementById('editIPs');
-    const editAppName = document.getElementById('editAppName');
-    const modalTitle = document.getElementById('modalTitle');
 
     function showToast(message, type = 'success') {
       const existing = document.querySelector('.toast');
@@ -208,46 +166,13 @@
           </div>
           <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
             <button class="btn" style="padding:6px 12px;font-size:12px;" onclick="navigator.clipboard.writeText('${apiUrl}')">📋 URL</button>
-            <button class="btn btn-warning" style="padding:6px 12px;font-size:12px;" onclick="openEdit('${token}')">⚙️</button>
-            <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="deleteToken('${token}')">🗑️</button>
+            <button class="btn" style="padding:6px 12px;font-size:12px;background:#f8961e;" onclick="alert('Editar token: ${token}')">⚙️</button>
+            <button class="btn" style="padding:6px 12px;font-size:12px;background:#f72585;" onclick="deleteToken('${token}')">🗑️</button>
           </div>
         `;
         tokenList.appendChild(div);
       });
     }
-
-    window.openEdit = function(token) {
-      currentEditToken = token;
-      const item = allTokens.find(t => t.token === token);
-      if (!item) return;
-      editAppName.value = item.val.appName || '';
-      editDomains.value = (item.val.domains || []).join(', ');
-      editIPs.value = (item.val.blockedIPs || []).join(', ');
-      modalTitle.textContent = `⚙️ Configurar: ${item.val.appName}`;
-      editModal.classList.add('active');
-    };
-
-    window.saveEdit = async function() {
-      if (!currentEditToken) return;
-      const domains = editDomains.value.split(',').map(s => s.trim()).filter(s => s);
-      const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
-      const appName = editAppName.value.trim();
-
-      try {
-        await update(ref(db, `tokens/${currentEditToken}`), { appName, domains, blockedIPs: ips });
-        await update(ref(db, `tokens/token/${currentEditToken}`), { appName, domains, blockedIPs: ips });
-        showToast('✅ Configurações salvas!', 'success');
-        closeModal();
-        loadTokens();
-      } catch (e) {
-        showToast('❌ Erro: ' + e.message, 'error');
-      }
-    };
-
-    window.closeModal = function() {
-      editModal.classList.remove('active');
-      currentEditToken = null;
-    };
 
     window.deleteToken = async function(token) {
       if (!confirm(`Excluir token?`)) return;
@@ -270,10 +195,6 @@
       const token = generateToken(size);
       await saveToken(token, { appName: name });
       document.getElementById('appName').value = '';
-    });
-
-    editModal.addEventListener('click', (e) => {
-      if (e.target === editModal) closeModal();
     });
 
     onAuthStateChanged(auth, async (user) => {
