@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecionando...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background: #0a0e17; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #e8edf5; }
+    .card { background: #111927; padding: 30px; border-radius: 12px; border: 1px solid rgba(67,97,238,0.2); max-width: 480px; width: 100%; text-align: center; }
+    h1 { font-size: 1.5rem; color: #4cc9f0; margin-bottom: 10px; }
+    p { color: #a0b3c9; font-size: 0.9rem; margin-bottom: 20px; }
+    .status-value { font-size: 1.2rem; font-weight: 600; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔄 Entrando no App</h1>
+    <p>Preparando sua sessão...</p>
+    <div id="status" class="status-value">Verificando autenticação</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const statusEl = document.getElementById("status");
+
+    // Pega o URL do app para redirecionar
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectUrl = urlParams.get('redirect');
+
+    if (!redirectUrl) {
+      statusEl.textContent = "❌ Erro: Nenhum app especificado.";
+      statusEl.style.color = "#f72585";
+    }
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    statusEl.textContent = "Verificando sessão...";
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        statusEl.textContent = "Sessão encontrada. Redirecionando...";
+        statusEl.style.color = "#2ecc71";
+
+        const token = await user.getIdToken();
+
+        // Atualiza o cookie compartilhado
+        document.cookie =
+          "firebaseToken=" + token +
+          "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+
+        console.log("✅ Token gerado e cookie atualizado. Redirecionando para:", redirectUrl);
+        // O token NÃO é exibido no console.
+
+        // Redireciona para o app (sem mostrar o token na URL)
+        window.location.href = redirectUrl;
+
+      } else {
+        statusEl.textContent = "❌ Você precisa estar logado.";
+        statusEl.style.color = "#f72585";
+        console.log("❌ Usuário não autenticado. Redirecionando para login.");
+        setTimeout(() => {
+          window.location.href = "https://phantora.codehub.site.je"; // Coloque aqui o link do seu auth.html
+        }, 2000);
+      }
+    });
+  </script>
+</body>
+</html>
