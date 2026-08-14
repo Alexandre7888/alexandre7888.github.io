@@ -4,35 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Redirecionando...</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-    body { background: #0a0e17; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #e8edf5; }
-    .card { background: #111927; padding: 30px; border-radius: 12px; border: 1px solid rgba(67,97,238,0.2); max-width: 480px; width: 100%; text-align: center; }
-    h1 { font-size: 1.5rem; color: #4cc9f0; margin-bottom: 10px; }
-    p { color: #a0b3c9; font-size: 0.9rem; margin-bottom: 20px; }
-    .status-value { font-size: 1.2rem; font-weight: 600; margin: 20px 0; }
-  </style>
 </head>
 <body>
-  <div class="card">
-    <h1>🔄 Entrando no App</h1>
-    <p>Preparando sua sessão...</p>
-    <div id="status" class="status-value">Verificando autenticação</div>
-  </div>
+  <h1>Entrando no App</h1>
+  <p id="status">Verificando autenticação...</p>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const statusEl = document.getElementById("status");
-
     const urlParams = new URLSearchParams(window.location.search);
     const redirectUrl = urlParams.get('redirect');
-
-    if (!redirectUrl) {
-      statusEl.textContent = "❌ Erro: Nenhum app especificado.";
-      statusEl.style.color = "#f72585";
-    }
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -51,35 +34,52 @@
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        statusEl.textContent = "Sessão encontrada. Gerando token...";
-        statusEl.style.color = "#4cc9f0";
+        statusEl.textContent = "Gerando Custom Token via Apps Script...";
 
         try {
-          // Gera um novo token forçando a renovação (sem API externa)
-          const token = await user.getIdToken(true);
+          const uid = user.uid;
 
-          document.cookie =
-            "firebaseToken=" + token +
-            "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+          // Chama o Apps Script passando o UID
+          const response = await fetch(
+            "https://script.google.com/macros/s/AKfycbyNCG_U-tbHVkGgrn7E87C0MaEiiDDsViXqL8Bhqc0NK9Hja8eGRA7AfTQ5aZKU-jItoA/exec?token=" + encodeURIComponent(uid)
+          );
 
-          console.log("✅ Token gerado via SDK e salvo no cookie.");
-          statusEl.textContent = "✅ Redirecionando...";
-          statusEl.style.color = "#2ecc71";
+          if (!response.ok) {
+            throw new Error("Falha na requisição ao Apps Script");
+          }
 
-          window.location.href = redirectUrl;
+          // Pega o JSON de resposta
+          const data = await response.json();
+
+          if (data.sucesso && data.customToken) {
+            const customToken = data.customToken;
+
+            // SALVA O CUSTOM TOKEN NO COOKIE COMPARTILHADO
+            document.cookie =
+              "firebaseToken=" + customToken +
+              "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+
+            console.log("✅ Custom Token recebido do Apps Script e salvo no cookie.");
+            statusEl.textContent = "✅ Token salvo! Redirecionando...";
+
+            if (redirectUrl) {
+              window.location.href = codehub.site.je;
+            } else {
+              statusEl.textContent = "✅ Token salvo! (Nenhum redirect)";
+            }
+
+          } else {
+            throw new Error("Resposta do Apps Script não contém customToken");
+          }
 
         } catch (error) {
-          console.error("❌ Erro ao gerar token:", error.message);
-          statusEl.textContent = "❌ Erro ao gerar token.";
-          statusEl.style.color = "#f72585";
+          console.error("❌ Erro:", error.message);
+          statusEl.textContent = "❌ Erro ao gerar token via Apps Script.";
         }
 
       } else {
-        statusEl.textContent = "❌ Você precisa estar logado.";
-        statusEl.style.color = "#f72585";
-        setTimeout(() => {
-          window.location.href = "https://auth.codehub.site.je";
-        }, 2000);
+        statusEl.textContent = "❌ Usuário não autenticado.";
+        console.log("❌ Usuário não autenticado.");
       }
     });
   </script>
