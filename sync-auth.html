@@ -26,7 +26,6 @@
 
     const statusEl = document.getElementById("status");
 
-    // Pega o URL do app para redirecionar
     const urlParams = new URLSearchParams(window.location.search);
     const redirectUrl = urlParams.get('redirect');
 
@@ -52,28 +51,34 @@
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        statusEl.textContent = "Sessão encontrada. Redirecionando...";
-        statusEl.style.color = "#2ecc71";
+        statusEl.textContent = "Sessão encontrada. Gerando token...";
+        statusEl.style.color = "#4cc9f0";
 
-        const token = await user.getIdToken();
+        try {
+          // Gera um novo token forçando a renovação (sem API externa)
+          const token = await user.getIdToken(true);
 
-        // Atualiza o cookie compartilhado
-        document.cookie =
-          "firebaseToken=" + token +
-          "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+          document.cookie =
+            "firebaseToken=" + token +
+            "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
 
-        console.log("✅ Token gerado e cookie atualizado. Redirecionando para:", redirectUrl);
-        // O token NÃO é exibido no console.
+          console.log("✅ Token gerado via SDK e salvo no cookie.");
+          statusEl.textContent = "✅ Redirecionando...";
+          statusEl.style.color = "#2ecc71";
 
-        // Redireciona para o app (sem mostrar o token na URL)
-        window.location.href = redirectUrl;
+          window.location.href = redirectUrl;
+
+        } catch (error) {
+          console.error("❌ Erro ao gerar token:", error.message);
+          statusEl.textContent = "❌ Erro ao gerar token.";
+          statusEl.style.color = "#f72585";
+        }
 
       } else {
         statusEl.textContent = "❌ Você precisa estar logado.";
         statusEl.style.color = "#f72585";
-        console.log("❌ Usuário não autenticado. Redirecionando para login.");
         setTimeout(() => {
-          window.location.href = "https://phantora.codehub.site.je"; // Coloque aqui o link do seu auth.html
+          window.location.href = "https://auth.codehub.site.je";
         }, 2000);
       }
     });
