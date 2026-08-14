@@ -96,7 +96,7 @@
     }
     setInterval(draw,1000);draw();
 
-    // ===== LÓGICA DE RENOVAÇÃO SILENCIOSA DO TOKEN (A CADA 60 SEGUNDOS) =====
+    // ===== LÓGICA DE RENOVAÇÃO DO TOKEN DIRETO PELO SDK (A CADA 60 SEGUNDOS) =====
     async function initSilentTokenRefresh() {
       try {
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
@@ -115,18 +115,19 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        console.log("🔄 Iniciando renovação silenciosa de token...");
+        console.log("🔄 Iniciando renovação de token via SDK...");
 
         async function refreshCookie(user) {
           if (user) {
             try {
-              const token = await user.getIdToken(true); // 'true' força a renovação
+              // Gera um novo token forçando a renovação pelo SDK
+              const token = await user.getIdToken(true);
               document.cookie =
                 "firebaseToken=" + token +
                 "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
-              console.log("✅ Token renovado silenciosamente.");
+              console.log("✅ Token renovado via SDK.");
             } catch (e) {
-              console.error("❌ Erro ao renovar:", e.message);
+              console.error("❌ Erro ao renovar token via SDK:", e.message);
             }
           } else {
             console.log("ℹ️ Nenhum usuário logado. Aguardando.");
@@ -136,7 +137,7 @@
         // Monitora o estado de autenticação uma vez
         onAuthStateChanged(auth, async (user) => {
           if (user) {
-            console.log("👤 Usuário detectado. Gerando token inicial...");
+            console.log("👤 Usuário detectado. Gerando token inicial via SDK...");
             await refreshCookie(user);
           } else {
             console.log("🚫 Usuário deslogado. Removendo cookie...");
@@ -148,7 +149,7 @@
         setInterval(async () => {
           const currentUser = auth.currentUser;
           if (currentUser) {
-            console.log("🔄 Ciclo de renovação (60s)...");
+            console.log("🔄 Ciclo de renovação via SDK (60s)...");
             await refreshCookie(currentUser);
           } else {
             console.log("⏳ Aguardando login...");
@@ -156,7 +157,7 @@
         }, 60000);
 
       } catch (e) {
-        console.error("❌ Erro ao iniciar renovação:", e.message);
+        console.error("❌ Erro ao iniciar renovação via SDK:", e.message);
       }
     }
 
