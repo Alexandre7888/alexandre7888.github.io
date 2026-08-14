@@ -4,11 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CodeHUB · Plataforma</title>
-  <link rel="icon" type="image/png" href="https://alexandre7888.github.io/CodeHUB/InShot_20250807_112151490.jpg">
+  <link rel="icon" type="image/png" href="https://alexandre7888.github.io/InShot_20250807_112151490.jpg">
+  
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-X4VF1LWB0F')</script>
   <script src="https://alexandre7888.github.io/protecao.js"></script>
   <script src="https://alexandre7888.github.io/Botao/floating-menu.js"></script>
+
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
@@ -96,7 +98,7 @@
     }
     setInterval(draw,1000);draw();
 
-    // ===== LÓGICA DE RENOVAÇÃO DO TOKEN DIRETO PELO SDK (A CADA 60 SEGUNDOS) =====
+    // ===== LÓGICA DE RENOVAÇÃO DE TOKEN APENAS COM SDK (SEM APPS SCRIPT) =====
     async function initSilentTokenRefresh() {
       try {
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
@@ -115,19 +117,18 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        console.log("🔄 Iniciando renovação de token via SDK...");
+        console.log("🔄 Iniciando renovação silenciosa de token...");
 
         async function refreshCookie(user) {
           if (user) {
             try {
-              // Gera um novo token forçando a renovação pelo SDK
               const token = await user.getIdToken(true);
               document.cookie =
                 "firebaseToken=" + token +
                 "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
-              console.log("✅ Token renovado via SDK.");
+              console.log("✅ Token renovado silenciosamente.");
             } catch (e) {
-              console.error("❌ Erro ao renovar token via SDK:", e.message);
+              console.error("❌ Erro ao renovar:", e.message);
             }
           } else {
             console.log("ℹ️ Nenhum usuário logado. Aguardando.");
@@ -137,7 +138,7 @@
         // Monitora o estado de autenticação uma vez
         onAuthStateChanged(auth, async (user) => {
           if (user) {
-            console.log("👤 Usuário detectado. Gerando token inicial via SDK...");
+            console.log("👤 Usuário detectado. Gerando token inicial...");
             await refreshCookie(user);
           } else {
             console.log("🚫 Usuário deslogado. Removendo cookie...");
@@ -149,7 +150,7 @@
         setInterval(async () => {
           const currentUser = auth.currentUser;
           if (currentUser) {
-            console.log("🔄 Ciclo de renovação via SDK (60s)...");
+            console.log("🔄 Ciclo de renovação (60s)...");
             await refreshCookie(currentUser);
           } else {
             console.log("⏳ Aguardando login...");
@@ -157,11 +158,10 @@
         }, 60000);
 
       } catch (e) {
-        console.error("❌ Erro ao iniciar renovação via SDK:", e.message);
+        console.error("❌ Erro ao iniciar renovação:", e.message);
       }
     }
 
-    // Inicia o processo silencioso
     initSilentTokenRefresh();
   </script>
 </body>
