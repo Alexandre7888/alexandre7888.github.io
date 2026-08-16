@@ -18,6 +18,9 @@ function AppMenu() {
   const panelRef = useRef(null);
   const authRef = useRef(null);
 
+  // Verifica se está no domínio principal de autenticação
+  const isMainAuthDomain = window.location.hostname === 'app.codehub.site.je';
+
   useEffect(() => {
     async function initFirebase() {
       const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js');
@@ -61,6 +64,18 @@ function AppMenu() {
       authRef.current.signOut().then(() => {
         window.location.href = window.location.href;
       });
+    }
+  }
+
+  // ===== REDIRECIONAR PARA LOGIN =====
+  function redirectToLogin() {
+    if (isMainAuthDomain) {
+      // Se já estiver no domínio principal, vai para o auth.html normal
+      window.location.href = 'auth.html';
+    } else {
+      // Se estiver em outro domínio, vai para o sync-auth com redirect
+      const currentUrl = encodeURIComponent(window.location.href);
+      window.location.href = `https://app.codehub.site.je/sync-auth?redirect=${currentUrl}`;
     }
   }
 
@@ -223,7 +238,7 @@ function AppMenu() {
         React.createElement('div', { style:{ fontSize:32,marginBottom:8 } }, '🔐'),
         React.createElement('div', { style:{ color:'#888',fontSize:13,marginBottom:12 } }, 'Você não está logado.'),
         React.createElement('button', {
-          onClick: () => window.location.href = 'auth.html',
+          onClick: redirectToLogin,
           style: { width:'100%',padding:10,borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',color:'#fff',background:'#4361ee',border:'none' }
         }, 'Fazer Login')
       ) : React.createElement('div', null,
