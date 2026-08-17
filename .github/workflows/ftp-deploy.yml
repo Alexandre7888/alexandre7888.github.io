@@ -1,0 +1,27 @@
+name: Deploy to FTP
+ 
+# Define quando o workflow será executado
+on:
+  push:
+    branches:
+      - main # Altere para o branch que você utiliza
+        workflow_dispatch: # Permite execução manual
+
+jobs:
+  ftp-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Faz o checkout do código no repositório
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+			
+      # Usa a ação FTP Deploy para enviar arquivos ao servidor
+      - name: Deploy para FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+
+      with:
+        server: 127.0.0.7 # Substitua pelo endereço do seu FTP
+        username: $ # Variável de ambiente para o nome de usuário
+        password: $ # Variável de ambiente para a senha
+        local-dir: ./ # Diretório local (raiz do repositório)
+        server-dir: /path # Caminho no servidor FTP
