@@ -24,7 +24,7 @@ function AppMenu() {
   useEffect(() => {
     async function initFirebase() {
       const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js');
-      const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js');
+      const { getAuth, signInWithCustomToken, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js');
 
       const app = initializeApp({
         apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -39,6 +39,31 @@ function AppMenu() {
       const auth = getAuth(app);
       authRef.current = auth;
 
+      // ===== LÓGICA DE AUTENTICAÇÃO VIA COOKIE =====
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+      }
+
+      const firebaseToken = getCookie('firebaseToken');
+
+      if (firebaseToken) {
+        console.log("🔑 Token encontrado no cookie. Tentando autenticar...");
+        try {
+          // Tenta autenticar com o token do cookie
+          await signInWithCustomToken(auth, firebaseToken);
+          console.log("✅ Autenticação via token bem-sucedida!");
+        } catch (error) {
+          // Se o token estiver expirado ou inválido, ignora e mantém deslogado
+          console.warn("⚠️ Token inválido ou expirado. Usuário permanecerá deslogado.");
+          // Não faz nada, o onAuthStateChanged vai detectar que não tem usuário
+        }
+      } else {
+        console.log("ℹ️ Nenhum token encontrado no cookie.");
+      }
+
+      // Monitora o estado de autenticação
       onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
         setLoading(false);
@@ -62,6 +87,8 @@ function AppMenu() {
     if (!confirm('Sair da conta?')) return;
     if (authRef.current) {
       authRef.current.signOut().then(() => {
+        // Remove o cookie também
+        document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
         window.location.href = window.location.href;
       });
     }
@@ -70,10 +97,8 @@ function AppMenu() {
   // ===== REDIRECIONAR PARA LOGIN =====
   function redirectToLogin() {
     if (isMainAuthDomain) {
-      // Se já estiver no domínio principal, vai para o auth.html normal
       window.location.href = 'auth.html';
     } else {
-      // Se estiver em outro domínio, vai para o sync-auth com redirect
       const currentUrl = encodeURIComponent(window.location.href);
       window.location.href = `https://app.codehub.site.je/sync-auth?redirect=${currentUrl}`;
     }
