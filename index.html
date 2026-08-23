@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CodeHUB · Plataforma</title>
   <link rel="icon" type="image/png" href="https://alexandre7888.github.io/InShot_20250807_112151490.jpg">
-  
+
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-X4VF1LWB0F')</script>
   <script src="https://alexandre7888.github.io/protecao.js"></script>
@@ -30,6 +30,43 @@
     .white-area p{color:var(--white-text);opacity:0.75}
     .white-placeholder{background:rgba(0,0,0,0.03);border-radius:24px;padding:24px;margin-top:16px;color:var(--white-text)}
     .welcome{color:var(--text);font-size:1.2rem;background:rgba(10,15,26,0.75);backdrop-filter:blur(8px);padding:15px 30px;border-radius:60px;border:1px solid var(--border);font-weight:500}
+
+    /* Redes sociais */
+    .social-footer {
+      margin-top: 30px;
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .social-footer a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--white-bg);
+      box-shadow: 0 4px 12px var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 1px solid var(--border);
+      padding: 8px;
+    }
+    .social-footer a:hover {
+      transform: scale(1.12);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    .social-footer svg {
+      width: 28px;
+      height: 28px;
+      fill: var(--white-text);
+      transition: fill 0.2s;
+    }
+    .social-footer a:hover svg {
+      fill: var(--gold);
+    }
+
     @media(max-width:550px){.theme-btn{font-size:0.7rem;padding:6px 10px}.mini-clock canvas{width:36px!important;height:36px!important}}
   </style>
 </head>
@@ -49,6 +86,21 @@
       <h3>🚀 Plataforma CodeHUB</h3>
       <p>Acesse as opções pelo painel de controle superior</p>
       <div class="white-placeholder">💻 Barra de tarefas inteligente</div>
+
+      <!-- Redes sociais no final -->
+      <div class="social-footer">
+        <a href="https://www.tiktok.com/@naoseijh" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+          <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16.656 1.029c1.637-0.025 3.262-0.012 4.886-0.025 0.054 2.031 0.878 3.859 2.189 5.213l-0.002-0.002c1.411 1.271 3.247 2.095 5.271 2.235l0.028 0.002v5.036c-1.912-0.048-3.71-0.489-5.331-1.247l0.082 0.034c-0.784-0.377-1.447-0.764-2.077-1.196l0.052 0.034c-0.012 3.649 0.012 7.298-0.025 10.934-0.103 1.853-0.719 3.543-1.707 4.954l0.020-0.031c-1.652 2.366-4.328 3.919-7.371 4.011l-0.014 0c-0.123 0.006-0.268 0.009-0.414 0.009-1.73 0-3.347-0.482-4.725-1.319l0.040 0.023c-2.508-1.509-4.238-4.091-4.558-7.094l-0.004-0.041c-0.025-0.625-0.037-1.25-0.012-1.862 0.49-4.779 4.494-8.476 9.361-8.476 0.547 0 1.083 0.047 1.604 0.136l-0.056-0.008c0.025 1.849-0.050 3.699-0.050 5.548-0.423-0.153-0.911-0.242-1.42-0.242-1.868 0-3.457 1.194-4.045 2.861l-0.009 0.030c-0.133 0.427-0.21 0.918-0.21 1.426 0 0.206 0.013 0.41 0.037 0.61l-0.002-0.024c0.332 2.046 2.086 3.59 4.201 3.59 0.061 0 0.121-0.001 0.181-0.004l-0.009 0c1.463-0.044 2.733-0.831 3.451-1.994l0.010-0.018c0.267-0.372 0.45-0.822 0.511-1.311l0.001-0.014c0.125-2.237 0.075-4.461 0.087-6.698 0.012-5.036-0.012-10.060 0.025-15.083z"></path>
+          </svg>
+        </a>
+        <a href="https://www.youtube.com/@naoseijh" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M9.49614 7.13176C9.18664 6.9549 8.80639 6.95617 8.49807 7.13509C8.18976 7.31401 8 7.64353 8 8V16C8 16.3565 8.18976 16.686 8.49807 16.8649C8.80639 17.0438 9.18664 17.0451 9.49614 16.8682L16.4961 12.8682C16.8077 12.6902 17 12.3589 17 12C17 11.6411 16.8077 11.3098 16.4961 11.1318L9.49614 7.13176ZM13.9844 12L10 14.2768V9.72318L13.9844 12Z" />
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M0 12C0 8.25027 0 6.3754 0.954915 5.06107C1.26331 4.6366 1.6366 4.26331 2.06107 3.95491C3.3754 3 5.25027 3 9 3H15C18.7497 3 20.6246 3 21.9389 3.95491C22.3634 4.26331 22.7367 4.6366 23.0451 5.06107C24 6.3754 24 8.25027 24 12C24 15.7497 24 17.6246 23.0451 18.9389C22.7367 19.3634 22.3634 19.7367 21.9389 20.0451C20.6246 21 18.7497 21 15 21H9C5.25027 21 3.3754 21 2.06107 20.0451C1.6366 19.7367 1.26331 19.3634 0.954915 18.9389C0 17.6246 0 15.7497 0 12ZM9 5H15C16.9194 5 18.1983 5.00275 19.1673 5.10773C20.0989 5.20866 20.504 5.38448 20.7634 5.57295C21.018 5.75799 21.242 5.98196 21.4271 6.23664C21.6155 6.49605 21.7913 6.90113 21.8923 7.83269C21.9973 8.80167 22 10.0806 22 12C22 13.9194 21.9973 15.1983 21.8923 16.1673C21.7913 17.0989 21.6155 17.504 21.4271 17.7634C21.242 18.018 21.018 18.242 20.7634 18.4271C20.504 18.6155 20.0989 18.7913 19.1673 18.8923C18.1983 18.9973 16.9194 19 15 19H9C7.08058 19 5.80167 18.9973 4.83269 18.8923C3.90113 18.7913 3.49605 18.6155 3.23664 18.4271C2.98196 18.242 2.75799 18.018 2.57295 17.7634C2.38448 17.504 2.20866 17.0989 2.10773 16.1673C2.00275 15.1983 2 13.9194 2 12C2 10.0806 2.00275 8.80167 2.10773 7.83269C2.20866 6.90113 2.38448 6.49605 2.57295 6.23664C2.75799 5.98196 2.98196 5.75799 3.23664 5.57295C3.49605 5.38448 3.90113 5.20866 4.83269 5.10773C5.80167 5.00275 7.08058 5 9 5Z" />
+          </svg>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -57,7 +109,7 @@
     const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
     root.render(React.createElement(window.AppMenu));
   </script>
-  
+
   <script>
     const body=document.body;
     function setTheme(t){
@@ -135,7 +187,6 @@
           }
         }
 
-        // Monitora o estado de autenticação uma vez
         onAuthStateChanged(auth, async (user) => {
           if (user) {
             console.log("👤 Usuário detectado. Gerando token inicial...");
@@ -146,7 +197,6 @@
           }
         });
 
-        // Executa a renovação a cada 60 segundos
         setInterval(async () => {
           const currentUser = auth.currentUser;
           if (currentUser) {
