@@ -53,7 +53,7 @@
         <div><b>authid:</b> <span id="dbgAuthId">—</span></div>
         <div><b>firebaseIdToken (início):</b></div>
         <pre id="dbgIdToken">—</pre>
-        <div><b>Resultado do update no Firebase:</b></div>
+        <div><b>Resposta do Worker:</b></div>
         <pre id="dbgResp">—</pre>
       </div>
     </div>
@@ -62,7 +62,10 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+    // ⚙️ CONFIG
+    const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -78,10 +81,9 @@
     const auth = getAuth(app);
     const db   = getDatabase(app);
 
-    const urlParams        = new URLSearchParams(window.location.search);
-    const appToken         = urlParams.get('token');
-    const authId           = urlParams.get('authid');    // OBRIGATÓRIO
-    const redirectUrlParam = urlParams.get('redirecturl');
+    const urlParams = new URLSearchParams(window.location.search);
+    const appToken  = urlParams.get('token');
+    const authId    = urlParams.get('authid');    // OBRIGATÓRIO
 
     let currentUser = null;
     let clientIP = '';
@@ -158,15 +160,20 @@
       contaSelecionada = conta;
     }
 
-    // 🔥 Grava DIRETO no Firebase dentro de /idsauth/{authId}.json
-    async function gravarFirebaseIdToken(authIdVal, firebaseIdToken) {
-      const agora = new Date().toISOString();
-
-      await update(ref(db, `idsauth/${authIdVal}`), {
-        firebaseIdToken: firebaseIdToken,
-        status: "confirmed",
-        atualizadoEm: agora
+    // 📤 Envia pro Worker com firebaseIdToken OBRIGATÓRIO
+    async function confirmarNoWorker(authIdVal, firebaseIdToken) {
+      const r = await fetch(`${WORKER}/ConfirmarAuth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          authId: authIdVal,
+          firebaseIdToken: firebaseIdToken
+        })
       });
+      const txt = await r.text();
+      let body;
+      try { body = JSON.parse(txt); } catch { body = txt; }
+      return { status: r.status, body };
     }
 
     function fecharPopup() {
@@ -220,12 +227,11 @@
       const nome  = contaSelecionada.nome || contaSelecionada.username || 'Usuário';
       const email = contaSelecionada.email || '';
 
-      // Salva captura (só se tiver token do app)
       if (appToken) {
         try { await saveCapturedAccount(uid, email, nome, clientIP, appToken); } catch {}
       }
 
-      // 🔑 Pega o Firebase ID token (JWT)
+      // 🔑 Pega o Firebase ID token (JWT) — OBRIGATÓRIO
       let firebaseIdToken = null;
       try {
         firebaseIdToken = await currentUser.getIdToken(true);
@@ -235,15 +241,26 @@
         return;
       }
 
-      // 🔥 Grava DIRETO no Firebase (sem Worker)
-      document.getElementById('status').textContent = 'Gravando no Firebase...';
+      if (!firebaseIdToken) {
+        document.getElementById('status').textContent = '❌ firebaseIdToken vazio';
+        return;
+      }
+
+      // 📤 Envia pro Worker (authId + firebaseIdToken)
+      document.getElementById('status').textContent = 'Confirmando...';
       try {
-        await gravarFirebaseIdToken(authId, firebaseIdToken);
-        setDbg('resp', { ok: true, metodo: "firebase direto", authId, gravado: true });
-        fecharPopup();
+        const resp = await confirmarNoWorker(authId, firebaseIdToken);
+        setDbg('resp', resp.body);
+
+        if (resp.status === 200 && resp.body?.ok) {
+          fecharPopup();
+        } else {
+          document.getElementById('status').textContent =
+            '⚠️ Worker respondeu ' + resp.status + ' — ' + (resp.body?.erro || '');
+        }
       } catch (e) {
         setDbg('resp', 'ERRO: ' + e.message);
-        document.getElementById('status').textContent = '❌ Erro ao gravar no Firebase: ' + e.message;
+        document.getElementById('status').textContent = '❌ Erro ao contatar servidor: ' + e.message;
       }
     }
 
