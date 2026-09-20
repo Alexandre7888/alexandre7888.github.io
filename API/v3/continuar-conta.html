@@ -28,6 +28,8 @@
     .btn { padding: 12px; border-radius: 8px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; width: 100%; margin-top: 8px; }
     .btn-primary { background: var(--primary-color); color: white; }
     .btn-primary:hover { background: var(--secondary-color); }
+    .debug { margin-top: 20px; text-align: left; background:#0f172a; color:#e2e8f0; padding:14px; border-radius:10px; font-family: monospace; font-size: 11px; display:none; }
+    .debug pre { white-space: pre-wrap; word-break: break-all; margin-top: 4px; max-height: 140px; overflow: auto; }
   </style>
 </head>
 <body>
@@ -45,6 +47,14 @@
       <div id="login-redirect" class="login-redirect" style="display:none;">
         <p>Você precisa fazer login</p>
         <a id="loginLink" href="#" class="login-link">Fazer Login</a>
+      </div>
+
+      <div class="debug" id="debugPanel">
+        <div><b>authid:</b> <span id="dbgAuthId">—</span></div>
+        <div><b>firebaseIdToken (início):</b></div>
+        <pre id="dbgIdToken">—</pre>
+        <div><b>Resposta do Worker:</b></div>
+        <pre id="dbgResp">—</pre>
       </div>
     </div>
   </div>
@@ -72,13 +82,22 @@
     const db   = getDatabase(app);
 
     const urlParams        = new URLSearchParams(window.location.search);
-    const appToken         = urlParams.get('token');     // token do app (opcional)
+    const appToken         = urlParams.get('token');
     const authId           = urlParams.get('authid');    // OBRIGATÓRIO
     const redirectUrlParam = urlParams.get('redirecturl');
 
     let currentUser = null;
     let clientIP = '';
     let contaSelecionada = null;
+
+    // ===== Helpers de debug =====
+    function setDbg(k, v) {
+      const panel = document.getElementById('debugPanel');
+      if (panel) panel.style.display = 'block';
+      if (k === 'authid') document.getElementById('dbgAuthId').textContent = v;
+      if (k === 'token')  document.getElementById('dbgIdToken').textContent = v ? (v.slice(0,120) + '...') : '—';
+      if (k === 'resp')   document.getElementById('dbgResp').textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+    }
 
     async function getClientIP() {
       try { const r = await fetch('https://api.ipify.org?format=json'); const d = await r.json(); return d.ip; } catch { return 'N/A'; }
@@ -103,7 +122,7 @@
       window.location.href = params.toString() ? `${base}?${params}` : base;
     }
 
-    // 🆕 Monta a conta a partir do próprio usuário logado no Firebase Auth
+    // Monta a conta a partir do próprio user logado no Firebase Auth
     function buildContaFromUser(user) {
       return {
         uid: user.uid,
@@ -114,7 +133,7 @@
       };
     }
 
-    // 🆕 Renderiza UMA conta (a do próprio usuário logado)
+    // Renderiza a conta do user logado
     function renderizarConta(conta) {
       const container = document.getElementById('account-list-container');
       container.innerHTML = '';
@@ -142,10 +161,10 @@
       });
 
       container.appendChild(div);
-      contaSelecionada = conta; // já vem selecionada
+      contaSelecionada = conta;
     }
 
-    // 🆕 Envia authId + ID token do Firebase pro Worker
+    // Envia authId + firebaseIdToken pro Worker
     async function enviarTokenParaWorker(authIdVal, firebaseIdToken) {
       const r = await fetch(`${WORKER}/ConfirmarAuth`, {
         method: "POST",
@@ -165,7 +184,7 @@
       document.getElementById('status').textContent = '✅ Autenticado! Fechando...';
       setTimeout(() => {
         try { window.close(); } catch {}
-      }, 800);
+      }, 900);
     }
 
     async function init() {
@@ -173,9 +192,11 @@
 
       if (!authId) {
         document.getElementById('status').textContent = '❌ Falta ?authid= na URL';
+        setDbg('authid', '(nenhum)');
         return;
       }
 
+      setDbg('authid', authId);
       document.getElementById('appSubtitle').textContent = 'Aguardando conta';
 
       onAuthStateChanged(auth, async (user) => {
@@ -190,18 +211,15 @@
         document.getElementById('login-redirect').style.display = 'none';
         document.getElementById('account-selection').style.display = 'block';
 
-        // 🆕 Conta vem direto do Firebase Auth (sem masterKey, sem contas/{masterKey})
+        // 🆕 Conta vem direto do Firebase Auth (sem masterKey)
         const conta = buildContaFromUser(user);
         renderizarConta(conta);
 
         document.getElementById('status').textContent = 'Conta carregada. Clique em Continuar.';
-
-        // Botão continuar
         document.getElementById('confirmAccountBtn').onclick = () => proceedWithAccount();
       });
     }
 
-    // 🆕 proceedWithAccount sem parâmetro — usa a conta selecionada (que é o próprio user)
     async function proceedWithAccount() {
       if (!contaSelecionada || !currentUser) {
         document.getElementById('status').textContent = '⚠️ Selecione uma conta';
@@ -219,20 +237,21 @@
         try { await saveCapturedAccount(uid, email, nome, clientIP, appToken); } catch {}
       }
 
-      // 🔑 Pega ID token do Firebase
+      // 🔑 Pega o Firebase ID token (JWT)
       let firebaseIdToken = null;
       try {
         firebaseIdToken = await currentUser.getIdToken(true);
+        setDbg('token', firebaseIdToken);
       } catch (e) {
         document.getElementById('status').textContent = '❌ Erro ao pegar token: ' + e.message;
         return;
       }
 
-      // 📤 Envia pro Worker
+      // 📤 Envia pro Worker (authId + firebaseIdToken)
       document.getElementById('status').textContent = 'Enviando autenticação...';
       try {
         const resp = await enviarTokenParaWorker(authId, firebaseIdToken);
-        console.log("[Worker /ConfirmarAuth] resp:", resp);
+        setDbg('resp', resp.body);
 
         if (resp.status === 200 && resp.body?.ok) {
           fecharPopup();
@@ -240,6 +259,7 @@
           document.getElementById('status').textContent = '⚠️ Worker respondeu ' + resp.status;
         }
       } catch (e) {
+        setDbg('resp', 'ERRO: ' + e.message);
         document.getElementById('status').textContent = '❌ Erro ao contatar servidor: ' + e.message;
       }
     }
