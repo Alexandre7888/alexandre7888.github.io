@@ -51,6 +51,7 @@
 
       <div class="debug" id="debugPanel">
         <div><b>authid:</b> <span id="dbgAuthId">—</span></div>
+        <div><b>uid:</b> <span id="dbgUid">—</span></div>
         <div><b>firebaseIdToken (início):</b></div>
         <pre id="dbgIdToken">—</pre>
         <div><b>Resposta do Worker:</b></div>
@@ -93,6 +94,7 @@
       const panel = document.getElementById('debugPanel');
       if (panel) panel.style.display = 'block';
       if (k === 'authid') document.getElementById('dbgAuthId').textContent = v;
+      if (k === 'uid')    document.getElementById('dbgUid').textContent = v;
       if (k === 'token')  document.getElementById('dbgIdToken').textContent = v ? (v.slice(0,120) + '...') : '—';
       if (k === 'resp')   document.getElementById('dbgResp').textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
     }
@@ -160,14 +162,15 @@
       contaSelecionada = conta;
     }
 
-    // 📤 Envia pro Worker com firebaseIdToken OBRIGATÓRIO
-    async function confirmarNoWorker(authIdVal, firebaseIdToken) {
+    // 📤 Envia pro Worker com authId + firebaseIdToken + uid
+    async function confirmarNoWorker(authIdVal, firebaseIdToken, uid) {
       const r = await fetch(`${WORKER}/ConfirmarAuth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           authId: authIdVal,
-          firebaseIdToken: firebaseIdToken
+          firebaseIdToken: firebaseIdToken,
+          uid: uid
         })
       });
       const txt = await r.text();
@@ -203,6 +206,7 @@
         }
 
         currentUser = user;
+        setDbg('uid', user.uid);
 
         document.getElementById('login-redirect').style.display = 'none';
         document.getElementById('account-selection').style.display = 'block';
@@ -223,7 +227,7 @@
 
       document.getElementById('status').textContent = 'Preparando...';
 
-      const uid   = contaSelecionada.uid;
+      const uid   = contaSelecionada.uid;   // 🔥 o UID do Firebase Auth
       const nome  = contaSelecionada.nome || contaSelecionada.username || 'Usuário';
       const email = contaSelecionada.email || '';
 
@@ -231,7 +235,7 @@
         try { await saveCapturedAccount(uid, email, nome, clientIP, appToken); } catch {}
       }
 
-      // 🔑 Pega o Firebase ID token (JWT) — OBRIGATÓRIO
+      // 🔑 Pega o Firebase ID token (JWT)
       let firebaseIdToken = null;
       try {
         firebaseIdToken = await currentUser.getIdToken(true);
@@ -246,10 +250,10 @@
         return;
       }
 
-      // 📤 Envia pro Worker (authId + firebaseIdToken)
+      // 📤 Envia authId + firebaseIdToken + uid pro Worker
       document.getElementById('status').textContent = 'Confirmando...';
       try {
-        const resp = await confirmarNoWorker(authId, firebaseIdToken);
+        const resp = await confirmarNoWorker(authId, firebaseIdToken, uid);
         setDbg('resp', resp.body);
 
         if (resp.status === 200 && resp.body?.ok) {
