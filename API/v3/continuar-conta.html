@@ -52,6 +52,9 @@
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
+    // ⚙️ CONFIG
+    const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
@@ -62,12 +65,13 @@
       appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
     };
 
-    const app = initializeApp(firebaseConfig);
+    const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getDatabase(app);
+    const db   = getDatabase(app);
 
     const urlParams = new URLSearchParams(window.location.search);
-    const appToken = urlParams.get('token');
+    const appToken   = urlParams.get('token');     // token do app (fluxo antigo)
+    const authId     = urlParams.get('authid');    // 🆕 authid obrigatório
     const redirectUrlParam = urlParams.get('redirecturl');
 
     let currentUser = null;
@@ -97,91 +101,152 @@
     }
 
     function redirectToLogin() {
-      window.location.href = appToken ? `https://alexandre7888.github.io/auth.html?token=${appToken}` : 'https://alexandre7888.github.io/auth.html';
+      const base = 'https://alexandre7888.github.io/auth.html';
+      const params = new URLSearchParams();
+      if (appToken) params.set('token', appToken);
+      if (authId)   params.set('authid', authId);
+      window.location.href = params.toString() ? `${base}?${params}` : base;
+    }
+
+    // 🆕 Envia o authId + ID token do Firebase pro Worker (dispara o SSE do outro lado)
+    async function enviarTokenParaWorker(authIdVal, firebaseIdToken) {
+      const r = await fetch(`${WORKER}/ConfirmarAuth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          authId: authIdVal,
+          firebaseIdToken: firebaseIdToken
+        })
+      });
+      const txt = await r.text();
+      let body;
+      try { body = JSON.parse(txt); } catch { body = txt; }
+      return { status: r.status, body };
+    }
+
+    // 🆕 Fecha o popup (se for popup) — sem redirecionar com uid
+    function fecharPopup() {
+      document.getElementById('status').textContent = '✅ Autenticado! Fechando...';
+      setTimeout(() => {
+        try { window.close(); } catch {}
+      }, 800);
     }
 
     async function init() {
       clientIP = await getClientIP();
-      if (!appToken) return window.location.href = 'https://alexandre7888.github.io/auth.html';
-      
-      try {
-        tokenData = await loadTokenData(appToken);
-        document.getElementById('appTitle').textContent = tokenData.appName || 'Continuar Login';
-        document.getElementById('appSubtitle').textContent = tokenData.domains?.[0] || 'App';
-        
-        if (tokenData.blockedIPs && tokenData.blockedIPs.includes(clientIP)) {
-          document.getElementById('status').textContent = '🚫 Acesso Negado';
-          return;
-        }
 
-        onAuthStateChanged(auth, async (user) => {
-          if (!user) {
-            document.getElementById('status').textContent = 'Não autenticado';
-            document.getElementById('login-redirect').style.display = 'block';
+      // ⛔ authid obrigatório
+      if (!authId) {
+        document.getElementById('status').textContent = '❌ Falta ?authid= na URL';
+        return;
+      }
+
+      // Sem token de app? (fluxo antigo) Continua mesmo assim, só não carrega tokenData
+      if (appToken) {
+        try {
+          tokenData = await loadTokenData(appToken);
+          document.getElementById('appTitle').textContent = tokenData.appName || 'Continuar Login';
+          document.getElementById('appSubtitle').textContent = tokenData.domains?.[0] || 'App';
+
+          if (tokenData.blockedIPs && tokenData.blockedIPs.includes(clientIP)) {
+            document.getElementById('status').textContent = '🚫 Acesso Negado';
             return;
           }
-          currentUser = user;
-          document.getElementById('login-redirect').style.display = 'none';
-          document.getElementById('account-selection').style.display = 'block';
-          document.getElementById('status').textContent = 'Carregando contas...';
-
-          let masterKey = localStorage.getItem('codehub_masterKey');
-          if (!masterKey) {
-            const snap = await get(ref(db, `userKeysData/${user.uid}`));
-            if (snap.exists()) masterKey = snap.val().masterKey || null;
-          }
-          if (!masterKey) {
-            masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2,12);
-            await set(ref(db, `userKeysData/${user.uid}/masterKey`), masterKey);
-            localStorage.setItem('codehub_masterKey', masterKey);
-          }
-
-          const contasSnap = await get(ref(db, `contas/${masterKey}`));
-          const accounts = contasSnap.exists() ? Object.values(contasSnap.val()) : [];
-          const container = document.getElementById('account-list-container');
-          container.innerHTML = '';
-          
-          accounts.forEach(acc => {
-            const div = document.createElement('div');
-            div.className = 'account-item';
-            const initial = (acc.username || acc.email || '?').charAt(0).toUpperCase();
-            div.innerHTML = `
-              <div class="account-avatar" style="background:#4361ee;">${initial}</div>
-              <div class="account-info">
-                <div class="account-name">${acc.username || 'Usuário'}</div>
-                <div class="account-email">${acc.email || ''}</div>
-              </div>
-            `;
-            div.addEventListener('click', () => {
-              document.querySelectorAll('.account-item').forEach(el => el.style.borderColor = 'transparent');
-              div.style.borderColor = '#4361ee';
-              document.getElementById('confirmAccountBtn').onclick = () => proceedWithAccount(acc.uid);
-            });
-            container.appendChild(div);
-          });
-          document.getElementById('status').textContent = `Selecione uma conta (${accounts.length} disponíveis)`;
-        });
-      } catch (e) {
-        document.getElementById('status').textContent = '❌ Erro: ' + e.message;
+        } catch (e) {
+          document.getElementById('status').textContent = '❌ Erro: ' + e.message;
+          return;
+        }
+      } else {
+        document.getElementById('appSubtitle').textContent = 'Aguardando conta';
       }
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          document.getElementById('status').textContent = 'Não autenticado';
+          document.getElementById('login-redirect').style.display = 'block';
+          return;
+        }
+        currentUser = user;
+        document.getElementById('login-redirect').style.display = 'none';
+        document.getElementById('account-selection').style.display = 'block';
+        document.getElementById('status').textContent = 'Carregando contas...';
+
+        let masterKey = localStorage.getItem('codehub_masterKey');
+        if (!masterKey) {
+          const snap = await get(ref(db, `userKeysData/${user.uid}`));
+          if (snap.exists()) masterKey = snap.val().masterKey || null;
+        }
+        if (!masterKey) {
+          masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2,12);
+          await set(ref(db, `userKeysData/${user.uid}/masterKey`), masterKey);
+          localStorage.setItem('codehub_masterKey', masterKey);
+        }
+
+        const contasSnap = await get(ref(db, `contas/${masterKey}`));
+        const accounts = contasSnap.exists() ? Object.values(contasSnap.val()) : [];
+        const container = document.getElementById('account-list-container');
+        container.innerHTML = '';
+
+        accounts.forEach(acc => {
+          const div = document.createElement('div');
+          div.className = 'account-item';
+          const initial = (acc.username || acc.email || '?').charAt(0).toUpperCase();
+          div.innerHTML = `
+            <div class="account-avatar" style="background:#4361ee;">${initial}</div>
+            <div class="account-info">
+              <div class="account-name">${acc.username || 'Usuário'}</div>
+              <div class="account-email">${acc.email || ''}</div>
+            </div>
+          `;
+          div.addEventListener('click', () => {
+            document.querySelectorAll('.account-item').forEach(el => el.style.borderColor = 'transparent');
+            div.style.borderColor = '#4361ee';
+            document.getElementById('confirmAccountBtn').onclick = () => proceedWithAccount(acc.uid);
+          });
+          container.appendChild(div);
+        });
+        document.getElementById('status').textContent = `Selecione uma conta (${accounts.length} disponíveis)`;
+      });
     }
 
+    // 🆕 proceedWithAccount: NÃO redireciona com ?userKey=
+    // Em vez disso envia o ID token do Firebase pro Worker e fecha o popup
     async function proceedWithAccount(uid) {
       document.getElementById('status').textContent = 'Preparando...';
+
       const userDataRef = ref(db, `userKeysData/${uid}`);
       const snap = await get(userDataRef);
       const userData = snap.exists() ? snap.val() : null;
-      const nome = userData?.nome || userData?.username || currentUser?.displayName || 'Usuário';
+      const nome  = userData?.nome || userData?.username || currentUser?.displayName || 'Usuário';
       const email = userData?.email || currentUser?.email || '';
-      
-      await saveCapturedAccount(uid, email, nome, clientIP, appToken);
-      
-      const customDomain = tokenData.domains?.[0];
-      if (!customDomain) return alert('Erro: Nenhum domínio configurado.');
-      
-      let finalUrl = redirectUrlParam || `https://${customDomain}/index.html`;
-      const sep = finalUrl.includes('?') ? '&' : '?';
-      window.location.href = finalUrl + sep + `userKey=${encodeURIComponent(uid)}`;
+
+      // Se veio token do app, salva o capturado (fluxo antigo)
+      if (appToken) {
+        try { await saveCapturedAccount(uid, email, nome, clientIP, appToken); } catch {}
+      }
+
+      // 🔑 Pega o ID token do Firebase
+      let firebaseIdToken = null;
+      try {
+        firebaseIdToken = await currentUser.getIdToken(true);
+      } catch (e) {
+        document.getElementById('status').textContent = '❌ Erro ao pegar token: ' + e.message;
+        return;
+      }
+
+      // 📤 Envia pro Worker (o SSE do outro lado recebe e mostra o nome)
+      document.getElementById('status').textContent = 'Enviando autenticação...';
+      try {
+        const resp = await enviarTokenParaWorker(authId, firebaseIdToken);
+        console.log("[Worker /ConfirmarAuth] resp:", resp);
+        if (resp.status === 200 && resp.body?.ok) {
+          fecharPopup();
+        } else {
+          document.getElementById('status').textContent = '⚠️ Worker respondeu ' + resp.status;
+        }
+      } catch (e) {
+        document.getElementById('status').textContent = '❌ Erro ao contatar servidor: ' + e.message;
+      }
     }
 
     document.getElementById('loginLink').addEventListener('click', (e) => {
