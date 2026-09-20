@@ -16,143 +16,112 @@
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
 
-    /* ===== DARK (padrão) — azul-noite elegante ===== */
     :root, html[data-theme="dark"]{
-      --bg-1:#0a0e1a;
-      --bg-2:#05070f;
-      --canvas-bg:#0f1424;
-      --surface:#101626;
-      --surface-2:#151c30;
-      --border:#1f2a44;
-      --border-strong:#2d3b5c;
-      --text:#e8eef8;
-      --text-2:#8fa0bd;
-      --accent:#4f8cff;
-      --accent-2:#7aa8ff;
+      --bg-1:#0a0e1a;--bg-2:#05070f;--canvas-bg:#0f1424;
+      --surface:#101626;--surface-2:#151c30;
+      --border:#1f2a44;--border-strong:#2d3b5c;
+      --text:#e8eef8;--text-2:#8fa0bd;
+      --accent:#4f8cff;--accent-2:#7aa8ff;
       --accent-glow:rgba(79,140,255,0.35);
       --accent-soft:rgba(79,140,255,0.1);
       --shadow:rgba(0,0,0,0.55);
       --menu-bg:rgba(10,15,28,0.9);
       --menu-hover:rgba(79,140,255,0.1);
-      --toggle-bg:#151c30;
-      --toggle-border:#2d3b5c;
+      --toggle-bg:#151c30;--toggle-border:#2d3b5c;
     }
 
-    /* ===== LIGHT — branco premium clean ===== */
     html[data-theme="light"]{
-      --bg-1:#f7f9fc;
-      --bg-2:#eef2f8;
-      --canvas-bg:#ffffff;
-      --surface:#ffffff;
-      --surface-2:#f5f8fd;
-      --border:#e2e8f2;
-      --border-strong:#c8d3e5;
-      --text:#0f172a;
-      --text-2:#5b6b85;
-      --accent:#2563eb;
-      --accent-2:#3b82f6;
+      --bg-1:#f7f9fc;--bg-2:#eef2f8;--canvas-bg:#ffffff;
+      --surface:#ffffff;--surface-2:#f5f8fd;
+      --border:#e2e8f2;--border-strong:#c8d3e5;
+      --text:#0f172a;--text-2:#5b6b85;
+      --accent:#2563eb;--accent-2:#3b82f6;
       --accent-glow:rgba(37,99,235,0.25);
       --accent-soft:rgba(37,99,235,0.07);
       --shadow:rgba(15,23,42,0.08);
       --menu-bg:rgba(255,255,255,0.92);
       --menu-hover:rgba(37,99,235,0.08);
-      --toggle-bg:#f1f5fb;
-      --toggle-border:#d6e0ee;
+      --toggle-bg:#f1f5fb;--toggle-border:#d6e0ee;
     }
 
     body{
       background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
       font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;
-      color:var(--text);
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-      transition:background 0.4s ease,color 0.3s ease;
+      color:var(--text);min-height:100vh;display:flex;flex-direction:column;
+      transition:background .4s ease,color .3s ease;
     }
 
-    /* ===== HAMBURGER ===== */
-    .hamburger{position:fixed;top:14px;left:16px;z-index:1200;width:52px;height:52px;border-radius:16px;background:var(--menu-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;box-shadow:0 8px 22px var(--shadow);transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1)}
+    .hamburger{position:fixed;top:14px;left:16px;z-index:1200;width:52px;height:52px;border-radius:16px;background:var(--menu-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;box-shadow:0 8px 22px var(--shadow);transition:all .3s cubic-bezier(.34,1.56,.64,1)}
     .hamburger:hover{transform:scale(1.06);border-color:var(--accent);box-shadow:0 8px 25px var(--accent-glow)}
-    .hamburger:active{transform:scale(0.95)}
-    .hamburger span{display:block;width:22px;height:2.5px;border-radius:3px;background:var(--text);transition:all 0.35s cubic-bezier(0.68,-0.55,0.27,1.55)}
+    .hamburger:active{transform:scale(.95)}
+    .hamburger span{display:block;width:22px;height:2.5px;border-radius:3px;background:var(--text);transition:all .35s cubic-bezier(.68,-.55,.27,1.55)}
     .hamburger.open span:nth-child(1){transform:translateY(7.5px) rotate(45deg);background:var(--accent)}
     .hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
     .hamburger.open span:nth-child(3){transform:translateY(-7.5px) rotate(-45deg);background:var(--accent)}
 
-    /* ===== OVERLAY ===== */
-    .menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity 0.35s ease;z-index:1150}
+    .menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:1150}
     .menu-overlay.active{opacity:1;pointer-events:auto}
 
-    /* ===== SIDE MENU ===== */
-    .side-menu{position:fixed;top:0;left:0;height:100vh;width:300px;max-width:85vw;background:var(--menu-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-right:1px solid var(--border);z-index:1190;transform:translateX(-105%);transition:transform 0.42s cubic-bezier(0.34,1.2,0.64,1);display:flex;flex-direction:column;box-shadow:8px 0 40px var(--shadow)}
+    .side-menu{position:fixed;top:0;left:0;height:100vh;width:300px;max-width:85vw;background:var(--menu-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-right:1px solid var(--border);z-index:1190;transform:translateX(-105%);transition:transform .42s cubic-bezier(.34,1.2,.64,1);display:flex;flex-direction:column;box-shadow:8px 0 40px var(--shadow)}
     .side-menu.active{transform:translateX(0)}
     .menu-header{padding:28px 24px 20px;border-bottom:1px solid var(--border)}
-    .menu-header h2{color:var(--text);font-size:1.35rem;font-weight:700;letter-spacing:-0.5px;display:flex;align-items:center;gap:10px}
+    .menu-header h2{color:var(--text);font-size:1.35rem;font-weight:700;letter-spacing:-.5px;display:flex;align-items:center;gap:10px}
     .menu-header h2::before{content:'';width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-    .menu-header p{color:var(--text-2);font-size:0.78rem;margin-top:6px;letter-spacing:0.4px}
+    .menu-header p{color:var(--text-2);font-size:.78rem;margin-top:6px;letter-spacing:.4px}
     .menu-nav{padding:16px 12px;flex:1;overflow-y:auto}
-    .menu-item{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:14px;background:transparent;border:none;color:var(--text);font-size:0.95rem;font-weight:500;cursor:pointer;text-align:left;transition:all 0.2s ease;font-family:inherit;margin-bottom:4px}
+    .menu-item{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:14px;background:transparent;border:none;color:var(--text);font-size:.95rem;font-weight:500;cursor:pointer;text-align:left;transition:all .2s ease;font-family:inherit;margin-bottom:4px}
     .menu-item:hover{background:var(--menu-hover);transform:translateX(4px)}
-    .menu-item:active{transform:translateX(2px) scale(0.98)}
-    .menu-item .icon{width:38px;height:38px;border-radius:11px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.25s}
+    .menu-item:active{transform:translateX(2px) scale(.98)}
+    .menu-item .icon{width:38px;height:38px;border-radius:11px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s}
     .menu-item .icon svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
     .menu-item:hover .icon{background:var(--accent);transform:rotate(-6deg) scale(1.05);box-shadow:0 0 15px var(--accent-glow)}
     .menu-item:hover .icon svg{stroke:#fff}
     .menu-item .label{display:flex;flex-direction:column;gap:2px}
-    .menu-item .label small{color:var(--text-2);font-size:0.72rem;font-weight:400}
-    .menu-footer{padding:18px 22px;border-top:1px solid var(--border);color:var(--text-2);font-size:0.72rem;text-align:center;letter-spacing:0.3px}
+    .menu-item .label small{color:var(--text-2);font-size:.72rem;font-weight:400}
+    .menu-footer{padding:18px 22px;border-top:1px solid var(--border);color:var(--text-2);font-size:.72rem;text-align:center;letter-spacing:.3px}
 
     .content-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;margin-top:90px}
 
-    /* ===== CLOCK ===== */
     .mini-clock{position:fixed;top:14px;right:16px;z-index:1100;background:var(--menu-bg);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:60px;padding:4px;box-shadow:0 6px 16px var(--shadow);border:1px solid var(--border)}
     .mini-clock canvas{display:block;width:42px;height:42px;border-radius:50%;background:var(--canvas-bg)}
 
-    /* ===== THEME PANEL ===== */
     .theme-panel{position:fixed;bottom:24px;right:24px;z-index:1050;background:var(--menu-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:48px;padding:6px;display:flex;gap:6px;border:1px solid var(--border);box-shadow:0 8px 20px var(--shadow)}
-    .theme-btn{background:transparent;border:none;border-radius:40px;padding:8px 14px;font-size:0.8rem;font-weight:600;cursor:pointer;color:var(--text-2);display:flex;align-items:center;gap:6px;transition:0.2s;font-family:inherit}
-    .theme-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:0.2s}
+    .theme-btn{background:transparent;border:none;border-radius:40px;padding:8px 14px;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-2);display:flex;align-items:center;gap:6px;transition:.2s;font-family:inherit}
+    .theme-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:.2s}
     .theme-btn:hover{color:var(--text);background:var(--accent-soft)}
     .theme-btn.active{background:var(--accent);color:#fff;box-shadow:0 0 12px var(--accent-glow)}
     .theme-btn.active svg{stroke:#fff}
 
-    /* ===== CARD ===== */
     .white-area{width:100%;max-width:700px;margin:20px auto;background:var(--surface);border-radius:32px;padding:32px 28px;box-shadow:0 20px 45px -10px var(--shadow),0 0 0 1px var(--border) inset;text-align:center;position:relative;overflow:hidden}
     .white-area::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
     .white-area h3{color:var(--text);font-size:1.5rem;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:10px}
     .white-area h3 svg{width:26px;height:26px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    .white-area p{color:var(--text-2);font-size:0.95rem}
-    .white-placeholder{background:var(--surface-2);border:1px dashed var(--border-strong);border-radius:24px;padding:24px;margin-top:20px;color:var(--text);display:flex;align-items:center;justify-content:center;gap:10px;font-weight:500;transition:0.2s}
+    .white-area p{color:var(--text-2);font-size:.95rem}
+    .white-placeholder{background:var(--surface-2);border:1px dashed var(--border-strong);border-radius:24px;padding:24px;margin-top:20px;color:var(--text);display:flex;align-items:center;justify-content:center;gap:10px;font-weight:500;transition:.2s}
     .white-placeholder svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-    /* ===== WELCOME ===== */
     .welcome{color:var(--text);font-size:1.15rem;background:var(--menu-bg);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:14px 28px;border-radius:60px;border:1px solid var(--border);font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:0 8px 20px var(--shadow)}
     .welcome svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 6px var(--accent-glow))}
 
-    /* ===== SOCIAL ===== */
     .social-footer{margin-top:28px;display:flex;gap:24px;justify-content:center;align-items:center;flex-wrap:wrap}
-    .social-footer a{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--toggle-bg);box-shadow:0 4px 12px var(--shadow);transition:transform 0.2s,box-shadow 0.2s,background 0.2s;border:1px solid var(--border);padding:8px}
+    .social-footer a{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--toggle-bg);box-shadow:0 4px 12px var(--shadow);transition:transform .2s,box-shadow .2s,background .2s;border:1px solid var(--border);padding:8px}
     .social-footer a:hover{transform:scale(1.12);background:var(--accent);box-shadow:0 8px 20px var(--accent-glow);border-color:var(--accent)}
-    .social-footer svg{width:26px;height:26px;fill:var(--text);transition:fill 0.2s}
+    .social-footer svg{width:26px;height:26px;fill:var(--text);transition:fill .2s}
     .social-footer a:hover svg{fill:#fff}
 
-    @media(max-width:550px){.theme-btn{font-size:0.7rem;padding:6px 10px}.theme-btn svg{width:14px;height:14px}.mini-clock canvas{width:36px!important;height:36px!important}.side-menu{width:280px}}
+    @media(max-width:550px){.theme-btn{font-size:.7rem;padding:6px 10px}.theme-btn svg{width:14px;height:14px}.mini-clock canvas{width:36px!important;height:36px!important}.side-menu{width:280px}}
   </style>
 </head>
 <body>
 
-  <!-- App Menu (React) -->
   <div id="app-menu-root"></div>
 
-  <!-- Hamburger -->
   <button class="hamburger" id="hamburger" aria-label="Abrir menu">
     <span></span><span></span><span></span>
   </button>
 
-  <!-- Overlay -->
   <div class="menu-overlay" id="menuOverlay"></div>
 
-  <!-- Side Menu -->
   <aside class="side-menu" id="sideMenu">
     <div class="menu-header">
       <h2>CodeHUB</h2>
@@ -229,7 +198,7 @@
   </script>
 
   <script>
-    /* ===== MENU HAMBURGER ===== */
+    const _0x3f1a = ['themeDark','themeLight','themeSystem','codehub-theme','data-theme','addEventListener','click','setItem','getItem','matches','addListener'];
     const hamburger = document.getElementById('hamburger');
     const sideMenu = document.getElementById('sideMenu');
     const overlay = document.getElementById('menuOverlay');
@@ -242,52 +211,49 @@
       document.body.style.overflow = open ? 'hidden' : '';
     }
 
-    hamburger.addEventListener('click', () => toggleMenu());
-    overlay.addEventListener('click', () => toggleMenu(false));
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleMenu(false); });
+    hamburger[_0x3f1a[5]](_0x3f1a[6], () => toggleMenu());
+    overlay[_0x3f1a[5]](_0x3f1a[6], () => toggleMenu(false));
 
-    document.getElementById('menuDeveloper').addEventListener('click', () => {
-      window.location.href = '/developer';
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') toggleMenu(false);
     });
 
-    /* ===== TEMA (CORRIGIDO) ===== */
+    document.getElementById('menuDeveloper').addEventListener('click', () => {
+      location.assign('/developer');
+    });
+
     const html = document.documentElement;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
 
     function applyTheme(mode){
       let effective = mode;
       if (mode === 'system') effective = mq.matches ? 'dark' : 'light';
-      html.setAttribute('data-theme', effective);
-
+      html.setAttribute(_0x3f1a[4], effective);
       document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-      const btn = document.querySelector(`[data-set-theme="${mode}"]`);
+      const btn = document.querySelector('[data-set-theme="' + mode + '"]');
       if (btn) btn.classList.add('active');
     }
 
     function setTheme(mode){
-      localStorage.setItem('codehub-theme', mode);
+      localStorage[_0x3f1a[7]](_0x3f1a[3], mode);
       applyTheme(mode);
     }
 
-    // Botões
     document.querySelectorAll('[data-set-theme]').forEach(btn => {
-      btn.addEventListener('click', () => setTheme(btn.dataset.setTheme));
+      btn[_0x3f1a[5]](_0x3f1a[6], () => setTheme(btn.dataset.setTheme));
     });
 
-    // Reage a mudança do sistema quando estiver em "system"
     mq.addEventListener('change', () => {
-      if (localStorage.getItem('codehub-theme') === 'system') applyTheme('system');
+      if (localStorage[_0x3f1a[8]](_0x3f1a[3]) === 'system') applyTheme('system');
     });
 
-    // Inicializa
-    setTheme(localStorage.getItem('codehub-theme') || 'dark');
+    setTheme(localStorage[_0x3f1a[8]](_0x3f1a[3]) || 'dark');
 
-    /* ===== RELÓGIO ===== */
     const c = document.getElementById('miniCanvas'), ctx = c.getContext('2d');
     function draw(){
       c.width = 200; c.height = 200;
       const cx = 100, cy = 100, r = 88;
-      const isLight = html.getAttribute('data-theme') === 'light';
+      const isLight = html.getAttribute(_0x3f1a[4]) === 'light';
 
       ctx.fillStyle = isLight ? '#ffffff' : '#0f1424';
       ctx.beginPath(); ctx.arc(cx, cy, r + 3, 0, Math.PI * 2); ctx.fill();
@@ -328,13 +294,13 @@
     }
     setInterval(draw, 1000); draw();
 
-    /* ===== FIREBASE TOKEN REFRESH ===== */
-    async function initSilentTokenRefresh() {
+    (async function _0x9c2e(){
+      const _0x1a = ['[CodeHUB]','auth','token','cookie','error','warn','log','user','refresh','init'];
       try {
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
         const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
 
-        const firebaseConfig = {
+        const cfg = {
           apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
           authDomain: "html-15e80.firebaseapp.com",
           databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
@@ -344,31 +310,40 @@
           appId: "1:1068148640439:web:1ac651348e624f6be41b32"
         };
 
-        const app = initializeApp(firebaseConfig);
+        const app = initializeApp(cfg);
         const auth = getAuth(app);
 
-        async function refreshCookie(user) {
+        console[_0x1a[6]](_0x1a[0], _0x1a[9] + ' :: ok');
+
+        async function refresh(user) {
           if (!user) return;
           try {
-            const token = await user.getIdToken(true);
-            document.cookie = "firebaseToken=" + token + "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
-            console.log("✅ Token renovado.");
+            const t = await user.getIdToken(true);
+            document.cookie = "firebaseToken=" + t + "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+            console[_0x1a[6]](_0x1a[0], _0x1a[2] + ' :: renewed');
           } catch (e) {
-            console.error("❌ Erro:", e.message);
+            console[_0x1a[4]](_0x1a[0], _0x1a[2] + ' :: ' + e.message);
           }
         }
 
         onAuthStateChanged(auth, async (user) => {
-          if (user) await refreshCookie(user);
-          else document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
+          if (user) {
+            console[_0x1a[6]](_0x1a[0], _0x1a[7] + ' :: on');
+            await refresh(user);
+          } else {
+            console[_0x1a[5]](_0x1a[0], _0x1a[7] + ' :: off');
+            document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
+          }
         });
 
-        setInterval(() => { if (auth.currentUser) refreshCookie(auth.currentUser); }, 60000);
+        setInterval(() => {
+          if (auth.currentUser) refresh(auth.currentUser);
+        }, 60000);
+
       } catch (e) {
-        console.error("❌ Firebase:", e.message);
+        console[_0x1a[4]](_0x1a[0], _0x1a[8] + ' :: ' + e.message);
       }
-    }
-    initSilentTokenRefresh();
+    })();
   </script>
 </body>
 </html>
