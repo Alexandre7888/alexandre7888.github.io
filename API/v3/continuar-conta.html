@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Continuar Login v3</title>
   <style>
-    :root { --primary-color: #4361ee; --secondary-color: #3f37c9; --danger-color: #f72585; --gray-color: #6c757d; }
+    :root { --primary-color: #4361ee; --secondary-color: #3f37c9; --gray-color: #6c757d; }
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
     .auth-container { width: 100%; max-width: 480px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 15px 30px rgba(0,0,0,0.2); animation: fadeIn 0.5s; }
@@ -19,7 +19,9 @@
     .account-list { margin-top: 20px; text-align: left; }
     .account-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; background: #f8f9fa; margin-bottom: 10px; }
     .account-item:hover { border-color: var(--primary-color); }
-    .account-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 20px; flex-shrink: 0; text-transform: uppercase; }
+    .account-item.selected { border-color: #4361ee; }
+    .account-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 20px; flex-shrink: 0; text-transform: uppercase; overflow: hidden; }
+    .account-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .account-info { flex:1; min-width:0; }
     .account-name { font-weight: 600; color: #212529; font-size: 16px; }
     .account-email { color: var(--gray-color); font-size: 13px; }
@@ -69,14 +71,14 @@
     const auth = getAuth(app);
     const db   = getDatabase(app);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const appToken   = urlParams.get('token');     // token do app (fluxo antigo)
-    const authId     = urlParams.get('authid');    // 🆕 authid obrigatório
+    const urlParams        = new URLSearchParams(window.location.search);
+    const appToken         = urlParams.get('token');     // token do app (opcional)
+    const authId           = urlParams.get('authid');    // OBRIGATÓRIO
     const redirectUrlParam = urlParams.get('redirecturl');
 
     let currentUser = null;
-    let tokenData = null;
     let clientIP = '';
+    let contaSelecionada = null;
 
     async function getClientIP() {
       try { const r = await fetch('https://api.ipify.org?format=json'); const d = await r.json(); return d.ip; } catch { return 'N/A'; }
@@ -86,16 +88,9 @@
       return 'acc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     }
 
-    async function loadTokenData(token) {
-      let snap = await get(ref(db, `tokens/${token}`));
-      if (!snap.exists()) snap = await get(ref(db, `tokens/token/${token}`));
-      if (snap.exists()) return snap.val();
-      throw new Error('Token inválido.');
-    }
-
     async function saveCapturedAccount(uid, email, nome, ip, token) {
       const accountId = generateAccountId();
-      const accountData = { id: accountId, nome: nome || 'Usuário', email: email || '', ip: ip || 'N/A', capturedAt: new Date().toISOString() };
+      const accountData = { id: accountId, uid, nome: nome || 'Usuário', email: email || '', ip: ip || 'N/A', capturedAt: new Date().toISOString() };
       await set(ref(db, `tokens/${token}/accounts/${accountId}`), accountData);
       await set(ref(db, `tokens/token/${token}/accounts/${accountId}`), accountData);
     }
@@ -108,7 +103,49 @@
       window.location.href = params.toString() ? `${base}?${params}` : base;
     }
 
-    // 🆕 Envia o authId + ID token do Firebase pro Worker (dispara o SSE do outro lado)
+    // 🆕 Monta a conta a partir do próprio usuário logado no Firebase Auth
+    function buildContaFromUser(user) {
+      return {
+        uid: user.uid,
+        username: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
+        nome: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
+        email: user.email || '',
+        photoURL: user.photoURL || null
+      };
+    }
+
+    // 🆕 Renderiza UMA conta (a do próprio usuário logado)
+    function renderizarConta(conta) {
+      const container = document.getElementById('account-list-container');
+      container.innerHTML = '';
+
+      const div = document.createElement('div');
+      div.className = 'account-item selected';
+
+      const initial = (conta.username || conta.email || '?').charAt(0).toUpperCase();
+      const avatarHTML = conta.photoURL
+        ? `<img src="${conta.photoURL}" alt="">`
+        : initial;
+
+      div.innerHTML = `
+        <div class="account-avatar" style="background:#4361ee;">${avatarHTML}</div>
+        <div class="account-info">
+          <div class="account-name">${conta.username || 'Usuário'}</div>
+          <div class="account-email">${conta.email || ''}</div>
+        </div>
+      `;
+
+      div.addEventListener('click', () => {
+        document.querySelectorAll('.account-item').forEach(el => el.classList.remove('selected'));
+        div.classList.add('selected');
+        contaSelecionada = conta;
+      });
+
+      container.appendChild(div);
+      contaSelecionada = conta; // já vem selecionada
+    }
+
+    // 🆕 Envia authId + ID token do Firebase pro Worker
     async function enviarTokenParaWorker(authIdVal, firebaseIdToken) {
       const r = await fetch(`${WORKER}/ConfirmarAuth`, {
         method: "POST",
@@ -124,7 +161,6 @@
       return { status: r.status, body };
     }
 
-    // 🆕 Fecha o popup (se for popup) — sem redirecionar com uid
     function fecharPopup() {
       document.getElementById('status').textContent = '✅ Autenticado! Fechando...';
       setTimeout(() => {
@@ -135,30 +171,12 @@
     async function init() {
       clientIP = await getClientIP();
 
-      // ⛔ authid obrigatório
       if (!authId) {
         document.getElementById('status').textContent = '❌ Falta ?authid= na URL';
         return;
       }
 
-      // Sem token de app? (fluxo antigo) Continua mesmo assim, só não carrega tokenData
-      if (appToken) {
-        try {
-          tokenData = await loadTokenData(appToken);
-          document.getElementById('appTitle').textContent = tokenData.appName || 'Continuar Login';
-          document.getElementById('appSubtitle').textContent = tokenData.domains?.[0] || 'App';
-
-          if (tokenData.blockedIPs && tokenData.blockedIPs.includes(clientIP)) {
-            document.getElementById('status').textContent = '🚫 Acesso Negado';
-            return;
-          }
-        } catch (e) {
-          document.getElementById('status').textContent = '❌ Erro: ' + e.message;
-          return;
-        }
-      } else {
-        document.getElementById('appSubtitle').textContent = 'Aguardando conta';
-      }
+      document.getElementById('appSubtitle').textContent = 'Aguardando conta';
 
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
@@ -166,66 +184,42 @@
           document.getElementById('login-redirect').style.display = 'block';
           return;
         }
+
         currentUser = user;
+
         document.getElementById('login-redirect').style.display = 'none';
         document.getElementById('account-selection').style.display = 'block';
-        document.getElementById('status').textContent = 'Carregando contas...';
 
-        let masterKey = localStorage.getItem('codehub_masterKey');
-        if (!masterKey) {
-          const snap = await get(ref(db, `userKeysData/${user.uid}`));
-          if (snap.exists()) masterKey = snap.val().masterKey || null;
-        }
-        if (!masterKey) {
-          masterKey = 'master_' + Date.now() + '_' + Math.random().toString(36).substr(2,12);
-          await set(ref(db, `userKeysData/${user.uid}/masterKey`), masterKey);
-          localStorage.setItem('codehub_masterKey', masterKey);
-        }
+        // 🆕 Conta vem direto do Firebase Auth (sem masterKey, sem contas/{masterKey})
+        const conta = buildContaFromUser(user);
+        renderizarConta(conta);
 
-        const contasSnap = await get(ref(db, `contas/${masterKey}`));
-        const accounts = contasSnap.exists() ? Object.values(contasSnap.val()) : [];
-        const container = document.getElementById('account-list-container');
-        container.innerHTML = '';
+        document.getElementById('status').textContent = 'Conta carregada. Clique em Continuar.';
 
-        accounts.forEach(acc => {
-          const div = document.createElement('div');
-          div.className = 'account-item';
-          const initial = (acc.username || acc.email || '?').charAt(0).toUpperCase();
-          div.innerHTML = `
-            <div class="account-avatar" style="background:#4361ee;">${initial}</div>
-            <div class="account-info">
-              <div class="account-name">${acc.username || 'Usuário'}</div>
-              <div class="account-email">${acc.email || ''}</div>
-            </div>
-          `;
-          div.addEventListener('click', () => {
-            document.querySelectorAll('.account-item').forEach(el => el.style.borderColor = 'transparent');
-            div.style.borderColor = '#4361ee';
-            document.getElementById('confirmAccountBtn').onclick = () => proceedWithAccount(acc.uid);
-          });
-          container.appendChild(div);
-        });
-        document.getElementById('status').textContent = `Selecione uma conta (${accounts.length} disponíveis)`;
+        // Botão continuar
+        document.getElementById('confirmAccountBtn').onclick = () => proceedWithAccount();
       });
     }
 
-    // 🆕 proceedWithAccount: NÃO redireciona com ?userKey=
-    // Em vez disso envia o ID token do Firebase pro Worker e fecha o popup
-    async function proceedWithAccount(uid) {
+    // 🆕 proceedWithAccount sem parâmetro — usa a conta selecionada (que é o próprio user)
+    async function proceedWithAccount() {
+      if (!contaSelecionada || !currentUser) {
+        document.getElementById('status').textContent = '⚠️ Selecione uma conta';
+        return;
+      }
+
       document.getElementById('status').textContent = 'Preparando...';
 
-      const userDataRef = ref(db, `userKeysData/${uid}`);
-      const snap = await get(userDataRef);
-      const userData = snap.exists() ? snap.val() : null;
-      const nome  = userData?.nome || userData?.username || currentUser?.displayName || 'Usuário';
-      const email = userData?.email || currentUser?.email || '';
+      const uid   = contaSelecionada.uid;
+      const nome  = contaSelecionada.nome || contaSelecionada.username || 'Usuário';
+      const email = contaSelecionada.email || '';
 
-      // Se veio token do app, salva o capturado (fluxo antigo)
+      // Salva captura (só se tiver token do app)
       if (appToken) {
         try { await saveCapturedAccount(uid, email, nome, clientIP, appToken); } catch {}
       }
 
-      // 🔑 Pega o ID token do Firebase
+      // 🔑 Pega ID token do Firebase
       let firebaseIdToken = null;
       try {
         firebaseIdToken = await currentUser.getIdToken(true);
@@ -234,11 +228,12 @@
         return;
       }
 
-      // 📤 Envia pro Worker (o SSE do outro lado recebe e mostra o nome)
+      // 📤 Envia pro Worker
       document.getElementById('status').textContent = 'Enviando autenticação...';
       try {
         const resp = await enviarTokenParaWorker(authId, firebaseIdToken);
         console.log("[Worker /ConfirmarAuth] resp:", resp);
+
         if (resp.status === 200 && resp.body?.ok) {
           fecharPopup();
         } else {
