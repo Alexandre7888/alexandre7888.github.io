@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeHub - Criar App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0e17; color: #e8edf5; padding: 20px; }
+    .dashboard { max-width: 1200px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid rgba(67,97,238,0.15); }
+    .logo { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #4361ee, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 30px; }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+    .card { background: #111927; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group input { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; }
+    .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; }
+    .btn-block { width: 100%; }
+    .token-list { max-height: 600px; overflow-y: auto; padding-right: 5px; }
+    .token-item { background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .empty-state { text-align: center; padding: 40px; color: #4a5a7a; }
+    .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; z-index: 2000; }
+    .toast-success { background: #1a3a2a; border: 1px solid #2ecc71; color: #2ecc71; }
+    .toast-error { background: #3a1a2a; border: 1px solid #f72585; color: #f72585; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <header class="header">
+      <div class="logo">Code<span style="color:#6b7a9f;">Hub</span></div>
+    </header>
+
+    <div class="main-grid">
+      <div class="card">
+        <h2>✨ Criar Novo Token</h2>
+        <form id="createTokenForm">
+          <div class="form-group">
+            <label>Nome do App *</label>
+            <input type="text" id="appName" placeholder="Ex: Meu App Incrível" required />
+          </div>
+          <div class="form-group">
+            <label>Tamanho do Token</label>
+            <input type="number" id="tokenSize" value="20" min="20" max="200" />
+          </div>
+          <button type="submit" class="btn btn-block">🚀 Gerar Token</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
+          <h2>📋 Seus Tokens</h2>
+          <span class="badge-count" id="tokenCount">0</span>
+        </div>
+        <div class="token-list" id="tokenList">
+          <div class="empty-state">
+            <div class="icon" style="font-size:48px;">📭</div>
+            <h3>Nenhum token criado</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.appspot.com",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    let userUID = null;
+    const tokenList = document.getElementById('tokenList');
+    const tokenCount = document.getElementById('tokenCount');
+
+    function showToast(message, type = 'success') {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    function generateToken(len) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let tok = '';
+      for (let i = 0; i < len; i++) tok += chars.charAt(Math.floor(Math.random() * chars.length));
+      return tok;
+    }
+
+    async function saveToken(token, data) {
+      const base = {
+        appName: data.appName,
+        ownerUID: userUID,
+        createdAt: new Date().toISOString(),
+        domains: data.domains || [],
+        blockedIPs: data.blockedIPs || [],
+        accounts: {}
+      };
+      await set(ref(db, `tokens/${token}`), base);
+      await set(ref(db, `tokens/token/${token}`), base);
+      showToast('✅ Token criado!', 'success');
+      loadTokens();
+    }
+
+    async function loadTokens() {
+      if (!userUID) return;
+      const [snap1, snap2] = await Promise.all([
+        get(ref(db, 'tokens')),
+        get(ref(db, 'tokens/token'))
+      ]);
+      const all = [];
+      const data1 = snap1.val();
+      const data2 = snap2.val();
+      if (data1) Object.entries(data1).forEach(([k, v]) => {
+        if ((v.ownerUID === userUID || !v.ownerUID) && k !== 'token') all.push({ token: k, val: v });
+      });
+      if (data2) Object.entries(data2).forEach(([k, v]) => {
+        if (v.ownerUID === userUID || !v.ownerUID) all.push({ token: k, val: v });
+      });
+
+      const seen = new Set();
+      const allTokens = all.filter(item => {
+        if (seen.has(item.token)) return false;
+        seen.add(item.token);
+        return true;
+      });
+
+      tokenCount.textContent = allTokens.length;
+
+      if (allTokens.length === 0) {
+        tokenList.innerHTML = `<div class="empty-state"><div class="icon" style="font-size:48px;">📭</div><h3>Nenhum token criado</h3></div>`;
+        return;
+      }
+
+      tokenList.innerHTML = '';
+      const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta";
+      
+      allTokens.forEach(({ token, val }) => {
+        const div = document.createElement('div');
+        div.className = 'token-item';
+        const domains = val.domains || [];
+        const hasDomain = domains.length > 0;
+        const icon = val.icon || '📱';
+        const accountCount = val.accounts ? Object.keys(val.accounts).length : 0;
+        const apiUrl = `${baseURL}?token=${token}`;
+
+        div.innerHTML = `
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <div><strong>${icon} ${val.appName}</strong> <br> <span style="color:#4cc9f0;font-size:13px;">${hasDomain ? domains.join(', ') : 'Sem domínio'}</span></div>
+            <div><span style="background:rgba(67,97,238,0.15);padding:2px 8px;border-radius:12px;font-size:11px;">👥 ${accountCount}</span></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+            <button class="btn" style="padding:6px 12px;font-size:12px;" onclick="navigator.clipboard.writeText('${apiUrl}')">📋 URL</button>
+            <button class="btn" style="padding:6px 12px;font-size:12px;background:#f8961e;" onclick="alert('Editar token: ${token}')">⚙️</button>
+            <button class="btn" style="padding:6px 12px;font-size:12px;background:#f72585;" onclick="deleteToken('${token}')">🗑️</button>
+          </div>
+        `;
+        tokenList.appendChild(div);
+      });
+    }
+
+    window.deleteToken = async function(token) {
+      if (!confirm(`Excluir token?`)) return;
+      try {
+        await remove(ref(db, `tokens/${token}`));
+        await remove(ref(db, `tokens/token/${token}`));
+        showToast('🗑️ Excluído!', 'success');
+        loadTokens();
+      } catch (error) {
+        showToast('❌ Erro: ' + error.message, 'error');
+      }
+    };
+
+    document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('appName').value.trim();
+      const size = parseInt(document.getElementById('tokenSize').value);
+      if (!name) return showToast('❌ Digite um nome', 'error');
+      if (size < 20 || size > 200) return showToast('❌ Tamanho entre 20 e 200', 'error');
+      const token = generateToken(size);
+      await saveToken(token, { appName: name });
+      document.getElementById('appName').value = '';
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth';
+        return;
+      }
+      userUID = user.uid;
+      loadTokens();
+    });
+  </script>
+</body>
+</html>
