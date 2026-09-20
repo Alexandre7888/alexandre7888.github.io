@@ -53,7 +53,7 @@
         <div><b>authid:</b> <span id="dbgAuthId">—</span></div>
         <div><b>firebaseIdToken (início):</b></div>
         <pre id="dbgIdToken">—</pre>
-        <div><b>Resposta do Worker:</b></div>
+        <div><b>Resultado do update no Firebase:</b></div>
         <pre id="dbgResp">—</pre>
       </div>
     </div>
@@ -62,10 +62,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-
-    // ⚙️ CONFIG
-    const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+    import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -90,7 +87,6 @@
     let clientIP = '';
     let contaSelecionada = null;
 
-    // ===== Helpers de debug =====
     function setDbg(k, v) {
       const panel = document.getElementById('debugPanel');
       if (panel) panel.style.display = 'block';
@@ -122,7 +118,6 @@
       window.location.href = params.toString() ? `${base}?${params}` : base;
     }
 
-    // Monta a conta a partir do próprio user logado no Firebase Auth
     function buildContaFromUser(user) {
       return {
         uid: user.uid,
@@ -133,7 +128,6 @@
       };
     }
 
-    // Renderiza a conta do user logado
     function renderizarConta(conta) {
       const container = document.getElementById('account-list-container');
       container.innerHTML = '';
@@ -164,20 +158,15 @@
       contaSelecionada = conta;
     }
 
-    // Envia authId + firebaseIdToken pro Worker
-    async function enviarTokenParaWorker(authIdVal, firebaseIdToken) {
-      const r = await fetch(`${WORKER}/ConfirmarAuth`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          authId: authIdVal,
-          firebaseIdToken: firebaseIdToken
-        })
+    // 🔥 Grava DIRETO no Firebase dentro de /idsauth/{authId}.json
+    async function gravarFirebaseIdToken(authIdVal, firebaseIdToken) {
+      const agora = new Date().toISOString();
+
+      await update(ref(db, `idsauth/${authIdVal}`), {
+        firebaseIdToken: firebaseIdToken,
+        status: "confirmed",
+        atualizadoEm: agora
       });
-      const txt = await r.text();
-      let body;
-      try { body = JSON.parse(txt); } catch { body = txt; }
-      return { status: r.status, body };
     }
 
     function fecharPopup() {
@@ -211,7 +200,6 @@
         document.getElementById('login-redirect').style.display = 'none';
         document.getElementById('account-selection').style.display = 'block';
 
-        // 🆕 Conta vem direto do Firebase Auth (sem masterKey)
         const conta = buildContaFromUser(user);
         renderizarConta(conta);
 
@@ -247,20 +235,15 @@
         return;
       }
 
-      // 📤 Envia pro Worker (authId + firebaseIdToken)
-      document.getElementById('status').textContent = 'Enviando autenticação...';
+      // 🔥 Grava DIRETO no Firebase (sem Worker)
+      document.getElementById('status').textContent = 'Gravando no Firebase...';
       try {
-        const resp = await enviarTokenParaWorker(authId, firebaseIdToken);
-        setDbg('resp', resp.body);
-
-        if (resp.status === 200 && resp.body?.ok) {
-          fecharPopup();
-        } else {
-          document.getElementById('status').textContent = '⚠️ Worker respondeu ' + resp.status;
-        }
+        await gravarFirebaseIdToken(authId, firebaseIdToken);
+        setDbg('resp', { ok: true, metodo: "firebase direto", authId, gravado: true });
+        fecharPopup();
       } catch (e) {
         setDbg('resp', 'ERRO: ' + e.message);
-        document.getElementById('status').textContent = '❌ Erro ao contatar servidor: ' + e.message;
+        document.getElementById('status').textContent = '❌ Erro ao gravar no Firebase: ' + e.message;
       }
     }
 
