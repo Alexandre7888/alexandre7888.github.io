@@ -9,7 +9,7 @@
     body { font-family: 'Segoe UI', sans-serif; background: #0a0e17; color: #e8edf5; padding: 20px; }
     .dashboard { max-width: 1200px; margin: 0 auto; }
     .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid rgba(67,97,238,0.15); }
-    .logo { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #4361ee, #7c3aed); -webkit-background-clip: text; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .logo { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #4361ee, #7c3aed); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 30px; }
     @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
     .card { background: #111927; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; }
@@ -19,6 +19,7 @@
     .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #8b9bb8; }
     .form-group input { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; font-family: inherit; transition: 0.2s; }
     .form-group input:focus { border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.15); }
+    .form-group small { display: block; margin-top: 4px; font-size: 0.75rem; color: #4a5a7a; }
     .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 0.9rem; }
     .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(67,97,238,0.3); }
@@ -41,7 +42,7 @@
     .token-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
     .token-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
     .token-name svg { width: 16px; height: 16px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .token-domain { color: #4cc9f0; font-size: 13px; margin-top: 4px; }
+    .token-domain { color: #4cc9f0; font-size: 13px; margin-top: 4px; word-break: break-all; }
     .token-accounts { display: inline-flex; align-items: center; gap: 5px; background: rgba(67,97,238,0.15); padding: 4px 10px; border-radius: 12px; font-size: 11px; }
     .token-accounts svg { width: 12px; height: 12px; stroke: #4cc9f0; fill: none; stroke-width: 2; }
     .token-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
@@ -111,8 +112,9 @@
         <span id="modalTitle">Configurar App</span>
       </h2>
       <div class="form-group">
-        <label>Domínios Permitidos (separados por vírgula)</label>
-        <input type="text" id="editDomains" placeholder="ex: meusite.com, app.com" />
+        <label>Domínios Permitidos (obrigatório começar com https://, separados por vírgula)</label>
+        <input type="text" id="editDomains" placeholder="ex: https://meusite.com, https://app.com" />
+        <small>Só HTTPS. O caminho (path) é ignorado, só o domínio é salvo.</small>
       </div>
       <div class="form-group">
         <label>IPs Bloqueados (separados por vírgula)</label>
@@ -200,24 +202,58 @@
     }
 
     // ============================================
-    // SALVAR TOKEN (nova estrutura)
-    //   /tokens/{tokenId}              -> dados do token
-    //   /users/{uid}/tokens/{tokenId}  -> apontador
+    // NORMALIZAR DOMÍNIOS
+    //   - OBRIGATÓRIO começar com https://
+    //   - Salva sem protocolo (só o hostname)
+    //   - Retorna { validos, invalidos }
     // ============================================
+    function normalizarDominios(input) {
+      const partes = String(input || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const validos = [];
+      const invalidos = [];
+
+      for (const p of partes) {
+        const lower = p.toLowerCase();
+
+        // precisa começar com https://
+        if (!lower.startsWith("https://")) {
+          invalidos.push(p + " (precisa começar com https://)");
+          continue;
+        }
+
+        // tira o https://
+        let host = lower.slice(8);
+
+        // tira path e barras
+        host = host.split("/")[0].replace(/\/+$/, "");
+
+        // valida formato básico
+        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) {
+          invalidos.push(p + " (domínio inválido)");
+          continue;
+        }
+
+        validos.push(host);
+      }
+
+      return { validos, invalidos };
+    }
+
     async function saveToken(token, data) {
       const base = {
         appName: data.appName,
         ownerUID: userUID,
         createdAt: new Date().toISOString(),
         domains: data.domains || [],
-        blockedIPs: data.blockedIPs || [],
-        accounts: {}
+        blockedIPs: data.blockedIPs || []
       };
 
-      // 1) grava o token completo
       await set(ref(db, `tokens/${token}`), base);
 
-      // 2) grava o apontador dentro do usuário
       await set(ref(db, `users/${userUID}/tokens/${token}`), {
         token: token,
         appName: data.appName,
@@ -228,23 +264,16 @@
       loadTokens();
     }
 
-    // ============================================
-    // CARREGAR TOKENS
-    //   Lê só os apontadores do usuário
-    //   Depois busca o dado completo em /tokens/{id}
-    // ============================================
     async function loadTokens() {
       if (!userUID) return;
 
       try {
         const snap = await get(ref(db, `users/${userUID}/tokens`));
         const meusTokens = snap.val() || {};
-
         const ids = Object.keys(meusTokens);
 
         allTokens = [];
 
-        // busca os dados completos de cada token em paralelo
         const resultados = await Promise.all(
           ids.map(async (id) => {
             try {
@@ -269,7 +298,7 @@
         }
 
         tokenList.innerHTML = '';
-        const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta";
+        const baseURL = "https://app.codehub.site.je/API/v3/continuar-conta";
 
         allTokens.forEach(({ token, val }) => {
           const div = document.createElement('div');
@@ -320,28 +349,29 @@
       const item = allTokens.find(t => t.token === token);
       if (!item) return;
       editAppName.value = item.val.appName || '';
-      editDomains.value = (item.val.domains || []).join(', ');
+      editDomains.value = (item.val.domains || []).map(d => "https://" + d).join(', ');
       editIPs.value = (item.val.blockedIPs || []).join(', ');
       modalTitle.textContent = 'Configurar: ' + (item.val.appName || '');
       editModal.classList.add('active');
     };
 
-    // ============================================
-    // SALVAR EDIÇÃO
-    //   Atualiza /tokens/{id} e /users/{uid}/tokens/{id}
-    // ============================================
     window.saveEdit = async function() {
       if (!currentEditToken) return;
-      const domains = editDomains.value.split(',').map(s => s.trim()).filter(s => s);
-      const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
       const appName = editAppName.value.trim();
+      const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
 
       if (!appName) return showToast('Nome do app obrigatório', 'error');
+
+      const dom = normalizarDominios(editDomains.value);
+
+      if (dom.invalidos.length > 0) {
+        return showToast('Domínios inválidos: ' + dom.invalidos.join(' | '), 'error');
+      }
 
       try {
         await update(ref(db, `tokens/${currentEditToken}`), {
           appName,
-          domains,
+          domains: dom.validos,
           blockedIPs: ips
         });
 
@@ -362,14 +392,11 @@
       currentEditToken = null;
     };
 
-    // ============================================
-    // DELETAR TOKEN
-    //   Remove /tokens/{id} e /users/{uid}/tokens/{id}
-    // ============================================
     window.deleteToken = async function(token) {
       if (!confirm('Excluir token?')) return;
       try {
         await remove(ref(db, `tokens/${token}`));
+        await remove(ref(db, `tokenAccounts/${token}`));
         await remove(ref(db, `users/${userUID}/tokens/${token}`));
         showToast('Token excluído', 'success');
         loadTokens();
