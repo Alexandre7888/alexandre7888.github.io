@@ -198,7 +198,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, get, set, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
@@ -275,7 +275,6 @@
       else if (raw && typeof raw === "object") lista = Object.values(raw);
       else if (typeof raw === "string") lista = [raw];
 
-      // normaliza: sempre sem protocolo, só o hostname
       lista = lista
         .map(d => String(d || "").trim().toLowerCase())
         .map(d => d.replace(/^https?:\/\//, "").replace(/\/+$/, "").split("/")[0])
@@ -291,7 +290,6 @@
 
       const urlLower = redirectUrl.toLowerCase();
 
-      // bloqueia tudo que não for https
       if (urlLower.startsWith("http://")) {
         return { ok: false, erro: "Apenas HTTPS é permitido. Use https://" };
       }
@@ -329,37 +327,17 @@
     }
 
     // ============================================
-    // CAPTURAR CONTA
+    // CAPTURAR CONTA — SEM "used"
+    //   Agora cada token aceita VÁRIAS contas
+    //   Cada uma fica com um ID único, não sobrescreve
     // ============================================
     async function capturarConta(token, accountData) {
-      const usedSnap = await get(ref(db, `tokens/${token}/used`));
-      if (usedSnap.val() === true) {
-        return { ok: false, erro: "Este token já foi usado por outra conta." };
-      }
-
-      const usedRef = ref(db, `tokens/${token}/used`);
-      let res;
-      try {
-        res = await runTransaction(usedRef, (atual) => {
-          if (atual === true) return;
-          return true;
-        });
-      } catch (e) {
-        return { ok: false, erro: "Falha ao marcar token como usado: " + e.message };
-      }
-
-      if (!res.committed) {
-        return { ok: false, erro: "Este token já foi usado por outra conta." };
-      }
-
       try {
         await set(ref(db, `tokenAccounts/${token}/${accountData.id}`), accountData);
+        return { ok: true };
       } catch (e) {
-        try { await set(ref(db, `tokens/${token}/used`), null); } catch {}
         return { ok: false, erro: "Falha ao gravar conta: " + e.message };
       }
-
-      return { ok: true };
     }
 
     async function confirmarNoWorker(authIdVal, firebaseIdToken, uid) {
@@ -464,10 +442,8 @@
             return;
           }
 
-          if (tokenData.used === true) {
-            setStatus('🚫 Este token já foi usado');
-            return;
-          }
+          // ⚠️ Removida a checagem de tokenData.used
+          // Agora pode usar quantas vezes quiser
 
           const check = validarDominio(tokenData, redirectUrlParam);
           if (!check.ok) {
