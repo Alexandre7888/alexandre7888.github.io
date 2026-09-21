@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Trabalho - Efeito Estufa</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #dfe8eb;
+      color: #17323b;
+    }
+
+    .pagina {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 20px auto;
+      padding: 35mm 25mm;
+      background: white;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+    }
+
+    /* =========================
+       PÁGINA 1 - CAPA
+    ========================= */
+
+    .capa {
+      background: linear-gradient(145deg, #092c3b, #126277);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .titulo-capa {
+      font-size: 45px;
+      margin-top: 25px;
+      margin-bottom: 12px;
+    }
+
+    .subtitulo-capa {
+      font-size: 21px;
+      opacity: 0.9;
+    }
+
+    .informacoes {
+      margin-top: 55px;
+      padding: 25px 45px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      font-size: 19px;
+      line-height: 1.9;
+    }
+
+    .terra-svg {
+      width: 280px;
+      height: 280px;
+    }
+
+
+    /* =========================
+       PÁGINAS 2 E 3
+    ========================= */
+
+    h2 {
+      font-size: 36px;
+      color: #126277;
+      margin-bottom: 25px;
+      border-bottom: 4px solid #61b5c5;
+      padding-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 23px;
+      color: #17687b;
+      margin-top: 25px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 18px;
+      line-height: 1.7;
+      margin-bottom: 18px;
+    }
+
+    .caixa {
+      margin: 25px 0;
+      padding: 22px;
+      background: #edf8fa;
+      border-left: 6px solid #2993a7;
+      border-radius: 10px;
+    }
+
+    .destaque {
+      font-weight: bold;
+      color: #17687b;
+    }
+
+    .rodape {
+      position: absolute;
+      bottom: 18mm;
+      left: 25mm;
+      right: 25mm;
+      text-align: center;
+      font-size: 14px;
+      color: #71858b;
+    }
+
+
+    /* =========================
+       IMPRESSÃO
+    ========================= */
+
+    @media print {
+
+      body {
+        background: white;
+      }
+
+      .pagina {
+        margin: 0;
+        width: 210mm;
+        min-height: 297mm;
+        box-shadow: none;
+      }
+    }
+
+    @media screen and (max-width: 800px) {
+
+      .pagina {
+        width: 95%;
+        min-height: auto;
+        margin: 15px auto;
+        padding: 50px 25px;
+      }
+
+      .terra-svg {
+        width: 220px;
+        height: 220px;
+      }
+
+      .titulo-capa {
+        font-size: 35px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+
+  <!-- =====================================================
+       PÁGINA 1 — CAPA
+  ====================================================== -->
+
+  <section class="pagina capa">
+
+    <!-- SVG DA TERRA -->
+    <svg class="terra-svg"
+         viewBox="0 0 300 300"
+         xmlns="http://www.w3.org/2000/svg">
+
+      <!-- Atmosfera -->
+      <circle
+        cx="150"
+        cy="150"
+        r="125"
+        fill="none"
+        stroke="#82e4f2"
+        stroke-width="8"
+        opacity="0.65"
+      />
+
+      <!-- Sol -->
+      <circle
+        cx="65"
+        cy="65"
+        r="30"
+        fill="#FFD84D"
+      />
+
+      <!-- Raios do sol -->
+      <g
+        stroke="#FFD84D"
+        stroke-width="5"
+        stroke-linecap="round"
+      >
+        <line x1="65" y1="20" x2="65" y2="8"/>
+        <line x1="65" y1="110" x2="65" y2="122"/>
+        <line x1="20" y1="65" x2="8" y2="65"/>
+        <line x1="110" y1="65" x2="122" y2="65"/>
+      </g>
+
+      <!-- Terra -->
+      <circle
+        cx="150"
+        cy="165"
+        r="65"
+        fill="#267FAE"
+      />
+
+      <!-- Continentes -->
+      <path
+        d="M105 143
+           C113 130 129 127 139 138
+           C146 146 135 155 122 154
+           C112 153 106 150 105 143Z"
+        fill="#63A844"
+      />
+
+      <path
+        d="M164 130
+           C179 123 194 134 196 146
+           C197 156 184 161 175 153
+           C168 148 159 143 164 130Z"
+        fill="#63A844"
+      />
+
+      <path
+        d="M145 176
+           C157 168 178 176 181 190
+           C183 202 168 211 156 207
+           C144 202 137 186 145 176Z"
+        fill="#63A844"
+      />
+
+      <!-- Luz solar -->
+      <path
+        d="M90 80
+           Q112 96 130 115"
+        fill="none"
+        stroke="#FFD84D"
+        stroke-width="6"
+        stroke-linecap="round"
+      />
+
+      <!-- Calor saindo -->
+      <path
+        d="M130 218
+           Q110 242 125 265"
+        fill="none"
+        stroke="#FF795C"
+        stroke-width="6"
+        stroke-linecap="round"
+      />
+
+      <path
+        d="M170 218
+           Q193 240 180 265"
+        fill="none"
+        stroke="#FF795C"
+        stroke-width="6"
+        stroke-linecap="round"
+      />
+
+      <!-- Setas de retorno -->
+      <path
+        d="M125 260
+           Q105 225 128 200"
+        fill="none"
+        stroke="#FF795C"
+        stroke-width="4"
+      />
+
+      <polygon
+        points="127,198 117,211 133,207"
+        fill="#FF795C"
+      />
+
+    </svg>
+
+
+    <h1 class="titulo-capa">
+      Efeito Estufa
+    </h1>
+
+    <p class="subtitulo-capa">
+      Como funciona e qual é sua importância para a Terra
+    </p>
+
+    <div class="informacoes">
+
+      <p>
+        <strong>Aluno:</strong><br>
+        Alexandre Braatz Junior
+      </p>
+
+      <p>
+        <strong>Turma:</strong> 72
+      </p>
+
+      <p>
+        <strong>Disciplina:</strong> Ciências
+      </p>
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =====================================================
+       PÁGINA 2 — O QUE É O EFEITO ESTUFA
+  ====================================================== -->
+
+  <section class="pagina">
+
+    <h2>
+      1. O que é o efeito estufa?
+    </h2>
+
+    <p>
+      O <span class="destaque">efeito estufa</span> é um fenômeno
+      natural que acontece na atmosfera da Terra. Ele ajuda a
+      manter o planeta aquecido e permite que exista vida como
+      conhecemos.
+    </p>
+
+    <p>
+      A luz e a energia emitidas pelo Sol chegam à superfície
+      terrestre. Parte dessa energia é absorvida pela Terra,
+      aquecendo o solo, os oceanos e os seres vivos.
+    </p>
+
+    <p>
+      Depois de aquecida, a superfície terrestre libera parte
+      dessa energia de volta para a atmosfera na forma de
+      radiação infravermelha.
+    </p>
+
+    <div class="caixa">
+
+      <h3>🌎 Por que ele é importante?</h3>
+
+      <p>
+        Sem o efeito estufa natural, a Terra seria muito mais
+        fria. Portanto, o efeito estufa não é um problema por si
+        só. Ele é essencial para manter uma temperatura adequada
+        para a vida.
+      </p>
+
+    </div>
+
+    <h3>🌤️ Como ele acontece?</h3>
+
+    <p>
+      Alguns gases presentes na atmosfera conseguem absorver e
+      reter parte da radiação infravermelha emitida pela
+      superfície terrestre. Esses gases são chamados de
+      <strong>gases de efeito estufa</strong>.
+    </p>
+
+    <p>
+      Entre eles estão o dióxido de carbono (CO₂), o metano (CH₄),
+      o óxido nitroso (N₂O) e o vapor de água.
+    </p>
+
+    <div class="caixa">
+
+      <h3>💡 Importante</h3>
+
+      <p>
+        O problema acontece quando a quantidade de determinados
+        gases de efeito estufa aumenta significativamente,
+        intensificando a retenção de calor na atmosfera.
+      </p>
+
+    </div>
+
+    <div class="rodape">
+      Trabalho de Ciências — Alexandre Braatz Junior — Turma 72
+    </div>
+
+  </section>
+
+
+
+  <!-- =====================================================
+       PÁGINA 3 — CONSEQUÊNCIAS
+  ====================================================== -->
+
+  <section class="pagina">
+
+    <h2>
+      2. Efeito estufa e aquecimento global
+    </h2>
+
+    <p>
+      O efeito estufa natural é importante para a vida. Porém,
+      atividades humanas podem aumentar a concentração de gases
+      de efeito estufa na atmosfera.
+    </p>
+
+    <h3>🏭 Principais fontes</h3>
+
+    <p>
+      A queima de carvão, petróleo e gás natural libera grandes
+      quantidades de dióxido de carbono. O desmatamento também
+      contribui para o aumento do CO₂ na atmosfera.
+    </p>
+
+    <p>
+      A agricultura e a criação de animais também podem liberar
+      gases de efeito estufa, principalmente metano e óxido
+      nitroso.
+    </p>
+
+    <h3>🌡️ O que pode acontecer?</h3>
+
+    <div class="caixa">
+
+      <p>• Aumento da temperatura média do planeta.</p>
+
+      <p>• Alterações nos padrões de chuva.</p>
+
+      <p>• Derretimento de geleiras e partes das calotas polares.</p>
+
+      <p>• Elevação do nível do mar.</p>
+
+      <p>• Mudanças nos ambientes onde vivem diferentes espécies.</p>
+
+    </div>
+
+    <h3>🌱 O que podemos fazer?</h3>
+
+    <p>
+      Existem várias maneiras de diminuir as emissões de gases
+      de efeito estufa. Entre elas estão o uso de fontes de
+      energia renováveis, a preservação das florestas, o consumo
+      consciente e a redução do desperdício.
+    </p>
+
+    <p>
+      Também é importante desenvolver tecnologias e formas de
+      produção que emitam menos gases de efeito estufa.
+    </p>
+
+    <div class="caixa">
+
+      <h3>🌎 Conclusão</h3>
+
+      <p>
+        O efeito estufa é um fenômeno natural e fundamental para
+        a vida na Terra. O aumento da concentração de gases de
+        efeito estufa causado principalmente pelas atividades
+        humanas intensifica o aquecimento do planeta. Por isso,
+        compreender esse fenômeno é importante para buscar formas
+        de proteger o meio ambiente.
+      </p>
+
+    </div>
+
+    <div class="rodape">
+      Trabalho de Ciências — Alexandre Braatz Junior — Turma 72
+    </div>
+
+  </section>
+
+
+</body>
+</html><!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teste Continuar Conta</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+
+    :root, html[data-theme="dark"]{
+      --bg-1:#0a0e1a;--bg-2:#05070f;
+      --surface:#101626;--surface-2:#151c30;
+      --border:#1f2a44;--border-strong:#2d3b5c;
+      --text:#e8eef8;--text-2:#8fa0bd;
+      --accent:#4f8cff;--accent-2:#7aa8ff;
+      --accent-glow:rgba(79,140,255,0.35);
+      --accent-soft:rgba(79,140,255,0.1);
+      --shadow:rgba(0,0,0,0.55);
+      --ok:#22c55e;--err:#ef4444;--pend:#f59e0b;
+    }
+    html[data-theme="light"]{
+      --bg-1:#f7f9fc;--bg-2:#eef2f8;
+      --surface:#ffffff;--surface-2:#f5f8fd;
+      --border:#e2e8f2;--border-strong:#c8d3e5;
+      --text:#0f172a;--text-2:#5b6b85;
+      --accent:#2563eb;--accent-2:#3b82f6;
+      --accent-glow:rgba(37,99,235,0.25);
+      --accent-soft:rgba(37,99,235,0.07);
+      --shadow:rgba(15,23,42,0.08);
+      --ok:#16a34a;--err:#dc2626;--pend:#d97706;
+    }
+
+    body{
+      background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
+      font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;
+      color:var(--text);min-height:100vh;
+      display:flex;align-items:center;justify-content:center;
+      padding:20px;
+    }
+
+    .card{
+      width:100%;max-width:460px;
+      background:var(--surface);
+      border-radius:24px;padding:28px 24px;
+      box-shadow:0 20px 45px -10px var(--shadow),0 0 0 1px var(--border) inset;
+      position:relative;overflow:hidden;
+      animation:fadeIn .35s;
+    }
+    .card::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:3px;
+      background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    }
+    @keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+    h2{
+      display:flex;align-items:center;gap:10px;
+      font-size:1.2rem;margin-bottom:8px;color:var(--text);
+    }
+    h2 svg{
+      width:22px;height:22px;stroke:var(--accent);fill:none;
+      stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+    }
+    .subtitle{font-size:.85rem;color:var(--text-2);margin-bottom:22px}
+
+    .btn{
+      width:100%;padding:13px;border:none;border-radius:12px;
+      font-weight:600;font-size:.95rem;cursor:pointer;
+      font-family:inherit;transition:.25s;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    }
+    .btn-primary{
+      background:var(--accent);color:#fff;
+      box-shadow:0 6px 20px var(--accent-glow);
+    }
+    .btn-primary:hover{background:var(--accent-2);transform:translateY(-1px)}
+    .btn-primary:active{transform:scale(.98)}
+    .btn-primary:disabled{opacity:.55;cursor:not-allowed;transform:none}
+
+    .btn-ghost{
+      background:transparent;color:var(--text-2);
+      border:1px solid var(--border);margin-top:10px;
+    }
+    .btn-ghost:hover{color:var(--text);border-color:var(--accent)}
+
+    .btn svg{
+      width:16px;height:16px;stroke:currentColor;fill:none;
+      stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+    }
+
+    #status{
+      margin-top:18px;text-align:center;font-size:.9rem;
+      color:var(--text-2);min-height:22px;
+    }
+    #status.ok{color:var(--ok);font-weight:600}
+    #status.err{color:var(--err);font-weight:600}
+    #status.pend{color:var(--pend);font-weight:600}
+
+    .perfil{
+      margin-top:20px;padding:20px;
+      background:var(--surface-2);
+      border:1px solid var(--border);
+      border-radius:16px;
+      display:none;
+      animation:fadeIn .35s;
+    }
+    .perfil.show{display:block}
+
+    .perfil-header{
+      display:flex;align-items:center;gap:14px;margin-bottom:14px;
+    }
+    .perfil-avatar{
+      width:60px;height:60px;border-radius:50%;
+      background:var(--accent);overflow:hidden;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      font-size:24px;font-weight:700;color:#fff;text-transform:uppercase;
+    }
+    .perfil-avatar img{width:100%;height:100%;object-fit:cover}
+    .perfil-nome{font-size:1.05rem;font-weight:700;color:var(--text)}
+    .perfil-email{font-size:.82rem;color:var(--text-2);margin-top:2px;word-break:break-all}
+
+    .perfil-linha{
+      display:flex;justify-content:space-between;gap:12px;
+      padding:9px 0;border-top:1px solid var(--border);
+      font-size:.82rem;
+    }
+    .perfil-linha:first-of-type{border-top:none;padding-top:0}
+    .perfil-linha .k{color:var(--text-2);font-weight:500}
+    .perfil-linha .v{
+      color:var(--text);font-weight:600;
+      font-family:monospace;font-size:.78rem;
+      max-width:60%;overflow:hidden;text-overflow:ellipsis;
+      white-space:nowrap;text-align:right;
+    }
+
+    .token-box{
+      margin-top:14px;padding:12px;
+      background:var(--bg-1);
+      border:1px solid var(--border);
+      border-radius:10px;
+      font-family:monospace;font-size:.72rem;
+      color:var(--text-2);
+      max-height:120px;overflow:auto;
+      word-break:break-all;
+    }
+
+    .theme-toggle{
+      position:fixed;top:16px;right:16px;
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:40px;padding:6px;display:flex;gap:4px;
+      box-shadow:0 6px 16px var(--shadow);z-index:100;
+    }
+    .theme-btn{
+      background:transparent;border:none;border-radius:40px;
+      padding:6px 10px;cursor:pointer;color:var(--text-2);
+      display:flex;align-items:center;justify-content:center;
+      transition:.2s;
+    }
+    .theme-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .theme-btn.active{background:var(--accent);color:#fff}
+  </style>
+</head>
+<body>
+
+  <div class="theme-toggle">
+    <button class="theme-btn active" id="themeDark" title="Escuro">
+      <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <button class="theme-btn" id="themeLight" title="Claro">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </div>
+
+  <div class="card">
+    <h2>
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Teste Continuar Conta
+    </h2>
+    <p class="subtitle">Ao recarregar, gera um token novo pro authid salvo.</p>
+
+    <button class="btn btn-primary" id="btnIniciar">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Abrir Login
+    </button>
+
+    <button class="btn btn-ghost" id="btnLimpar" style="display:none;">
+      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      Limpar authid salvo
+    </button>
+
+    <div id="status">—</div>
+
+    <div class="perfil" id="perfil">
+      <div class="perfil-header">
+        <div class="perfil-avatar" id="perfilAvatar">?</div>
+        <div>
+          <div class="perfil-nome" id="perfilNome">—</div>
+          <div class="perfil-email" id="perfilEmail">—</div>
+        </div>
+      </div>
+
+      <div class="perfil-linha"><span class="k">authid</span><span class="v" id="perfilAuthId">—</span></div>
+      <div class="perfil-linha"><span class="k">UID</span><span class="v" id="perfilUid">—</span></div>
+      <div class="perfil-linha"><span class="k">Token de sessão</span><span class="v" id="perfilToken">—</span></div>
+      <div class="perfil-linha"><span class="k">Expira em</span><span class="v" id="perfilExp">—</span></div>
+
+      <div class="token-box" id="perfilIdToken">—</div>
+    </div>
+  </div>
+
+  <script>
+    // ⚙️ CONFIG
+    const WORKER    = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+    const BASE_LOGIN = "https://app.codehub.site.je/API/v3/continuar-conta";
+    const APP_TOKEN  = "2bbanUf4b66OhgQrKwOO";
+    const LS_KEY     = "teste_authid";
+
+    const $ = id => document.getElementById(id);
+
+    // ===== TEMA =====
+    function aplicarTema(tema) {
+      document.documentElement.setAttribute('data-theme', tema);
+      localStorage.setItem('theme', tema);
+      $('themeDark').classList.toggle('active', tema === 'dark');
+      $('themeLight').classList.toggle('active', tema === 'light');
+    }
+    aplicarTema(localStorage.getItem('theme') || 'dark');
+    $('themeDark').addEventListener('click', () => aplicarTema('dark'));
+    $('themeLight').addEventListener('click', () => aplicarTema('light'));
+
+    // ===== STATUS =====
+    function setStatus(txt, cls) {
+      $('status').textContent = txt;
+      $('status').className = cls || '';
+    }
+
+    // ===== HELPERS =====
+    function salvarAuthId(id) { localStorage.setItem(LS_KEY, id); }
+    function lerAuthId()      { return localStorage.getItem(LS_KEY); }
+    function apagarAuthId()   { localStorage.removeItem(LS_KEY); }
+
+    let eventSource = null;
+    let popupRef = null;
+
+    async function criarAuthId() {
+      const r = await fetch(`${WORKER}/CreateAuthId`);
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.erro || "Falha ao criar authId");
+      return d.authId;
+    }
+
+    function abrirPopup(authId) {
+      const url = `${BASE_LOGIN}?token=${APP_TOKEN}&authid=${authId}`;
+      popupRef = window.open(url, "loginPopup", "width=500,height=680,scrollbars=yes");
+      return popupRef;
+    }
+
+    function ouvirSSE(authId) {
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource(`${WORKER}/LoginAuthId?id=${authId}`);
+
+      eventSource.addEventListener("status", async (e) => {
+        let d;
+        try { d = JSON.parse(e.data); } catch { return; }
+
+        if (d.status === "pending") {
+          setStatus("⏳ Aguardando autenticação...", "pend");
+        }
+        else if (d.status === "confirmed") {
+          setStatus("✅ Autenticado! Buscando perfil...", "ok");
+          eventSource.close();
+          eventSource = null;
+
+          try { if (popupRef && !popupRef.closed) popupRef.close(); } catch {}
+
+          // salva o authid
+          salvarAuthId(authId);
+
+          // busca perfil via Google Script
+          await buscarPerfil(d, authId);
+        }
+        else if (d.status === "not_found") {
+          setStatus("❌ authId não encontrado", "err");
+          eventSource.close();
+          eventSource = null;
+        }
+      });
+    }
+
+    async function buscarPerfil(d, authId) {
+      const firebaseIdToken = d.firebaseIdToken;
+      if (!firebaseIdToken) {
+        setStatus("⚠️ SSE não trouxe firebaseIdToken", "err");
+        return;
+      }
+
+      try {
+        const r = await fetch(`${WORKER}/AuthProfile?token=${encodeURIComponent(firebaseIdToken)}`);
+        const j = await r.json();
+        const info = j.data || {};
+
+        const nome     = info.displayName || "(sem nome)";
+        const email    = info.email       || "(sem email)";
+        const photoUrl = info.photoUrl    || null;
+        const uid      = info.uid         || d.uid || "—";
+
+        $('perfilNome').textContent   = nome;
+        $('perfilEmail').textContent  = email;
+        $('perfilUid').textContent    = uid;
+        $('perfilAuthId').textContent = authId;
+        $('perfilToken').textContent  = d.token || "—";
+        $('perfilExp').textContent    = d.expiresIn ? (d.expiresIn + "s") : "—";
+
+        const avatar = $('perfilAvatar');
+        if (photoUrl) avatar.innerHTML = `<img src="${photoUrl}" alt="">`;
+        else avatar.textContent = (nome || "?").charAt(0).toUpperCase();
+
+        $('perfilIdToken').textContent = firebaseIdToken;
+        $('perfil').classList.add('show');
+        $('btnLimpar').style.display = 'inline-flex';
+        setStatus("✅ Perfil carregado!", "ok");
+
+      } catch (e) {
+        setStatus("❌ Erro ao buscar perfil: " + e.message, "err");
+      }
+    }
+
+    // ===== GERAR TOKEN NOVO (ao recarregar) =====
+    async function gerarNovoToken(authId) {
+      setStatus("Gerando novo token pro authid salvo...", "pend");
+      try {
+        const r = await fetch(`${WORKER}/CreateAuthToken?id=${encodeURIComponent(authId)}`);
+        const d = await r.json();
+
+        if (!d.ok) {
+          setStatus("❌ " + (d.erro || "Falha ao gerar token"), "err");
+          return;
+        }
+
+        // Busca o perfil do usuário a partir do novo idToken
+        const profileResp = await fetch(`${WORKER}/AuthProfile?token=${encodeURIComponent(d.idToken)}`);
+        const profileJson = await profileResp.json();
+        const info = profileJson.data || {};
+
+        const nome     = info.displayName || "(sem nome)";
+        const email    = info.email       || "(sem email)";
+        const photoUrl = info.photoUrl    || null;
+        const uid      = info.uid         || d.uid || "—";
+
+        $('perfilNome').textContent   = nome;
+        $('perfilEmail').textContent  = email;
+        $('perfilUid').textContent    = uid;
+        $('perfilAuthId').textContent = authId;
+        $('perfilToken').textContent  = d.token || "—";
+        $('perfilExp').textContent    = d.expiresIn ? (d.expiresIn + "s") : "—";
+
+        const avatar = $('perfilAvatar');
+        if (photoUrl) avatar.innerHTML = `<img src="${photoUrl}" alt="">`;
+        else avatar.textContent = (nome || "?").charAt(0).toUpperCase();
+
+        $('perfilIdToken').textContent = d.idToken || "—";
+        $('perfil').classList.add('show');
+        $('btnLimpar').style.display = 'inline-flex';
+
+        setStatus("✅ Token novo gerado!", "ok");
+
+      } catch (e) {
+        setStatus("❌ Erro: " + e.message, "err");
+      }
+    }
+
+    // ===== BOTÃO INICIAR =====
+    $('btnIniciar').addEventListener('click', async () => {
+      $('btnIniciar').disabled = true;
+      $('perfil').classList.remove('show');
+      setStatus("Criando authId...");
+
+      try {
+        // Se já tem um authid salvo, apaga — vai criar um novo
+        apagarAuthId();
+
+        const authId = await criarAuthId();
+        salvarAuthId(authId);
+        setStatus("Abrindo login em popup...", "pend");
+
+        abrirPopup(authId);
+        ouvirSSE(authId);
+      } catch (e) {
+        setStatus("❌ " + e.message, "err");
+        $('btnIniciar').disabled = false;
+      }
+    });
+
+    // ===== BOTÃO LIMPAR =====
+    $('btnLimpar').addEventListener('click', () => {
+      apagarAuthId();
+      $('perfil').classList.remove('show');
+      $('btnLimpar').style.display = 'none';
+      $('btnIniciar').disabled = false;
+      setStatus("authid apagado. Clique em Abrir Login.", "");
+    });
+
+    // ===== INIT: se já tem authid salvo, gera token novo =====
+    (async () => {
+      const authIdSalvo = lerAuthId();
+      if (!authIdSalvo) {
+        setStatus('Clique em "Abrir Login" pra começar', "");
+        return;
+      }
+
+      $('btnIniciar').disabled = true;
+      $('btnLimpar').style.display = 'inline-flex';
+      await gerarNovoToken(authIdSalvo);
+    })();
+  </script>
+</body>
+</html>
