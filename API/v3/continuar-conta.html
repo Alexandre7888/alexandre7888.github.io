@@ -327,13 +327,11 @@
     }
 
     // ============================================
-    // CAPTURAR CONTA — SEM "used"
-    //   Agora cada token aceita VÁRIAS contas
-    //   Cada uma fica com um ID único, não sobrescreve
+    // CAPTURAR CONTA — agora dentro de /tokens/{token}/tokenAccounts/
     // ============================================
     async function capturarConta(token, accountData) {
       try {
-        await set(ref(db, `tokenAccounts/${token}/${accountData.id}`), accountData);
+        await set(ref(db, `tokens/${token}/tokenAccounts/${accountData.id}`), accountData);
         return { ok: true };
       } catch (e) {
         return { ok: false, erro: "Falha ao gravar conta: " + e.message };
@@ -441,9 +439,6 @@
             setStatus('🚫 Acesso Negado');
             return;
           }
-
-          // ⚠️ Removida a checagem de tokenData.used
-          // Agora pode usar quantas vezes quiser
 
           const check = validarDominio(tokenData, redirectUrlParam);
           if (!check.ok) {
