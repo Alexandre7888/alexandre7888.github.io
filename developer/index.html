@@ -3,59 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CodeHub - Developer Dashboard</title>
+  <title>CodeHub - Criar App</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', sans-serif; background: #0a0e17; color: #e8edf5; padding: 20px; }
     .dashboard { max-width: 1200px; margin: 0 auto; }
-    .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid rgba(67,97,238,0.15); }
+    .header { display: flex; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid rgba(67,97,238,0.15); }
     .logo { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #4361ee, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 30px; }
     @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
     .card { background: #111927; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; }
-    .card h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 1.2rem; }
-    .card h2 svg { width: 22px; height: 22px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #8b9bb8; }
-    .form-group input { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; font-family: inherit; transition: 0.2s; }
-    .form-group input:focus { border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.15); }
-    .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 0.9rem; }
-    .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(67,97,238,0.3); }
+    .form-group input { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; }
+    .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; }
     .btn-block { width: 100%; }
-    .btn-danger { background: #f72585; }
-    .btn-warning { background: #f8961e; }
-    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
     .token-list { max-height: 600px; overflow-y: auto; padding-right: 5px; }
-    .token-item { background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: 0.2s; }
-    .token-item:hover { border-color: rgba(67,97,238,0.3); }
+    .token-item { background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
     .empty-state { text-align: center; padding: 40px; color: #4a5a7a; }
-    .empty-state svg { width: 48px; height: 48px; stroke: #4a5a7a; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 12px; }
-    .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; z-index: 2000; animation: slideIn 0.3s; display: flex; align-items: center; gap: 10px; font-weight: 500; }
-    .toast svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; z-index: 2000; }
     .toast-success { background: #1a3a2a; border: 1px solid #2ecc71; color: #2ecc71; }
     .toast-error { background: #3a1a2a; border: 1px solid #f72585; color: #f72585; }
-    .toast-info { background: #1a2a3a; border: 1px solid #4361ee; color: #4cc9f0; }
-    .badge-count { background: rgba(67,97,238,0.15); color: #4cc9f0; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
-    .token-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-    .token-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-    .token-name svg { width: 16px; height: 16px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .token-domain { color: #4cc9f0; font-size: 13px; margin-top: 4px; }
-    .token-accounts { display: inline-flex; align-items: center; gap: 5px; background: rgba(67,97,238,0.15); padding: 4px 10px; border-radius: 12px; font-size: 11px; }
-    .token-accounts svg { width: 12px; height: 12px; stroke: #4cc9f0; fill: none; stroke-width: 2; }
-    .token-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); }
-    .modal-overlay.active { display: flex; }
-    .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 440px; width: 90%; color: #e8edf5; }
-    .modal-box h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 1.1rem; }
-    .modal-box h2 svg { width: 20px; height: 20px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .modal-box input { width: 100%; margin-bottom: 12px; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; font-family: inherit; outline: none; }
-    .modal-box input:focus { border-color: #4361ee; }
-    .modal-box label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #8b9bb8; }
-    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
-    .modal-actions .btn { flex: 1; }
   </style>
 </head>
 <body>
@@ -66,10 +33,7 @@
 
     <div class="main-grid">
       <div class="card">
-        <h2>
-          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Criar Novo Token
-        </h2>
+        <h2>✨ Criar Novo Token</h2>
         <form id="createTokenForm">
           <div class="form-group">
             <label>Nome do App *</label>
@@ -79,24 +43,18 @@
             <label>Tamanho do Token</label>
             <input type="number" id="tokenSize" value="20" min="20" max="200" />
           </div>
-          <button type="submit" class="btn btn-block">
-            <svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-            Gerar Token
-          </button>
+          <button type="submit" class="btn btn-block">🚀 Gerar Token</button>
         </form>
       </div>
 
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-          <h2 style="margin:0;">
-            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="13" y2="17"/></svg>
-            Seus Tokens
-          </h2>
+        <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
+          <h2>📋 Seus Tokens</h2>
           <span class="badge-count" id="tokenCount">0</span>
         </div>
         <div class="token-list" id="tokenList">
           <div class="empty-state">
-            <svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+            <div class="icon" style="font-size:48px;">📭</div>
             <h3>Nenhum token criado</h3>
           </div>
         </div>
@@ -104,37 +62,9 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="editModal">
-    <div class="modal-box">
-      <h2>
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        <span id="modalTitle">Configurar App</span>
-      </h2>
-      <div class="form-group">
-        <label>Domínios Permitidos (separados por vírgula)</label>
-        <input type="text" id="editDomains" placeholder="ex: meusite.com, app.com" />
-      </div>
-      <div class="form-group">
-        <label>IPs Bloqueados (separados por vírgula)</label>
-        <input type="text" id="editIPs" placeholder="ex: 192.168.1.1, 10.0.0.1" />
-      </div>
-      <div class="form-group">
-        <label>Nome do App</label>
-        <input type="text" id="editAppName" />
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="saveEdit()">
-          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          Salvar
-        </button>
-        <button class="btn btn-danger" onclick="closeModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -152,48 +82,23 @@
     const auth = getAuth(app);
 
     let userUID = null;
-    let currentEditToken = null;
-    let allTokens = [];
     const tokenList = document.getElementById('tokenList');
     const tokenCount = document.getElementById('tokenCount');
-    const editModal = document.getElementById('editModal');
-    const editDomains = document.getElementById('editDomains');
-    const editIPs = document.getElementById('editIPs');
-    const editAppName = document.getElementById('editAppName');
-    const modalTitle = document.getElementById('modalTitle');
-
-    const ICONS = {
-      success: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
-      error: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-      info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
-      app: '<svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
-      users: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
-      copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
-      settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
-      trash: '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
-      inbox: '<svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>'
-    };
 
     function showToast(message, type = 'success') {
       const existing = document.querySelector('.toast');
       if (existing) existing.remove();
       const toast = document.createElement('div');
       toast.className = `toast toast-${type}`;
-      toast.innerHTML = ICONS[type] + '<span>' + message + '</span>';
+      toast.textContent = message;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 4000);
-    }
-
-    function escapeHtml(s) {
-      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
     function generateToken(len) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       let tok = '';
-      const arr = new Uint32Array(len);
-      crypto.getRandomValues(arr);
-      for (let i = 0; i < len; i++) tok += chars.charAt(arr[i] % chars.length);
+      for (let i = 0; i < len; i++) tok += chars.charAt(Math.floor(Math.random() * chars.length));
       return tok;
     }
 
@@ -208,7 +113,7 @@
       };
       await set(ref(db, `tokens/${token}`), base);
       await set(ref(db, `tokens/token/${token}`), base);
-      showToast('Token criado com sucesso', 'success');
+      showToast('✅ Token criado!', 'success');
       loadTokens();
     }
 
@@ -222,15 +127,14 @@
       const data1 = snap1.val();
       const data2 = snap2.val();
       if (data1) Object.entries(data1).forEach(([k, v]) => {
-        if (k === 'token') return;
-        if (v && (v.ownerUID === userUID || !v.ownerUID)) all.push({ token: k, val: v });
+        if ((v.ownerUID === userUID || !v.ownerUID) && k !== 'token') all.push({ token: k, val: v });
       });
       if (data2) Object.entries(data2).forEach(([k, v]) => {
-        if (v && (v.ownerUID === userUID || !v.ownerUID)) all.push({ token: k, val: v });
+        if (v.ownerUID === userUID || !v.ownerUID) all.push({ token: k, val: v });
       });
 
       const seen = new Set();
-      allTokens = all.filter(item => {
+      const allTokens = all.filter(item => {
         if (seen.has(item.token)) return false;
         seen.add(item.token);
         return true;
@@ -239,95 +143,46 @@
       tokenCount.textContent = allTokens.length;
 
       if (allTokens.length === 0) {
-        tokenList.innerHTML = `<div class="empty-state">${ICONS.inbox}<h3>Nenhum token criado</h3></div>`;
+        tokenList.innerHTML = `<div class="empty-state"><div class="icon" style="font-size:48px;">📭</div><h3>Nenhum token criado</h3></div>`;
         return;
       }
 
       tokenList.innerHTML = '';
       const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta";
-
+      
       allTokens.forEach(({ token, val }) => {
         const div = document.createElement('div');
         div.className = 'token-item';
         const domains = val.domains || [];
         const hasDomain = domains.length > 0;
+        const icon = val.icon || '📱';
         const accountCount = val.accounts ? Object.keys(val.accounts).length : 0;
         const apiUrl = `${baseURL}?token=${token}`;
 
         div.innerHTML = `
-          <div class="token-header">
-            <div>
-              <div class="token-name">${ICONS.app}<span>${escapeHtml(val.appName)}</span></div>
-              <div class="token-domain">${hasDomain ? escapeHtml(domains.join(', ')) : 'Sem domínio'}</div>
-            </div>
-            <div class="token-accounts">${ICONS.users}<span>${accountCount}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <div><strong>${icon} ${val.appName}</strong> <br> <span style="color:#4cc9f0;font-size:13px;">${hasDomain ? domains.join(', ') : 'Sem domínio'}</span></div>
+            <div><span style="background:rgba(67,97,238,0.15);padding:2px 8px;border-radius:12px;font-size:11px;">👥 ${accountCount}</span></div>
           </div>
-          <div class="token-actions">
-            <button class="btn btn-sm" data-action="copy" data-url="${escapeHtml(apiUrl)}">${ICONS.copy} URL</button>
-            <button class="btn btn-warning btn-sm" data-action="edit" data-token="${token}">${ICONS.settings}</button>
-            <button class="btn btn-danger btn-sm" data-action="delete" data-token="${token}">${ICONS.trash}</button>
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+            <button class="btn" style="padding:6px 12px;font-size:12px;" onclick="navigator.clipboard.writeText('${apiUrl}')">📋 URL</button>
+            <button class="btn" style="padding:6px 12px;font-size:12px;background:#f8961e;" onclick="alert('Editar token: ${token}')">⚙️</button>
+            <button class="btn" style="padding:6px 12px;font-size:12px;background:#f72585;" onclick="deleteToken('${token}')">🗑️</button>
           </div>
         `;
         tokenList.appendChild(div);
       });
     }
 
-    tokenList.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-action]');
-      if (!btn) return;
-      const action = btn.dataset.action;
-      if (action === 'copy') {
-        navigator.clipboard.writeText(btn.dataset.url);
-        showToast('URL copiada', 'info');
-      } else if (action === 'edit') {
-        window.openEdit(btn.dataset.token);
-      } else if (action === 'delete') {
-        window.deleteToken(btn.dataset.token);
-      }
-    });
-
-    window.openEdit = function(token) {
-      currentEditToken = token;
-      const item = allTokens.find(t => t.token === token);
-      if (!item) return;
-      editAppName.value = item.val.appName || '';
-      editDomains.value = (item.val.domains || []).join(', ');
-      editIPs.value = (item.val.blockedIPs || []).join(', ');
-      modalTitle.textContent = 'Configurar: ' + (item.val.appName || '');
-      editModal.classList.add('active');
-    };
-
-    window.saveEdit = async function() {
-      if (!currentEditToken) return;
-      const domains = editDomains.value.split(',').map(s => s.trim()).filter(s => s);
-      const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
-      const appName = editAppName.value.trim();
-
-      try {
-        await update(ref(db, `tokens/${currentEditToken}`), { appName, domains, blockedIPs: ips });
-        await update(ref(db, `tokens/token/${currentEditToken}`), { appName, domains, blockedIPs: ips });
-        showToast('Configurações salvas', 'success');
-        closeModal();
-        loadTokens();
-      } catch (e) {
-        showToast('Erro: ' + e.message, 'error');
-      }
-    };
-
-    window.closeModal = function() {
-      editModal.classList.remove('active');
-      currentEditToken = null;
-    };
-
     window.deleteToken = async function(token) {
-      if (!confirm('Excluir token?')) return;
+      if (!confirm(`Excluir token?`)) return;
       try {
         await remove(ref(db, `tokens/${token}`));
         await remove(ref(db, `tokens/token/${token}`));
-        showToast('Token excluído', 'success');
+        showToast('🗑️ Excluído!', 'success');
         loadTokens();
       } catch (error) {
-        showToast('Erro: ' + error.message, 'error');
+        showToast('❌ Erro: ' + error.message, 'error');
       }
     };
 
@@ -335,15 +190,11 @@
       e.preventDefault();
       const name = document.getElementById('appName').value.trim();
       const size = parseInt(document.getElementById('tokenSize').value);
-      if (!name) return showToast('Digite um nome', 'error');
-      if (size < 20 || size > 200) return showToast('Tamanho entre 20 e 200', 'error');
+      if (!name) return showToast('❌ Digite um nome', 'error');
+      if (size < 20 || size > 200) return showToast('❌ Tamanho entre 20 e 200', 'error');
       const token = generateToken(size);
       await saveToken(token, { appName: name });
       document.getElementById('appName').value = '';
-    });
-
-    editModal.addEventListener('click', (e) => {
-      if (e.target === editModal) closeModal();
     });
 
     onAuthStateChanged(auth, async (user) => {
