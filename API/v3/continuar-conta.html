@@ -133,8 +133,8 @@
     }
     .btn-primary:hover{background:var(--accent-2);transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-glow)}
     .btn-primary:active{transform:translateY(0) scale(.98)}
+    .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-    /* Painel de tema flutuante */
     .theme-panel{
       position:fixed;bottom:24px;right:24px;z-index:1050;
       background:var(--menu-bg);
@@ -184,7 +184,6 @@
     </div>
   </div>
 
-  <!-- Painel de tema -->
   <div class="theme-panel">
     <button class="theme-btn active" id="themeDark">
       <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -199,7 +198,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, get, set, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     // ⚙️ CONFIG
     const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
@@ -219,12 +218,14 @@
     const db   = getDatabase(app);
 
     const urlParams = new URLSearchParams(window.location.search);
-    const appToken  = urlParams.get('token');
-    const authId    = urlParams.get('authid');    // OBRIGATÓRIO
+    const appToken         = urlParams.get('token');         // token do app
+    const authId           = urlParams.get('authid');        // authId do Worker (obrigatório)
+    const redirectUrlParam = urlParams.get('redirecturl');   // OBRIGATÓRIO
 
     let currentUser = null;
     let clientIP = '';
     let contaSelecionada = null;
+    let tokenData = null;
 
     // ===== TEMA =====
     function aplicarTema(tema) {
@@ -233,10 +234,7 @@
       document.getElementById('themeDark').classList.toggle('active', tema === 'dark');
       document.getElementById('themeLight').classList.toggle('active', tema === 'light');
     }
-
-    const temaSalvo = localStorage.getItem('theme') || 'dark';
-    aplicarTema(temaSalvo);
-
+    aplicarTema(localStorage.getItem('theme') || 'dark');
     document.getElementById('themeDark').addEventListener('click', () => aplicarTema('dark'));
     document.getElementById('themeLight').addEventListener('click', () => aplicarTema('light'));
 
@@ -253,11 +251,10 @@
       return 'acc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     }
 
-    async function saveCapturedAccount(uid, email, nome, ip, token) {
-      const accountId = generateAccountId();
-      const accountData = { id: accountId, uid, nome: nome || 'Usuário', email: email || '', ip: ip || 'N/A', capturedAt: new Date().toISOString() };
-      await set(ref(db, `tokens/${token}/accounts/${accountId}`), accountData);
-      await set(ref(db, `tokens/token/${token}/accounts/${accountId}`), accountData);
+    async function loadTokenData(token) {
+      const snap = await get(ref(db, `tokens/${token}`));
+      if (!snap.exists()) throw new Error('Token inválido.');
+      return snap.val();
     }
 
     function redirectToLogin() {
@@ -265,7 +262,112 @@
       const params = new URLSearchParams();
       if (appToken) params.set('token', appToken);
       if (authId)   params.set('authid', authId);
+      if (redirectUrlParam) params.set('redirecturl', redirectUrlParam);
       window.location.href = params.toString() ? `${base}?${params}` : base;
+    }
+
+    // ===== VALIDAR DOMÍNIO =====
+    function validarDominio(tokenData, redirectUrl) {
+      let lista = [];
+      const raw = tokenData.domains;
+
+      if (Array.isArray(raw)) lista = raw;
+      else if (raw && typeof raw === "object") lista = Object.values(raw);
+      else if (typeof raw === "string") lista = [raw];
+
+      lista = lista
+        .map(d => String(d || "").trim().toLowerCase())
+        .map(d => d.replace(/^https?:\/\//, "").replace(/\/+$/, ""))
+        .filter(Boolean);
+
+      if (lista.length === 0) {
+        return { ok: false, erro: "Este token não tem domínios configurados." };
+      }
+
+      let host;
+      try { host = new URL(redirectUrl).hostname.toLowerCase(); }
+      catch (e) { return { ok: false, erro: "URL de redirecionamento inválida." }; }
+
+      const autorizado = lista.some(d => host === d || host.endsWith("." + d));
+      if (!autorizado) return { ok: false, erro: "Domínio não autorizado: " + host };
+
+      return { ok: true };
+    }
+
+    // ===== CAPTURAR CONTA =====
+    async function capturarConta(token, accountData) {
+      const usedSnap = await get(ref(db, `tokens/${token}/used`));
+      if (usedSnap.val() === true) {
+        return { ok: false, erro: "Este token já foi usado por outra conta." };
+      }
+
+      const usedRef = ref(db, `tokens/${token}/used`);
+      let res;
+      try {
+        res = await runTransaction(usedRef, (atual) => {
+          if (atual === true) return;
+          return true;
+        });
+      } catch (e) {
+        return { ok: false, erro: "Falha ao marcar token como usado: " + e.message };
+      }
+
+      if (!res.committed) {
+        return { ok: false, erro: "Este token já foi usado por outra conta." };
+      }
+
+      try {
+        await set(ref(db, `tokenAccounts/${token}/${accountData.id}`), accountData);
+      } catch (e) {
+        try { await set(ref(db, `tokens/${token}/used`), null); } catch {}
+        return { ok: false, erro: "Falha ao gravar conta: " + e.message };
+      }
+
+      return { ok: true };
+    }
+
+    // ===== CONFIRMAR NO WORKER =====
+    async function confirmarNoWorker(authIdVal, firebaseIdToken, uid) {
+      const r = await fetch(`${WORKER}/ConfirmarAuth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          authId: authIdVal,
+          firebaseIdToken: firebaseIdToken,
+          uid: uid
+        })
+      });
+      const txt = await r.text();
+      let body;
+      try { body = JSON.parse(txt); } catch { body = txt; }
+      return { status: r.status, body };
+    }
+
+    // ===== VOLTAR PRA REDIRECTURL =====
+    function voltarParaRedirect() {
+      setTimeout(() => {
+        // 1) popup → manda opener navegar + fecha
+        if (window.opener && !window.opener.closed) {
+          try {
+            window.opener.location.href = redirectUrlParam;
+            window.close();
+            return;
+          } catch (e) {
+            // cross-origin → postMessage
+            try {
+              window.opener.postMessage({
+                type: 'AUTH_DONE',
+                url: redirectUrlParam
+              }, '*');
+              setTimeout(() => { try { window.close(); } catch {} }, 300);
+              return;
+            } catch {}
+          }
+        }
+
+        // 2) sem opener → navega a própria janela
+        window.location.href = redirectUrlParam;
+      }, 700);
     }
 
     function buildContaFromUser(user) {
@@ -308,59 +410,71 @@
       contaSelecionada = conta;
     }
 
-    async function confirmarNoWorker(authIdVal, firebaseIdToken, uid) {
-      const r = await fetch(`${WORKER}/ConfirmarAuth`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          authId: authIdVal,
-          firebaseIdToken: firebaseIdToken,
-          uid: uid
-        })
-      });
-      const txt = await r.text();
-      let body;
-      try { body = JSON.parse(txt); } catch { body = txt; }
-      return { status: r.status, body };
-    }
-
-    function fecharPopup() {
-      setStatus('✅ Autenticado! Fechando...');
-      setTimeout(() => {
-        try { window.close(); } catch {}
-      }, 900);
-    }
-
     // ===== INIT =====
     async function init() {
       clientIP = await getClientIP();
 
+      // ==== VALIDAÇÕES OBRIGATÓRIAS ====
+      if (!redirectUrlParam) {
+        setStatus('❌ Falta ?redirecturl= na URL');
+        return;
+      }
       if (!authId) {
         setStatus('❌ Falta ?authid= na URL');
         return;
       }
 
-      document.getElementById('appSubtitle').textContent = 'Aguardando conta';
-      setStatus('Verificando autenticação...');
+      try {
+        // Se tem token do app, valida
+        if (appToken) {
+          tokenData = await loadTokenData(appToken);
+          document.getElementById('appTitle').textContent = tokenData.appName || 'Continuar Login';
+          document.getElementById('appSubtitle').textContent =
+            (tokenData.domains && Object.values(tokenData.domains)[0]) || 'App';
 
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          setStatus('Não autenticado');
-          document.getElementById('login-redirect').style.display = 'block';
-          return;
+          if (tokenData.blockedIPs && tokenData.blockedIPs.includes(clientIP)) {
+            setStatus('🚫 Acesso Negado');
+            return;
+          }
+
+          if (tokenData.used === true) {
+            setStatus('🚫 Este token já foi usado');
+            return;
+          }
+
+          const check = validarDominio(tokenData, redirectUrlParam);
+          if (!check.ok) {
+            setStatus('🚫 ' + check.erro);
+            return;
+          }
+        } else {
+          document.getElementById('appSubtitle').textContent = 'Aguardando conta';
         }
 
-        currentUser = user;
+        setStatus('Verificando autenticação...');
 
-        document.getElementById('login-redirect').style.display = 'none';
-        document.getElementById('account-selection').style.display = 'block';
+        onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            setStatus('Não autenticado');
+            document.getElementById('login-redirect').style.display = 'block';
+            return;
+          }
 
-        const conta = buildContaFromUser(user);
-        renderizarConta(conta);
+          currentUser = user;
 
-        setStatus('Conta carregada. Clique em Continuar.');
-        document.getElementById('confirmAccountBtn').onclick = () => proceedWithAccount();
-      });
+          document.getElementById('login-redirect').style.display = 'none';
+          document.getElementById('account-selection').style.display = 'block';
+
+          const conta = buildContaFromUser(user);
+          renderizarConta(conta);
+
+          setStatus('Conta carregada. Clique em Continuar.');
+          document.getElementById('confirmAccountBtn').onclick = () => proceedWithAccount();
+        });
+
+      } catch (e) {
+        setStatus('❌ Erro: ' + e.message);
+      }
     }
 
     async function proceedWithAccount() {
@@ -369,41 +483,65 @@
         return;
       }
 
+      const btn = document.getElementById('confirmAccountBtn');
+      btn.disabled = true;
       setStatus('Preparando...');
 
       const uid   = contaSelecionada.uid;
       const nome  = contaSelecionada.nome || contaSelecionada.username || 'Usuário';
       const email = contaSelecionada.email || '';
 
+      // 1) Se tem token do app, captura a conta
       if (appToken) {
-        try { await saveCapturedAccount(uid, email, nome, clientIP, appToken); } catch {}
+        const accountData = {
+          id: generateAccountId(),
+          uid,
+          nome,
+          email,
+          ip: clientIP || 'N/A',
+          capturedAt: new Date().toISOString()
+        };
+
+        setStatus('Gravando conta...');
+        const resp = await capturarConta(appToken, accountData);
+
+        if (!resp.ok) {
+          setStatus('❌ ' + resp.erro);
+          btn.disabled = false;
+          return;
+        }
       }
 
+      // 2) Pega o Firebase ID token
+      setStatus('Confirmando autenticação...');
       let firebaseIdToken = null;
       try {
         firebaseIdToken = await currentUser.getIdToken(true);
       } catch (e) {
         setStatus('❌ Erro ao pegar token: ' + e.message);
+        btn.disabled = false;
         return;
       }
 
       if (!firebaseIdToken) {
         setStatus('❌ firebaseIdToken vazio');
+        btn.disabled = false;
         return;
       }
 
-      setStatus('Confirmando...');
+      // 3) Avisa o Worker
       try {
         const resp = await confirmarNoWorker(authId, firebaseIdToken, uid);
-
-        if (resp.status === 200 && resp.body?.ok) {
-          fecharPopup();
-        } else {
+        if (!(resp.status === 200 && resp.body?.ok)) {
           setStatus('⚠️ ' + resp.status + ' — ' + (resp.body?.erro || 'erro'));
         }
       } catch (e) {
-        setStatus('❌ Erro ao contatar servidor');
+        console.warn("Falha ao confirmar no Worker:", e);
       }
+
+      // 4) Volta pro redirecturl
+      setStatus('✅ Autenticado! Voltando...');
+      voltarParaRedirect();
     }
 
     document.getElementById('loginLink').addEventListener('click', (e) => {
