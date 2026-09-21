@@ -3,34 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Efeito Estufa — Alexandre Braatz Junior</title>
+<title>Efeito Estufa - Trabalho de Ciências</title>
 
 <style>
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #dfe7e9;
+    color: #26383d;
+    font-family: Georgia, "Times New Roman", serif;
 }
 
 body {
-  background: #dfe7e9;
-  color: #24383d;
+    padding: 15px 0;
 }
 
 /* =========================
-   PÁGINAS
+   PÁGINA A4
 ========================= */
 
 .pagina {
-  width: 210mm;
-  min-height: 297mm;
-  margin: 20px auto;
-  padding: 25mm 24mm;
-  background: white;
-  position: relative;
-  page-break-after: always;
-  overflow: hidden;
+    width: 210mm;
+    height: 297mm;
+    margin: 0 auto 18px;
+    padding: 13mm 12mm;
+    background: white;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+}
+
+.pagina:last-child {
+    page-break-after: auto;
 }
 
 /* =========================
@@ -38,151 +46,193 @@ body {
 ========================= */
 
 .capa {
-  background:
-    radial-gradient(circle at 20% 20%, #26758b, transparent 30%),
-    linear-gradient(145deg, #071e2a, #0d5367);
-  color: white;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 
 .capa svg {
-  width: 280px;
-  height: 280px;
+    width: 145mm;
+    max-width: 85%;
+    height: auto;
+    margin-bottom: 8mm;
 }
 
-.capa .mini {
-  font-family: "Trebuchet MS", sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 5px;
-  font-size: 14px;
-  margin-top: 15px;
+.titulo-capa {
+    font-family: Impact, "Arial Black", sans-serif;
+    font-size: 38px;
+    letter-spacing: 2px;
+    color: #176879;
+    margin: 0 0 5px;
 }
 
-.capa h1 {
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: 58px;
-  letter-spacing: 2px;
-  margin: 12px 0;
-}
-
-.capa .subtitulo {
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-size: 20px;
+.subtitulo-capa {
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    font-size: 18px;
+    color: #557178;
+    margin-bottom: 15mm;
 }
 
 .dados {
-  margin-top: 50px;
-  padding: 22px 45px;
-  border: 1px solid rgba(255,255,255,.3);
-  border-radius: 16px;
-  background: rgba(255,255,255,.1);
-  font-family: "Trebuchet MS", sans-serif;
-  font-size: 17px;
-  line-height: 1.9;
+    width: 100%;
+    max-width: 125mm;
+    border-top: 2px solid #68aeb7;
+    padding-top: 7mm;
+}
+
+.dados p {
+    margin: 5px 0;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    font-size: 15px;
+}
+
+.dados strong {
+    color: #176879;
 }
 
 /* =========================
-   TÍTULOS
-========================= */
-
-h2 {
-  font-family: Georgia, serif;
-  font-size: 31px;
-  color: #125d70;
-  border-bottom: 3px solid #65b4c2;
-  padding-bottom: 9px;
-  margin-bottom: 15px;
-}
-
-h3 {
-  font-family: "Trebuchet MS", sans-serif;
-  font-size: 20px;
-  color: #176d80;
-  margin-bottom: 8px;
-}
-
-p {
-  font-family: Georgia, serif;
-  font-size: 15.5px;
-  line-height: 1.55;
-  margin-bottom: 10px;
-}
-
-/* =========================
-   BLOCOS DOS TÓPICOS
+   CABEÇALHO DOS TÓPICOS
 ========================= */
 
 .topico {
-  margin-bottom: 18px;
+    margin-bottom: 5mm;
 }
 
 .topo {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 8px;
+    display: grid;
+    grid-template-columns: 36px 48px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+    width: 100%;
+    margin-bottom: 3mm;
 }
 
 .numero {
-  min-width: 48px;
-  height: 48px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 50%;
-
-  background: #126477;
-  color: white;
-
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: 25px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #176879;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    font-weight: bold;
+    font-size: 18px;
 }
 
-.ilustracao {
-  width: 90px;
-  height: 75px;
-  flex-shrink: 0;
+.icone {
+    width: 45px;
+    height: 45px;
 }
 
-.caixa {
-  background: #eef8fa;
-  border-left: 5px solid #2996a9;
-  border-radius: 0 10px 10px 0;
-  padding: 11px 15px;
-  margin-top: 8px;
+.titulo {
+    min-width: 0;
+    margin: 0;
+    padding-bottom: 3px;
+    border-bottom: 3px solid #69afb7;
+    color: #176879;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 24px;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
 }
 
-.caixa p {
-  margin: 0;
-  font-family: "Trebuchet MS", sans-serif;
-  font-size: 14px;
+/* =========================
+   TEXTOS
+========================= */
+
+.texto {
+    font-size: 13.2px;
+    line-height: 1.42;
+    margin: 0 0 2.5mm;
+}
+
+.texto strong {
+    color: #176879;
 }
 
 .lista {
-  font-family: "Trebuchet MS", sans-serif;
-  font-size: 14px;
-  line-height: 1.6;
-  margin-left: 20px;
+    margin: 2mm 0 0 5mm;
+    padding-left: 4mm;
+    font-size: 12.8px;
+    line-height: 1.42;
 }
 
-.rodape {
-  position: absolute;
-  bottom: 12mm;
-  left: 24mm;
-  right: 24mm;
-  text-align: center;
+.lista li {
+    margin-bottom: 1mm;
+}
 
-  font-family: "Courier New", monospace;
-  font-size: 11px;
-  color: #71858a;
+/* =========================
+   CAIXAS
+========================= */
+
+.caixa {
+    background: #eef8f9;
+    border-left: 4px solid #329ba8;
+    border-radius: 0 9px 9px 0;
+    padding: 3mm 4mm;
+    margin-top: 2.5mm;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    font-size: 11.8px;
+    line-height: 1.35;
+}
+
+.curiosidade {
+    background: #eef8f9;
+    border-left: 4px solid #329ba8;
+    border-radius: 0 8px 8px 0;
+    padding: 2.8mm 3.5mm;
+    margin-bottom: 2.5mm;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    font-size: 11.6px;
+    line-height: 1.35;
+}
+
+.curiosidade strong {
+    color: #176879;
+}
+
+/* =========================
+   CONCLUSÃO
+========================= */
+
+.conclusao {
+    background: #eef8f9;
+    border-left: 4px solid #176879;
+    border-radius: 0 9px 9px 0;
+    padding: 3.5mm 4mm;
+    margin-top: 4mm;
+}
+
+.conclusao h2 {
+    margin: 0 0 2mm;
+    color: #176879;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    font-size: 19px;
+}
+
+.conclusao p {
+    margin: 0;
+    font-size: 11.8px;
+    line-height: 1.4;
+}
+
+/* =========================
+   RODAPÉ
+========================= */
+
+.rodape {
+    position: absolute;
+    bottom: 5mm;
+    left: 12mm;
+    right: 12mm;
+    text-align: center;
+    font-family: "Courier New", monospace;
+    font-size: 8px;
+    color: #839296;
 }
 
 /* =========================
@@ -190,562 +240,455 @@ p {
 ========================= */
 
 @media print {
-  body {
-    background: white;
-  }
 
-  .pagina {
-    margin: 0;
-    box-shadow: none;
-  }
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    html,
+    body {
+        background: white;
+        padding: 0;
+    }
+
+    .pagina {
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        padding: 13mm 12mm;
+        overflow: hidden;
+        box-shadow: none;
+    }
 }
 
 /* =========================
    CELULAR
 ========================= */
 
-@media screen and (max-width: 800px) {
-  .pagina {
-    width: 95%;
-    min-height: auto;
-    padding: 35px 20px;
-  }
+@media screen and (max-width: 700px) {
 
-  .capa h1 {
-    font-size: 42px;
-  }
+    body {
+        padding: 10px 0;
+    }
 
-  .capa svg {
-    width: 220px;
-    height: 220px;
-  }
+    .pagina {
+        width: 95vw;
+        height: auto;
+        min-height: 135vw;
+        margin-bottom: 15px;
+        padding: 7vw 6vw;
+    }
+
+    .titulo-capa {
+        font-size: 30px;
+    }
+
+    .subtitulo-capa {
+        font-size: 15px;
+    }
+
+    .topo {
+        grid-template-columns: 31px 40px minmax(0, 1fr);
+        column-gap: 6px;
+    }
+
+    .numero {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+
+    .icone {
+        width: 38px;
+        height: 38px;
+    }
+
+    .titulo {
+        font-size: 21px;
+    }
+
+    .texto {
+        font-size: 12.5px;
+    }
 }
 </style>
 </head>
 
 <body>
 
-
 <!-- =====================================================
-     PÁGINA 1 — CAPA
+     PÁGINA 1 - CAPA
 ===================================================== -->
 
 <section class="pagina capa">
 
-  <!-- SVG DA TERRA -->
-  <svg viewBox="0 0 300 300"
-       xmlns="http://www.w3.org/2000/svg">
-
-    <!-- Atmosfera -->
-    <circle
-      cx="150" cy="150" r="125"
-      fill="none"
-      stroke="#8de8f5"
-      stroke-width="8"
-      opacity=".65"/>
-
-    <!-- Sol -->
-    <circle cx="60" cy="60" r="30"
-            fill="#FFD84A"/>
-
-    <!-- Raios -->
-    <g stroke="#FFD84A"
-       stroke-width="5"
-       stroke-linecap="round">
-
-      <line x1="60" y1="15" x2="60" y2="5"/>
-      <line x1="60" y1="105" x2="60" y2="115"/>
-      <line x1="15" y1="60" x2="5" y2="60"/>
-      <line x1="105" y1="60" x2="115" y2="60"/>
-
-    </g>
-
-    <!-- Terra -->
-    <circle cx="150" cy="165" r="65"
-            fill="#287fae"/>
-
-    <!-- Continentes -->
-    <path
-      d="M105 142
-         C113 130 128 128 138 137
-         C147 146 136 155 123 154
-         C112 153 106 150 105 142Z"
-      fill="#62a743"/>
-
-    <path
-      d="M164 130
-         C178 123 194 133 196 146
-         C198 157 184 161 175 153
-         C167 147 159 143 164 130Z"
-      fill="#62a743"/>
-
-    <path
-      d="M145 176
-         C158 168 177 176 181 190
-         C184 202 168 211 156 207
-         C144 202 137 186 145 176Z"
-      fill="#62a743"/>
-
-    <!-- Energia -->
-    <path
-      d="M88 78 Q112 96 130 115"
-      fill="none"
-      stroke="#FFD84A"
-      stroke-width="6"
-      stroke-linecap="round"/>
-
-    <!-- Calor -->
-    <path
-      d="M130 218 Q110 243 125 265"
-      fill="none"
-      stroke="#FF795C"
-      stroke-width="6"/>
-
-    <path
-      d="M170 218 Q193 240 180 265"
-      fill="none"
-      stroke="#FF795C"
-      stroke-width="6"/>
-
-  </svg>
-
-  <div class="mini">
-    Trabalho de Ciências
-  </div>
-
-  <h1>EFEITO ESTUFA</h1>
-
-  <div class="subtitulo">
-    Conhecendo o fenômeno que ajuda a manter a Terra aquecida
-  </div>
-
-  <div class="dados">
-    <strong>Aluno:</strong> Alexandre Braatz Junior<br>
-    <strong>Turma:</strong> 72
-  </div>
-
-</section>
-
-
-
-<!-- =====================================================
-     PÁGINA 2 — TÓPICOS 1, 2 E 3
-===================================================== -->
-
-<section class="pagina">
-
-  <!-- 1 -->
-  <div class="topico">
-
-    <div class="topo">
-
-      <div class="numero">1</div>
-
-      <!-- SVG INTRODUÇÃO -->
-      <svg class="ilustracao"
-           viewBox="0 0 120 90"
-           xmlns="http://www.w3.org/2000/svg">
-
-        <circle cx="25" cy="25" r="17"
-                fill="#FFD34A"/>
-
-        <g stroke="#FFD34A" stroke-width="3">
-          <line x1="25" y1="3" x2="25" y2="0"/>
-          <line x1="3" y1="25" x2="0" y2="25"/>
-          <line x1="47" y1="25" x2="50" y2="25"/>
+    <svg viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg">
+        <!-- Sol -->
+        <circle cx="400" cy="65" r="34" fill="#f7c948"/>
+        <g stroke="#f7c948" stroke-width="5">
+            <line x1="400" y1="15" x2="400" y2="0"/>
+            <line x1="400" y1="115" x2="400" y2="130"/>
+            <line x1="350" y1="65" x2="335" y2="65"/>
+            <line x1="450" y1="65" x2="465" y2="65"/>
         </g>
 
-        <circle cx="72" cy="55" r="27"
-                fill="#368DB7"/>
+        <!-- Atmosfera -->
+        <ellipse cx="250" cy="175" rx="125" ry="105"
+                 fill="#dff5f7"
+                 stroke="#3d9eaa"
+                 stroke-width="5"/>
 
-        <path d="M53 50
-                 C60 42 68 44 73 50
-                 C77 55 69 60 61 58Z"
-              fill="#65A94C"/>
+        <!-- Terra -->
+        <circle cx="250" cy="185" r="78" fill="#268da0"/>
 
-        <path d="M80 43
-                 C91 39 99 48 97 56
-                 C94 63 83 59 80 53Z"
-              fill="#65A94C"/>
+        <!-- Continentes -->
+        <path d="M190 150 C210 135 225 145 232 160
+                 C220 170 205 172 193 165 Z"
+              fill="#72b84a"/>
 
-      </svg>
+        <path d="M260 145 C285 137 315 150 320 170
+                 C300 178 282 168 270 160 Z"
+              fill="#72b84a"/>
 
-      <h2>Introdução</h2>
+        <path d="M245 195 C265 185 290 198 286 220
+                 C270 230 250 220 242 210 Z"
+              fill="#72b84a"/>
 
+        <!-- Raios solares -->
+        <g stroke="#f7c948" stroke-width="5" stroke-linecap="round">
+            <line x1="365" y1="95" x2="310" y2="135"/>
+            <line x1="350" y1="115" x2="300" y2="150"/>
+            <line x1="330" y1="130" x2="290" y2="160"/>
+        </g>
+
+        <!-- Setas infravermelhas -->
+        <g fill="none" stroke="#e47b52" stroke-width="5">
+            <path d="M220 230 C175 255 175 205 190 195"/>
+            <path d="M280 230 C325 255 325 205 310 195"/>
+        </g>
+
+        <text x="250" y="285"
+              text-anchor="middle"
+              font-family="Arial"
+              font-size="17"
+              fill="#176879">
+            Atmosfera terrestre
+        </text>
+    </svg>
+
+    <h1 class="titulo-capa">EFEITO ESTUFA</h1>
+
+    <div class="subtitulo-capa">
+        Um fenômeno natural essencial para a vida
     </div>
 
-    <p>
-      O efeito estufa é um fenômeno natural que acontece na
-      atmosfera da Terra. Ele ajuda a manter o planeta em uma
-      temperatura adequada para a existência da vida.
-    </p>
-
-    <p>
-      A energia do Sol chega à Terra e aquece sua superfície.
-      Depois, parte dessa energia é devolvida para a atmosfera
-      na forma de radiação infravermelha.
-    </p>
-
-  </div>
-
-
-  <!-- 2 -->
-  <div class="topico">
-
-    <div class="topo">
-
-      <div class="numero">2</div>
-
-      <!-- SVG COMO ACONTECE -->
-      <svg class="ilustracao"
-           viewBox="0 0 120 90"
-           xmlns="http://www.w3.org/2000/svg">
-
-        <circle cx="20" cy="20" r="13"
-                fill="#FFD34A"/>
-
-        <path d="M32 28 L55 43"
-              stroke="#F4B936"
-              stroke-width="4"/>
-
-        <path d="M32 35 L55 48"
-              stroke="#F4B936"
-              stroke-width="4"/>
-
-        <circle cx="65" cy="58" r="25"
-                fill="#3188B1"/>
-
-        <path d="M50 55
-                 Q65 42 80 55"
-              fill="none"
-              stroke="#7ED1DF"
-              stroke-width="4"/>
-
-        <path d="M50 70
-                 Q65 57 80 70"
-              fill="none"
-              stroke="#FF795C"
-              stroke-width="4"/>
-
-        <path d="M95 70
-                 Q75 55 91 40"
-              fill="none"
-              stroke="#FF795C"
-              stroke-width="4"/>
-
-      </svg>
-
-      <h2>Como acontece?</h2>
-
+    <div class="dados">
+        <p><strong>Nome:</strong> Alexandre Braatz Junior</p>
+        <p><strong>Turma:</strong> 72</p>
+        <p><strong>Disciplina:</strong> Ciências</p>
+        <p><strong>Data:</strong> 18/08/2026</p>
     </div>
-
-    <p>
-      A superfície terrestre absorve energia solar e fica
-      aquecida. Em seguida, libera parte dessa energia em forma
-      de radiação infravermelha.
-    </p>
-
-    <p>
-      Alguns gases da atmosfera absorvem parte dessa radiação.
-      Dessa maneira, uma parte do calor permanece no sistema
-      terrestre em vez de escapar diretamente para o espaço.
-    </p>
-
-    <div class="caixa">
-      <p>
-        <strong>Principais gases:</strong>
-        dióxido de carbono (CO₂), metano (CH₄), óxido nitroso
-        (N₂O) e vapor de água.
-      </p>
-    </div>
-
-  </div>
-
-
-  <!-- 3 -->
-  <div class="topico">
-
-    <div class="topo">
-
-      <div class="numero">3</div>
-
-      <!-- SVG IMPORTÂNCIA -->
-      <svg class="ilustracao"
-           viewBox="0 0 120 90"
-           xmlns="http://www.w3.org/2000/svg">
-
-        <circle cx="60" cy="45" r="29"
-                fill="#318DB6"/>
-
-        <path d="M43 40
-                 C49 31 57 34 61 40
-                 C65 46 56 50 48 48Z"
-              fill="#68AA4B"/>
-
-        <path d="M67 34
-                 C78 30 85 39 83 47
-                 C80 54 70 50 67 45Z"
-              fill="#68AA4B"/>
-
-        <path d="M30 45
-                 A30 30 0 0 1 90 45"
-              fill="none"
-              stroke="#61C6D3"
-              stroke-width="5"/>
-
-        <path d="M42 18
-                 Q60 8 78 18"
-              fill="none"
-              stroke="#61C6D3"
-              stroke-width="4"/>
-
-      </svg>
-
-      <h2>Por que é importante?</h2>
-
-    </div>
-
-    <p>
-      O efeito estufa natural é essencial porque mantém parte do
-      calor próximo à superfície terrestre.
-    </p>
-
-    <p>
-      Sem esse fenômeno, a temperatura média da Terra seria muito
-      mais baixa, dificultando a existência de água líquida e de
-      muitas formas de vida.
-    </p>
-
-    <div class="caixa">
-      <p>
-        🌎 <strong>Importante:</strong> o efeito estufa natural
-        não é algo ruim. O problema ambiental está relacionado
-        principalmente à sua intensificação.
-      </p>
-    </div>
-
-  </div>
-
-
-  <div class="rodape">
-    Alexandre Braatz Junior • Turma 72 • Ciências
-  </div>
 
 </section>
 
 
-
 <!-- =====================================================
-     PÁGINA 3 — TÓPICOS 4 E 5
+     PÁGINA 2 - TÓPICOS 1, 2 E 3
 ===================================================== -->
 
 <section class="pagina">
 
-  <!-- 4 -->
-  <div class="topico">
+    <!-- TÓPICO 1 -->
+    <div class="topico">
 
-    <div class="topo">
+        <div class="topo">
 
-      <div class="numero">4</div>
+            <div class="numero">1</div>
 
-      <!-- SVG CONSEQUÊNCIAS -->
-      <svg class="ilustracao"
-           viewBox="0 0 120 90"
-           xmlns="http://www.w3.org/2000/svg">
+            <svg class="icone" viewBox="0 0 80 80">
+                <circle cx="18" cy="18" r="13" fill="#f7c948"/>
+                <circle cx="48" cy="50" r="25" fill="#268da0"/>
+                <path d="M30 40 C40 32 48 40 54 45
+                         C45 52 37 52 30 47 Z"
+                      fill="#72b84a"/>
+                <path d="M52 55 C60 48 68 52 69 59
+                         C61 64 55 63 52 55 Z"
+                      fill="#72b84a"/>
+            </svg>
 
-        <!-- Sol -->
-        <circle cx="25" cy="20" r="12"
-                fill="#FFCA3A"/>
+            <h2 class="titulo">Introdução</h2>
 
-        <!-- Terra -->
-        <circle cx="60" cy="58" r="24"
-                fill="#378DB5"/>
+        </div>
 
-        <path d="M45 53
-                 C51 45 57 47 61 53
-                 C64 58 57 62 50 60Z"
-              fill="#68A94A"/>
+        <p class="texto">
+            O efeito estufa é um fenômeno natural que acontece na
+            atmosfera da Terra. Ele ajuda a manter o planeta em uma
+            temperatura adequada para a existência da vida.
+        </p>
 
-        <path d="M68 48
-                 C77 45 83 52 82 58
-                 C80 64 71 61 68 57Z"
-              fill="#68A94A"/>
-
-        <!-- calor -->
-        <path d="M52 29 Q60 20 67 30"
-              fill="none"
-              stroke="#FF7057"
-              stroke-width="4"/>
-
-        <path d="M76 30 Q83 20 90 31"
-              fill="none"
-              stroke="#FF7057"
-              stroke-width="4"/>
-
-        <!-- termômetro -->
-        <rect x="98" y="35"
-              width="7"
-              height="30"
-              rx="4"
-              fill="#D9534F"/>
-
-        <circle cx="101.5" cy="68"
-                r="8"
-                fill="#D9534F"/>
-
-      </svg>
-
-      <h2>Consequências</h2>
+        <p class="texto">
+            A energia do Sol chega à Terra e aquece sua superfície.
+            Depois, parte dessa energia é devolvida para a atmosfera
+            na forma de radiação infravermelha.
+        </p>
 
     </div>
 
-    <p>
-      O aumento da concentração de gases de efeito estufa pode
-      intensificar o aquecimento do sistema climático.
-    </p>
 
-    <div class="lista">
+    <!-- TÓPICO 2 -->
+    <div class="topico">
 
-      • Aumento da temperatura média global.<br>
+        <div class="topo">
 
-      • Alterações nos padrões de chuva.<br>
+            <div class="numero">2</div>
 
-      • Derretimento de geleiras e partes das calotas polares.<br>
+            <svg class="icone" viewBox="0 0 80 80">
+                <circle cx="18" cy="18" r="12" fill="#f7c948"/>
+                <line x1="28" y1="28" x2="42" y2="40"
+                      stroke="#f0a83b" stroke-width="5"/>
+                <circle cx="48" cy="50" r="25" fill="#268da0"/>
+                <path d="M32 47 Q48 32 64 47"
+                      fill="none" stroke="#7bd0d7" stroke-width="4"/>
+                <path d="M32 58 Q48 43 64 58"
+                      fill="none" stroke="#7bd0d7" stroke-width="4"/>
+                <path d="M65 30 L65 67"
+                      stroke="#e47b52" stroke-width="4"/>
+                <path d="M70 34 L65 30 L60 34"
+                      fill="none" stroke="#e47b52" stroke-width="4"/>
+            </svg>
 
-      • Elevação do nível do mar.<br>
+            <h2 class="titulo">Como acontece?</h2>
 
-      • Alterações em diversos ecossistemas.<br>
+        </div>
 
-      • Maior ocorrência de alguns eventos climáticos extremos
-      em determinadas regiões.
+        <p class="texto">
+            A superfície terrestre absorve energia solar e fica aquecida.
+            Em seguida, libera parte dessa energia em forma de radiação
+            infravermelha.
+        </p>
 
-    </div>
+        <p class="texto">
+            Alguns gases da atmosfera absorvem parte dessa radiação.
+            Dessa maneira, uma parte do calor permanece no sistema
+            terrestre em vez de escapar diretamente para o espaço.
+        </p>
 
-  </div>
-
-
-  <!-- 5 -->
-  <div class="topico">
-
-    <div class="topo">
-
-      <div class="numero">5</div>
-
-      <!-- SVG CURIOSIDADES -->
-      <svg class="ilustracao"
-           viewBox="0 0 120 90"
-           xmlns="http://www.w3.org/2000/svg">
-
-        <!-- átomo -->
-        <ellipse cx="60" cy="45"
-                 rx="38" ry="15"
-                 fill="none"
-                 stroke="#4C9EB0"
-                 stroke-width="3"/>
-
-        <ellipse cx="60" cy="45"
-                 rx="38" ry="15"
-                 transform="rotate(60 60 45)"
-                 fill="none"
-                 stroke="#4C9EB0"
-                 stroke-width="3"/>
-
-        <ellipse cx="60" cy="45"
-                 rx="38" ry="15"
-                 transform="rotate(120 60 45)"
-                 fill="none"
-                 stroke="#4C9EB0"
-                 stroke-width="3"/>
-
-        <circle cx="60" cy="45"
-                r="7"
-                fill="#F3B63D"/>
-
-        <circle cx="98" cy="45"
-                r="5"
-                fill="#F3B63D"/>
-
-        <circle cx="42" cy="12"
-                r="5"
-                fill="#F3B63D"/>
-
-        <circle cx="42" cy="78"
-                r="5"
-                fill="#F3B63D"/>
-
-      </svg>
-
-      <h2>Curiosidades científicas</h2>
+        <div class="caixa">
+            <strong>Principais gases:</strong>
+            dióxido de carbono (CO₂), metano (CH₄), óxido nitroso (N₂O)
+            e vapor de água.
+        </div>
 
     </div>
 
-    <div class="caixa">
 
-      <p>
-        🔬 <strong>Curiosidade 1:</strong> o vapor de água é o
-        gás de efeito estufa mais abundante na atmosfera.
-      </p>
+    <!-- TÓPICO 3 -->
+    <div class="topico">
+
+        <div class="topo">
+
+            <div class="numero">3</div>
+
+            <svg class="icone" viewBox="0 0 80 80">
+                <circle cx="40" cy="43" r="27" fill="#268da0"/>
+                <path d="M20 39 C30 28 40 34 45 42
+                         C37 50 28 49 20 44 Z"
+                      fill="#72b84a"/>
+                <path d="M45 47 C53 40 64 45 65 53
+                         C57 59 49 57 45 47 Z"
+                      fill="#72b84a"/>
+                <path d="M15 43 C15 20 65 10 68 42"
+                      fill="none" stroke="#74cbd1" stroke-width="4"/>
+            </svg>
+
+            <h2 class="titulo">Por que é importante?</h2>
+
+        </div>
+
+        <p class="texto">
+            O efeito estufa natural é essencial porque mantém parte do
+            calor próximo à superfície terrestre.
+        </p>
+
+        <p class="texto">
+            Sem esse fenômeno, a temperatura média da Terra seria muito
+            mais baixa, dificultando a existência de água líquida e de
+            muitas formas de vida.
+        </p>
+
+        <div class="caixa">
+            <strong>Importante:</strong> o efeito estufa natural não é algo
+            ruim. O problema ambiental está relacionado principalmente
+            à sua intensificação.
+        </div>
 
     </div>
 
-    <div class="caixa">
-
-      <p>
-        🌎 <strong>Curiosidade 2:</strong> o efeito estufa existe
-        naturalmente e acontece em outros planetas, não somente
-        na Terra.
-      </p>
-
+    <div class="rodape">
+        Alexandre Braatz Junior • Turma 72 • Ciências • 18/08/2026
     </div>
-
-    <div class="caixa">
-
-      <p>
-        ☀️ <strong>Curiosidade 3:</strong> a energia que chega
-        do Sol e a energia que a Terra libera fazem parte do
-        equilíbrio energético do planeta.
-      </p>
-
-    </div>
-
-    <div class="caixa">
-
-      <p>
-        🧪 <strong>Curiosidade 4:</strong> diferentes gases
-        possuem diferentes capacidades de absorver radiação
-        infravermelha e permanecem na atmosfera por períodos
-        diferentes.
-      </p>
-
-    </div>
-
-  </div>
-
-
-  <!-- CONCLUSÃO -->
-
-  <div class="caixa" style="margin-top:25px;">
-
-    <h3>Conclusão</h3>
-
-    <p>
-      O efeito estufa é um fenômeno natural e fundamental para
-      a vida. Entretanto, o aumento da concentração de gases de
-      efeito estufa devido às atividades humanas contribui para
-      o aquecimento do planeta. Conhecer esse processo ajuda a
-      compreender melhor as mudanças ambientais e a importância
-      de preservar o meio ambiente.
-    </p>
-
-  </div>
-
-
-  <div class="rodape">
-    Alexandre Braatz Junior • Turma 72 • Ciências
-  </div>
 
 </section>
 
+
+<!-- =====================================================
+     PÁGINA 3 - TÓPICOS 4 E 5 + CONCLUSÃO
+===================================================== -->
+
+<section class="pagina">
+
+    <!-- TÓPICO 4 -->
+    <div class="topico">
+
+        <div class="topo">
+
+            <div class="numero">4</div>
+
+            <svg class="icone" viewBox="0 0 80 80">
+
+                <circle cx="18" cy="18" r="12" fill="#f7c948"/>
+
+                <circle cx="38" cy="48" r="22" fill="#268da0"/>
+
+                <path d="M25 42 C33 35 41 40 45 46
+                         C39 52 31 51 25 47 Z"
+                      fill="#72b84a"/>
+
+                <path d="M44 50 C51 45 58 49 59 55
+                         C53 59 47 57 44 50 Z"
+                      fill="#72b84a"/>
+
+                <!-- calor -->
+                <path d="M23 19 Q30 10 37 19"
+                      fill="none" stroke="#e47b52" stroke-width="4"/>
+
+                <path d="M39 19 Q46 10 53 19"
+                      fill="none" stroke="#e47b52" stroke-width="4"/>
+
+                <!-- termômetro -->
+                <line x1="66" y1="36" x2="66" y2="61"
+                      stroke="#df5b4d" stroke-width="6"
+                      stroke-linecap="round"/>
+                <circle cx="66" cy="65" r="8" fill="#df5b4d"/>
+
+            </svg>
+
+            <h2 class="titulo">Consequências</h2>
+
+        </div>
+
+        <p class="texto">
+            O aumento da concentração de gases de efeito estufa pode
+            intensificar o aquecimento do sistema climático.
+        </p>
+
+        <ul class="lista">
+            <li>Aumento da temperatura média global.</li>
+            <li>Alterações nos padrões de chuva.</li>
+            <li>Derretimento de geleiras e partes das calotas polares.</li>
+            <li>Elevação do nível do mar.</li>
+            <li>Alterações em diversos ecossistemas.</li>
+            <li>Maior ocorrência de alguns eventos climáticos extremos
+                em determinadas regiões.</li>
+        </ul>
+
+    </div>
+
+
+    <!-- TÓPICO 5 -->
+    <div class="topico">
+
+        <div class="topo">
+
+            <div class="numero">5</div>
+
+            <svg class="icone" viewBox="0 0 80 80">
+
+                <ellipse cx="40" cy="40"
+                         rx="30" ry="11"
+                         fill="none"
+                         stroke="#329ba8"
+                         stroke-width="4"/>
+
+                <ellipse cx="40" cy="40"
+                         rx="11" ry="30"
+                         fill="none"
+                         stroke="#329ba8"
+                         stroke-width="4"
+                         transform="rotate(45 40 40)"/>
+
+                <ellipse cx="40" cy="40"
+                         rx="11" ry="30"
+                         fill="none"
+                         stroke="#329ba8"
+                         stroke-width="4"
+                         transform="rotate(-45 40 40)"/>
+
+                <circle cx="40" cy="40" r="6"
+                        fill="#f7c948"/>
+
+                <circle cx="63" cy="28" r="5"
+                        fill="#72b84a"/>
+
+                <circle cx="22" cy="52" r="5"
+                        fill="#e47b52"/>
+
+            </svg>
+
+            <h2 class="titulo">Curiosidades científicas</h2>
+
+        </div>
+
+        <div class="curiosidade">
+            <strong>Curiosidade 1:</strong>
+            o vapor de água é o gás de efeito estufa mais abundante
+            na atmosfera.
+        </div>
+
+        <div class="curiosidade">
+            <strong>Curiosidade 2:</strong>
+            o efeito estufa existe naturalmente e acontece em outros
+            planetas, não somente na Terra.
+        </div>
+
+        <div class="curiosidade">
+            <strong>Curiosidade 3:</strong>
+            a energia que chega do Sol e a energia que a Terra libera
+            fazem parte do equilíbrio energético do planeta.
+        </div>
+
+        <div class="curiosidade">
+            <strong>Curiosidade 4:</strong>
+            diferentes gases possuem diferentes capacidades de absorver
+            radiação infravermelha e permanecem na atmosfera por
+            períodos diferentes.
+        </div>
+
+    </div>
+
+
+    <!-- CONCLUSÃO -->
+    <div class="conclusao">
+
+        <h2>Conclusão</h2>
+
+        <p>
+            O efeito estufa é um fenômeno natural e fundamental para a
+            vida. Entretanto, o aumento da concentração de gases de
+            efeito estufa devido às atividades humanas contribui para
+            o aquecimento do planeta. Conhecer esse processo ajuda a
+            compreender melhor as mudanças ambientais e a importância
+            de preservar o meio ambiente.
+        </p>
+
+    </div>
+
+    <div class="rodape">
+        Alexandre Braatz Junior • Turma 72 • Ciências • 18/08/2026
+    </div>
+
+</section>
 
 </body>
 </html>
