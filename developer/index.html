@@ -26,6 +26,7 @@
     .btn-block { width: 100%; }
     .btn-danger { background: #f72585; }
     .btn-warning { background: #f8961e; }
+    .btn-info { background: #4cc9f0; color: #0a0e17; }
     .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
     .token-list { max-height: 600px; overflow-y: auto; padding-right: 5px; }
     .token-item { background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: 0.2s; }
@@ -43,13 +44,49 @@
     .token-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
     .token-name svg { width: 16px; height: 16px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .token-domain { color: #4cc9f0; font-size: 13px; margin-top: 4px; word-break: break-all; }
-    .token-accounts { display: inline-flex; align-items: center; gap: 5px; background: rgba(67,97,238,0.15); padding: 4px 10px; border-radius: 12px; font-size: 11px; }
+    .token-accounts { display: inline-flex; align-items: center; gap: 5px; background: rgba(67,97,238,0.15); padding: 4px 10px; border-radius: 12px; font-size: 11px; cursor: pointer; transition: 0.2s; }
+    .token-accounts:hover { background: rgba(67,97,238,0.3); }
     .token-accounts svg { width: 12px; height: 12px; stroke: #4cc9f0; fill: none; stroke-width: 2; }
     .token-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 
+    /* Lista de contas dentro do token */
+    .accounts-list {
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      display: none;
+    }
+    .accounts-list.show { display: block; }
+    .account-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px;
+      background: #0d1422;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .account-row:last-child { margin-bottom: 0; }
+    .account-row img,
+    .account-row .acc-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      flex-shrink: 0;
+      object-fit: cover;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      color: #fff; font-weight: 700; font-size: 14px;
+      text-transform: uppercase;
+    }
+    .account-row .acc-info { flex: 1; min-width: 0; }
+    .account-row .acc-nome { font-weight: 600; color: #e8edf5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .account-row .acc-email { font-size: 11px; color: #8b9bb8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .account-row .acc-ip { font-size: 10px; color: #4a5a7a; font-family: monospace; }
+    .account-row .acc-empty { font-size: 12px; color: #4a5a7a; padding: 6px 0; }
+
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); }
     .modal-overlay.active { display: flex; }
-    .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 440px; width: 90%; color: #e8edf5; }
+    .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 440px; width: 90%; color: #e8edf5; max-height: 90vh; overflow-y: auto; }
     .modal-box h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 1.1rem; }
     .modal-box h2 svg { width: 20px; height: 20px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .modal-box input { width: 100%; margin-bottom: 12px; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; font-family: inherit; outline: none; }
@@ -175,7 +212,8 @@
       copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
       settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
       trash: '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
-      inbox: '<svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>'
+      inbox: '<svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>',
+      eye: '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
     };
 
     function showToast(message, type = 'success') {
@@ -202,10 +240,7 @@
     }
 
     // ============================================
-    // NORMALIZAR DOMÍNIOS
-    //   - OBRIGATÓRIO começar com https://
-    //   - Salva sem protocolo (só o hostname)
-    //   - Retorna { validos, invalidos }
+    // NORMALIZAR DOMÍNIOS — obrigatório https://
     // ============================================
     function normalizarDominios(input) {
       const partes = String(input || "")
@@ -219,19 +254,14 @@
       for (const p of partes) {
         const lower = p.toLowerCase();
 
-        // precisa começar com https://
         if (!lower.startsWith("https://")) {
           invalidos.push(p + " (precisa começar com https://)");
           continue;
         }
 
-        // tira o https://
         let host = lower.slice(8);
-
-        // tira path e barras
         host = host.split("/")[0].replace(/\/+$/, "");
 
-        // valida formato básico
         if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) {
           invalidos.push(p + " (domínio inválido)");
           continue;
@@ -264,6 +294,12 @@
       loadTokens();
     }
 
+    // ============================================
+    // LISTAR TOKENS
+    //   - Lê os IDs em /users/{uid}/tokens
+    //   - Busca o token completo em /tokens/{id}
+    //   - Conta as contas em /tokens/{id}/tokenAccounts
+    // ============================================
     async function loadTokens() {
       if (!userUID) return;
 
@@ -289,7 +325,6 @@
         );
 
         allTokens = resultados.filter(Boolean);
-
         tokenCount.textContent = allTokens.length;
 
         if (allTokens.length === 0) {
@@ -303,10 +338,40 @@
         allTokens.forEach(({ token, val }) => {
           const div = document.createElement('div');
           div.className = 'token-item';
+
           const domains = val.domains || [];
           const hasDomain = domains.length > 0;
-          const accountCount = val.accounts ? Object.keys(val.accounts).length : 0;
+
+          // 🔥 contas dentro do token
+          const accounts = val.tokenAccounts || {};
+          const accountIds = Object.keys(accounts);
+          const accountCount = accountIds.length;
+
           const apiUrl = `${baseURL}?token=${token}`;
+
+          // monta a lista de contas
+          let accountsHtml = '';
+          if (accountCount === 0) {
+            accountsHtml = `<div class="acc-empty">Ninguém logou com este token ainda.</div>`;
+          } else {
+            accountIds.forEach(accId => {
+              const acc = accounts[accId] || {};
+              const initial = (acc.nome || acc.email || '?').charAt(0).toUpperCase();
+              const avatarHTML = acc.photoUrl
+                ? `<img src="${escapeHtml(acc.photoUrl)}" alt="">`
+                : `<div class="acc-avatar">${initial}</div>`;
+              accountsHtml += `
+                <div class="account-row">
+                  ${avatarHTML}
+                  <div class="acc-info">
+                    <div class="acc-nome">${escapeHtml(acc.nome || 'Sem nome')}</div>
+                    <div class="acc-email">${escapeHtml(acc.email || 'sem email')}</div>
+                    <div class="acc-ip">${escapeHtml(acc.ip || '')}</div>
+                  </div>
+                </div>
+              `;
+            });
+          }
 
           div.innerHTML = `
             <div class="token-header">
@@ -314,14 +379,21 @@
                 <div class="token-name">${ICONS.app}<span>${escapeHtml(val.appName)}</span></div>
                 <div class="token-domain">${hasDomain ? escapeHtml(domains.join(', ')) : 'Sem domínio'}</div>
               </div>
-              <div class="token-accounts">${ICONS.users}<span>${accountCount}</span></div>
+              <div class="token-accounts" data-action="toggle-accounts" data-token="${token}">
+                ${ICONS.users}<span>${accountCount}</span>
+              </div>
             </div>
             <div class="token-actions">
               <button class="btn btn-sm" data-action="copy" data-url="${escapeHtml(apiUrl)}">${ICONS.copy} URL</button>
+              <button class="btn btn-info btn-sm" data-action="toggle-accounts" data-token="${token}">${ICONS.eye} Ver contas (${accountCount})</button>
               <button class="btn btn-warning btn-sm" data-action="edit" data-token="${token}">${ICONS.settings}</button>
               <button class="btn btn-danger btn-sm" data-action="delete" data-token="${token}">${ICONS.trash}</button>
             </div>
+            <div class="accounts-list" id="accounts-${token}" data-loaded="false">
+              ${accountsHtml}
+            </div>
           `;
+
           tokenList.appendChild(div);
         });
 
@@ -331,8 +403,9 @@
     }
 
     tokenList.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-action]');
+      const btn = e.target.closest('button[data-action], .token-accounts');
       if (!btn) return;
+
       const action = btn.dataset.action;
       if (action === 'copy') {
         navigator.clipboard.writeText(btn.dataset.url);
@@ -341,8 +414,17 @@
         window.openEdit(btn.dataset.token);
       } else if (action === 'delete') {
         window.deleteToken(btn.dataset.token);
+      } else if (action === 'toggle-accounts') {
+        window.toggleAccounts(btn.dataset.token);
       }
     });
+
+    // mostra/esconde lista de contas
+    window.toggleAccounts = function(token) {
+      const el = document.getElementById(`accounts-${token}`);
+      if (!el) return;
+      el.classList.toggle('show');
+    };
 
     window.openEdit = function(token) {
       currentEditToken = token;
@@ -396,7 +478,6 @@
       if (!confirm('Excluir token?')) return;
       try {
         await remove(ref(db, `tokens/${token}`));
-        await remove(ref(db, `tokenAccounts/${token}`));
         await remove(ref(db, `users/${userUID}/tokens/${token}`));
         showToast('Token excluído', 'success');
         loadTokens();
