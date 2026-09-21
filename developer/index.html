@@ -9,7 +9,7 @@
     body { font-family: 'Segoe UI', sans-serif; background: #0a0e17; color: #e8edf5; padding: 20px; }
     .dashboard { max-width: 1200px; margin: 0 auto; }
     .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid rgba(67,97,238,0.15); }
-    .logo { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #4361ee, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .logo { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #4361ee, #7c3aed); -webkit-background-clip: text; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 30px; }
     @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
     .card { background: #111927; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; }
@@ -151,6 +151,8 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
+    const MAX_TOKENS = 10;
+
     let userUID = null;
     let currentEditToken = null;
     let allTokens = [];
@@ -197,6 +199,11 @@
       return tok;
     }
 
+    // ============================================
+    // SALVAR TOKEN (nova estrutura)
+    //   /tokens/{tokenId}              -> dados do token
+    //   /users/{uid}/tokens/{tokenId}  -> apontador
+    // ============================================
     async function saveToken(token, data) {
       const base = {
         appName: data.appName,
@@ -206,70 +213,92 @@
         blockedIPs: data.blockedIPs || [],
         accounts: {}
       };
+
+      // 1) grava o token completo
       await set(ref(db, `tokens/${token}`), base);
-      await set(ref(db, `tokens/token/${token}`), base);
+
+      // 2) grava o apontador dentro do usuário
+      await set(ref(db, `users/${userUID}/tokens/${token}`), {
+        token: token,
+        appName: data.appName,
+        createdAt: base.createdAt
+      });
+
       showToast('Token criado com sucesso', 'success');
       loadTokens();
     }
 
+    // ============================================
+    // CARREGAR TOKENS
+    //   Lê só os apontadores do usuário
+    //   Depois busca o dado completo em /tokens/{id}
+    // ============================================
     async function loadTokens() {
       if (!userUID) return;
-      const [snap1, snap2] = await Promise.all([
-        get(ref(db, 'tokens')),
-        get(ref(db, 'tokens/token'))
-      ]);
-      const all = [];
-      const data1 = snap1.val();
-      const data2 = snap2.val();
-      if (data1) Object.entries(data1).forEach(([k, v]) => {
-        if (k === 'token') return;
-        if (v && (v.ownerUID === userUID || !v.ownerUID)) all.push({ token: k, val: v });
-      });
-      if (data2) Object.entries(data2).forEach(([k, v]) => {
-        if (v && (v.ownerUID === userUID || !v.ownerUID)) all.push({ token: k, val: v });
-      });
 
-      const seen = new Set();
-      allTokens = all.filter(item => {
-        if (seen.has(item.token)) return false;
-        seen.add(item.token);
-        return true;
-      });
+      try {
+        const snap = await get(ref(db, `users/${userUID}/tokens`));
+        const meusTokens = snap.val() || {};
 
-      tokenCount.textContent = allTokens.length;
+        const ids = Object.keys(meusTokens);
 
-      if (allTokens.length === 0) {
-        tokenList.innerHTML = `<div class="empty-state">${ICONS.inbox}<h3>Nenhum token criado</h3></div>`;
-        return;
-      }
+        allTokens = [];
 
-      tokenList.innerHTML = '';
-      const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta";
+        // busca os dados completos de cada token em paralelo
+        const resultados = await Promise.all(
+          ids.map(async (id) => {
+            try {
+              const tSnap = await get(ref(db, `tokens/${id}`));
+              if (tSnap.exists()) {
+                return { token: id, val: tSnap.val() };
+              }
+            } catch (e) {
+              console.warn("Falha ao ler token", id, e);
+            }
+            return null;
+          })
+        );
 
-      allTokens.forEach(({ token, val }) => {
-        const div = document.createElement('div');
-        div.className = 'token-item';
-        const domains = val.domains || [];
-        const hasDomain = domains.length > 0;
-        const accountCount = val.accounts ? Object.keys(val.accounts).length : 0;
-        const apiUrl = `${baseURL}?token=${token}`;
+        allTokens = resultados.filter(Boolean);
 
-        div.innerHTML = `
-          <div class="token-header">
-            <div>
-              <div class="token-name">${ICONS.app}<span>${escapeHtml(val.appName)}</span></div>
-              <div class="token-domain">${hasDomain ? escapeHtml(domains.join(', ')) : 'Sem domínio'}</div>
+        tokenCount.textContent = allTokens.length;
+
+        if (allTokens.length === 0) {
+          tokenList.innerHTML = `<div class="empty-state">${ICONS.inbox}<h3>Nenhum token criado</h3></div>`;
+          return;
+        }
+
+        tokenList.innerHTML = '';
+        const baseURL = "https://alexandre7888.github.io/API/v3/continuar-conta";
+
+        allTokens.forEach(({ token, val }) => {
+          const div = document.createElement('div');
+          div.className = 'token-item';
+          const domains = val.domains || [];
+          const hasDomain = domains.length > 0;
+          const accountCount = val.accounts ? Object.keys(val.accounts).length : 0;
+          const apiUrl = `${baseURL}?token=${token}`;
+
+          div.innerHTML = `
+            <div class="token-header">
+              <div>
+                <div class="token-name">${ICONS.app}<span>${escapeHtml(val.appName)}</span></div>
+                <div class="token-domain">${hasDomain ? escapeHtml(domains.join(', ')) : 'Sem domínio'}</div>
+              </div>
+              <div class="token-accounts">${ICONS.users}<span>${accountCount}</span></div>
             </div>
-            <div class="token-accounts">${ICONS.users}<span>${accountCount}</span></div>
-          </div>
-          <div class="token-actions">
-            <button class="btn btn-sm" data-action="copy" data-url="${escapeHtml(apiUrl)}">${ICONS.copy} URL</button>
-            <button class="btn btn-warning btn-sm" data-action="edit" data-token="${token}">${ICONS.settings}</button>
-            <button class="btn btn-danger btn-sm" data-action="delete" data-token="${token}">${ICONS.trash}</button>
-          </div>
-        `;
-        tokenList.appendChild(div);
-      });
+            <div class="token-actions">
+              <button class="btn btn-sm" data-action="copy" data-url="${escapeHtml(apiUrl)}">${ICONS.copy} URL</button>
+              <button class="btn btn-warning btn-sm" data-action="edit" data-token="${token}">${ICONS.settings}</button>
+              <button class="btn btn-danger btn-sm" data-action="delete" data-token="${token}">${ICONS.trash}</button>
+            </div>
+          `;
+          tokenList.appendChild(div);
+        });
+
+      } catch (e) {
+        showToast('Erro ao carregar tokens: ' + e.message, 'error');
+      }
     }
 
     tokenList.addEventListener('click', (e) => {
@@ -297,15 +326,29 @@
       editModal.classList.add('active');
     };
 
+    // ============================================
+    // SALVAR EDIÇÃO
+    //   Atualiza /tokens/{id} e /users/{uid}/tokens/{id}
+    // ============================================
     window.saveEdit = async function() {
       if (!currentEditToken) return;
       const domains = editDomains.value.split(',').map(s => s.trim()).filter(s => s);
       const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
       const appName = editAppName.value.trim();
 
+      if (!appName) return showToast('Nome do app obrigatório', 'error');
+
       try {
-        await update(ref(db, `tokens/${currentEditToken}`), { appName, domains, blockedIPs: ips });
-        await update(ref(db, `tokens/token/${currentEditToken}`), { appName, domains, blockedIPs: ips });
+        await update(ref(db, `tokens/${currentEditToken}`), {
+          appName,
+          domains,
+          blockedIPs: ips
+        });
+
+        await update(ref(db, `users/${userUID}/tokens/${currentEditToken}`), {
+          appName
+        });
+
         showToast('Configurações salvas', 'success');
         closeModal();
         loadTokens();
@@ -319,11 +362,15 @@
       currentEditToken = null;
     };
 
+    // ============================================
+    // DELETAR TOKEN
+    //   Remove /tokens/{id} e /users/{uid}/tokens/{id}
+    // ============================================
     window.deleteToken = async function(token) {
       if (!confirm('Excluir token?')) return;
       try {
         await remove(ref(db, `tokens/${token}`));
-        await remove(ref(db, `tokens/token/${token}`));
+        await remove(ref(db, `users/${userUID}/tokens/${token}`));
         showToast('Token excluído', 'success');
         loadTokens();
       } catch (error) {
@@ -333,10 +380,18 @@
 
     document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      if (!userUID) return showToast('Faça login primeiro', 'error');
+      if (allTokens.length >= MAX_TOKENS) {
+        return showToast(`Limite de ${MAX_TOKENS} tokens atingido`, 'error');
+      }
+
       const name = document.getElementById('appName').value.trim();
       const size = parseInt(document.getElementById('tokenSize').value);
+
       if (!name) return showToast('Digite um nome', 'error');
       if (size < 20 || size > 200) return showToast('Tamanho entre 20 e 200', 'error');
+
       const token = generateToken(size);
       await saveToken(token, { appName: name });
       document.getElementById('appName').value = '';
