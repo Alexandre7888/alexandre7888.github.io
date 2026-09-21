@@ -17,8 +17,8 @@
     .card h2 svg { width: 22px; height: 22px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #8b9bb8; }
-    .form-group input { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; font-family: inherit; transition: 0.2s; }
-    .form-group input:focus { border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.15); }
+    .form-group input, .form-group textarea { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; font-family: inherit; transition: 0.2s; resize: vertical; }
+    .form-group input:focus, .form-group textarea:focus { border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.15); }
     .form-group small { display: block; margin-top: 4px; font-size: 0.75rem; color: #4a5a7a; }
     .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 0.9rem; }
     .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -27,6 +27,8 @@
     .btn-danger { background: #f72585; }
     .btn-warning { background: #f8961e; }
     .btn-info { background: #4cc9f0; color: #0a0e17; }
+    .btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #8b9bb8; }
+    .btn-ghost:hover { background: rgba(255,255,255,0.05); color: #fff; }
     .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
     .token-list { max-height: 600px; overflow-y: auto; padding-right: 5px; }
     .token-item { background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: 0.2s; }
@@ -40,11 +42,26 @@
     .toast-error { background: #3a1a2a; border: 1px solid #f72585; color: #f72585; }
     .toast-info { background: #1a2a3a; border: 1px solid #4361ee; color: #4cc9f0; }
     .badge-count { background: rgba(67,97,238,0.15); color: #4cc9f0; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
-    .token-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-    .token-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-    .token-name svg { width: 16px; height: 16px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .token-domain { color: #4cc9f0; font-size: 13px; margin-top: 4px; word-break: break-all; }
-    .token-accounts { display: inline-flex; align-items: center; gap: 5px; background: rgba(67,97,238,0.15); padding: 4px 10px; border-radius: 12px; font-size: 11px; cursor: pointer; transition: 0.2s; }
+
+    /* Card do token no dashboard */
+    .token-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 12px; }
+    .token-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+    .token-logo {
+      width: 44px; height: 44px; border-radius: 12px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 18px;
+      text-transform: uppercase;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .token-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .token-text { flex: 1; min-width: 0; }
+    .token-name { display: flex; align-items: center; gap: 8px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .token-name svg { width: 16px; height: 16px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .token-domain { color: #8b9bb8; font-size: 12px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .token-accounts { display: inline-flex; align-items: center; gap: 5px; background: rgba(67,97,238,0.15); padding: 4px 10px; border-radius: 12px; font-size: 11px; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
     .token-accounts:hover { background: rgba(67,97,238,0.3); }
     .token-accounts svg { width: 12px; height: 12px; stroke: #4cc9f0; fill: none; stroke-width: 2; }
     .token-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
@@ -84,15 +101,67 @@
     .account-row .acc-ip { font-size: 10px; color: #4a5a7a; font-family: monospace; }
     .account-row .acc-empty { font-size: 12px; color: #4a5a7a; padding: 6px 0; }
 
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); }
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: none; justify-content: center; align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(6px);
+      padding: 20px;
+    }
     .modal-overlay.active { display: flex; }
-    .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 440px; width: 90%; color: #e8edf5; max-height: 90vh; overflow-y: auto; }
-    .modal-box h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 1.1rem; }
+    .modal-box {
+      background: #111927;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 480px;
+      width: 100%;
+      color: #e8edf5;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-box h2 {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px; font-size: 1.1rem;
+    }
     .modal-box h2 svg { width: 20px; height: 20px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .modal-box input { width: 100%; margin-bottom: 12px; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; font-family: inherit; outline: none; }
-    .modal-box input:focus { border-color: #4361ee; }
-    .modal-box label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #8b9bb8; }
-    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+    /* ===== ABAS ===== */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: #0d1422;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      flex: 1;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #8b9bb8;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .tab:hover { color: #e8edf5; }
+    .tab.active { background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; box-shadow: 0 4px 12px rgba(67,97,238,0.3); }
+    .tab svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-actions .btn { flex: 1; }
   </style>
 </head>
@@ -142,25 +211,65 @@
     </div>
   </div>
 
+  <!-- ===== MODAL DE CONFIGURAÇÃO COM ABAS ===== -->
   <div class="modal-overlay" id="editModal">
     <div class="modal-box">
       <h2>
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         <span id="modalTitle">Configurar App</span>
       </h2>
-      <div class="form-group">
-        <label>Domínios Permitidos (obrigatório começar com https://, separados por vírgula)</label>
-        <input type="text" id="editDomains" placeholder="ex: https://meusite.com, https://app.com" />
-        <small>Só HTTPS. O caminho (path) é ignorado, só o domínio é salvo.</small>
+
+      <!-- Abas -->
+      <div class="tabs">
+        <button class="tab active" data-tab="info" type="button">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Informações
+        </button>
+        <button class="tab" data-tab="domains" type="button">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Domínios
+        </button>
+        <button class="tab" data-tab="security" type="button">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Segurança
+        </button>
       </div>
-      <div class="form-group">
-        <label>IPs Bloqueados (separados por vírgula)</label>
-        <input type="text" id="editIPs" placeholder="ex: 192.168.1.1, 10.0.0.1" />
+
+      <!-- Aba: Informações -->
+      <div class="tab-content active" data-content="info">
+        <div class="form-group">
+          <label>Nome do App</label>
+          <input type="text" id="editAppName" placeholder="Ex: Meu App Incrível" />
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <textarea id="editDescription" rows="3" placeholder="Descreva seu app..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>URL da Foto do App</label>
+          <input type="text" id="editPhotoUrl" placeholder="https://exemplo.com/logo.png" />
+          <small>Essa foto aparece no topo do card do Continuar Conta.</small>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Nome do App</label>
-        <input type="text" id="editAppName" />
+
+      <!-- Aba: Domínios -->
+      <div class="tab-content" data-content="domains">
+        <div class="form-group">
+          <label>Domínios Permitidos (obrigatório começar com https://, separados por vírgula)</label>
+          <input type="text" id="editDomains" placeholder="ex: https://meusite.com, https://app.com" />
+          <small>Só HTTPS. O caminho (path) é ignorado, só o domínio é salvo.</small>
+        </div>
       </div>
+
+      <!-- Aba: Segurança -->
+      <div class="tab-content" data-content="security">
+        <div class="form-group">
+          <label>IPs Bloqueados (separados por vírgula)</label>
+          <input type="text" id="editIPs" placeholder="ex: 192.168.1.1, 10.0.0.1" />
+          <small>Usuários com esses IPs serão bloqueados no Continuar Conta.</small>
+        </div>
+      </div>
+
       <div class="modal-actions">
         <button class="btn" onclick="saveEdit()">
           <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -201,6 +310,8 @@
     const editDomains = document.getElementById('editDomains');
     const editIPs = document.getElementById('editIPs');
     const editAppName = document.getElementById('editAppName');
+    const editDescription = document.getElementById('editDescription');
+    const editPhotoUrl = document.getElementById('editPhotoUrl');
     const modalTitle = document.getElementById('modalTitle');
 
     const ICONS = {
@@ -239,9 +350,6 @@
       return tok;
     }
 
-    // ============================================
-    // NORMALIZAR DOMÍNIOS — obrigatório https://
-    // ============================================
     function normalizarDominios(input) {
       const partes = String(input || "")
         .split(",")
@@ -279,7 +387,9 @@
         ownerUID: userUID,
         createdAt: new Date().toISOString(),
         domains: data.domains || [],
-        blockedIPs: data.blockedIPs || []
+        blockedIPs: data.blockedIPs || [],
+        description: "",
+        photoUrl: ""
       };
 
       await set(ref(db, `tokens/${token}`), base);
@@ -294,12 +404,6 @@
       loadTokens();
     }
 
-    // ============================================
-    // LISTAR TOKENS
-    //   - Lê os IDs em /users/{uid}/tokens
-    //   - Busca o token completo em /tokens/{id}
-    //   - Conta as contas em /tokens/{id}/tokenAccounts
-    // ============================================
     async function loadTokens() {
       if (!userUID) return;
 
@@ -333,23 +437,23 @@
         }
 
         tokenList.innerHTML = '';
-        const baseURL = "https://app.codehub.site.je/API/v3/continuar-conta";
 
         allTokens.forEach(({ token, val }) => {
           const div = document.createElement('div');
           div.className = 'token-item';
 
           const domains = val.domains || [];
-          const hasDomain = domains.length > 0;
-
-          // 🔥 contas dentro do token
           const accounts = val.tokenAccounts || {};
           const accountIds = Object.keys(accounts);
           const accountCount = accountIds.length;
 
-          const apiUrl = `${baseURL}?token=${token}`;
+          // 🔥 foto do app
+          const appInitial = (val.appName || '?').charAt(0).toUpperCase();
+          const appLogoHTML = val.photoUrl
+            ? `<img src="${escapeHtml(val.photoUrl)}" alt="">`
+            : appInitial;
 
-          // monta a lista de contas
+          // lista de contas
           let accountsHtml = '';
           if (accountCount === 0) {
             accountsHtml = `<div class="acc-empty">Ninguém logou com este token ainda.</div>`;
@@ -375,21 +479,22 @@
 
           div.innerHTML = `
             <div class="token-header">
-              <div>
-                <div class="token-name">${ICONS.app}<span>${escapeHtml(val.appName)}</span></div>
-                <div class="token-domain">${hasDomain ? escapeHtml(domains.join(', ')) : 'Sem domínio'}</div>
+              <div class="token-main">
+                <div class="token-logo">${appLogoHTML}</div>
+                <div class="token-text">
+                  <div class="token-name">${ICONS.app}<span>${escapeHtml(val.appName)}</span></div>
+                  <div class="token-domain">${escapeHtml(val.description || 'Sem descrição')}</div>
+                </div>
               </div>
               <div class="token-accounts" data-action="toggle-accounts" data-token="${token}">
                 ${ICONS.users}<span>${accountCount}</span>
               </div>
             </div>
             <div class="token-actions">
-              <button class="btn btn-sm" data-action="copy" data-url="${escapeHtml(apiUrl)}">${ICONS.copy} URL</button>
               <button class="btn btn-info btn-sm" data-action="toggle-accounts" data-token="${token}">${ICONS.eye} Ver contas (${accountCount})</button>
               <button class="btn btn-warning btn-sm" data-action="edit" data-token="${token}">${ICONS.settings}</button>
-              <button class="btn btn-danger btn-sm" data-action="delete" data-token="${token}">${ICONS.trash}</button>
             </div>
-            <div class="accounts-list" id="accounts-${token}" data-loaded="false">
+            <div class="accounts-list" id="accounts-${token}">
               ${accountsHtml}
             </div>
           `;
@@ -407,42 +512,75 @@
       if (!btn) return;
 
       const action = btn.dataset.action;
-      if (action === 'copy') {
-        navigator.clipboard.writeText(btn.dataset.url);
-        showToast('URL copiada', 'info');
-      } else if (action === 'edit') {
+      if (action === 'edit') {
         window.openEdit(btn.dataset.token);
-      } else if (action === 'delete') {
-        window.deleteToken(btn.dataset.token);
       } else if (action === 'toggle-accounts') {
         window.toggleAccounts(btn.dataset.token);
       }
     });
 
-    // mostra/esconde lista de contas
     window.toggleAccounts = function(token) {
       const el = document.getElementById(`accounts-${token}`);
       if (!el) return;
       el.classList.toggle('show');
     };
 
+    // ===== ABAS =====
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`.tab-content[data-content="${target}"]`).classList.add('active');
+      });
+    });
+
     window.openEdit = function(token) {
       currentEditToken = token;
       const item = allTokens.find(t => t.token === token);
       if (!item) return;
+
+      // aba ativa por padrão
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('.tab[data-tab="info"]').classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.tab-content[data-content="info"]').classList.add('active');
+
+      // preenche os campos
       editAppName.value = item.val.appName || '';
+      editDescription.value = item.val.description || '';
+      editPhotoUrl.value = item.val.photoUrl || '';
       editDomains.value = (item.val.domains || []).map(d => "https://" + d).join(', ');
       editIPs.value = (item.val.blockedIPs || []).join(', ');
+
       modalTitle.textContent = 'Configurar: ' + (item.val.appName || '');
       editModal.classList.add('active');
     };
 
     window.saveEdit = async function() {
       if (!currentEditToken) return;
+
       const appName = editAppName.value.trim();
+      const description = editDescription.value.trim();
+      const photoUrl = editPhotoUrl.value.trim();
       const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
 
       if (!appName) return showToast('Nome do app obrigatório', 'error');
+
+      // valida photoUrl se não estiver vazio
+      if (photoUrl) {
+        try {
+          const u = new URL(photoUrl);
+          if (u.protocol !== "http:" && u.protocol !== "https:") {
+            return showToast('URL da foto precisa ser http:// ou https://', 'error');
+          }
+        } catch {
+          return showToast('URL da foto inválida', 'error');
+        }
+      }
 
       const dom = normalizarDominios(editDomains.value);
 
@@ -453,6 +591,8 @@
       try {
         await update(ref(db, `tokens/${currentEditToken}`), {
           appName,
+          description,
+          photoUrl,
           domains: dom.validos,
           blockedIPs: ips
         });
@@ -472,18 +612,6 @@
     window.closeModal = function() {
       editModal.classList.remove('active');
       currentEditToken = null;
-    };
-
-    window.deleteToken = async function(token) {
-      if (!confirm('Excluir token?')) return;
-      try {
-        await remove(ref(db, `tokens/${token}`));
-        await remove(ref(db, `users/${userUID}/tokens/${token}`));
-        showToast('Token excluído', 'success');
-        loadTokens();
-      } catch (error) {
-        showToast('Erro: ' + error.message, 'error');
-      }
     };
 
     document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
