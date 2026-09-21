@@ -200,7 +200,6 @@
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
     import { getDatabase, ref, get, set, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-    // ⚙️ CONFIG
     const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
     const firebaseConfig = {
@@ -218,9 +217,9 @@
     const db   = getDatabase(app);
 
     const urlParams = new URLSearchParams(window.location.search);
-    const appToken         = urlParams.get('token');         // token do app
-    const authId           = urlParams.get('authid');        // authId do Worker (obrigatório)
-    const redirectUrlParam = urlParams.get('redirecturl');   // OBRIGATÓRIO
+    const appToken         = urlParams.get('token');
+    const authId           = urlParams.get('authid');
+    const redirectUrlParam = urlParams.get('redirecturl');
 
     let currentUser = null;
     let clientIP = '';
@@ -238,7 +237,6 @@
     document.getElementById('themeDark').addEventListener('click', () => aplicarTema('dark'));
     document.getElementById('themeLight').addEventListener('click', () => aplicarTema('light'));
 
-    // ===== HELPERS =====
     function setStatus(txt) {
       document.getElementById('status').textContent = txt;
     }
@@ -266,7 +264,9 @@
       window.location.href = params.toString() ? `${base}?${params}` : base;
     }
 
-    // ===== VALIDAR DOMÍNIO =====
+    // ============================================
+    // VALIDAR DOMÍNIO — SÓ HTTPS
+    // ============================================
     function validarDominio(tokenData, redirectUrl) {
       let lista = [];
       const raw = tokenData.domains;
@@ -275,26 +275,62 @@
       else if (raw && typeof raw === "object") lista = Object.values(raw);
       else if (typeof raw === "string") lista = [raw];
 
+      // normaliza: sempre sem protocolo, só o hostname
       lista = lista
         .map(d => String(d || "").trim().toLowerCase())
-        .map(d => d.replace(/^https?:\/\//, "").replace(/\/+$/, ""))
+        .map(d => d.replace(/^https?:\/\//, "").replace(/\/+$/, "").split("/")[0])
         .filter(Boolean);
 
       if (lista.length === 0) {
         return { ok: false, erro: "Este token não tem domínios configurados." };
       }
 
-      let host;
-      try { host = new URL(redirectUrl).hostname.toLowerCase(); }
+      if (!redirectUrl) {
+        return { ok: false, erro: "redirecturl não informado." };
+      }
+
+      const urlLower = redirectUrl.toLowerCase();
+
+      // bloqueia tudo que não for https
+      if (urlLower.startsWith("http://")) {
+        return { ok: false, erro: "Apenas HTTPS é permitido. Use https://" };
+      }
+      if (
+        urlLower.startsWith("file://") ||
+        urlLower.startsWith("about:") ||
+        urlLower.startsWith("data:") ||
+        urlLower.startsWith("blob:") ||
+        urlLower.startsWith("javascript:")
+      ) {
+        return { ok: false, erro: "URL inválida: use https://" };
+      }
+
+      let parsed;
+      try { parsed = new URL(redirectUrl); }
       catch (e) { return { ok: false, erro: "URL de redirecionamento inválida." }; }
 
-      const autorizado = lista.some(d => host === d || host.endsWith("." + d));
-      if (!autorizado) return { ok: false, erro: "Domínio não autorizado: " + host };
+      if (parsed.protocol !== "https:") {
+        return { ok: false, erro: "Apenas HTTPS é permitido. Protocolo atual: " + parsed.protocol };
+      }
 
-      return { ok: true };
+      const host = parsed.hostname.toLowerCase();
+
+      if (!host || host === "about" || host === "null") {
+        return { ok: false, erro: "Hostname inválido na URL de redirecionamento." };
+      }
+
+      const autorizado = lista.some(d => host === d || host.endsWith("." + d));
+
+      if (!autorizado) {
+        return { ok: false, erro: `Domínio não autorizado: ${host}` };
+      }
+
+      return { ok: true, host };
     }
 
-    // ===== CAPTURAR CONTA =====
+    // ============================================
+    // CAPTURAR CONTA
+    // ============================================
     async function capturarConta(token, accountData) {
       const usedSnap = await get(ref(db, `tokens/${token}/used`));
       if (usedSnap.val() === true) {
@@ -326,7 +362,6 @@
       return { ok: true };
     }
 
-    // ===== CONFIRMAR NO WORKER =====
     async function confirmarNoWorker(authIdVal, firebaseIdToken, uid) {
       const r = await fetch(`${WORKER}/ConfirmarAuth`, {
         method: "POST",
@@ -343,17 +378,14 @@
       return { status: r.status, body };
     }
 
-    // ===== VOLTAR PRA REDIRECTURL =====
     function voltarParaRedirect() {
       setTimeout(() => {
-        // 1) popup → manda opener navegar + fecha
         if (window.opener && !window.opener.closed) {
           try {
             window.opener.location.href = redirectUrlParam;
             window.close();
             return;
           } catch (e) {
-            // cross-origin → postMessage
             try {
               window.opener.postMessage({
                 type: 'AUTH_DONE',
@@ -364,8 +396,6 @@
             } catch {}
           }
         }
-
-        // 2) sem opener → navega a própria janela
         window.location.href = redirectUrlParam;
       }, 700);
     }
@@ -410,11 +440,9 @@
       contaSelecionada = conta;
     }
 
-    // ===== INIT =====
     async function init() {
       clientIP = await getClientIP();
 
-      // ==== VALIDAÇÕES OBRIGATÓRIAS ====
       if (!redirectUrlParam) {
         setStatus('❌ Falta ?redirecturl= na URL');
         return;
@@ -425,7 +453,6 @@
       }
 
       try {
-        // Se tem token do app, valida
         if (appToken) {
           tokenData = await loadTokenData(appToken);
           document.getElementById('appTitle').textContent = tokenData.appName || 'Continuar Login';
@@ -491,7 +518,6 @@
       const nome  = contaSelecionada.nome || contaSelecionada.username || 'Usuário';
       const email = contaSelecionada.email || '';
 
-      // 1) Se tem token do app, captura a conta
       if (appToken) {
         const accountData = {
           id: generateAccountId(),
@@ -512,7 +538,6 @@
         }
       }
 
-      // 2) Pega o Firebase ID token
       setStatus('Confirmando autenticação...');
       let firebaseIdToken = null;
       try {
@@ -529,7 +554,6 @@
         return;
       }
 
-      // 3) Avisa o Worker
       try {
         const resp = await confirmarNoWorker(authId, firebaseIdToken, uid);
         if (!(resp.status === 200 && resp.body?.ok)) {
@@ -539,7 +563,6 @@
         console.warn("Falha ao confirmar no Worker:", e);
       }
 
-      // 4) Volta pro redirecturl
       setStatus('✅ Autenticado! Voltando...');
       voltarParaRedirect();
     }
