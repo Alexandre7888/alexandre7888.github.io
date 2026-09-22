@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CodeHub - Developer Dashboard</title>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -66,12 +69,14 @@
     .account-row .acc-ip { font-size: 10px; color: #4a5a7a; font-family: monospace; }
     .account-row .acc-empty { font-size: 12px; color: #4a5a7a; padding: 6px 0; }
 
+    /* ===== MODAL ===== */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); padding: 20px; }
     .modal-overlay.active { display: flex; }
     .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 480px; width: 100%; color: #e8edf5; max-height: 90vh; overflow-y: auto; }
     .modal-box h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 1.1rem; }
     .modal-box h2 svg { width: 20px; height: 20px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
+    /* ===== ABAS ===== */
     .tabs { display: flex; gap: 4px; background: #0d1422; border-radius: 10px; padding: 4px; margin-bottom: 20px; flex-wrap: wrap; }
     .tab { flex: 1; min-width: 0; padding: 9px 10px; border-radius: 8px; border: none; background: transparent; color: #8b9bb8; font-weight: 600; font-size: 0.78rem; cursor: pointer; font-family: inherit; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
     .tab:hover { color: #e8edf5; }
@@ -94,9 +99,77 @@
 
     .expiry-info { margin-top: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.8rem; color: #8b9bb8; }
     .expiry-info b { color: #e8edf5; }
+
+    /* ===== PERFIL ===== */
+    .profile-btn{
+      position:fixed;top:14px;right:16px;z-index:1100;
+      width:52px;height:52px;border-radius:50%;
+      background:linear-gradient(135deg,#4361ee,#7c3aed);
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-weight:700;font-size:20px;
+      cursor:pointer;overflow:hidden;
+      border:2px solid rgba(255,255,255,.1);
+      box-shadow:0 8px 22px rgba(0,0,0,.55);
+      transition:transform .2s;user-select:none;
+    }
+    .profile-btn:hover{transform:scale(1.08)}
+    .profile-btn img{width:100%;height:100%;object-fit:cover}
+
+    .profile-dropdown{
+      position:fixed;top:76px;right:16px;z-index:1120;
+      min-width:220px;
+      background:rgba(10,15,28,0.95);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      border:1px solid #1f2a44;border-radius:16px;
+      padding:8px;box-shadow:0 20px 50px rgba(0,0,0,.6);
+      display:none;animation:appShellFade .2s ease;
+    }
+    .profile-dropdown.active{display:block}
+    @keyframes appShellFade{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+    .profile-dropdown-header{padding:12px 14px;border-bottom:1px solid #1f2a44;margin-bottom:6px}
+    .profile-dropdown-header .name{color:#e8edf5;font-weight:600;font-size:.9rem}
+    .profile-dropdown-header .email{color:#8b9bb8;font-size:.75rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .profile-dropdown-item{
+      display:flex;align-items:center;gap:10px;
+      width:100%;padding:10px 12px;border-radius:10px;
+      background:transparent;border:none;color:#e8edf5;
+      font-size:.85rem;cursor:pointer;font-family:inherit;
+      text-align:left;transition:background .15s;
+    }
+    .profile-dropdown-item:hover{background:rgba(79,140,255,.15)}
+    .profile-dropdown-item svg{width:16px;height:16px;stroke:#4cc9f0;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .profile-dropdown-item.danger{color:#ef4444}
+    .profile-dropdown-item.danger svg{stroke:#ef4444}
   </style>
 </head>
 <body>
+
+  <div id="app-menu-root"></div>
+
+  <!-- ===== PERFIL ===== -->
+  <div class="profile-btn" id="profileBtn" style="display:none;">
+    <span id="profileInitial">?</span>
+  </div>
+
+  <div class="profile-dropdown" id="profileDropdown">
+    <div class="profile-dropdown-header">
+      <div class="name" id="pdName">Usuário</div>
+      <div class="email" id="pdEmail">—</div>
+    </div>
+    <button class="profile-dropdown-item" data-action="profile">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Meu perfil</span>
+    </button>
+    <button class="profile-dropdown-item" data-action="settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>Configurações</span>
+    </button>
+    <button class="profile-dropdown-item danger" data-action="logout">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Sair</span>
+    </button>
+  </div>
 
   <div class="dashboard">
     <header class="header">
@@ -143,6 +216,7 @@
     </div>
   </div>
 
+  <!-- ===== MODAL ===== -->
   <div class="modal-overlay" id="editModal">
     <div class="modal-box">
       <h2>
@@ -233,426 +307,471 @@
     </div>
   </div>
 
+  <!-- ===== APP-MENU.JS (React) ===== -->
+  <script src="https://alexandre7888.github.io/app-menu.js"></script>
+
+  <!-- ===== APP-SHELL.JS ===== -->
   <script src="https://alexandre7888.github.io/app-shell.js"></script>
+
   <script>
-    // ============================================================
-    // AppShell no /developer (com foto de perfil no canto)
-    // ============================================================
-    const shell = new AppShell({
-      onNavigate: (view) => {
-        if (view === "home") location.assign("/");
+    // ===== SHELL =====
+    const shell = new AppShell().mount();
+
+    // ===== APP-MENU (React) =====
+    if (window.AppMenu && typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
+      const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
+      root.render(React.createElement(window.AppMenu));
+    }
+
+    // ===== PERFIL =====
+    const profileBtn      = document.getElementById('profileBtn');
+    const profileInitial  = document.getElementById('profileInitial');
+    const profileDropdown = document.getElementById('profileDropdown');
+    const pdName          = document.getElementById('pdName');
+    const pdEmail         = document.getElementById('pdEmail');
+
+    profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      profileDropdown.classList.toggle('active');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#profileDropdown') && !e.target.closest('#profileBtn')) {
+        profileDropdown.classList.remove('active');
       }
-    }).mount();
+    });
 
-    // ============================================================
-    // Firebase (mesmas configs)
-    // ============================================================
-    (async () => {
-      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
-      const { getDatabase, ref, set, get, remove, update } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js");
-      const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-        authDomain: "html-15e80.firebaseapp.com",
-        databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-        projectId: "html-15e80",
-        storageBucket: "html-15e80.appspot.com",
-        messagingSenderId: "1068148640439",
-        appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const db = getDatabase(app);
-      const auth = getAuth(app);
-
-      const MAX_TOKENS = 10;
-
-      let userUID = null;
-      let currentEditToken = null;
-      let allTokens = [];
-      const tokenList = document.getElementById('tokenList');
-      const tokenCount = document.getElementById('tokenCount');
-      const editModal = document.getElementById('editModal');
-      const editDomains = document.getElementById('editDomains');
-      const editIPs = document.getElementById('editIPs');
-      const editAppName = document.getElementById('editAppName');
-      const editDescription = document.getElementById('editDescription');
-      const editPhotoUrl = document.getElementById('editPhotoUrl');
-      const editExpiry = document.getElementById('editExpiry');
-      const expiryInfo = document.getElementById('expiryInfo');
-      const modalTitle = document.getElementById('modalTitle');
-
-      const ICONS = {
-        success: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
-        error: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-        info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
-        app: '<svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
-        users: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
-        settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
-        inbox: '<svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>',
-        eye: '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
-        clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
-      };
-
-      function showToast(message, type = 'success') {
-        const existing = document.querySelector('.toast');
-        if (existing) existing.remove();
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = ICONS[type] + '<span>' + message + '</span>';
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 4500);
-      }
-
-      function escapeHtml(s) {
-        return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      }
-
-      function generateToken(len) {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let tok = '';
-        const arr = new Uint32Array(len);
-        crypto.getRandomValues(arr);
-        for (let i = 0; i < len; i++) tok += chars.charAt(arr[i] % chars.length);
-        return tok;
-      }
-
-      function normalizarDominios(input) {
-        const partes = String(input || "").split(",").map(s => s.trim()).filter(Boolean);
-        const validos = [];
-        const invalidos = [];
-        for (const p of partes) {
-          let lower = p.toLowerCase();
-          while (lower.startsWith("https://https://")) lower = lower.slice(8);
-          if (!lower.startsWith("https://")) { invalidos.push(p + " (precisa começar com https://)"); continue; }
-          let host = lower.slice(8);
-          host = host.split("/")[0].replace(/\/+$/, "");
-          if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) { invalidos.push(p + " (domínio inválido)"); continue; }
-          validos.push(host);
+    profileDropdown.querySelectorAll('.profile-dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const action = item.dataset.action;
+        profileDropdown.classList.remove('active');
+        if (action === 'logout') {
+          if (confirm('Sair da conta?')) {
+            document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
+            location.reload();
+          }
+        } else if (action === 'profile') {
+          console.log('perfil');
+        } else if (action === 'settings') {
+          console.log('config');
         }
-        return { validos, invalidos };
-      }
+      });
+    });
 
-      async function saveToken(token, data) {
-        const base = {
-          appName: data.appName,
-          ownerUID: userUID,
-          createdAt: new Date().toISOString(),
-          domains: data.domains || [],
-          blockedIPs: data.blockedIPs || [],
-          description: "",
-          photoUrl: "",
-          expiresAt: null
-        };
-        await set(ref(db, `tokens/${token}`), base);
-        await set(ref(db, `users/${userUID}/tokens/${token}`), {
-          token: token, appName: data.appName, createdAt: base.createdAt
-        });
-        showToast('Token criado com sucesso', 'success');
+    function atualizarPerfil(user) {
+      if (user) {
+        profileBtn.style.display = 'flex';
+        pdName.textContent  = user.displayName || user.email || 'Usuário';
+        pdEmail.textContent = user.email || '';
+        if (user.photoURL) {
+          profileInitial.outerHTML = `<img id="profileInitial" src="${user.photoURL}" alt="">`;
+        } else {
+          profileInitial.textContent = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+        }
+      } else {
+        profileBtn.style.display = 'none';
+      }
+    }
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.appspot.com",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    const MAX_TOKENS = 10;
+
+    let userUID = null;
+    let currentEditToken = null;
+    let allTokens = [];
+    const tokenList = document.getElementById('tokenList');
+    const tokenCount = document.getElementById('tokenCount');
+    const editModal = document.getElementById('editModal');
+    const editDomains = document.getElementById('editDomains');
+    const editIPs = document.getElementById('editIPs');
+    const editAppName = document.getElementById('editAppName');
+    const editDescription = document.getElementById('editDescription');
+    const editPhotoUrl = document.getElementById('editPhotoUrl');
+    const editExpiry = document.getElementById('editExpiry');
+    const expiryInfo = document.getElementById('expiryInfo');
+    const modalTitle = document.getElementById('modalTitle');
+
+    const ICONS = {
+      success: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+      error: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+      info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+      app: '<svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
+      users: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+      settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+      inbox: '<svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>',
+      eye: '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+      clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+    };
+
+    function showToast(message, type = 'success') {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = ICONS[type] + '<span>' + message + '</span>';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4500);
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function generateToken(len) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let tok = '';
+      const arr = new Uint32Array(len);
+      crypto.getRandomValues(arr);
+      for (let i = 0; i < len; i++) tok += chars.charAt(arr[i] % chars.length);
+      return tok;
+    }
+
+    function normalizarDominios(input) {
+      const partes = String(input || "").split(",").map(s => s.trim()).filter(Boolean);
+      const validos = [];
+      const invalidos = [];
+      for (const p of partes) {
+        let lower = p.toLowerCase();
+        while (lower.startsWith("https://https://")) lower = lower.slice(8);
+        if (!lower.startsWith("https://")) { invalidos.push(p + " (precisa começar com https://)"); continue; }
+        let host = lower.slice(8);
+        host = host.split("/")[0].replace(/\/+$/, "");
+        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) { invalidos.push(p + " (domínio inválido)"); continue; }
+        validos.push(host);
+      }
+      return { validos, invalidos };
+    }
+
+    async function saveToken(token, data) {
+      const base = {
+        appName: data.appName,
+        ownerUID: userUID,
+        createdAt: new Date().toISOString(),
+        domains: data.domains || [],
+        blockedIPs: data.blockedIPs || [],
+        description: "",
+        photoUrl: "",
+        expiresAt: null
+      };
+      await set(ref(db, `tokens/${token}`), base);
+      await set(ref(db, `users/${userUID}/tokens/${token}`), {
+        token: token, appName: data.appName, createdAt: base.createdAt
+      });
+      showToast('Token criado com sucesso', 'success');
+      loadTokens();
+    }
+
+    async function checarExpirados() {
+      const agora = Date.now();
+      let apagados = 0;
+      for (const { token, val } of allTokens) {
+        if (val.expiresAt && val.expiresAt < agora) {
+          try {
+            await remove(ref(db, `tokens/${token}`));
+            await remove(ref(db, `users/${userUID}/tokens/${token}`));
+            apagados++;
+          } catch (e) { console.warn("Falha ao apagar expirado:", token, e); }
+        }
+      }
+      if (apagados > 0) {
+        showToast(`${apagados} token(s) expirado(s) apagado(s)`, 'info');
         loadTokens();
       }
+    }
 
-      async function checarExpirados() {
-        const agora = Date.now();
-        let apagados = 0;
-        for (const { token, val } of allTokens) {
-          if (val.expiresAt && val.expiresAt < agora) {
+    async function loadTokens() {
+      if (!userUID) return;
+      try {
+        const snap = await get(ref(db, `users/${userUID}/tokens`));
+        const meusTokens = snap.val() || {};
+        const ids = Object.keys(meusTokens);
+
+        allTokens = [];
+
+        const resultados = await Promise.all(
+          ids.map(async (id) => {
             try {
-              await remove(ref(db, `tokens/${token}`));
-              await remove(ref(db, `users/${userUID}/tokens/${token}`));
-              apagados++;
-            } catch (e) { console.warn("Falha ao apagar expirado:", token, e); }
-          }
-        }
-        if (apagados > 0) {
-          showToast(`${apagados} token(s) expirado(s) apagado(s)`, 'info');
-          loadTokens();
-        }
-      }
+              const tSnap = await get(ref(db, `tokens/${id}`));
+              if (tSnap.exists()) return { token: id, val: tSnap.val() };
+            } catch (e) { console.warn("Falha ao ler token", id, e); }
+            return null;
+          })
+        );
 
-      async function loadTokens() {
-        if (!userUID) return;
-        try {
-          const snap = await get(ref(db, `users/${userUID}/tokens`));
-          const meusTokens = snap.val() || {};
-          const ids = Object.keys(meusTokens);
+        allTokens = resultados.filter(Boolean);
+        await checarExpirados();
+        tokenCount.textContent = allTokens.length;
 
-          allTokens = [];
-
-          const resultados = await Promise.all(
-            ids.map(async (id) => {
-              try {
-                const tSnap = await get(ref(db, `tokens/${id}`));
-                if (tSnap.exists()) return { token: id, val: tSnap.val() };
-              } catch (e) { console.warn("Falha ao ler token", id, e); }
-              return null;
-            })
-          );
-
-          allTokens = resultados.filter(Boolean);
-          await checarExpirados();
-          tokenCount.textContent = allTokens.length;
-
-          if (allTokens.length === 0) {
-            tokenList.innerHTML = `<div class="empty-state">${ICONS.inbox}<h3>Nenhum token criado</h3></div>`;
-            return;
-          }
-
-          tokenList.innerHTML = '';
-
-          allTokens.forEach(({ token, val }) => {
-            const div = document.createElement('div');
-            div.className = 'token-item';
-
-            const accounts = val.tokenAccounts || {};
-            const accountIds = Object.keys(accounts);
-            const accountCount = accountIds.length;
-
-            const appInitial = (val.appName || '?').charAt(0).toUpperCase();
-            const appLogoHTML = val.photoUrl
-              ? `<img src="${escapeHtml(val.photoUrl)}" alt="">`
-              : appInitial;
-
-            let expiryBadge = '';
-            if (val.expiresAt) {
-              const data = new Date(val.expiresAt);
-              const dStr = data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-              expiryBadge = `<div style="font-size:11px;color:#f8961e;margin-top:4px;">⏱ Expira: ${escapeHtml(dStr)}</div>`;
-            }
-
-            let accountsHtml = '';
-            if (accountCount === 0) {
-              accountsHtml = `<div class="acc-empty">Ninguém logou com este token ainda.</div>`;
-            } else {
-              accountIds.forEach(accId => {
-                const acc = accounts[accId] || {};
-                const initial = (acc.nome || acc.email || '?').charAt(0).toUpperCase();
-                const avatarHTML = acc.photoUrl
-                  ? `<img src="${escapeHtml(acc.photoUrl)}" alt="">`
-                  : `<div class="acc-avatar">${initial}</div>`;
-                accountsHtml += `
-                  <div class="account-row">
-                    ${avatarHTML}
-                    <div class="acc-info">
-                      <div class="acc-nome">${escapeHtml(acc.nome || 'Sem nome')}</div>
-                      <div class="acc-email">${escapeHtml(acc.email || 'sem email')}</div>
-                      <div class="acc-ip">${escapeHtml(acc.ip || '')}</div>
-                    </div>
-                  </div>
-                `;
-              });
-            }
-
-            div.innerHTML = `
-              <div class="token-header">
-                <div class="token-main">
-                  <div class="token-logo">${appLogoHTML}</div>
-                  <div class="token-text">
-                    <div class="token-name">${ICONS.app}<span>${escapeHtml(val.appName)}</span></div>
-                    <div class="token-domain">${escapeHtml(val.description || 'Sem descrição')}</div>
-                    ${expiryBadge}
-                  </div>
-                </div>
-                <div class="token-accounts" data-action="toggle-accounts" data-token="${token}">
-                  ${ICONS.users}<span>${accountCount}</span>
-                </div>
-              </div>
-              <div class="token-actions">
-                <button class="btn btn-info btn-sm" data-action="toggle-accounts" data-token="${token}">${ICONS.eye} Ver contas (${accountCount})</button>
-                <button class="btn btn-warning btn-sm" data-action="edit" data-token="${token}">${ICONS.settings}</button>
-              </div>
-              <div class="accounts-list" id="accounts-${token}">
-                ${accountsHtml}
-              </div>
-            `;
-
-            tokenList.appendChild(div);
-          });
-
-        } catch (e) {
-          showToast('Erro ao carregar tokens: ' + e.message, 'error');
-        }
-      }
-
-      tokenList.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-action], .token-accounts');
-        if (!btn) return;
-        const action = btn.dataset.action;
-        if (action === 'edit') window.openEdit(btn.dataset.token);
-        else if (action === 'toggle-accounts') window.toggleAccounts(btn.dataset.token);
-      });
-
-      window.toggleAccounts = function(token) {
-        const el = document.getElementById(`accounts-${token}`);
-        if (!el) return;
-        el.classList.toggle('show');
-      };
-
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          const target = tab.dataset.tab;
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-          document.querySelector(`.tab-content[data-content="${target}"]`).classList.add('active');
-        });
-      });
-
-      function tsParaInputLocal(ts) {
-        if (!ts) return "";
-        const d = new Date(ts);
-        const pad = n => String(n).padStart(2, "0");
-        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      }
-
-      function inputLocalParaTs(valor) {
-        if (!valor) return null;
-        const d = new Date(valor);
-        if (isNaN(d.getTime())) return null;
-        return d.getTime();
-      }
-
-      window.openEdit = function(token) {
-        currentEditToken = token;
-        const item = allTokens.find(t => t.token === token);
-        if (!item) return;
-
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelector('.tab[data-tab="info"]').classList.add('active');
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        document.querySelector('.tab-content[data-content="info"]').classList.add('active');
-
-        editAppName.value = item.val.appName || '';
-        editDescription.value = item.val.description || '';
-        editPhotoUrl.value = item.val.photoUrl || '';
-
-        const domains = item.val.domains || [];
-        editDomains.value = domains.map(d => {
-          const limpo = String(d).replace(/^https?:\/\//i, '');
-          return "https://" + limpo;
-        }).join(', ');
-
-        editIPs.value = (item.val.blockedIPs || []).join(', ');
-        editExpiry.value = tsParaInputLocal(item.val.expiresAt);
-
-        if (item.val.expiresAt) {
-          const data = new Date(item.val.expiresAt);
-          expiryInfo.innerHTML = `⏱ <b>Expira em:</b> ${data.toLocaleString('pt-BR')}`;
-        } else {
-          expiryInfo.textContent = "Nenhuma data de validade definida.";
-        }
-
-        modalTitle.textContent = 'Configurar: ' + (item.val.appName || '');
-        editModal.classList.add('active');
-      };
-
-      window.saveEdit = async function() {
-        if (!currentEditToken) return;
-
-        const appName = editAppName.value.trim();
-        const description = editDescription.value.trim();
-        const photoUrl = editPhotoUrl.value.trim();
-        const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
-        const domainsInput = editDomains.value.trim();
-
-        if (!appName) return showToast('Nome do app obrigatório', 'error');
-
-        if (photoUrl) {
-          try {
-            const u = new URL(photoUrl);
-            if (u.protocol !== "http:" && u.protocol !== "https:") {
-              return showToast('URL da foto precisa ser http:// ou https://', 'error');
-            }
-          } catch { return showToast('URL da foto inválida', 'error'); }
-        }
-
-        let dominiosValidos = [];
-        if (domainsInput) {
-          const dom = normalizarDominios(domainsInput);
-          if (dom.invalidos.length > 0) {
-            return showToast('Domínios inválidos: ' + dom.invalidos.join(' | '), 'error');
-          }
-          dominiosValidos = dom.validos;
-        } else {
-          const item = allTokens.find(t => t.token === currentEditToken);
-          dominiosValidos = item?.val?.domains || [];
-        }
-
-        const expiresAt = inputLocalParaTs(editExpiry.value);
-
-        try {
-          await update(ref(db, `tokens/${currentEditToken}`), {
-            appName, description, photoUrl,
-            domains: dominiosValidos,
-            blockedIPs: ips,
-            expiresAt
-          });
-          await update(ref(db, `users/${userUID}/tokens/${currentEditToken}`), { appName });
-          showToast('Configurações salvas', 'success');
-          closeModal();
-          loadTokens();
-        } catch (e) {
-          showToast('Erro: ' + e.message, 'error');
-        }
-      };
-
-      window.closeModal = function() {
-        editModal.classList.remove('active');
-        currentEditToken = null;
-      };
-
-      window.confirmarDeleteToken = async function() {
-        if (!currentEditToken) return;
-        if (!confirm('⚠️ Tem certeza que quer apagar esse token? Essa ação é permanente.')) return;
-        try {
-          await remove(ref(db, `tokens/${currentEditToken}`));
-          await remove(ref(db, `users/${userUID}/tokens/${currentEditToken}`));
-          showToast('Token apagado', 'success');
-          closeModal();
-          loadTokens();
-        } catch (e) {
-          showToast('Erro: ' + e.message, 'error');
-        }
-      };
-
-      document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (!userUID) return showToast('Faça login primeiro', 'error');
-        if (allTokens.length >= MAX_TOKENS) return showToast(`Limite de ${MAX_TOKENS} tokens atingido`, 'error');
-
-        const name = document.getElementById('appName').value.trim();
-        const size = parseInt(document.getElementById('tokenSize').value);
-
-        if (!name) return showToast('Digite um nome', 'error');
-        if (size < 20 || size > 200) return showToast('Tamanho entre 20 e 200', 'error');
-
-        const token = generateToken(size);
-        await saveToken(token, { appName: name });
-        document.getElementById('appName').value = '';
-      });
-
-      editModal.addEventListener('click', (e) => {
-        if (e.target === editModal) closeModal();
-      });
-
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth';
+        if (allTokens.length === 0) {
+          tokenList.innerHTML = `<div class="empty-state">${ICONS.inbox}<h3>Nenhum token criado</h3></div>`;
           return;
         }
-        userUID = user.uid;
 
-        // seta o usuário no shell (foto do perfil aparece)
-        shell.setUser({
-          name: user.displayName || user.email || "Usuário",
-          email: user.email || "",
-          photoUrl: user.photoURL || null
+        tokenList.innerHTML = '';
+
+        allTokens.forEach(({ token, val }) => {
+          const div = document.createElement('div');
+          div.className = 'token-item';
+
+          const accounts = val.tokenAccounts || {};
+          const accountIds = Object.keys(accounts);
+          const accountCount = accountIds.length;
+
+          const appInitial = (val.appName || '?').charAt(0).toUpperCase();
+          const appLogoHTML = val.photoUrl
+            ? `<img src="${escapeHtml(val.photoUrl)}" alt="">`
+            : appInitial;
+
+          let expiryBadge = '';
+          if (val.expiresAt) {
+            const data = new Date(val.expiresAt);
+            const dStr = data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+            expiryBadge = `<div style="font-size:11px;color:#f8961e;margin-top:4px;">⏱ Expira: ${escapeHtml(dStr)}</div>`;
+          }
+
+          let accountsHtml = '';
+          if (accountCount === 0) {
+            accountsHtml = `<div class="acc-empty">Ninguém logou com este token ainda.</div>`;
+          } else {
+            accountIds.forEach(accId => {
+              const acc = accounts[accId] || {};
+              const initial = (acc.nome || acc.email || '?').charAt(0).toUpperCase();
+              const avatarHTML = acc.photoUrl
+                ? `<img src="${escapeHtml(acc.photoUrl)}" alt="">`
+                : `<div class="acc-avatar">${initial}</div>`;
+              accountsHtml += `
+                <div class="account-row">
+                  ${avatarHTML}
+                  <div class="acc-info">
+                    <div class="acc-nome">${escapeHtml(acc.nome || 'Sem nome')}</div>
+                    <div class="acc-email">${escapeHtml(acc.email || 'sem email')}</div>
+                    <div class="acc-ip">${escapeHtml(acc.ip || '')}</div>
+                  </div>
+                </div>
+              `;
+            });
+          }
+
+          div.innerHTML = `
+            <div class="token-header">
+              <div class="token-main">
+                <div class="token-logo">${appLogoHTML}</div>
+                <div class="token-text">
+                  <div class="token-name">${ICONS.app}<span>${escapeHtml(val.appName)}</span></div>
+                  <div class="token-domain">${escapeHtml(val.description || 'Sem descrição')}</div>
+                  ${expiryBadge}
+                </div>
+              </div>
+              <div class="token-accounts" data-action="toggle-accounts" data-token="${token}">
+                ${ICONS.users}<span>${accountCount}</span>
+              </div>
+            </div>
+            <div class="token-actions">
+              <button class="btn btn-info btn-sm" data-action="toggle-accounts" data-token="${token}">${ICONS.eye} Ver contas (${accountCount})</button>
+              <button class="btn btn-warning btn-sm" data-action="edit" data-token="${token}">${ICONS.settings}</button>
+            </div>
+            <div class="accounts-list" id="accounts-${token}">
+              ${accountsHtml}
+            </div>
+          `;
+
+          tokenList.appendChild(div);
         });
 
-        loadTokens();
+      } catch (e) {
+        showToast('Erro ao carregar tokens: ' + e.message, 'error');
+      }
+    }
+
+    tokenList.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action], .token-accounts');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (action === 'edit') window.openEdit(btn.dataset.token);
+      else if (action === 'toggle-accounts') window.toggleAccounts(btn.dataset.token);
+    });
+
+    window.toggleAccounts = function(token) {
+      const el = document.getElementById(`accounts-${token}`);
+      if (!el) return;
+      el.classList.toggle('show');
+    };
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`.tab-content[data-content="${target}"]`).classList.add('active');
       });
-    })();
+    });
+
+    function tsParaInputLocal(ts) {
+      if (!ts) return "";
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function inputLocalParaTs(valor) {
+      if (!valor) return null;
+      const d = new Date(valor);
+      if (isNaN(d.getTime())) return null;
+      return d.getTime();
+    }
+
+    window.openEdit = function(token) {
+      currentEditToken = token;
+      const item = allTokens.find(t => t.token === token);
+      if (!item) return;
+
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('.tab[data-tab="info"]').classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.tab-content[data-content="info"]').classList.add('active');
+
+      editAppName.value = item.val.appName || '';
+      editDescription.value = item.val.description || '';
+      editPhotoUrl.value = item.val.photoUrl || '';
+
+      const domains = item.val.domains || [];
+      editDomains.value = domains.map(d => {
+        const limpo = String(d).replace(/^https?:\/\//i, '');
+        return "https://" + limpo;
+      }).join(', ');
+
+      editIPs.value = (item.val.blockedIPs || []).join(', ');
+      editExpiry.value = tsParaInputLocal(item.val.expiresAt);
+
+      if (item.val.expiresAt) {
+        const data = new Date(item.val.expiresAt);
+        expiryInfo.innerHTML = `⏱ <b>Expira em:</b> ${data.toLocaleString('pt-BR')}`;
+      } else {
+        expiryInfo.textContent = "Nenhuma data de validade definida.";
+      }
+
+      modalTitle.textContent = 'Configurar: ' + (item.val.appName || '');
+      editModal.classList.add('active');
+    };
+
+    window.saveEdit = async function() {
+      if (!currentEditToken) return;
+
+      const appName = editAppName.value.trim();
+      const description = editDescription.value.trim();
+      const photoUrl = editPhotoUrl.value.trim();
+      const ips = editIPs.value.split(',').map(s => s.trim()).filter(s => s);
+      const domainsInput = editDomains.value.trim();
+
+      if (!appName) return showToast('Nome do app obrigatório', 'error');
+
+      if (photoUrl) {
+        try {
+          const u = new URL(photoUrl);
+          if (u.protocol !== "http:" && u.protocol !== "https:") {
+            return showToast('URL da foto precisa ser http:// ou https://', 'error');
+          }
+        } catch { return showToast('URL da foto inválida', 'error'); }
+      }
+
+      let dominiosValidos = [];
+      if (domainsInput) {
+        const dom = normalizarDominios(domainsInput);
+        if (dom.invalidos.length > 0) {
+          return showToast('Domínios inválidos: ' + dom.invalidos.join(' | '), 'error');
+        }
+        dominiosValidos = dom.validos;
+      } else {
+        const item = allTokens.find(t => t.token === currentEditToken);
+        dominiosValidos = item?.val?.domains || [];
+      }
+
+      const expiresAt = inputLocalParaTs(editExpiry.value);
+
+      try {
+        await update(ref(db, `tokens/${currentEditToken}`), {
+          appName, description, photoUrl,
+          domains: dominiosValidos,
+          blockedIPs: ips,
+          expiresAt
+        });
+        await update(ref(db, `users/${userUID}/tokens/${currentEditToken}`), { appName });
+        showToast('Configurações salvas', 'success');
+        closeModal();
+        loadTokens();
+      } catch (e) {
+        showToast('Erro: ' + e.message, 'error');
+      }
+    };
+
+    window.closeModal = function() {
+      editModal.classList.remove('active');
+      currentEditToken = null;
+    };
+
+    window.confirmarDeleteToken = async function() {
+      if (!currentEditToken) return;
+      if (!confirm('⚠️ Tem certeza que quer apagar esse token? Essa ação é permanente.')) return;
+      try {
+        await remove(ref(db, `tokens/${currentEditToken}`));
+        await remove(ref(db, `users/${userUID}/tokens/${currentEditToken}`));
+        showToast('Token apagado', 'success');
+        closeModal();
+        loadTokens();
+      } catch (e) {
+        showToast('Erro: ' + e.message, 'error');
+      }
+    };
+
+    document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!userUID) return showToast('Faça login primeiro', 'error');
+      if (allTokens.length >= MAX_TOKENS) return showToast(`Limite de ${MAX_TOKENS} tokens atingido`, 'error');
+
+      const name = document.getElementById('appName').value.trim();
+      const size = parseInt(document.getElementById('tokenSize').value);
+
+      if (!name) return showToast('Digite um nome', 'error');
+      if (size < 20 || size > 200) return showToast('Tamanho entre 20 e 200', 'error');
+
+      const token = generateToken(size);
+      await saveToken(token, { appName: name });
+      document.getElementById('appName').value = '';
+    });
+
+    editModal.addEventListener('click', (e) => {
+      if (e.target === editModal) closeModal();
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth';
+        return;
+      }
+      userUID = user.uid;
+      atualizarPerfil(user);
+      loadTokens();
+    });
   </script>
 </body>
 </html>
