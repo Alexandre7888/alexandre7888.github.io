@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CodeHub - Developer Dashboard</title>
+
+  <!-- React + ReactDOM (mesmo do index) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', sans-serif; background: #0a0e17; color: #e8edf5; padding: 20px; }
@@ -43,16 +48,7 @@
 
     .token-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 12px; }
     .token-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-    .token-logo {
-      width: 44px; height: 44px; border-radius: 12px;
-      flex-shrink: 0;
-      background: linear-gradient(135deg, #4361ee, #7c3aed);
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-weight: 700; font-size: 18px;
-      text-transform: uppercase;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
+    .token-logo { width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; background: linear-gradient(135deg, #4361ee, #7c3aed); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; text-transform: uppercase; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
     .token-logo img { width: 100%; height: 100%; object-fit: cover; }
     .token-text { flex: 1; min-width: 0; }
     .token-name { display: flex; align-items: center; gap: 8px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -63,154 +59,52 @@
     .token-accounts svg { width: 12px; height: 12px; stroke: #4cc9f0; fill: none; stroke-width: 2; }
     .token-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 
-    .accounts-list {
-      margin-top: 12px;
-      padding: 12px;
-      background: rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px;
-      display: none;
-    }
+    .accounts-list { margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; display: none; }
     .accounts-list.show { display: block; }
-    .account-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 8px 10px;
-      background: #0d1422;
-      border-radius: 8px;
-      margin-bottom: 6px;
-      font-size: 13px;
-    }
+    .account-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #0d1422; border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
     .account-row:last-child { margin-bottom: 0; }
-    .account-row img,
-    .account-row .acc-avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      flex-shrink: 0;
-      object-fit: cover;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #4361ee, #7c3aed);
-      color: #fff; font-weight: 700; font-size: 14px;
-      text-transform: uppercase;
-    }
+    .account-row img, .account-row .acc-avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; object-fit: cover; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; font-weight: 700; font-size: 14px; text-transform: uppercase; }
     .account-row .acc-info { flex: 1; min-width: 0; }
     .account-row .acc-nome { font-weight: 600; color: #e8edf5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .account-row .acc-email { font-size: 11px; color: #8b9bb8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .account-row .acc-ip { font-size: 10px; color: #4a5a7a; font-family: monospace; }
     .account-row .acc-empty { font-size: 12px; color: #4a5a7a; padding: 6px 0; }
 
-    /* ===== MODAL ===== */
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85);
-      display: none; justify-content: center; align-items: center;
-      z-index: 1000;
-      backdrop-filter: blur(6px);
-      padding: 20px;
-    }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); padding: 20px; }
     .modal-overlay.active { display: flex; }
-    .modal-box {
-      background: #111927;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 24px;
-      max-width: 480px;
-      width: 100%;
-      color: #e8edf5;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    .modal-box h2 {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 20px; font-size: 1.1rem;
-    }
+    .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 480px; width: 100%; color: #e8edf5; max-height: 90vh; overflow-y: auto; }
+    .modal-box h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 1.1rem; }
     .modal-box h2 svg { width: 20px; height: 20px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-    /* ===== ABAS ===== */
-    .tabs {
-      display: flex;
-      gap: 4px;
-      background: #0d1422;
-      border-radius: 10px;
-      padding: 4px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-    .tab {
-      flex: 1;
-      min-width: 0;
-      padding: 9px 10px;
-      border-radius: 8px;
-      border: none;
-      background: transparent;
-      color: #8b9bb8;
-      font-weight: 600;
-      font-size: 0.78rem;
-      cursor: pointer;
-      font-family: inherit;
-      transition: 0.2s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      white-space: nowrap;
-    }
+    .tabs { display: flex; gap: 4px; background: #0d1422; border-radius: 10px; padding: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab { flex: 1; min-width: 0; padding: 9px 10px; border-radius: 8px; border: none; background: transparent; color: #8b9bb8; font-weight: 600; font-size: 0.78rem; cursor: pointer; font-family: inherit; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
     .tab:hover { color: #e8edf5; }
     .tab.active { background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; box-shadow: 0 4px 12px rgba(67,97,238,0.3); }
     .tab svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-    /* Aba Restrito — fica vermelha quando ativa */
-    .tab.tab-restrito.active {
-      background: linear-gradient(135deg, #f72585, #b5179e);
-      box-shadow: 0 4px 12px rgba(247,37,133,0.4);
-    }
+    .tab.tab-restrito.active { background: linear-gradient(135deg, #f72585, #b5179e); box-shadow: 0 4px 12px rgba(247,37,133,0.4); }
     .tab.tab-restrito:hover { color: #f72585; }
     .tab.tab-restrito.active:hover { color: #fff; }
-
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Aviso vermelho da aba restrito */
-    .warn-box {
-      background: rgba(247,37,133,0.08);
-      border: 1px solid rgba(247,37,133,0.3);
-      border-left: 4px solid #f72585;
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 16px;
-      font-size: 0.82rem;
-      color: #ff8ab8;
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-    .warn-box svg {
-      width: 18px; height: 18px;
-      stroke: #f72585; fill: none;
-      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
+    .warn-box { background: rgba(247,37,133,0.08); border: 1px solid rgba(247,37,133,0.3); border-left: 4px solid #f72585; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.82rem; color: #ff8ab8; display: flex; gap: 10px; align-items: flex-start; }
+    .warn-box svg { width: 18px; height: 18px; stroke: #f72585; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin-top: 1px; }
 
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-actions .btn { flex: 1; }
 
-    .btn-danger-solid {
-      background: linear-gradient(135deg, #f72585, #b5179e);
-      box-shadow: 0 4px 12px rgba(247,37,133,0.3);
-    }
+    .btn-danger-solid { background: linear-gradient(135deg, #f72585, #b5179e); box-shadow: 0 4px 12px rgba(247,37,133,0.3); }
     .btn-danger-solid:hover { box-shadow: 0 4px 18px rgba(247,37,133,0.5); }
 
-    .expiry-info {
-      margin-top: 12px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.03);
-      border-radius: 8px;
-      font-size: 0.8rem;
-      color: #8b9bb8;
-    }
+    .expiry-info { margin-top: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.8rem; color: #8b9bb8; }
     .expiry-info b { color: #e8edf5; }
   </style>
 </head>
 <body>
+
+  <!-- 🔥 Aqui é onde o AppMenu vai renderizar -->
+  <div id="app-menu-root"></div>
+
   <div class="dashboard">
     <header class="header">
       <div class="logo">Code<span style="color:#6b7a9f;">Hub</span></div>
@@ -256,7 +150,6 @@
     </div>
   </div>
 
-  <!-- ===== MODAL DE CONFIGURAÇÃO ===== -->
   <div class="modal-overlay" id="editModal">
     <div class="modal-box">
       <h2>
@@ -264,7 +157,6 @@
         <span id="modalTitle">Configurar App</span>
       </h2>
 
-      <!-- Abas -->
       <div class="tabs">
         <button class="tab active" data-tab="info" type="button">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -284,7 +176,6 @@
         </button>
       </div>
 
-      <!-- Aba: Informações -->
       <div class="tab-content active" data-content="info">
         <div class="form-group">
           <label>Nome do App</label>
@@ -301,7 +192,6 @@
         </div>
       </div>
 
-      <!-- Aba: Domínios -->
       <div class="tab-content" data-content="domains">
         <div class="form-group">
           <label>Domínios Permitidos (obrigatório começar com https://, separados por vírgula)</label>
@@ -310,7 +200,6 @@
         </div>
       </div>
 
-      <!-- Aba: Segurança -->
       <div class="tab-content" data-content="security">
         <div class="form-group">
           <label>IPs Bloqueados (separados por vírgula)</label>
@@ -319,7 +208,6 @@
         </div>
       </div>
 
-      <!-- Aba: Restrito -->
       <div class="tab-content" data-content="restrito">
         <div class="warn-box">
           <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -351,6 +239,15 @@
       </div>
     </div>
   </div>
+
+  <!-- 🔥 AppMenu (arquivo separado) -->
+  <script src="app-menu.js"></script>
+  <script>
+    if (window.AppMenu) {
+      const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
+      root.render(React.createElement(window.AppMenu));
+    }
+  </script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
@@ -423,42 +320,19 @@
       return tok;
     }
 
-    // ============================================
-    // NORMALIZAR DOMÍNIOS
-    // ============================================
     function normalizarDominios(input) {
-      const partes = String(input || "")
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean);
-
+      const partes = String(input || "").split(",").map(s => s.trim()).filter(Boolean);
       const validos = [];
       const invalidos = [];
-
       for (const p of partes) {
         let lower = p.toLowerCase();
-
-        // remove duplicações de https://
-        while (lower.startsWith("https://https://")) {
-          lower = lower.slice(8);
-        }
-
-        if (!lower.startsWith("https://")) {
-          invalidos.push(p + " (precisa começar com https://)");
-          continue;
-        }
-
+        while (lower.startsWith("https://https://")) lower = lower.slice(8);
+        if (!lower.startsWith("https://")) { invalidos.push(p + " (precisa começar com https://)"); continue; }
         let host = lower.slice(8);
         host = host.split("/")[0].replace(/\/+$/, "");
-
-        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) {
-          invalidos.push(p + " (domínio inválido)");
-          continue;
-        }
-
+        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) { invalidos.push(p + " (domínio inválido)"); continue; }
         validos.push(host);
       }
-
       return { validos, invalidos };
     }
 
@@ -473,39 +347,26 @@
         photoUrl: "",
         expiresAt: null
       };
-
       await set(ref(db, `tokens/${token}`), base);
-
       await set(ref(db, `users/${userUID}/tokens/${token}`), {
-        token: token,
-        appName: data.appName,
-        createdAt: base.createdAt
+        token: token, appName: data.appName, createdAt: base.createdAt
       });
-
       showToast('Token criado com sucesso', 'success');
       loadTokens();
     }
 
-    // ============================================
-    // VERIFICAR TOKENS EXPIRADOS
-    //   Se expiresAt < agora → apaga automaticamente
-    // ============================================
     async function checarExpirados() {
       const agora = Date.now();
       let apagados = 0;
-
       for (const { token, val } of allTokens) {
         if (val.expiresAt && val.expiresAt < agora) {
           try {
             await remove(ref(db, `tokens/${token}`));
             await remove(ref(db, `users/${userUID}/tokens/${token}`));
             apagados++;
-          } catch (e) {
-            console.warn("Falha ao apagar expirado:", token, e);
-          }
+          } catch (e) { console.warn("Falha ao apagar expirado:", token, e); }
         }
       }
-
       if (apagados > 0) {
         showToast(`${apagados} token(s) expirado(s) apagado(s)`, 'info');
         loadTokens();
@@ -514,7 +375,6 @@
 
     async function loadTokens() {
       if (!userUID) return;
-
       try {
         const snap = await get(ref(db, `users/${userUID}/tokens`));
         const meusTokens = snap.val() || {};
@@ -526,21 +386,14 @@
           ids.map(async (id) => {
             try {
               const tSnap = await get(ref(db, `tokens/${id}`));
-              if (tSnap.exists()) {
-                return { token: id, val: tSnap.val() };
-              }
-            } catch (e) {
-              console.warn("Falha ao ler token", id, e);
-            }
+              if (tSnap.exists()) return { token: id, val: tSnap.val() };
+            } catch (e) { console.warn("Falha ao ler token", id, e); }
             return null;
           })
         );
 
         allTokens = resultados.filter(Boolean);
-
-        // checa expirados
         await checarExpirados();
-
         tokenCount.textContent = allTokens.length;
 
         if (allTokens.length === 0) {
@@ -554,7 +407,6 @@
           const div = document.createElement('div');
           div.className = 'token-item';
 
-          const domains = val.domains || [];
           const accounts = val.tokenAccounts || {};
           const accountIds = Object.keys(accounts);
           const accountCount = accountIds.length;
@@ -564,7 +416,6 @@
             ? `<img src="${escapeHtml(val.photoUrl)}" alt="">`
             : appInitial;
 
-          // aviso de expiração
           let expiryBadge = '';
           if (val.expiresAt) {
             const data = new Date(val.expiresAt);
@@ -629,13 +480,9 @@
     tokenList.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-action], .token-accounts');
       if (!btn) return;
-
       const action = btn.dataset.action;
-      if (action === 'edit') {
-        window.openEdit(btn.dataset.token);
-      } else if (action === 'toggle-accounts') {
-        window.toggleAccounts(btn.dataset.token);
-      }
+      if (action === 'edit') window.openEdit(btn.dataset.token);
+      else if (action === 'toggle-accounts') window.toggleAccounts(btn.dataset.token);
     });
 
     window.toggleAccounts = function(token) {
@@ -644,22 +491,16 @@
       el.classList.toggle('show');
     };
 
-    // ===== ABAS =====
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const target = tab.dataset.tab;
-
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.querySelector(`.tab-content[data-content="${target}"]`).classList.add('active');
       });
     });
 
-    // ============================================
-    // FORMATA DATA PRO INPUT DATETIME-LOCAL
-    // ============================================
     function tsParaInputLocal(ts) {
       if (!ts) return "";
       const d = new Date(ts);
@@ -679,29 +520,22 @@
       const item = allTokens.find(t => t.token === token);
       if (!item) return;
 
-      // aba ativa por padrão
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelector('.tab[data-tab="info"]').classList.add('active');
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.querySelector('.tab-content[data-content="info"]').classList.add('active');
 
-      // preenche os campos
       editAppName.value = item.val.appName || '';
       editDescription.value = item.val.description || '';
       editPhotoUrl.value = item.val.photoUrl || '';
 
-      // não duplica https://
       const domains = item.val.domains || [];
-      editDomains.value = domains
-        .map(d => {
-          const limpo = String(d).replace(/^https?:\/\//i, '');
-          return "https://" + limpo;
-        })
-        .join(', ');
+      editDomains.value = domains.map(d => {
+        const limpo = String(d).replace(/^https?:\/\//i, '');
+        return "https://" + limpo;
+      }).join(', ');
 
       editIPs.value = (item.val.blockedIPs || []).join(', ');
-
-      // expiração
       editExpiry.value = tsParaInputLocal(item.val.expiresAt);
 
       if (item.val.expiresAt) {
@@ -726,19 +560,15 @@
 
       if (!appName) return showToast('Nome do app obrigatório', 'error');
 
-      // valida photoUrl
       if (photoUrl) {
         try {
           const u = new URL(photoUrl);
           if (u.protocol !== "http:" && u.protocol !== "https:") {
             return showToast('URL da foto precisa ser http:// ou https://', 'error');
           }
-        } catch {
-          return showToast('URL da foto inválida', 'error');
-        }
+        } catch { return showToast('URL da foto inválida', 'error'); }
       }
 
-      // 🔥 só valida domínios se o campo tiver conteúdo
       let dominiosValidos = [];
       if (domainsInput) {
         const dom = normalizarDominios(domainsInput);
@@ -751,23 +581,16 @@
         dominiosValidos = item?.val?.domains || [];
       }
 
-      // expiração
       const expiresAt = inputLocalParaTs(editExpiry.value);
 
       try {
         await update(ref(db, `tokens/${currentEditToken}`), {
-          appName,
-          description,
-          photoUrl,
+          appName, description, photoUrl,
           domains: dominiosValidos,
           blockedIPs: ips,
-          expiresAt: expiresAt  // null se vazio
+          expiresAt
         });
-
-        await update(ref(db, `users/${userUID}/tokens/${currentEditToken}`), {
-          appName
-        });
-
+        await update(ref(db, `users/${userUID}/tokens/${currentEditToken}`), { appName });
         showToast('Configurações salvas', 'success');
         closeModal();
         loadTokens();
@@ -781,13 +604,9 @@
       currentEditToken = null;
     };
 
-    // ============================================
-    // DELETAR TOKEN (chamado pela aba Restrito)
-    // ============================================
     window.confirmarDeleteToken = async function() {
       if (!currentEditToken) return;
       if (!confirm('⚠️ Tem certeza que quer apagar esse token? Essa ação é permanente.')) return;
-
       try {
         await remove(ref(db, `tokens/${currentEditToken}`));
         await remove(ref(db, `users/${userUID}/tokens/${currentEditToken}`));
@@ -801,11 +620,8 @@
 
     document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-
       if (!userUID) return showToast('Faça login primeiro', 'error');
-      if (allTokens.length >= MAX_TOKENS) {
-        return showToast(`Limite de ${MAX_TOKENS} tokens atingido`, 'error');
-      }
+      if (allTokens.length >= MAX_TOKENS) return showToast(`Limite de ${MAX_TOKENS} tokens atingido`, 'error');
 
       const name = document.getElementById('appName').value.trim();
       const size = parseInt(document.getElementById('tokenSize').value);
