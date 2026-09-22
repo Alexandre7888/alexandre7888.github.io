@@ -2,8 +2,8 @@ const { useState, useEffect, useRef } = React;
 
 const apps = [
   { id:'settings', name:'Config', icon:'⚙️', url:'https://alexandre7888.github.io/settings.html' },
-  { id:'MENSAGENS', name:'mensagens', icon:'', url:'https://app.phantora.site.je/' },
-  { id:'home', name:'Home', icon:'🏠', url:'https://alexandre7888.github.io' }
+  { id:'home', name:'Home', icon:'🏠', url:'https://alexandre7888.github.io' },
+  { id:'developer', name:'developer', icon:'', url:'https://alexandre7888.github.io/developer/'} 
 ];
 
 function AppMenu() {
