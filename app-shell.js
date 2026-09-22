@@ -1,6 +1,6 @@
 // ============================================================
 // app-shell.js
-// Componente de menu + abas (vanilla JS) — detecta pela URL
+// Menu + navegação. A foto de perfil é controlada pelo HTML.
 // ============================================================
 
 (function () {
@@ -76,65 +76,19 @@
     .app-shell-item .label small{color:#8fa0bd;font-size:.72rem;font-weight:400}
 
     .app-shell-footer{padding:18px 22px;border-top:1px solid #1f2a44;color:#8fa0bd;font-size:.72rem;text-align:center;letter-spacing:.3px}
-
-    .app-shell-profile{
-      position:fixed;top:14px;right:16px;z-index:900;
-      width:52px;height:52px;border-radius:50%;
-      background:linear-gradient(135deg,#4f8cff,#7aa8ff);
-      display:flex;align-items:center;justify-content:center;
-      color:#fff;font-weight:700;font-size:20px;
-      cursor:pointer;overflow:hidden;
-      border:2px solid rgba(255,255,255,.1);
-      box-shadow:0 8px 22px rgba(0,0,0,.55);
-      transition:transform .2s;
-      user-select:none;
-    }
-    .app-shell-profile:hover{transform:scale(1.08)}
-    .app-shell-profile img{width:100%;height:100%;object-fit:cover}
-
-    .app-shell-dropdown{
-      position:fixed;top:76px;right:16px;z-index:930;
-      min-width:220px;
-      background:rgba(10,15,28,0.95);
-      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      border:1px solid #1f2a44;border-radius:16px;
-      padding:8px;
-      box-shadow:0 20px 50px rgba(0,0,0,.6);
-      display:none;
-      animation:appShellFade .2s ease;
-    }
-    .app-shell-dropdown.active{display:block}
-    @keyframes appShellFade{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-
-    .app-shell-dropdown-header{padding:12px 14px;border-bottom:1px solid #1f2a44;margin-bottom:6px}
-    .app-shell-dropdown-header .name{color:#e8eef8;font-weight:600;font-size:.9rem}
-    .app-shell-dropdown-header .email{color:#8fa0bd;font-size:.75rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .app-shell-dropdown-item{
-      display:flex;align-items:center;gap:10px;
-      width:100%;padding:10px 12px;border-radius:10px;
-      background:transparent;border:none;color:#e8eef8;
-      font-size:.85rem;cursor:pointer;font-family:inherit;
-      text-align:left;transition:background .15s;
-    }
-    .app-shell-dropdown-item:hover{background:rgba(79,140,255,.15)}
-    .app-shell-dropdown-item svg{width:16px;height:16px;stroke:#4f8cff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    .app-shell-dropdown-item.danger svg{stroke:#ef4444}
-    .app-shell-dropdown-item.danger{color:#ef4444}
   `;
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
-    dev:  '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-    user: '<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-    gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
-    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
-    bell: '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>'
+    dev:  '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
   };
 
-  // ============================================================
-  // MAPA DE ROTAS — qual URL pertence a qual aba
-  // ============================================================
   const ROUTES = {
+    home:      "/",
+    developer: "/developer.html"
+  };
+
+  const DETECT = {
     home:      ["/", "/index.html", "/home"],
     developer: ["/developer", "/developer.html", "/dev"]
   };
@@ -149,46 +103,28 @@
 
   class AppShell {
 
-    constructor(options = {}) {
-      // NÃO usa mais onNavigate — agora navega de verdade
-      this.user        = options.user || null;
-      this.currentView = this._detectCurrentView();
-      this.isOpen      = false;
-      this._listeners  = [];
-      this._dropdownOpen = false;
+    constructor() {
+      this.currentView = this._detectView();
+      this.isOpen = false;
     }
 
-    // ============================================================
-    // DETECTA em qual view estamos baseado na URL atual
-    // ============================================================
-    _detectCurrentView() {
+    _detectView() {
       const path = window.location.pathname.replace(/\/+$/, "") || "/";
-
-      for (const [view, paths] of Object.entries(ROUTES)) {
+      for (const [view, paths] of Object.entries(DETECT)) {
         for (const p of paths) {
           const norm = p.replace(/\/+$/, "") || "/";
           if (path === norm) return view;
         }
       }
-
-      // fallback: se a URL contém "developer", é developer
       if (path.toLowerCase().includes("developer")) return "developer";
-
       return "home";
     }
 
-    // ============================================================
-    // NAVEGA pra URL correspondente da view
-    // ============================================================
     _navigateToView(view) {
-      if (view === this.currentView) return; // já tá aqui
-
-      const target = ROUTES[view] && ROUTES[view][0];
+      if (view === this.currentView) return;
+      const target = ROUTES[view];
       if (!target) return;
-
-      // se é o "/" e já tá no /, não faz nada
       if (target === "/" && window.location.pathname === "/") return;
-
       window.location.href = target;
     }
 
@@ -197,8 +133,6 @@
       this._renderMenuButton();
       this._renderOverlay();
       this._renderSideMenu();
-      this._renderProfile();
-      this._renderDropdown();
       this._attachEvents();
       this._applyView(this.currentView);
       return this;
@@ -247,89 +181,19 @@
       this._menu = menu;
     }
 
-    _renderProfile() {
-      const p = document.createElement("div");
-      p.className = "app-shell-profile";
-      p.id = "appShellProfile";
-      p.style.display = "none";
-
-      if (this.user && this.user.photoUrl) {
-        p.innerHTML = `<img src="${this.user.photoUrl}" alt="">`;
-      } else {
-        const initial = (this.user && (this.user.name || this.user.email) || "?").charAt(0).toUpperCase();
-        p.textContent = initial;
-      }
-
-      document.body.appendChild(p);
-      this._profile = p;
-    }
-
-    _renderDropdown() {
-      const dd = document.createElement("div");
-      dd.className = "app-shell-dropdown";
-      dd.id = "appShellDropdown";
-
-      const name  = (this.user && this.user.name)  || "Usuário";
-      const email = (this.user && this.user.email) || "";
-
-      dd.innerHTML = `
-        <div class="app-shell-dropdown-header">
-          <div class="name">${name}</div>
-          <div class="email">${email}</div>
-        </div>
-        <button class="app-shell-dropdown-item" data-action="profile">
-          ${ICONS.user}<span>Meu perfil</span>
-        </button>
-        <button class="app-shell-dropdown-item" data-action="settings">
-          ${ICONS.gear}<span>Configurações</span>
-        </button>
-        <button class="app-shell-dropdown-item" data-action="notifications">
-          ${ICONS.bell}<span>Notificações</span>
-        </button>
-        <button class="app-shell-dropdown-item danger" data-action="logout">
-          ${ICONS.out}<span>Sair</span>
-        </button>
-      `;
-      document.body.appendChild(dd);
-      this._dropdown = dd;
-    }
-
     _attachEvents() {
       this._btn.addEventListener("click", () => this.toggleMenu());
       this._overlay.addEventListener("click", () => this.closeMenu());
 
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          this.closeMenu();
-          this._closeDropdown();
-        }
+        if (e.key === "Escape") this.closeMenu();
       });
 
-      // clicar num item → navega pra URL de verdade
       this._menu.querySelectorAll(".app-shell-item").forEach(item => {
         item.addEventListener("click", () => {
           const view = item.dataset.view;
           this.closeMenu();
           this._navigateToView(view);
-        });
-      });
-
-      this._profile.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this._toggleDropdown();
-      });
-
-      document.addEventListener("click", (e) => {
-        if (!this._dropdownOpen) return;
-        if (e.target.closest("#appShellDropdown")) return;
-        if (e.target.closest("#appShellProfile")) return;
-        this._closeDropdown();
-      });
-
-      this._dropdown.querySelectorAll(".app-shell-dropdown-item").forEach(item => {
-        item.addEventListener("click", () => {
-          this._onDropdownAction(item.dataset.action);
-          this._closeDropdown();
         });
       });
     }
@@ -352,62 +216,59 @@
       document.body.style.overflow = "";
     }
 
-    _toggleDropdown() { this._dropdownOpen ? this._closeDropdown() : this._openDropdown(); }
-    _openDropdown() { this._dropdownOpen = true; this._dropdown.classList.add("active"); }
-    _closeDropdown() { this._dropdownOpen = false; this._dropdown.classList.remove("active"); }
-
-    _onDropdownAction(action) {
-      switch (action) {
-        case "logout":
-          if (confirm("Sair da conta?")) {
-            document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-            location.reload();
-          }
-          break;
-        case "profile":       console.log("[AppShell] profile (em breve)"); break;
-        case "settings":      console.log("[AppShell] settings (em breve)"); break;
-        case "notifications": console.log("[AppShell] notifications (em breve)"); break;
-      }
-    }
-
-    setUser(user) {
-      this.user = user;
-
-      if (user && user.photoUrl) {
-        this._profile.innerHTML = `<img src="${user.photoUrl}" alt="">`;
-      } else if (user) {
-        const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
-        this._profile.textContent = initial;
-      } else {
-        this._profile.textContent = "?";
-      }
-
-      const name  = (user && user.name)  || "Usuário";
-      const email = (user && user.email) || "";
-      const header = this._dropdown.querySelector(".app-shell-dropdown-header");
-      if (header) {
-        header.querySelector(".name").textContent  = name;
-        header.querySelector(".email").textContent = email;
-      }
-    }
-
-    // ============================================================
-    // MARCA o item ativo e decide se mostra o perfil
-    // ============================================================
     _applyView(view) {
       this._menu.querySelectorAll(".app-shell-item").forEach(item => {
         item.classList.toggle("active", item.dataset.view === view);
       });
-
-      // perfil só na view developer
-      if (view === "developer") {
-        this._profile.style.display = "flex";
-      } else {
-        this._profile.style.display = "none";
-      }
     }
   }
 
   window.AppShell = AppShell;
+
+})();
+
+// ============================================================
+// APP-MENU — carrega app-menu.js (opcional) se existir
+// ============================================================
+(function () {
+  "use strict";
+
+  // Se o HTML definiu window.AppMenu (via app-menu.js), renderiza
+  // no elemento #app-menu-root.
+  function renderAppMenu() {
+    const root = document.getElementById("app-menu-root");
+    if (!root) return;
+
+    if (typeof window.AppMenu === "undefined") {
+      console.warn("[app-shell] window.AppMenu não encontrado. app-menu.js carregado?");
+      return;
+    }
+
+    // Se React estiver carregado, usa ReactDOM
+    if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
+      try {
+        const reactRoot = ReactDOM.createRoot(root);
+        reactRoot.render(React.createElement(window.AppMenu));
+        return;
+      } catch (e) {
+        console.warn("[app-shell] Erro ao renderizar com React:", e);
+      }
+    }
+
+    // Fallback: se AppMenu for função que retorna HTML
+    if (typeof window.AppMenu === "function") {
+      try {
+        root.innerHTML = window.AppMenu();
+      } catch (e) {
+        console.warn("[app-shell] Erro no fallback:", e);
+      }
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", renderAppMenu);
+  } else {
+    renderAppMenu();
+  }
 
 })();
