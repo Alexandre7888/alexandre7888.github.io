@@ -41,7 +41,41 @@
       color:var(--text);min-height:100vh;display:flex;flex-direction:column;
       align-items:center;justify-content:center;padding:20px;
       transition:background .4s ease,color .3s ease;
+      gap:22px;
     }
+
+    /* ===== FOTO DO APP (fora do card) ===== */
+    .app-avatar-wrap{
+      width:88px;height:88px;
+      border-radius:50%;
+      position:relative;
+      display:flex;align-items:center;justify-content:center;
+      animation:fadeIn .6s;
+      flex-shrink:0;
+    }
+    .app-avatar-wrap::before{
+      content:'';
+      position:absolute;inset:-6px;
+      border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      opacity:.35;
+      filter:blur(14px);
+      z-index:0;
+    }
+    .app-avatar{
+      width:88px;height:88px;
+      border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-weight:800;font-size:34px;
+      text-transform:uppercase;
+      overflow:hidden;
+      border:3px solid var(--surface);
+      box-shadow:0 12px 30px var(--accent-glow);
+      position:relative;
+      z-index:1;
+    }
+    .app-avatar img{width:100%;height:100%;object-fit:cover}
 
     .auth-container{
       width:100%;max-width:480px;
@@ -160,10 +194,18 @@
       .theme-btn svg{width:14px;height:14px}
       .auth-content{padding:24px 20px}
       .auth-header{padding:24px 18px}
+      .app-avatar-wrap, .app-avatar{width:72px;height:72px}
+      .app-avatar{font-size:28px}
     }
   </style>
 </head>
 <body>
+
+  <!-- FOTO DO APP (acima do card, fora dele) -->
+  <div class="app-avatar-wrap" id="appAvatarWrap" style="display:none;">
+    <div class="app-avatar" id="appAvatar">?</div>
+  </div>
+
   <div class="auth-container">
     <div class="auth-header">
       <h1 id="appTitle">Continuar Login</h1>
@@ -198,7 +240,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
@@ -249,10 +291,12 @@
       return 'acc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     }
 
+    // ===== carrega dados do token via WORKER (backend) =====
     async function loadTokenData(token) {
-      const snap = await get(ref(db, `tokens/${token}`));
-      if (!snap.exists()) throw new Error('Token inválido.');
-      return snap.val();
+      const r = await fetch(`${WORKER}/TokenData?token=${encodeURIComponent(token)}`);
+      const d = await r.json();
+      if (!d.ok || !d.data) throw new Error(d.erro || 'Token inválido.');
+      return d.data;
     }
 
     function redirectToLogin() {
@@ -280,26 +324,13 @@
         .map(d => d.replace(/^https?:\/\//, "").replace(/\/+$/, "").split("/")[0])
         .filter(Boolean);
 
-      if (lista.length === 0) {
-        return { ok: false, erro: "Este token não tem domínios configurados." };
-      }
-
-      if (!redirectUrl) {
-        return { ok: false, erro: "redirecturl não informado." };
-      }
+      if (lista.length === 0) return { ok: false, erro: "Este token não tem domínios configurados." };
+      if (!redirectUrl) return { ok: false, erro: "redirecturl não informado." };
 
       const urlLower = redirectUrl.toLowerCase();
 
-      if (urlLower.startsWith("http://")) {
-        return { ok: false, erro: "Apenas HTTPS é permitido. Use https://" };
-      }
-      if (
-        urlLower.startsWith("file://") ||
-        urlLower.startsWith("about:") ||
-        urlLower.startsWith("data:") ||
-        urlLower.startsWith("blob:") ||
-        urlLower.startsWith("javascript:")
-      ) {
+      if (urlLower.startsWith("http://")) return { ok: false, erro: "Apenas HTTPS é permitido. Use https://" };
+      if (urlLower.startsWith("file://") || urlLower.startsWith("about:") || urlLower.startsWith("data:") || urlLower.startsWith("blob:") || urlLower.startsWith("javascript:")) {
         return { ok: false, erro: "URL inválida: use https://" };
       }
 
@@ -307,27 +338,19 @@
       try { parsed = new URL(redirectUrl); }
       catch (e) { return { ok: false, erro: "URL de redirecionamento inválida." }; }
 
-      if (parsed.protocol !== "https:") {
-        return { ok: false, erro: "Apenas HTTPS é permitido. Protocolo atual: " + parsed.protocol };
-      }
+      if (parsed.protocol !== "https:") return { ok: false, erro: "Apenas HTTPS é permitido. Protocolo atual: " + parsed.protocol };
 
       const host = parsed.hostname.toLowerCase();
-
-      if (!host || host === "about" || host === "null") {
-        return { ok: false, erro: "Hostname inválido na URL de redirecionamento." };
-      }
+      if (!host || host === "about" || host === "null") return { ok: false, erro: "Hostname inválido na URL de redirecionamento." };
 
       const autorizado = lista.some(d => host === d || host.endsWith("." + d));
-
-      if (!autorizado) {
-        return { ok: false, erro: `Domínio não autorizado: ${host}` };
-      }
+      if (!autorizado) return { ok: false, erro: `Domínio não autorizado: ${host}` };
 
       return { ok: true, host };
     }
 
     // ============================================
-    // CAPTURAR CONTA — agora dentro de /tokens/{token}/tokenAccounts/
+    // CAPTURAR CONTA
     // ============================================
     async function capturarConta(token, accountData) {
       try {
@@ -342,11 +365,7 @@
       const r = await fetch(`${WORKER}/ConfirmarAuth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          authId: authIdVal,
-          firebaseIdToken: firebaseIdToken,
-          uid: uid
-        })
+        body: JSON.stringify({ authId: authIdVal, firebaseIdToken, uid })
       });
       const txt = await r.text();
       let body;
@@ -363,10 +382,7 @@
             return;
           } catch (e) {
             try {
-              window.opener.postMessage({
-                type: 'AUTH_DONE',
-                url: redirectUrlParam
-              }, '*');
+              window.opener.postMessage({ type: 'AUTH_DONE', url: redirectUrlParam }, '*');
               setTimeout(() => { try { window.close(); } catch {} }, 300);
               return;
             } catch {}
@@ -416,37 +432,65 @@
       contaSelecionada = conta;
     }
 
+    // ===== aplica foto do app como favicon + avatar =====
+    function aplicarFotoDoApp(photoUrl, appName) {
+      const wrap = document.getElementById('appAvatarWrap');
+      const avatarEl = document.getElementById('appAvatar');
+
+      if (photoUrl) {
+        avatarEl.innerHTML = `<img src="${photoUrl}" alt="">`;
+        wrap.style.display = 'flex';
+
+        // favicon
+        const link = document.querySelector('link[rel="icon"]') || document.createElement('link');
+        link.rel = 'icon';
+        link.href = photoUrl;
+        document.head.appendChild(link);
+      } else {
+        // sem foto, usa inicial do nome
+        const initial = (appName || '?').charAt(0).toUpperCase();
+        avatarEl.textContent = initial;
+        wrap.style.display = 'flex';
+      }
+    }
+
     async function init() {
       clientIP = await getClientIP();
 
-      if (!redirectUrlParam) {
-        setStatus('❌ Falta ?redirecturl= na URL');
-        return;
-      }
-      if (!authId) {
-        setStatus('❌ Falta ?authid= na URL');
-        return;
-      }
+      if (!redirectUrlParam) { setStatus('❌ Falta ?redirecturl= na URL'); return; }
+      if (!authId) { setStatus('❌ Falta ?authid= na URL'); return; }
+      if (!appToken) { setStatus('❌ Falta ?token= na URL'); return; }
 
       try {
-        if (appToken) {
-          tokenData = await loadTokenData(appToken);
-          document.getElementById('appTitle').textContent = tokenData.appName || 'Continuar Login';
-          document.getElementById('appSubtitle').textContent =
-            (tokenData.domains && Object.values(tokenData.domains)[0]) || 'App';
+        // 🔥 carrega token via WORKER (não direto do Firebase)
+        tokenData = await loadTokenData(appToken);
 
-          if (tokenData.blockedIPs && tokenData.blockedIPs.includes(clientIP)) {
-            setStatus('🚫 Acesso Negado');
-            return;
-          }
+        document.getElementById('appTitle').textContent = tokenData.appName || 'Continuar Login';
 
-          const check = validarDominio(tokenData, redirectUrlParam);
-          if (!check.ok) {
-            setStatus('🚫 ' + check.erro);
-            return;
-          }
-        } else {
-          document.getElementById('appSubtitle').textContent = 'Aguardando conta';
+        // mostra foto ou inicial do app
+        aplicarFotoDoApp(tokenData.photoUrl, tokenData.appName);
+
+        // subtítulo com o domínio
+        document.getElementById('appSubtitle').textContent =
+          (tokenData.domains && Object.values(tokenData.domains)[0]) || 'App';
+
+        // ===== valida IP via campo dentro do token =====
+        if (tokenData.blockedIPs && Array.isArray(tokenData.blockedIPs) && tokenData.blockedIPs.includes(clientIP)) {
+          setStatus('🚫 Acesso Negado');
+          return;
+        }
+
+        // ===== valida expiração =====
+        if (tokenData.expiresAt && Date.now() > tokenData.expiresAt) {
+          setStatus('🚫 Token expirado');
+          return;
+        }
+
+        // ===== valida domínio =====
+        const check = validarDominio(tokenData, redirectUrlParam);
+        if (!check.ok) {
+          setStatus('🚫 ' + check.erro);
+          return;
         }
 
         setStatus('Verificando autenticação...');
@@ -488,25 +532,25 @@
       const uid   = contaSelecionada.uid;
       const nome  = contaSelecionada.nome || contaSelecionada.username || 'Usuário';
       const email = contaSelecionada.email || '';
+      const photoUrl = contaSelecionada.photoURL || null;
 
-      if (appToken) {
-        const accountData = {
-          id: generateAccountId(),
-          uid,
-          nome,
-          email,
-          ip: clientIP || 'N/A',
-          capturedAt: new Date().toISOString()
-        };
+      const accountData = {
+        id: generateAccountId(),
+        uid,
+        nome,
+        email,
+        photoUrl,
+        ip: clientIP || 'N/A',
+        capturedAt: new Date().toISOString()
+      };
 
-        setStatus('Gravando conta...');
-        const resp = await capturarConta(appToken, accountData);
+      setStatus('Gravando conta...');
+      const resp = await capturarConta(appToken, accountData);
 
-        if (!resp.ok) {
-          setStatus('❌ ' + resp.erro);
-          btn.disabled = false;
-          return;
-        }
+      if (!resp.ok) {
+        setStatus('❌ ' + resp.erro);
+        btn.disabled = false;
+        return;
       }
 
       setStatus('Confirmando autenticação...');
@@ -526,10 +570,7 @@
       }
 
       try {
-        const resp = await confirmarNoWorker(authId, firebaseIdToken, uid);
-        if (!(resp.status === 200 && resp.body?.ok)) {
-          setStatus('⚠️ ' + resp.status + ' — ' + (resp.body?.erro || 'erro'));
-        }
+        await confirmarNoWorker(authId, firebaseIdToken, uid);
       } catch (e) {
         console.warn("Falha ao confirmar no Worker:", e);
       }
