@@ -1,6 +1,6 @@
 // ============================================================
 // app-shell.js
-// Menu + navegação + perfil (foto) — tudo no componente
+// Menu + navegação + perfil (Firebase Auth incluído)
 // ============================================================
 
 (function () {
@@ -82,7 +82,7 @@
       position:fixed;top:14px;right:16px;z-index:1200;
       width:52px;height:52px;border-radius:50%;
       background:linear-gradient(135deg,#4f8cff,#7aa8ff);
-      display:flex;align-items:center;justify-content:center;
+      display:none;align-items:center;justify-content:center;
       color:#fff;font-weight:700;font-size:20px;
       cursor:pointer;overflow:hidden;
       border:2px solid rgba(255,255,255,.1);
@@ -90,8 +90,10 @@
       transition:transform .2s;
       user-select:none;
     }
+    .app-shell-profile.show{display:flex}
     .app-shell-profile:hover{transform:scale(1.08)}
-    .app-shell-profile img{width:100%;height:100%;object-fit:cover}
+    .app-shell-profile img{width:100%;height:100%;object-fit:cover;display:block}
+    .app-shell-profile span{pointer-events:none}
 
     .app-shell-dropdown{
       position:fixed;top:76px;right:16px;z-index:1230;
@@ -148,6 +150,17 @@
     developer: ["/developer", "/developer/", "/developer/index.html", "/dev"]
   };
 
+  // 🔥 Configs do Firebase Auth
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+    authDomain: "html-15e80.firebaseapp.com",
+    databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+    projectId: "html-15e80",
+    storageBucket: "html-15e80.firebasestorage.app",
+    messagingSenderId: "1068148640439",
+    appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+  };
+
   function injectStyles() {
     if (document.getElementById("app-shell-styles")) return;
     const style = document.createElement("style");
@@ -159,10 +172,12 @@
   class AppShell {
 
     constructor(options = {}) {
-      this.user        = options.user || null;
-      this.currentView = this._detectView();
-      this.isOpen      = false;
-      this._dropdownOpen = false;
+      this.user           = options.user || null;
+      this.autoFirebase   = options.autoFirebase !== false; // liga por padrão
+      this.currentView    = this._detectView();
+      this.isOpen         = false;
+      this._dropdownOpen  = false;
+      this._firebaseReady = false;
     }
 
     _detectView() {
@@ -194,7 +209,54 @@
       this._renderDropdown();
       this._attachEvents();
       this._applyView(this.currentView);
+
+      if (this.autoFirebase) {
+        this._initFirebaseAuth();
+      }
+
       return this;
+    }
+
+    // ============================================================
+    // Firebase Auth — escuta e chama setUser automaticamente
+    // ============================================================
+    async _initFirebaseAuth() {
+      try {
+        const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
+        const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
+
+        // evita inicializar duas vezes
+        let app;
+        if (getApps && getApps().length) {
+          app = getApps()[0];
+        } else {
+          app = initializeApp(FIREBASE_CONFIG);
+        }
+
+        const auth = getAuth(app);
+        this._auth = auth;
+
+        onAuthStateChanged(auth, (user) => {
+          if (user) {
+            this.setUser({
+              name: user.displayName || user.email || "Usuário",
+              email: user.email || "",
+              photoUrl: user.photoURL || null,
+              uid: user.uid
+            });
+          } else {
+            this.setUser(null);
+          }
+        });
+
+        this._firebaseReady = true;
+
+        // expõe globalmente pra debug
+        window.shell = this;
+
+      } catch (e) {
+        console.warn("[AppShell] Firebase Auth falhou:", e.message);
+      }
     }
 
     _renderMenuButton() {
@@ -244,13 +306,7 @@
       const p = document.createElement("div");
       p.className = "app-shell-profile";
       p.id = "appShellProfile";
-      p.style.display = "none";
-
-      const initial = (this.user && (this.user.name || this.user.email) || "?").charAt(0).toUpperCase();
-      p.innerHTML = this.user && this.user.photoUrl
-        ? `<img src="${this.user.photoUrl}" alt="">`
-        : `<span>${initial}</span>`;
-
+      p.innerHTML = `<span>?</span>`;
       document.body.appendChild(p);
       this._profile = p;
     }
@@ -260,13 +316,10 @@
       dd.className = "app-shell-dropdown";
       dd.id = "appShellDropdown";
 
-      const name  = (this.user && this.user.name)  || "Usuário";
-      const email = (this.user && this.user.email) || "";
-
       dd.innerHTML = `
         <div class="app-shell-dropdown-header">
-          <div class="name">${name}</div>
-          <div class="email">${email}</div>
+          <div class="name">Usuário</div>
+          <div class="email">—</div>
         </div>
         <button class="app-shell-dropdown-item" data-action="profile">
           ${ICONS.user}<span>Meu perfil</span>
@@ -348,12 +401,18 @@
 
     _onDropdownAction(action) {
       switch (action) {
-        case "logout":
+        case "logout": {
+          const go = () => location.reload();
           if (confirm("Sair da conta?")) {
             document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-            location.reload();
+            if (this._auth) {
+              this._auth.signOut().then(go).catch(go);
+            } else {
+              go();
+            }
           }
           break;
+        }
         case "profile":       console.log("[AppShell] profile (em breve)"); break;
         case "settings":      console.log("[AppShell] settings (em breve)"); break;
         case "notifications": console.log("[AppShell] notifications (em breve)"); break;
@@ -363,34 +422,37 @@
     setUser(user) {
       this.user = user;
 
-      if (user && user.photoUrl) {
-        this._profile.innerHTML = `<img src="${user.photoUrl}" alt="">`;
-      } else if (user) {
-        const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
-        this._profile.innerHTML = `<span>${initial}</span>`;
-      } else {
-        this._profile.innerHTML = `<span>?</span>`;
+      if (!user) {
+        this._profile.classList.remove("show");
+        return;
       }
 
-      const name  = (user && user.name)  || "Usuário";
-      const email = (user && user.email) || "";
+      // mostra o botão
+      this._profile.classList.add("show");
+
+      // avatar (foto do Firebase)
+      if (user.photoUrl) {
+        this._profile.innerHTML = `<img src="${user.photoUrl}" alt="" referrerpolicy="no-referrer">`;
+      } else {
+        const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
+        this._profile.innerHTML = `<span>${initial}</span>`;
+      }
+
+      // header do dropdown
       const header = this._dropdown.querySelector(".app-shell-dropdown-header");
       if (header) {
-        header.querySelector(".name").textContent  = name;
-        header.querySelector(".email").textContent = email;
+        header.querySelector(".name").textContent  = user.name || "Usuário";
+        header.querySelector(".email").textContent = user.email || "";
       }
     }
 
-    showProfile() { this._profile.style.display = "flex"; }
-    hideProfile() { this._profile.style.display = "none"; }
+    showProfile() { this._profile.classList.add("show"); }
+    hideProfile() { this._profile.classList.remove("show"); }
 
     _applyView(view) {
       this._menu.querySelectorAll(".app-shell-item").forEach(item => {
         item.classList.toggle("active", item.dataset.view === view);
       });
-
-      // perfil aparece em TODAS as views
-      this.showProfile();
     }
   }
 
@@ -399,7 +461,7 @@
 })();
 
 // ============================================================
-// Carrega AppMenu (React) no #app-menu-root, se existir
+// AppMenu (React) — renderiza no #app-menu-root se existir
 // ============================================================
 (function () {
   function renderAppMenu() {
@@ -413,8 +475,7 @@
 
     if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
       try {
-        const reactRoot = ReactDOM.createRoot(root);
-        reactRoot.render(React.createElement(window.AppMenu));
+        ReactDOM.createRoot(root).render(React.createElement(window.AppMenu));
         return;
       } catch (e) {
         console.warn("[app-shell] Erro React:", e);
