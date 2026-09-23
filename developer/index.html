@@ -69,14 +69,12 @@
     .account-row .acc-ip { font-size: 10px; color: #4a5a7a; font-family: monospace; }
     .account-row .acc-empty { font-size: 12px; color: #4a5a7a; padding: 6px 0; }
 
-    /* ===== MODAL ===== */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); padding: 20px; }
     .modal-overlay.active { display: flex; }
     .modal-box { background: #111927; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; max-width: 520px; width: 100%; color: #e8edf5; max-height: 90vh; overflow-y: auto; }
     .modal-box h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 1.1rem; }
     .modal-box h2 svg { width: 20px; height: 20px; stroke: #4cc9f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-    /* ===== ABAS ===== */
     .tabs { display: flex; gap: 4px; background: #0d1422; border-radius: 10px; padding: 4px; margin-bottom: 20px; flex-wrap: wrap; }
     .tab { flex: 1; min-width: 0; padding: 9px 10px; border-radius: 8px; border: none; background: transparent; color: #8b9bb8; font-weight: 600; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
     .tab:hover { color: #e8edf5; }
@@ -88,44 +86,12 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* ===== SCOPES ===== */
-    .scope-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 12px;
-      background: #0d1422;
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
+    .scope-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; }
     .scope-item:hover { border-color: rgba(67,97,238,0.3); }
-    .scope-item input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      margin-top: 2px;
-      flex-shrink: 0;
-      accent-color: #4361ee;
-      cursor: pointer;
-    }
-    .scope-item span {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      flex: 1;
-    }
-    .scope-item b {
-      color: #e8edf5;
-      font-size: 0.9rem;
-      font-family: monospace;
-    }
-    .scope-item small {
-      color: #8b9bb8;
-      font-size: 0.75rem;
-      line-height: 1.4;
-    }
+    .scope-item input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: #4361ee; cursor: pointer; }
+    .scope-item span { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .scope-item b { color: #e8edf5; font-size: 0.9rem; font-family: monospace; }
+    .scope-item small { color: #8b9bb8; font-size: 0.75rem; line-height: 1.4; }
 
     .warn-box { background: rgba(247,37,133,0.08); border: 1px solid rgba(247,37,133,0.3); border-left: 4px solid #f72585; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.82rem; color: #ff8ab8; display: flex; gap: 10px; align-items: flex-start; }
     .warn-box svg { width: 18px; height: 18px; stroke: #f72585; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin-top: 1px; }
@@ -189,7 +155,6 @@
     </div>
   </div>
 
-  <!-- ===== MODAL ===== -->
   <div class="modal-overlay" id="editModal">
     <div class="modal-box">
       <h2>
@@ -220,7 +185,6 @@
         </button>
       </div>
 
-      <!-- Info -->
       <div class="tab-content active" data-content="info">
         <div class="form-group">
           <label>Nome do App</label>
@@ -237,7 +201,6 @@
         </div>
       </div>
 
-      <!-- Domínios -->
       <div class="tab-content" data-content="domains">
         <div class="form-group">
           <label>Domínios Permitidos (https://, separados por vírgula)</label>
@@ -246,7 +209,6 @@
         </div>
       </div>
 
-      <!-- Segurança -->
       <div class="tab-content" data-content="security">
         <div class="form-group">
           <label>IPs Bloqueados (separados por vírgula)</label>
@@ -255,7 +217,6 @@
         </div>
       </div>
 
-      <!-- Scopes -->
       <div class="tab-content" data-content="scopes">
         <div class="form-group">
           <label>Permissões do App</label>
@@ -265,14 +226,13 @@
             <input type="checkbox" id="scopeAppAuthCreateToken" />
             <span>
               <b>AppAuthCreateToken</b>
-              <small>Permite gerar um Firebase ID Token novo a partir do uid gravado no authId (via Google Script).</small>
+              <small>Permite gerar um token novo a partir do token do dono do app.</small>
             </span>
           </label>
 
         </div>
       </div>
 
-      <!-- Restrito -->
       <div class="tab-content" data-content="restrito">
         <div class="warn-box">
           <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -609,7 +569,6 @@
       editIPs.value = (item.val.blockedIPs || []).join(', ');
       editExpiry.value = tsParaInputLocal(item.val.expiresAt);
 
-      // scopes
       const scopes = item.val.scopes || {};
       scopeAppAuthCreateToken.checked = scopes.AppAuthCreateToken === true;
 
