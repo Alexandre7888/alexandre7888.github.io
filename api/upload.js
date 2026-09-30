@@ -1,71 +1,25 @@
 export default async function handler(req, res) {
-  // CORS aberto
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
-  const { upload, atualiza, file } = req.query;
+  const googleUrl =
+    "https://docs.google.com/spreadsheets/d/1hbJf2P67V6SpRJIcc04Ck0EinH5iNRHV4XDZQZB__i0/gviz/tq?tqx=out:json";
 
   try {
+    const response = await fetch(googleUrl);
+    const text = await response.text();
 
-    // 📤 UPLOAD NOVO
-    if (upload) {
-      const base64 = "data:text/plain;base64," + upload;
+    const jsonText = text
+      .replace(/^[\s\S]*?setResponse\(/, "")
+      .replace(/\);\s*$/, "");
 
-      const ikRes = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
-        method: "POST",
-        headers: {
-          Authorization: "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ":").toString("base64"),
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          file: base64,
-          fileName: "arquivo.txt"
-        })
-      });
+    const data = JSON.parse(jsonText);
 
-      const ikData = await ikRes.json();
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
 
-      return res.status(200).json({
-        fileId: ikData.fileId,
-        url: ikData.url
-      });
-    }
-
-    // 🔄 ATUALIZAR (deleta e envia novo)
-    if (atualiza && file) {
-      const base64 = "data:text/plain;base64," + file;
-
-      // deleta antigo
-      await fetch(`https://api.imagekit.io/v1/files/${atualiza}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ":").toString("base64")
-        }
-      });
-
-      // envia novo
-      const ikRes = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
-        method: "POST",
-        headers: {
-          Authorization: "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ":").toString("base64"),
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          file: base64,
-          fileName: "arquivo.txt"
-        })
-      });
-
-      const ikData = await ikRes.json();
-
-      return res.status(200).json({
-        fileId: ikData.fileId,
-        url: ikData.url
-      });
-    }
-
-    return res.status(400).json({ error: "Use ?upload= ou ?atualiza=" });
-
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(500).json({
+      error: "Erro ao buscar a planilha",
+      details: error.message
+    });
   }
 }
