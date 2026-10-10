@@ -12,7 +12,7 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-  <!-- ===== ONESIGNAL ===== -->
+  <!-- ===== ONESIGNAL (sem botão padrão) ===== -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -21,7 +21,7 @@
         appId: "5475922c-e999-4b42-b743-c7cde90db378",
         safari_web_id: "web.onesignal.auto.3a869b75-1942-4792-8237-9de8041a4c17",
         notifyButton: {
-          enable: true,
+          enable: false,
         },
       });
     });
