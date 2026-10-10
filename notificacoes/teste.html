@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teste de Notificação · CodeHUB</title>
+  <title>Enviar Notificação · CodeHUB</title>
+  <link rel="icon" type="image/png" href="https://alexandre7888.github.io/InShot_20250807_112151490.jpg">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{
@@ -15,7 +16,7 @@
       padding:20px;
     }
     .box{
-      width:100%;max-width:420px;
+      width:100%;max-width:440px;
       background:#101626;
       border:1px solid #1f2a44;
       border-radius:20px;
@@ -23,48 +24,137 @@
       box-shadow:0 20px 50px rgba(0,0,0,.5);
     }
     h1{
-      font-size:1.1rem;
-      margin-bottom:20px;
-      display:flex;align-items:center;gap:8px;
+      font-size:1.15rem;
+      margin-bottom:18px;
+      display:flex;align-items:center;gap:10px;
     }
-    h1 svg{width:20px;height:20px;stroke:#4f8cff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    label{display:block;font-size:.75rem;color:#8fa0bd;margin-bottom:6px;font-weight:600}
-    input,textarea{
-      width:100%;padding:10px 12px;
-      background:#151c30;border:1.5px solid #1f2a44;border-radius:10px;
-      color:#e8eef8;font-family:inherit;font-size:.85rem;
-      margin-bottom:14px;outline:none;transition:.2s;
+    h1 svg{width:22px;height:22px;stroke:#4f8cff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+    .user-info{
+      background:#151c30;
+      border:1px solid #1f2a44;
+      border-radius:12px;
+      padding:12px 14px;
+      font-size:.75rem;
+      color:#8fa0bd;
+      line-height:1.6;
+      margin-bottom:16px;
+      display:none;
+    }
+    .user-info.show{display:block}
+    .user-info strong{color:#7aa8ff}
+    .user-info code{
+      background:rgba(79,140,255,.12);
+      color:#7aa8ff;
+      padding:2px 6px;
+      border-radius:4px;
+      font-size:.7rem;
       word-break:break-all;
     }
-    input:focus,textarea:focus{border-color:#4f8cff;box-shadow:0 0 0 3px rgba(79,140,255,.15)}
-    textarea{resize:vertical;min-height:60px;line-height:1.4}
+
+    label{
+      display:block;
+      font-size:.75rem;
+      color:#8fa0bd;
+      margin-bottom:6px;
+      font-weight:600;
+      letter-spacing:.3px;
+    }
+    input,textarea{
+      width:100%;
+      padding:10px 12px;
+      background:#151c30;
+      border:1.5px solid #1f2a44;
+      border-radius:10px;
+      color:#e8eef8;
+      font-family:inherit;
+      font-size:.85rem;
+      margin-bottom:14px;
+      outline:none;
+      transition:.2s;
+      word-break:break-all;
+    }
+    input:focus,textarea:focus{
+      border-color:#4f8cff;
+      box-shadow:0 0 0 3px rgba(79,140,255,.15);
+    }
+    input[readonly]{opacity:.7;cursor:not-allowed}
+    textarea{resize:vertical;min-height:70px;line-height:1.4}
+
     .btn{
-      width:100%;padding:13px;border:none;border-radius:12px;
-      color:#fff;font-family:inherit;font-size:.9rem;font-weight:700;
-      cursor:pointer;transition:.2s;
+      width:100%;
+      padding:13px;
+      border:none;
+      border-radius:12px;
+      color:#fff;
+      font-family:inherit;
+      font-size:.9rem;
+      font-weight:700;
+      cursor:pointer;
+      transition:.2s;
       display:flex;align-items:center;justify-content:center;gap:8px;
+      margin-bottom:10px;
     }
     .btn:disabled{opacity:.5;cursor:not-allowed}
     .btn:active:not(:disabled){transform:scale(.98)}
     .btn svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-    .btn-primary{background:linear-gradient(135deg,#4f8cff,#7aa8ff);box-shadow:0 8px 24px rgba(79,140,255,.35);margin-bottom:12px}
-    .btn-primary:hover:not(:disabled){transform:translateY(-2px)}
-    .btn-success{background:linear-gradient(135deg,#16a34a,#22c55e);box-shadow:0 8px 24px rgba(34,197,94,.35)}
-    .btn-success:hover:not(:disabled){transform:translateY(-2px)}
+
+    .btn-login{
+      background:linear-gradient(135deg,#16a34a,#22c55e);
+      box-shadow:0 8px 24px rgba(34,197,94,.35);
+    }
+    .btn-login:hover:not(:disabled){transform:translateY(-2px)}
+
+    .btn-token{
+      background:linear-gradient(135deg,#7c3aed,#a855f7);
+      box-shadow:0 8px 24px rgba(168,85,247,.35);
+    }
+    .btn-token:hover:not(:disabled){transform:translateY(-2px)}
+
+    .btn-send{
+      background:linear-gradient(135deg,#4f8cff,#7aa8ff);
+      box-shadow:0 8px 24px rgba(79,140,255,.35);
+    }
+    .btn-send:hover:not(:disabled){transform:translateY(-2px)}
+
     .status{
-      margin-top:6px;padding:11px 14px;border-radius:10px;
-      font-size:.78rem;display:none;line-height:1.5;word-break:break-word;
+      margin-top:6px;
+      padding:11px 14px;
+      border-radius:10px;
+      font-size:.78rem;
+      display:none;
+      line-height:1.5;
+      word-break:break-word;
     }
     .status.show{display:block}
     .status.ok{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
     .status.err{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
     .status.load{background:rgba(79,140,255,.12);color:#7aa8ff;border:1px solid rgba(79,140,255,.3)}
+    .status.warn{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
+
     .loader{
       width:16px;height:16px;
-      border:2.5px solid rgba(255,255,255,.2);border-top-color:#fff;
-      border-radius:50%;animation:spin .7s linear infinite;
+      border:2.5px solid rgba(255,255,255,.2);
+      border-top-color:#fff;
+      border-radius:50%;
+      animation:spin .7s linear infinite;
     }
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    .divider{
+      height:1px;
+      background:#1f2a44;
+      margin:18px 0;
+    }
+
+    .section-title{
+      font-size:.7rem;
+      text-transform:uppercase;
+      letter-spacing:1px;
+      color:#5b6b85;
+      margin-bottom:10px;
+      font-weight:700;
+    }
   </style>
 </head>
 <body>
@@ -72,128 +162,265 @@
 <div class="box">
   <h1>
     <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-    Teste de Notificação
+    Enviar Notificação
   </h1>
 
-  <label>URL do Worker</label>
-  <input type="url" id="workerUrl" placeholder="https://seu-worker.workers.dev">
+  <!-- ===== ESTADO DO USUÁRIO ===== -->
+  <div class="user-info show" id="userInfo">
+    ⏳ Verificando login...
+  </div>
 
-  <label>UID do Usuário</label>
-  <input type="text" id="uid" placeholder="Ex: abc123xyz (uid do Firebase)">
-
-  <button class="btn btn-primary" id="btnGen">
-    <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-    GERAR TOKEN
+  <!-- ===== LOGIN ===== -->
+  <button class="btn btn-login" id="btnLogin" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+    ENTRAR COM GOOGLE
   </button>
 
-  <label>Token</label>
-  <input type="text" id="tokenid" readonly placeholder="Clique em GERAR TOKEN">
-
-  <label>Título</label>
-  <input type="text" id="title" value="Teste CodeHUB">
-
-  <label>Mensagem</label>
-  <textarea id="message">Olá! Isso é um teste 🎉</textarea>
-
-  <button class="btn btn-success" id="btnSend">
-    <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-    ENVIAR NOTIFICAÇÃO
+  <button class="btn btn-token" id="btnLogout" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    SAIR
   </button>
 
-  <div class="status" id="status"></div>
+  <!-- ===== URL DO WORKER ===== -->
+  <div id="sendArea" style="display:none">
+    <div class="divider"></div>
+
+    <div class="section-title">Configuração</div>
+
+    <label>URL do Worker</label>
+    <input type="url" id="workerUrl" placeholder="https://seu-worker.workers.dev">
+
+    <div class="divider"></div>
+
+    <div class="section-title">Notificação</div>
+
+    <label>Título *</label>
+    <input type="text" id="title" value="Teste CodeHUB" maxlength="80">
+
+    <label>Mensagem *</label>
+    <textarea id="message" maxlength="200">Olá! Isso é um teste 🎉</textarea>
+
+    <label>URL (opcional)</label>
+    <input type="url" id="url" placeholder="https://codehub.site.je">
+
+    <label>Imagem (opcional)</label>
+    <input type="url" id="image" placeholder="https://exemplo.com/banner.jpg">
+
+    <label>Ícone (opcional)</label>
+    <input type="url" id="icon" placeholder="https://exemplo.com/icon.png">
+
+    <div class="divider"></div>
+
+    <button class="btn btn-send" id="btnSend">
+      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      ENVIAR NOTIFICAÇÃO
+    </button>
+
+    <div class="status" id="status"></div>
+  </div>
 </div>
 
-<script>
+<!-- ============================================ -->
+<!-- FIREBASE SDK -->
+<!-- ============================================ -->
+<script type="module">
+  import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth,
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+    authDomain: "html-15e80.firebaseapp.com",
+    databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+    projectId: "html-15e80",
+    storageBucket: "html-15e80.firebasestorage.app",
+    messagingSenderId: "1068148640439",
+    appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+  };
+
+  const app  = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+  const auth = getAuth(app);
+
+  // ============================================
+  // ELEMENTOS
+  // ============================================
+  const elUserInfo  = document.getElementById("userInfo");
+  const elBtnLogin  = document.getElementById("btnLogin");
+  const elBtnLogout = document.getElementById("btnLogout");
+  const elSendArea  = document.getElementById("sendArea");
   const elWorkerUrl = document.getElementById("workerUrl");
-  const elUid       = document.getElementById("uid");
-  const elTokenId   = document.getElementById("tokenid");
   const elTitle     = document.getElementById("title");
   const elMessage   = document.getElementById("message");
-  const elBtnGen    = document.getElementById("btnGen");
+  const elUrl       = document.getElementById("url");
+  const elImage     = document.getElementById("image");
+  const elIcon      = document.getElementById("icon");
   const elBtnSend   = document.getElementById("btnSend");
   const elStatus    = document.getElementById("status");
 
-  // Persistência
+  // Persistência da URL do Worker
   elWorkerUrl.value = localStorage.getItem("ch_worker") || "";
-  elUid.value       = localStorage.getItem("ch_uid") || "";
-  elWorkerUrl.addEventListener("input", () => localStorage.setItem("ch_worker", elWorkerUrl.value.trim()));
-  elUid.addEventListener("input",       () => localStorage.setItem("ch_uid",    elUid.value.trim()));
+  elWorkerUrl.addEventListener("input", () => {
+    localStorage.setItem("ch_worker", elWorkerUrl.value.trim());
+  });
 
-  function base(){
-    const v = elWorkerUrl.value.trim().replace(/\/+$/, "");
-    if (!v) throw new Error("Preencha a URL do Worker");
-    return v;
-  }
-  function setStatus(msg, type){
+  let currentUser = null;
+
+  // ============================================
+  // HELPERS
+  // ============================================
+  function setStatus(msg, type = ""){
     elStatus.className = "status show " + type;
     elStatus.innerHTML = msg;
   }
+  function clearStatus(){
+    elStatus.className = "status";
+    elStatus.innerHTML = "";
+  }
+  function setUserInfo(html){
+    elUserInfo.innerHTML = html;
+  }
 
-  // ============== GERAR TOKEN ==============
-  elBtnGen.addEventListener("click", async () => {
-    const uid = elUid.value.trim();
-    if (!uid){ setStatus("Preencha o UID.", "err"); return; }
-
-    elBtnGen.disabled = true;
-    elBtnGen.innerHTML = `<div class="loader"></div> Gerando...`;
-    setStatus("Gerando token...", "load");
-
+  // ============================================
+  // LOGIN
+  // ============================================
+  elBtnLogin.addEventListener("click", async () => {
+    elBtnLogin.disabled = true;
+    elBtnLogin.innerHTML = `<div class="loader"></div> Entrando...`;
     try {
-      const r = await fetch(`${base()}/GenerateUserToken`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid })
-      });
-      const data = await r.json();
-
-      if (!r.ok || !data.ok) throw new Error(data.erro || "Erro");
-
-      elTokenId.value = data.token;
-      setStatus(`✅ Token gerado para UID <code>${data.uid}</code>`, "ok");
-
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
     } catch (e){
-      setStatus(`❌ ${e.message}`, "err");
+      setUserInfo(`❌ Erro ao entrar: ${e.message}`);
     } finally {
-      elBtnGen.disabled = false;
-      elBtnGen.innerHTML = `<svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> GERAR TOKEN`;
+      elBtnLogin.disabled = false;
+      elBtnLogin.innerHTML = `<svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> ENTRAR COM GOOGLE`;
     }
   });
 
-  // ============== ENVIAR ==============
-  elBtnSend.addEventListener("click", async () => {
-    const tokenid = elTokenId.value.trim();
-    const title   = elTitle.value.trim();
-    const message = elMessage.value.trim();
+  elBtnLogout.addEventListener("click", async () => {
+    if (confirm("Sair da conta?")){
+      await signOut(auth);
+    }
+  });
 
-    if (!tokenid){ setStatus("Gere o token primeiro.", "err"); return; }
-    if (!title || !message){ setStatus("Preencha título e mensagem.", "err"); return; }
+  // ============================================
+  // ESCUTA AUTENTICAÇÃO
+  // ============================================
+  onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+
+    if (user){
+      setUserInfo(
+        `<strong>✅ Autenticado</strong><br>` +
+        `Email: <code>${user.email || "—"}</code><br>` +
+        `UID: <code>${user.uid}</code>`
+      );
+      elBtnLogin.style.display = "none";
+      elBtnLogout.style.display = "flex";
+      elSendArea.style.display = "block";
+    } else {
+      setUserInfo(
+        `⚠️ <strong>Não está logado</strong><br>` +
+        `Faça login com Google pra gerar o ID Token.`
+      );
+      elBtnLogin.style.display = "flex";
+      elBtnLogout.style.display = "none";
+      elSendArea.style.display = "none";
+    }
+  });
+
+  // ============================================
+  // ENVIAR NOTIFICAÇÃO
+  // ============================================
+  elBtnSend.addEventListener("click", async () => {
+    clearStatus();
+
+    if (!currentUser){
+      setStatus("Você precisa estar logado.", "err");
+      return;
+    }
+
+    const workerUrl = elWorkerUrl.value.trim().replace(/\/+$/, "");
+    const title     = elTitle.value.trim();
+    const message   = elMessage.value.trim();
+    const url       = elUrl.value.trim();
+    const image     = elImage.value.trim();
+    const icon      = elIcon.value.trim();
+
+    if (!workerUrl){
+      setStatus("Preencha a URL do Worker.", "err");
+      elWorkerUrl.focus();
+      return;
+    }
+    if (!title || !message){
+      setStatus("Preencha título e mensagem.", "err");
+      return;
+    }
 
     elBtnSend.disabled = true;
     elBtnSend.innerHTML = `<div class="loader"></div> Enviando...`;
-    setStatus("Enviando...", "load");
+    setStatus("Pegando ID Token do Firebase...", "load");
 
     try {
-      const r = await fetch(`${base()}/SendNotification?tokenid=${encodeURIComponent(tokenid)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, message })
-      });
+      // 1) Pega o ID Token (JWT) do usuário
+      const token = await currentUser.getIdToken(true);
+
+      setStatus("Enviando notificação via Worker...", "load");
+
+      // 2) Monta o body
+      const body = { title, message };
+      if (url)   body.url   = url;
+      if (image) body.image = image;
+      if (icon)  body.icon  = icon;
+
+      // 3) Chama o Worker
+      const r = await fetch(
+        `${workerUrl}/SendNotification?tokenid=${encodeURIComponent(token)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        }
+      );
+
       const data = await r.json();
 
-      if (!r.ok || !data.ok) throw new Error(data.erro || "Erro");
+      if (!r.ok || !data.ok){
+        setStatus(
+          `❌ ${data.erro || "Erro desconhecido"}` +
+          (data.detalhe ? `<br><code>${JSON.stringify(data.detalhe)}</code>` : ""),
+          "err"
+        );
+        return;
+      }
 
       setStatus(
-        `🎉 Enviada!<br>` +
+        `🎉 Enviada com sucesso!<br>` +
+        `• UID: <code>${data.uid}</code><br>` +
         `• Dispositivos: <strong>${data.total_dispositivos}</strong><br>` +
-        `• Entregues: <strong>${data.recipients || 0}</strong>`,
+        `• Entregues: <strong>${data.recipients || 0}</strong><br>` +
+        `• ID: <code>${data.onesignal_id || "—"}</code>`,
         "ok"
       );
 
     } catch (e){
       setStatus(`❌ ${e.message}`, "err");
+      console.error(e);
     } finally {
       elBtnSend.disabled = false;
       elBtnSend.innerHTML = `<svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> ENVIAR NOTIFICAÇÃO`;
+    }
+  });
+
+  // Atalho Ctrl+Enter
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key === "Enter" && !elBtnSend.disabled && elSendArea.style.display !== "none"){
+      elBtnSend.click();
     }
   });
 </script>
