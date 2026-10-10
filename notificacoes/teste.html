@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste de Notificação · CodeHUB</title>
+  <link rel="icon" type="image/png" href="https://alexandre7888.github.io/InShot_20250807_112151490.jpg">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      min-height:100vh;
+      font-family:'Segoe UI',system-ui,sans-serif;
+      background:radial-gradient(circle at 30% 20%,#0a0e1a,#05070f);
+      color:#e8eef8;
+      display:flex;align-items:center;justify-content:center;
+      padding:20px;
+    }
+    .box{
+      width:100%;max-width:440px;
+      background:#101626;
+      border:1px solid #1f2a44;
+      border-radius:20px;
+      padding:26px;
+      box-shadow:0 20px 50px rgba(0,0,0,.5);
+    }
+    h1{
+      font-size:1.15rem;
+      margin-bottom:18px;
+      display:flex;align-items:center;gap:8px;
+    }
+    h1 svg{width:22px;height:22px;stroke:#4f8cff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+    label{
+      display:block;
+      font-size:.75rem;
+      color:#8fa0bd;
+      margin-bottom:6px;
+      font-weight:600;
+      letter-spacing:.3px;
+    }
+
+    input,textarea{
+      width:100%;
+      padding:10px 12px;
+      background:#151c30;
+      border:1.5px solid #1f2a44;
+      border-radius:10px;
+      color:#e8eef8;
+      font-family:inherit;
+      font-size:.85rem;
+      margin-bottom:14px;
+      outline:none;
+      transition:.2s;
+      word-break:break-all;
+    }
+    input:focus,textarea:focus{
+      border-color:#4f8cff;
+      box-shadow:0 0 0 3px rgba(79,140,255,.15);
+    }
+    textarea{resize:vertical;min-height:60px;line-height:1.4}
+
+    .btn{
+      width:100%;
+      padding:13px;
+      border:none;
+      border-radius:12px;
+      color:#fff;
+      font-family:inherit;
+      font-size:.9rem;
+      font-weight:700;
+      cursor:pointer;
+      transition:.2s;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    }
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn:active:not(:disabled){transform:scale(.98)}
+    .btn svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+    .btn-primary{
+      background:linear-gradient(135deg,#4f8cff,#7aa8ff);
+      box-shadow:0 8px 24px rgba(79,140,255,.35);
+      margin-bottom:10px;
+    }
+    .btn-primary:hover:not(:disabled){transform:translateY(-2px)}
+
+    .btn-secondary{
+      background:#151c30;
+      border:1.5px solid #2d3b5c;
+      color:#7aa8ff;
+      margin-bottom:10px;
+    }
+    .btn-secondary:hover:not(:disabled){border-color:#4f8cff}
+
+    .btn-success{
+      background:linear-gradient(135deg,#16a34a,#22c55e);
+      box-shadow:0 8px 24px rgba(34,197,94,.35);
+    }
+    .btn-success:hover:not(:disabled){transform:translateY(-2px)}
+
+    .status{
+      margin-top:6px;
+      padding:11px 14px;
+      border-radius:10px;
+      font-size:.78rem;
+      display:none;
+      line-height:1.5;
+      word-break:break-word;
+    }
+    .status.show{display:block}
+    .status.ok{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+    .status.err{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+    .status.load{background:rgba(79,140,255,.12);color:#7aa8ff;border:1px solid rgba(79,140,255,.3)}
+    .status.warn{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
+
+    .hint{
+      font-size:.7rem;
+      color:#5b6b85;
+      margin-top:-8px;
+      margin-bottom:14px;
+    }
+
+    .steps{
+      background:#151c30;
+      border:1px solid #1f2a44;
+      border-radius:12px;
+      padding:14px;
+      font-size:.75rem;
+      color:#8fa0bd;
+      line-height:1.7;
+      margin-bottom:16px;
+    }
+    .steps strong{color:#7aa8ff}
+    .steps code{
+      background:rgba(79,140,255,.12);
+      color:#7aa8ff;
+      padding:2px 6px;
+      border-radius:4px;
+      font-size:.7rem;
+    }
+
+    .loader{
+      width:16px;height:16px;
+      border:2.5px solid rgba(255,255,255,.2);
+      border-top-color:#fff;
+      border-radius:50%;
+      animation:spin .7s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .copy-btn{
+      background:transparent;
+      border:none;
+      color:#7aa8ff;
+      font-size:.7rem;
+      cursor:pointer;
+      float:right;
+      font-family:inherit;
+      padding:2px 6px;
+      border-radius:4px;
+      transition:.2s;
+    }
+    .copy-btn:hover{background:rgba(79,140,255,.15)}
+
+    .row{display:flex;gap:8px}
+    .row .btn{flex:1}
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h1>
+    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    Teste de Notificação
+  </h1>
+
+  <div class="steps">
+    <strong>1.</strong> Configura a URL do Worker abaixo<br>
+    <strong>2.</strong> Gera um <code>authId</code> e faz login<br>
+    <strong>3.</strong> Espera o token aparecer<br>
+    <strong>4.</strong> Clica em <strong>ENVIAR</strong> e recebe a push
+  </div>
+
+  <label>URL do Worker</label>
+  <input type="url" id="workerUrl" placeholder="https://seu-worker.workers.dev" value="">
+
+  <label>URL de Login (opcional)</label>
+  <input type="url" id="loginUrl" placeholder="https://app.codehub.site.je/login" value="">
+
+  <button class="btn btn-secondary" id="btnAuth">
+    <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+    GERAR AUTENTICAÇÃO
+  </button>
+
+  <div class="status" id="status1"></div>
+
+  <div id="tokenArea" style="display:none;margin-top:14px">
+    <label>Token do Usuário <button class="copy-btn" id="copyToken">📋 copiar</button></label>
+    <input type="text" id="tokenid" readonly>
+
+    <label>Título</label>
+    <input type="text" id="title" value="Teste CodeHUB">
+
+    <label>Mensagem</label>
+    <textarea id="message">Olá! Isso é um teste 🎉</textarea>
+
+    <button class="btn btn-success" id="btnSend">
+      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      ENVIAR NOTIFICAÇÃO
+    </button>
+
+    <div class="status" id="status2"></div>
+  </div>
+</div>
+
+<script>
+  // ============================================
+  // ELEMENTOS
+  // ============================================
+  const elWorkerUrl = document.getElementById("workerUrl");
+  const elLoginUrl  = document.getElementById("loginUrl");
+  const elBtnAuth   = document.getElementById("btnAuth");
+  const elBtnSend   = document.getElementById("btnSend");
+  const elTokenArea = document.getElementById("tokenArea");
+  const elTokenId   = document.getElementById("tokenid");
+  const elTitle     = document.getElementById("title");
+  const elMessage   = document.getElementById("message");
+  const elStatus1   = document.getElementById("status1");
+  const elStatus2   = document.getElementById("status2");
+  const elCopy      = document.getElementById("copyToken");
+
+  // ============================================
+  // Persistência local (não precisa redigitar)
+  // ============================================
+  elWorkerUrl.value = localStorage.getItem("codehub_worker_url") || "";
+  elLoginUrl.value  = localStorage.getItem("codehub_login_url")  || "";
+  elWorkerUrl.addEventListener("input", () => localStorage.setItem("codehub_worker_url", elWorkerUrl.value.trim()));
+  elLoginUrl.addEventListener("input",  () => localStorage.setItem("codehub_login_url",  elLoginUrl.value.trim()));
+
+  // ============================================
+  // HELPERS
+  // ============================================
+  function setStatus(el, msg, type){
+    el.className = "status show " + type;
+    el.innerHTML = msg;
+  }
+  function clearStatus(el){
+    el.className = "status";
+    el.innerHTML = "";
+  }
+
+  function workerBase(){
+    const v = elWorkerUrl.value.trim().replace(/\/+$/, "");
+    if (!v) throw new Error("Preencha a URL do Worker");
+    return v;
+  }
+
+  // ============================================
+  // 1) GERAR AUTENTICAÇÃO
+  // ============================================
+  elBtnAuth.addEventListener("click", async () => {
+    clearStatus(elStatus1);
+    elBtnAuth.disabled = true;
+    elBtnAuth.innerHTML = `<div class="loader"></div> Gerando...`;
+
+    try {
+      const base = workerBase();
+
+      // Cria authId
+      const r = await fetch(`${base}/CreateAuthId`);
+      const data = await r.json();
+
+      if (!r.ok || !data.ok || !data.authId){
+        throw new Error(data.erro || "Falha ao criar authId");
+      }
+
+      const authId = data.authId;
+      setStatus(elStatus1, `✅ AuthID criado: <code>${authId}</code><br>Abra o login para confirmar...`, "load");
+
+      // Abre a tela de login com o authId
+      const loginBase = elLoginUrl.value.trim() || `${base}/login`;
+      const loginFinal = loginBase.includes("?")
+        ? `${loginBase}&authId=${authId}`
+        : `${loginBase}?authId=${authId}`;
+
+      window.open(loginFinal, "_blank");
+
+      // Fica escutando o status até confirmar
+      await aguardarConfirmacao(base, authId);
+
+    } catch (e){
+      setStatus(elStatus1, `❌ ${e.message}`, "err");
+    } finally {
+      elBtnAuth.disabled = false;
+      elBtnAuth.innerHTML = `<svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> GERAR AUTENTICAÇÃO`;
+    }
+  });
+
+  // ============================================
+  // 2) ESCUTA STATUS ATÉ CONFIRMAR
+  // ============================================
+  async function aguardarConfirmacao(base, authId){
+    let tentativas = 0;
+    const maxTentativas = 60; // 60 * 2s = 2min
+
+    while (tentativas < maxTentativas){
+      await new Promise(r => setTimeout(r, 2000));
+      tentativas++;
+
+      try {
+        const r = await fetch(`${base}/StatusAuthId?id=${authId}`);
+        const data = await r.json();
+
+        if (!data.ok) continue;
+
+        if (data.status === "confirmed" && data.token){
+          // 🎉 Token pronto
+          elTokenId.value = data.token;
+          elTokenArea.style.display = "block";
+          setStatus(elStatus1, `🎉 Autenticado! UID: <code>${data.uid || "—"}</code>`, "ok");
+          elBtnAuth.disabled = true;
+          elBtnAuth.style.opacity = ".5";
+          return;
+        }
+
+        if (data.status === "pending"){
+          setStatus(elStatus1, `⏳ Aguardando login... (${tentativas * 2}s)`, "load");
+        }
+      } catch (e){
+        // ignora erros de rede pontuais
+      }
+    }
+
+    setStatus(elStatus1, "⏱️ Tempo esgotado. Tente gerar de novo.", "warn");
+  }
+
+  // ============================================
+  // 3) ENVIAR NOTIFICAÇÃO
+  // ============================================
+  elBtnSend.addEventListener("click", async () => {
+    clearStatus(elStatus2);
+
+    const tokenid = elTokenId.value.trim();
+    const title   = elTitle.value.trim();
+    const message = elMessage.value.trim();
+
+    if (!tokenid){
+      setStatus(elStatus2, "Token vazio. Gere a autenticação primeiro.", "err");
+      return;
+    }
+    if (!title || !message){
+      setStatus(elStatus2, "Preencha título e mensagem.", "err");
+      return;
+    }
+
+    elBtnSend.disabled = true;
+    elBtnSend.innerHTML = `<div class="loader"></div> Enviando...`;
+    setStatus(elStatus2, "Enviando notificação para todos os seus dispositivos...", "load");
+
+    try {
+      const base = workerBase();
+
+      const r = await fetch(`${base}/SendNotification?tokenid=${encodeURIComponent(tokenid)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, message })
+      });
+
+      const data = await r.json();
+
+      if (!r.ok || !data.ok){
+        setStatus(elStatus2, `❌ ${data.erro || "Erro"}${data.detalhe ? "<br><code>" + JSON.stringify(data.detalhe) + "</code>" : ""}`, "err");
+        return;
+      }
+
+      setStatus(elStatus2,
+        `🎉 Enviada!<br>` +
+        `• UID: <code>${data.uid}</code><br>` +
+        `• Dispositivos: <strong>${data.total_dispositivos}</strong><br>` +
+        `• Entregues: <strong>${data.recipients || 0}</strong>`,
+        "ok"
+      );
+
+    } catch (e){
+      setStatus(elStatus2, `❌ ${e.message}`, "err");
+    } finally {
+      elBtnSend.disabled = false;
+      elBtnSend.innerHTML = `<svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> ENVIAR NOTIFICAÇÃO`;
+    }
+  });
+
+  // ============================================
+  // 4) COPIAR TOKEN
+  // ============================================
+  elCopy.addEventListener("click", () => {
+    if (!elTokenId.value) return;
+    navigator.clipboard.writeText(elTokenId.value);
+    elCopy.textContent = "✅ copiado!";
+    setTimeout(() => elCopy.textContent = "📋 copiar", 1500);
+  });
+</script>
+
+</body>
+</html>
