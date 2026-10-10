@@ -147,7 +147,7 @@
   const DETECT = {
     home:          ["/", "/index.html", "/home"],
     developer:     ["/developer", "/developer/", "/developer/index.html", "/dev"],
-    notifications: ["/notificacoes", "/notificacoes/", "/notificacoes/index.html", "/notifications", "/notifications/"]
+    notifications: ["/notificacoes", "/notificacoes", "/notificacoes.html", "/notifications.html", "/notifications"]
   };
 
   // 🔥 Configs do Firebase Auth
@@ -407,7 +407,7 @@
           break;
         }
         case "notifications": {
-          window.location.href = "/notificacoes/";
+          window.location.href = "/notificacoes";
           break;
         }
       }
