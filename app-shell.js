@@ -141,7 +141,7 @@
   const ROUTES = {
     home:          "/",
     developer:     "/developer/",
-    notifications: "/notificacoes/"
+    notifications: "/notificacoes"
   };
 
   const DETECT = {
