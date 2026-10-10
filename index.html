@@ -65,43 +65,6 @@
       transition:background .4s ease,color .3s ease;
     }
 
-    /* ===== LOADING OVERLAY ===== */
-    .page-loader{
-      position:fixed;inset:0;z-index:99999;
-      background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      gap:24px;
-      opacity:1;
-      transition:opacity .5s ease,visibility .5s ease;
-    }
-    .page-loader.hide{
-      opacity:0;
-      visibility:hidden;
-      pointer-events:none;
-    }
-
-    .page-loader .spinner{
-      width:56px;height:56px;
-      border:4px solid var(--accent-soft);
-      border-top-color:var(--accent);
-      border-radius:50%;
-      animation:spin .9s linear infinite;
-    }
-
-    .page-loader .loader-text{
-      color:var(--text-2);
-      font-size:.95rem;
-      font-weight:500;
-      letter-spacing:.4px;
-      animation:pulse 1.6s ease-in-out infinite;
-    }
-
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes pulse{
-      0%,100%{opacity:.5}
-      50%{opacity:1}
-    }
-
     /* ===== PERFIL ===== */
     .profile-btn{
       position:fixed;top:14px;right:16px;z-index:1100;
@@ -117,6 +80,17 @@
     }
     .profile-btn:hover{transform:scale(1.08)}
     .profile-btn img{width:100%;height:100%;object-fit:cover}
+    .profile-btn.loading{cursor:default}
+
+    /* ===== SPINNER DENTRO DO ÍCONE ===== */
+    .profile-spinner{
+      width:22px;height:22px;
+      border:2.5px solid rgba(255,255,255,.25);
+      border-top-color:#fff;
+      border-radius:50%;
+      animation:spin .8s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
 
     .profile-dropdown{
       position:fixed;top:76px;right:16px;z-index:1120;
@@ -182,16 +156,10 @@
 </head>
 <body>
 
-  <!-- ===== LOADING OVERLAY ===== -->
-  <div class="page-loader" id="pageLoader">
-    <div class="spinner"></div>
-    <div class="loader-text">Carregando página...</div>
-  </div>
-
   <div id="app-menu-root"></div>
 
-  <div class="profile-btn" id="profileBtn" style="display:none;">
-    <span id="profileInitial">?</span>
+  <div class="profile-btn loading" id="profileBtn">
+    <div class="profile-spinner"></div>
   </div>
 
   <div class="profile-dropdown" id="profileDropdown">
@@ -354,6 +322,7 @@
     const pdEmail         = document.getElementById('pdEmail');
 
     profileBtn.addEventListener('click', (e) => {
+      if (profileBtn.classList.contains('loading')) return;
       e.stopPropagation();
       profileDropdown.classList.toggle('active');
     });
@@ -380,21 +349,6 @@
         }
       });
     });
-
-    function atualizarPerfil(user) {
-      if (user) {
-        profileBtn.style.display = 'flex';
-        pdName.textContent  = user.displayName || user.email || 'Usuário';
-        pdEmail.textContent = user.email || '';
-        if (user.photoURL) {
-          profileInitial.outerHTML = `<img id="profileInitial" src="${user.photoURL}" alt="">`;
-        } else {
-          profileInitial.textContent = (user.displayName || user.email || '?').charAt(0).toUpperCase();
-        }
-      } else {
-        profileBtn.style.display = 'none';
-      }
-    }
 
     (async function(){
       try {
@@ -423,9 +377,12 @@
         }
 
         onAuthStateChanged(auth, async (user) => {
-          atualizarPerfil(user);
-          if (user) await refresh(user);
-          else document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
+          if (user) {
+            await refresh(user);
+          } else {
+            document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
+            profileBtn.style.display = 'none';
+          }
         });
 
         setInterval(() => { if (auth.currentUser) refresh(auth.currentUser); }, 60000);
