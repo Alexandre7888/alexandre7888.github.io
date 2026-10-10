@@ -134,20 +134,20 @@
   const ICONS = {
     home: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
     dev:  '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-    user: '<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-    gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
-    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
-    bell: '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>'
+    bell: '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
+    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
   };
 
   const ROUTES = {
-    home:      "/",
-    developer: "/developer/"
+    home:          "/",
+    developer:     "/developer/",
+    notifications: "/notificacoes/"
   };
 
   const DETECT = {
-    home:      ["/", "/index.html", "/home"],
-    developer: ["/developer", "/developer/", "/developer/index.html", "/dev"]
+    home:          ["/", "/index.html", "/home"],
+    developer:     ["/developer", "/developer/", "/developer/index.html", "/dev"],
+    notifications: ["/notificacoes", "/notificacoes/", "/notificacoes/index.html", "/notifications", "/notifications/"]
   };
 
   // 🔥 Configs do Firebase Auth
@@ -188,6 +188,7 @@
           if (path === norm) return view;
         }
       }
+      if (path.toLowerCase().includes("notificacoes")) return "notifications";
       if (path.toLowerCase().includes("developer")) return "developer";
       return "home";
     }
@@ -321,14 +322,6 @@
           <div class="name">Usuário</div>
           <div class="email">—</div>
         </div>
-        <button class="app-shell-dropdown-item" data-action="profile">
-          ${ICONS.user}<span>Meu perfil</span>
-          <span class="beta">BETA</span>
-        </button>
-        <button class="app-shell-dropdown-item" data-action="settings">
-          ${ICONS.gear}<span>Configurações</span>
-          <span class="beta">BETA</span>
-        </button>
         <button class="app-shell-dropdown-item" data-action="notifications">
           ${ICONS.bell}<span>Notificações</span>
           <span class="beta">BETA</span>
@@ -413,9 +406,10 @@
           }
           break;
         }
-        case "profile":       console.log("[AppShell] profile (em breve)"); break;
-        case "settings":      console.log("[AppShell] settings (em breve)"); break;
-        case "notifications": console.log("[AppShell] notifications (em breve)"); break;
+        case "notifications": {
+          window.location.href = "/notificacoes/";
+          break;
+        }
       }
     }
 
