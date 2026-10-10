@@ -1,6 +1,8 @@
 // ============================================================
-// app-shell.js v2.1.0
-// Menu + navegação + perfil (dados do WORKER; foto do Auth SDK)
+// app-shell.js v2.2.0
+// - Foto de perfil: SEMPRE do Firebase Auth SDK (user.photoURL)
+// - Nome/username: do Worker (Firebase Database via Google Script)
+// - Detecta device novo (armadilha) sem spam
 // ============================================================
 
 (function () {
@@ -219,8 +221,9 @@
     }
 
     // ============================================================
-    // Firebase Auth → pega token + user.photoURL (foto)
-    // Dados adicionais (nome/username) vêm do WORKER
+    // Firebase Auth
+    // - foto SEMPRE do Auth SDK (user.photoURL)
+    // - nome/username do Worker (Firebase DB)
     // ============================================================
     async _initFirebaseAuth() {
       try {
@@ -239,26 +242,28 @@
 
         onAuthStateChanged(auth, async (user) => {
           if (user) {
-            // 1) Mostra dados básicos do Auth (foto + email vêm daqui)
+            // ⚠️ Foto SEMPRE do Auth SDK — guardada em var local
+            const authPhoto = user.photoURL || null;
+            const authEmail = user.email || "";
+
+            // 1) Mostra dados básicos do Auth (foto + nome fallback)
             this.setUser({
               name: user.displayName || user.email || "Usuário",
-              email: user.email || "",
-              photoUrl: user.photoURL || null,   // ✅ foto do Auth
+              email: authEmail,
+              photoUrl: authPhoto,
               uid: user.uid
             });
 
-            // 2) Busca nome/username do WORKER
+            // 2) Busca nome/username do Worker (não mexe na foto)
             const userData = await this._fetchFromWorker(user);
             if (userData){
               this.setUser({
-                // Nome vem do banco (displayName/username)
-                name: userData.displayName || userData.username || user.displayName || user.email || "Usuário",
-                email: userData.email || user.email || "",
-                // ⚠️ Foto SEMPRE do Auth, nunca do banco
-                photoUrl: user.photoURL || null,
-                uid: userData.uid || user.uid,
-                ...userData,
-                photoUrl: user.photoURL || null
+                // Nome vem do Worker (Firebase DB)
+                name: userData.displayName || userData.username || user.displayName || authEmail || "Usuário",
+                email: userData.email || authEmail,
+                // ⚠️ Foto SEMPRE do Auth SDK
+                photoUrl: authPhoto,
+                uid: userData.uid || user.uid
               });
             }
 
@@ -286,7 +291,7 @@
     }
 
     // ============================================================
-    // Chama o Worker /GetUserData
+    // Chama /GetUserData do Worker (pega nome/username do banco)
     // ============================================================
     async _fetchFromWorker(user){
       try {
@@ -515,7 +520,8 @@
 
       this._profile.classList.add("show");
 
-      if (user.photoUrl) {
+      // ⚠️ Foto: só usa se NÃO for null/vazia. Senão mostra inicial.
+      if (user.photoUrl && typeof user.photoUrl === "string" && user.photoUrl.trim() !== ""){
         this._profile.innerHTML = `<img src="${user.photoUrl}" alt="" referrerpolicy="no-referrer">`;
       } else {
         const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
@@ -544,7 +550,7 @@
 })();
 
 // ============================================================
-// AppMenu (React)
+// AppMenu (React) — renderiza no #app-menu-root se existir
 // ============================================================
 (function () {
   function renderAppMenu() {
