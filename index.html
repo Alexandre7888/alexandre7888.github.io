@@ -65,6 +65,44 @@
       transition:background .4s ease,color .3s ease;
     }
 
+    /* ===== LOADING OVERLAY ===== */
+    .page-loader{
+      position:fixed;inset:0;z-index:99999;
+      background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:24px;
+      opacity:1;
+      transition:opacity .5s ease,visibility .5s ease;
+    }
+    .page-loader.hide{
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+    }
+
+    .page-loader .spinner{
+      width:56px;height:56px;
+      border:4px solid var(--accent-soft);
+      border-top-color:var(--accent);
+      border-radius:50%;
+      animation:spin .9s linear infinite;
+    }
+
+    .page-loader .loader-text{
+      color:var(--text-2);
+      font-size:.95rem;
+      font-weight:500;
+      letter-spacing:.4px;
+      animation:pulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{
+      0%,100%{opacity:.5}
+      50%{opacity:1}
+    }
+
+    /* ===== PERFIL ===== */
     .profile-btn{
       position:fixed;top:14px;right:16px;z-index:1100;
       width:52px;height:52px;border-radius:50%;
@@ -144,6 +182,12 @@
 </head>
 <body>
 
+  <!-- ===== LOADING OVERLAY ===== -->
+  <div class="page-loader" id="pageLoader">
+    <div class="spinner"></div>
+    <div class="loader-text">Carregando página...</div>
+  </div>
+
   <div id="app-menu-root"></div>
 
   <div class="profile-btn" id="profileBtn" style="display:none;">
@@ -215,28 +259,21 @@
     </button>
   </div>
 
-  <!-- ===== CONFIG GLOBAL ===== -->
   <script>
     window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
   </script>
 
-  <!-- ===== APP-MENU (React) ===== -->
   <script src="https://alexandre7888.github.io/app-menu.js"></script>
-
-  <!-- ===== APP-SHELL (menu + perfil via Worker) ===== -->
   <script src="https://alexandre7888.github.io/app-shell.js"></script>
 
   <script>
-    // ===== SHELL =====
     const shell = new AppShell().mount();
 
-    // ===== APP-MENU (React) =====
     if (window.AppMenu && typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
       const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
       root.render(React.createElement(window.AppMenu));
     }
 
-    // ===== TEMA =====
     const html = document.documentElement;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -265,7 +302,6 @@
 
     setTheme(localStorage.getItem('codehub-theme') || 'dark');
 
-    // ===== RELÓGIO =====
     const c = document.getElementById('miniCanvas'), ctx = c.getContext('2d');
     function draw(){
       c.width = 200; c.height = 200;
@@ -311,53 +347,91 @@
     }
     setInterval(draw, 1000); draw();
 
-    // ===== PERFIL (dropdown) =====
-    const profileBtnEl      = document.getElementById('profileBtn');
-    const profileDropdownEl = document.getElementById('profileDropdown');
+    const profileBtn      = document.getElementById('profileBtn');
+    const profileInitial  = document.getElementById('profileInitial');
+    const profileDropdown = document.getElementById('profileDropdown');
+    const pdName          = document.getElementById('pdName');
+    const pdEmail         = document.getElementById('pdEmail');
 
-    profileBtnEl.addEventListener('click', (e) => {
+    profileBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      profileDropdownEl.classList.toggle('active');
+      profileDropdown.classList.toggle('active');
     });
 
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#profileDropdown') && !e.target.closest('#profileBtn')) {
-        profileDropdownEl.classList.remove('active');
+        profileDropdown.classList.remove('active');
       }
     });
 
-    document.querySelectorAll('.profile-dropdown-item').forEach(item => {
-      item.addEventListener('click', async () => {
+    profileDropdown.querySelectorAll('.profile-dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
         const action = item.dataset.action;
-        profileDropdownEl.classList.remove('active');
-
-        if (action === 'logout'){
-          if (confirm('Sair da conta?')){
+        profileDropdown.classList.remove('active');
+        if (action === 'logout') {
+          if (confirm('Sair da conta?')) {
             document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-            try {
-              const { getAuth, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-              const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-              const cfg = {
-                apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-                authDomain: "html-15e80.firebaseapp.com",
-                databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-                projectId: "html-15e80",
-                storageBucket: "html-15e80.firebasestorage.app",
-                messagingSenderId: "1068148640439",
-                appId: "1:1068148640439:web:1ac651348e624f6be41b32"
-              };
-              const app = getApps().length ? getApps()[0] : initializeApp(cfg);
-              await signOut(getAuth(app));
-            } catch (e) {}
-            location.href = '/auth.html';
+            location.reload();
           }
-        } else if (action === 'profile'){
+        } else if (action === 'profile') {
           console.log('perfil');
-        } else if (action === 'settings'){
+        } else if (action === 'settings') {
           console.log('config');
         }
       });
     });
+
+    function atualizarPerfil(user) {
+      if (user) {
+        profileBtn.style.display = 'flex';
+        pdName.textContent  = user.displayName || user.email || 'Usuário';
+        pdEmail.textContent = user.email || '';
+        if (user.photoURL) {
+          profileInitial.outerHTML = `<img id="profileInitial" src="${user.photoURL}" alt="">`;
+        } else {
+          profileInitial.textContent = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+        }
+      } else {
+        profileBtn.style.display = 'none';
+      }
+    }
+
+    (async function(){
+      try {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+        const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+
+        const cfg = {
+          apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+          authDomain: "html-15e80.firebaseapp.com",
+          databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+          projectId: "html-15e80",
+          storageBucket: "html-15e80.firebasestorage.app",
+          messagingSenderId: "1068148640439",
+          appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+        };
+
+        const app = initializeApp(cfg);
+        const auth = getAuth(app);
+
+        async function refresh(user) {
+          if (!user) return;
+          try {
+            const t = await user.getIdToken(true);
+            document.cookie = "firebaseToken=" + t + "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+          } catch (e) { console.error("[CodeHUB] token:", e.message); }
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+          atualizarPerfil(user);
+          if (user) await refresh(user);
+          else document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
+        });
+
+        setInterval(() => { if (auth.currentUser) refresh(auth.currentUser); }, 60000);
+
+      } catch (e) { console.error("[CodeHUB] init:", e.message); }
+    })();
   </script>
 </body>
 </html>
