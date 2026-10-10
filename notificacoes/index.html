@@ -42,11 +42,11 @@
       font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;
       background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
       color:var(--text);
-      overflow:hidden;
+      overflow-x:hidden;
     }
 
     .wrap{
-      height:100vh;
+      min-height:100vh;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -63,6 +63,12 @@
       display:flex;align-items:center;justify-content:center;
       box-shadow:0 0 60px var(--accent-glow);
       animation:pulse 2.2s ease-in-out infinite;
+      transition:background .3s, box-shadow .3s;
+    }
+    .icon-top.off{
+      background:linear-gradient(135deg,#475569,#64748b);
+      box-shadow:0 0 30px rgba(71,85,105,.4);
+      animation:none;
     }
     .icon-top svg{
       width:56px;height:56px;
@@ -110,7 +116,7 @@
       box-shadow:
         0 20px 60px var(--accent-glow),
         0 0 0 0 rgba(79,140,255,.6);
-      transition:transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .3s;
+      transition:transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .3s, background .3s;
       animation:ring 2.5s infinite;
       overflow:hidden;
       user-select:none;
@@ -129,7 +135,6 @@
     .big-btn:active{transform:scale(.96)}
     .big-btn:disabled{
       cursor:default;
-      background:linear-gradient(135deg,#334155,#475569);
       animation:none;
       box-shadow:0 20px 60px rgba(0,0,0,.4);
     }
@@ -142,12 +147,46 @@
       filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));
     }
 
+    /* Estado ativo = verde */
+    .big-btn.active{
+      background:linear-gradient(135deg,#16a34a,#22c55e);
+      animation:none;
+    }
+    /* Estado desativado = cinza */
+    .big-btn.inactive{
+      background:linear-gradient(135deg,#475569,#64748b);
+    }
+
     @keyframes ring{
       0%{box-shadow:0 20px 60px var(--accent-glow),0 0 0 0 rgba(79,140,255,.55)}
       70%{box-shadow:0 20px 60px var(--accent-glow),0 0 0 30px rgba(79,140,255,0)}
       100%{box-shadow:0 20px 60px var(--accent-glow),0 0 0 0 rgba(79,140,255,0)}
     }
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ===== BOTÃO SECUNDÁRIO (desinscrever) ===== */
+    .secondary-btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:12px 24px;
+      background:transparent;
+      border:1.5px solid var(--danger);
+      border-radius:14px;
+      color:var(--danger);
+      font-family:inherit;font-size:.9rem;font-weight:600;
+      cursor:pointer;
+      transition:.2s;
+    }
+    .secondary-btn:hover{
+      background:rgba(239,68,68,.12);
+      transform:translateY(-2px);
+      box-shadow:0 8px 20px rgba(239,68,68,.25);
+    }
+    .secondary-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .secondary-btn svg{
+      width:16px;height:16px;
+      stroke:currentColor;fill:none;stroke-width:2.2;
+      stroke-linecap:round;stroke-linejoin:round;
+    }
 
     /* ===== STATUS ===== */
     .status{
@@ -230,16 +269,16 @@
     <!-- Estado 2: LOGADO -->
     <div id="content" class="hidden" style="display:contents">
 
-      <div class="icon-top">
+      <div class="icon-top" id="iconTop">
         <svg viewBox="0 0 24 24">
           <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 01-3.46 0"/>
         </svg>
       </div>
 
-      <h1>Ativar <span>notificações</span> push</h1>
+      <h1 id="title">Ativar <span>notificações</span> push</h1>
 
-      <p class="sub">
+      <p class="sub" id="subtitle">
         Receba avisos em tempo real sobre novidades, atualizações e mensagens
         importantes do <strong>CodeHUB</strong> diretamente neste dispositivo.
       </p>
@@ -249,7 +288,15 @@
           <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 01-3.46 0"/>
         </svg>
-        ATIVAR NOTIFICAÇÕES
+        <span id="btnLabel">ATIVAR NOTIFICAÇÕES</span>
+      </button>
+
+      <button class="secondary-btn hidden" id="unsubBtn">
+        <svg viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+        Desinscrever deste dispositivo
       </button>
 
       <div class="status" id="status"></div>
@@ -262,7 +309,7 @@
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getDatabase, ref, set, serverTimestamp }
+    import { getDatabase, ref, set, remove, get, serverTimestamp }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const FIREBASE_CONFIG = {
@@ -282,17 +329,120 @@
     const elNotLogged = document.getElementById("notLogged");
     const elContent   = document.getElementById("content");
     const elBtn       = document.getElementById("acceptBtn");
+    const elUnsub     = document.getElementById("unsubBtn");
     const elStatus    = document.getElementById("status");
+    const elIcon      = document.getElementById("iconTop");
+    const elTitle     = document.getElementById("title");
+    const elSubtitle  = document.getElementById("subtitle");
+    const elBtnLabel  = document.getElementById("btnLabel");
 
     let currentUser = null;
+    let isSubscribed = false;
 
     function setStatus(msg, type = ""){
       elStatus.textContent = msg;
       elStatus.className = "status" + (type ? " " + type : "");
     }
 
-    // ===== OBSERVA LOGIN =====
-    onAuthStateChanged(auth, (user) => {
+    // ===== ATUALIZA UI CONFORME ESTADO =====
+    function renderUI(){
+      if (isSubscribed){
+        // Estado ATIVO
+        elIcon.classList.remove("off");
+        elBtn.classList.add("active");
+        elBtn.classList.remove("inactive");
+        elBtn.disabled = true;
+        elBtnLabel.textContent = "ATIVADO";
+        elBtn.querySelector("svg").outerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+        elTitle.innerHTML = 'Notificações <span>ativadas</span>';
+        elSubtitle.textContent = 'Você está recebendo notificações push neste dispositivo.';
+        elUnsub.classList.remove("hidden");
+      } else {
+        // Estado INATIVO
+        elIcon.classList.add("off");
+        elBtn.classList.remove("active", "inactive");
+        elBtn.disabled = false;
+        elBtnLabel.textContent = "ATIVAR NOTIFICAÇÕES";
+        elBtn.querySelector("svg").outerHTML = `<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>`;
+        elTitle.innerHTML = 'Ativar <span>notificações</span> push';
+        elSubtitle.innerHTML = 'Receba avisos em tempo real sobre novidades, atualizações e mensagens importantes do <strong>CodeHUB</strong> diretamente neste dispositivo.';
+        elUnsub.classList.add("hidden");
+      }
+    }
+
+    // ===== VERIFICA SE JÁ ESTÁ INSCRITO (no Firebase) =====
+    async function checkSubscription(){
+      if (!currentUser) return false;
+
+      const os = window.__OneSignal;
+      if (!os) return false;
+
+      const subId = os.User?.PushSubscription?.id;
+      if (!subId) return false;
+
+      try {
+        const snap = await get(ref(db, `users/${currentUser.uid}/notification_ids/${subId}`));
+        return snap.exists();
+      } catch(e){
+        console.warn("Erro ao checar inscrição:", e);
+        return false;
+      }
+    }
+
+    // ===== SALVA O SUBSCRIPTION ID NO FIREBASE =====
+    async function saveSubscriptionId(){
+      if (!currentUser) return null;
+
+      const os = window.__OneSignal;
+      if (!os) return null;
+
+      try {
+        const subId = os.User?.PushSubscription?.id;
+        if (!subId) return null;
+
+        const idRef = ref(db, `users/${currentUser.uid}/notification_ids/${subId}`);
+        await set(idRef, {
+          subscription_id: subId,
+          user_agent: navigator.userAgent,
+          platform: navigator.platform || "unknown",
+          language: navigator.language || "unknown",
+          created_at: serverTimestamp(),
+          last_seen: serverTimestamp()
+        });
+
+        try { await os.login(currentUser.uid); } catch(e){}
+
+        console.log("[Notificações] ID salvo:", subId);
+        return subId;
+
+      } catch (e) {
+        console.error("[Notificações] Erro ao salvar:", e);
+        return null;
+      }
+    }
+
+    // ===== REMOVE O ID DO FIREBASE =====
+    async function removeSubscriptionId(){
+      if (!currentUser) return false;
+
+      const os = window.__OneSignal;
+      if (!os) return false;
+
+      try {
+        const subId = os.User?.PushSubscription?.id;
+        if (subId){
+          await remove(ref(db, `users/${currentUser.uid}/notification_ids/${subId}`));
+          console.log("[Notificações] ID removido do Firebase:", subId);
+        }
+        return true;
+      } catch (e) {
+        console.error("[Notificações] Erro ao remover:", e);
+        return false;
+      }
+    }
+
+    // ===== ESTADO INICIAL =====
+    onAuthStateChanged(auth, async (user) => {
       currentUser = user;
 
       if (!user) {
@@ -304,69 +454,22 @@
       elNotLogged.classList.add("hidden");
       elContent.classList.remove("hidden");
 
-      // Se já tem permissão concedida, mostra status
-      if (window.Notification && Notification.permission === "granted") {
-        setStatus("✅ Notificações já estão ativadas neste dispositivo.", "ok");
-        elBtn.disabled = true;
-        elBtn.innerHTML = `
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          ATIVADO
-        `;
-        // mesmo já ativado, garante que o ID tá salvo no Firebase
-        saveSubscriptionId();
-      } else if (window.Notification && Notification.permission === "denied") {
+      const perm = window.Notification?.permission;
+      const os = window.__OneSignal;
+      const hasPush = os?.User?.PushSubscription?.optedIn;
+
+      isSubscribed = (perm === "granted") && !!hasPush && await checkSubscription();
+
+      if (perm === "denied"){
         setStatus("❌ Permissão bloqueada. Libere nas configurações do navegador.", "err");
+      } else if (isSubscribed){
+        setStatus("✅ Notificações já estão ativadas neste dispositivo.", "ok");
       }
+
+      renderUI();
     });
 
-    // ===== SALVA O SUBSCRIPTION ID NO FIREBASE =====
-    async function saveSubscriptionId(){
-      if (!currentUser) return null;
-
-      const os = window.__OneSignal;
-      if (!os) {
-        setStatus("⏳ Aguardando OneSignal...", "loading");
-        return null;
-      }
-
-      try {
-        // Pega o ID de inscrição (Player ID)
-        const subId = os.User?.PushSubscription?.id
-                   || (await os.getUserId?.())
-                   || os.User?.onesignalId;
-
-        if (!subId) {
-          setStatus("⚠️ Não foi possível obter o ID de inscrição.", "err");
-          return null;
-        }
-
-        // Salva em users/{uid}/notification_ids/{subscriptionId}
-        const idRef = ref(db, `users/${currentUser.uid}/notification_ids/${subId}`);
-        await set(idRef, {
-          subscription_id: subId,
-          user_agent: navigator.userAgent,
-          platform: navigator.platform || "unknown",
-          language: navigator.language || "unknown",
-          created_at: serverTimestamp(),
-          last_seen: serverTimestamp()
-        });
-
-        // Também guarda o uid no OneSignal para identificar o usuário
-        try {
-          await os.login(currentUser.uid);
-        } catch(e){ /* login já feito ou falhou, ignora */ }
-
-        console.log("[Notificações] ID salvo:", subId);
-        return subId;
-
-      } catch (e) {
-        console.error("[Notificações] Erro ao salvar:", e);
-        setStatus("❌ Erro ao salvar ID: " + e.message, "err");
-        return null;
-      }
-    }
-
-    // ===== BOTÃO PRINCIPAL =====
+    // ===== BOTÃO ATIVAR =====
     elBtn.addEventListener("click", async () => {
       if (!currentUser){
         setStatus("Você precisa estar logado.", "err");
@@ -380,7 +483,7 @@
         const os = window.__OneSignal;
         if (!os) throw new Error("OneSignal ainda não carregou. Tente novamente.");
 
-        // 1) Pede permissão nativa do navegador
+        // 1) Pede permissão nativa
         const permission = await Notification.requestPermission();
         if (permission !== "granted") {
           setStatus("❌ Permissão negada pelo usuário.", "err");
@@ -388,10 +491,10 @@
           return;
         }
 
-        // 2) Ativa o push no OneSignal (dispara o registro do dispositivo)
+        // 2) Opt-in no OneSignal
         await os.User.PushSubscription.optIn();
 
-        // 3) Espera o subscription id aparecer (pode demorar alguns ms)
+        // 3) Espera o subscription id
         let subId = os.User?.PushSubscription?.id;
         let tries = 0;
         while (!subId && tries < 30){
@@ -404,11 +507,9 @@
         const saved = await saveSubscriptionId();
 
         if (saved){
+          isSubscribed = true;
+          renderUI();
           setStatus("🎉 Notificações ativadas com sucesso!", "ok");
-          elBtn.innerHTML = `
-            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-            ATIVADO
-          `;
         } else {
           setStatus("⚠️ Permissão concedida, mas não conseguimos salvar o ID.", "err");
           elBtn.disabled = false;
@@ -421,10 +522,45 @@
       }
     });
 
-    // ===== SE O ONESIGNAL JÁ ESTIVER PRONTO, SALVA AUTOMÁTICO =====
-    window.addEventListener("onesignal-ready", () => {
-      if (currentUser && window.Notification?.permission === "granted"){
-        saveSubscriptionId();
+    // ===== BOTÃO DESINSCREVER =====
+    elUnsub.addEventListener("click", async () => {
+      if (!currentUser) return;
+
+      if (!confirm("Desinscrever este dispositivo das notificações push?")) return;
+
+      elUnsub.disabled = true;
+      setStatus("⏳ Desinscrevendo...", "loading");
+
+      try {
+        const os = window.__OneSignal;
+        if (!os) throw new Error("OneSignal não carregou.");
+
+        // 1) Opt-out no OneSignal (para de receber push)
+        await os.User.PushSubscription.optOut();
+
+        // 2) Remove o ID do Firebase
+        await removeSubscriptionId();
+
+        isSubscribed = false;
+        renderUI();
+        setStatus("🔕 Dispositivo desinscrito com sucesso.", "ok");
+
+      } catch (e){
+        console.error(e);
+        setStatus("❌ Erro ao desinscrever: " + e.message, "err");
+        elUnsub.disabled = false;
+      }
+    });
+
+    // ===== SE O ONESIGNAL CARREGAR DEPOIS =====
+    window.addEventListener("onesignal-ready", async () => {
+      if (currentUser){
+        const perm = window.Notification?.permission;
+        const os = window.__OneSignal;
+        const hasPush = os?.User?.PushSubscription?.optedIn;
+
+        isSubscribed = (perm === "granted") && !!hasPush && await checkSubscription();
+        renderUI();
       }
     });
   </script>
