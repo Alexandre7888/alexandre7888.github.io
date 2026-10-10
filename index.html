@@ -12,7 +12,6 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-  <!-- ===== ONESIGNAL (sem botão padrão) ===== -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -20,10 +19,11 @@
       await OneSignal.init({
         appId: "5475922c-e999-4b42-b743-c7cde90db378",
         safari_web_id: "web.onesignal.auto.3a869b75-1942-4792-8237-9de8041a4c17",
-        notifyButton: {
-          enable: false,
-        },
+        notifyButton: { enable: false },
+        allowLocalhostAsSecureOrigin: true
       });
+      window.__OneSignal = OneSignal;
+      window.dispatchEvent(new Event("onesignal-ready"));
     });
   </script>
 
@@ -65,7 +65,6 @@
       transition:background .4s ease,color .3s ease;
     }
 
-    /* ===== PERFIL ===== */
     .profile-btn{
       position:fixed;top:14px;right:16px;z-index:1100;
       width:52px;height:52px;border-radius:50%;
@@ -147,7 +146,6 @@
 
   <div id="app-menu-root"></div>
 
-  <!-- ===== PERFIL ===== -->
   <div class="profile-btn" id="profileBtn" style="display:none;">
     <span id="profileInitial">?</span>
   </div>
@@ -157,13 +155,9 @@
       <div class="name" id="pdName">Usuário</div>
       <div class="email" id="pdEmail">—</div>
     </div>
-    <button class="profile-dropdown-item" data-action="profile">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Meu perfil</span>
-    </button>
-    <button class="profile-dropdown-item" data-action="settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      <span>Configurações</span>
+    <button class="profile-dropdown-item" data-action="notifications">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span>Notificações</span>
     </button>
     <button class="profile-dropdown-item danger" data-action="logout">
       <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -174,7 +168,7 @@
   <div class="content-wrap">
     <div class="welcome">
       <svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>
-      Bem-vindo ao CodeHUB
+      <span id="welcomeText">Bem-vindo ao CodeHUB</span>
       <svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>
     </div>
 
@@ -217,23 +211,29 @@
     </button>
   </div>
 
-  <!-- ===== APP-MENU.JS (React) ===== -->
   <script src="https://alexandre7888.github.io/app-menu.js"></script>
-
-  <!-- ===== APP-SHELL.JS (menu + navegação) ===== -->
   <script src="https://alexandre7888.github.io/app-shell.js"></script>
 
-  <script>
-    // ===== SHELL =====
-    const shell = new AppShell().mount();
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    // ===== APP-MENU (React) =====
-    if (window.AppMenu && typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
-      const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
-      root.render(React.createElement(window.AppMenu));
-    }
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+    };
 
-    // ===== TEMA =====
+    // ⚠️ TROCA PELA URL DO SEU WORKER
+    const WORKER_URL = "https://SEU-WORKER.workers.dev";
+
+    const app  = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+    const auth = getAuth(app);
+
     const html = document.documentElement;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -308,12 +308,87 @@
     }
     setInterval(draw, 1000); draw();
 
+    // ===== DEVICE ID =====
+    function getDeviceId(){
+      let id = localStorage.getItem('codehub_deviceId');
+      if (!id){
+        id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('codehub_deviceId', id);
+      }
+      return id;
+    }
+
+    function detectDeviceName(){
+      const ua = navigator.userAgent;
+      let browser = "Navegador", os = "Dispositivo";
+      if (ua.includes("Firefox")) browser = "Firefox";
+      else if (ua.includes("Edg")) browser = "Edge";
+      else if (ua.includes("Chrome")) browser = "Chrome";
+      else if (ua.includes("Safari")) browser = "Safari";
+      else if (ua.includes("Opera")) browser = "Opera";
+      if (ua.includes("Windows")) os = "Windows";
+      else if (ua.includes("Mac")) os = "Mac";
+      else if (ua.includes("Android")) os = "Android";
+      else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+      else if (ua.includes("Linux")) os = "Linux";
+      return `${browser} no ${os}`;
+    }
+
+    // ===== CARREGA DADOS DO WORKER =====
+    async function carregarDadosDoWorker(user){
+      try {
+        const token = await user.getIdToken(true);
+
+        // Pega o subscription id do OneSignal (se existir)
+        let currentSubId = null;
+        try {
+          currentSubId = window.__OneSignal?.User?.PushSubscription?.id || null;
+        } catch {}
+
+        const r = await fetch(`${WORKER_URL}/GetUserData?tokenid=${encodeURIComponent(token)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Device-Id": getDeviceId()
+          },
+          body: JSON.stringify({
+            device_id: getDeviceId(),
+            device_name: detectDeviceName(),
+            platform: navigator.platform || "Desconhecido",
+            language: navigator.language || "Desconhecido",
+            user_agent: navigator.userAgent,
+            current_subscription_id: currentSubId
+          })
+        });
+
+        const data = await r.json();
+
+        if (!data.ok){
+          console.warn("[Index] Worker erro:", data);
+          return null;
+        }
+
+        console.log("[Index] Dados do Worker:", data);
+
+        if (data.dispositivo_novo && data.notificacao_enviada){
+          console.log("[Index] 🆕 Dispositivo novo — notificação enviada!");
+        }
+
+        return data.user;
+
+      } catch (e){
+        console.error("[Index] Falha ao chamar Worker:", e);
+        return null;
+      }
+    }
+
     // ===== PERFIL =====
     const profileBtn      = document.getElementById('profileBtn');
     const profileInitial  = document.getElementById('profileInitial');
     const profileDropdown = document.getElementById('profileDropdown');
     const pdName          = document.getElementById('pdName');
     const pdEmail         = document.getElementById('pdEmail');
+    const welcomeText     = document.getElementById('welcomeText');
 
     profileBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -327,74 +402,69 @@
     });
 
     profileDropdown.querySelectorAll('.profile-dropdown-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', async () => {
         const action = item.dataset.action;
         profileDropdown.classList.remove('active');
+
         if (action === 'logout') {
           if (confirm('Sair da conta?')) {
             document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-            location.reload();
+            try { await signOut(auth); } catch {}
+            location.href = '/auth.html';
           }
-        } else if (action === 'profile') {
-          console.log('perfil');
-        } else if (action === 'settings') {
-          console.log('config');
+        } else if (action === 'notifications') {
+          window.location.href = '/notificacoes';
         }
       });
     });
 
-    function atualizarPerfil(user) {
-      if (user) {
+    // ===== AUTENTICAÇÃO =====
+    onAuthStateChanged(auth, async (user) => {
+      if (user){
+        // Mostra dados básicos do Firebase Auth como fallback
         profileBtn.style.display = 'flex';
         pdName.textContent  = user.displayName || user.email || 'Usuário';
         pdEmail.textContent = user.email || '';
-        if (user.photoURL) {
-          profileInitial.outerHTML = `<img id="profileInitial" src="${user.photoURL}" alt="">`;
+
+        if (user.photoURL){
+          profileInitial.outerHTML = `<img id="profileInitial" src="${user.photoURL}" alt="" referrerpolicy="no-referrer">`;
         } else {
           profileInitial.textContent = (user.displayName || user.email || '?').charAt(0).toUpperCase();
         }
-      } else {
-        profileBtn.style.display = 'none';
-      }
-    }
 
-    // ===== FIREBASE AUTH =====
-    (async function(){
-      try {
-        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-        const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+        welcomeText.textContent = `Bem-vindo, ${user.displayName || user.email || 'usuário'}!`;
 
-        const cfg = {
-          apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-          authDomain: "html-15e80.firebaseapp.com",
-          databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-          projectId: "html-15e80",
-          storageBucket: "html-15e80.firebasestorage.app",
-          messagingSenderId: "1068148640439",
-          appId: "1:1068148640439:web:1ac651348e624f6be41b32"
-        };
+        // 🔥 CARREGA DADOS DO WORKER
+        const userData = await carregarDadosDoWorker(user);
 
-        const app = initializeApp(cfg);
-        const auth = getAuth(app);
+        if (userData){
+          // Atualiza UI com dados do Worker
+          pdName.textContent  = userData.displayName || userData.username || userData.email || 'Usuário';
+          pdEmail.textContent = userData.email || '';
+          welcomeText.textContent = `Bem-vindo, ${userData.displayName || userData.username || userData.email || 'usuário'}!`;
 
-        async function refresh(user) {
-          if (!user) return;
-          try {
-            const t = await user.getIdToken(true);
-            document.cookie = "firebaseToken=" + t + "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
-          } catch (e) { console.error("[CodeHUB] token:", e.message); }
+          const photo = userData.photoURL || userData.profilePicture || userData.avatar;
+          if (photo){
+            profileBtn.innerHTML = `<img src="${photo}" alt="" referrerpolicy="no-referrer">`;
+          } else {
+            const initial = (userData.displayName || userData.username || userData.email || '?').charAt(0).toUpperCase();
+            profileBtn.innerHTML = `<span>${initial}</span>`;
+          }
         }
 
-        onAuthStateChanged(auth, async (user) => {
-          atualizarPerfil(user);
-          if (user) await refresh(user);
-          else document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-        });
+      } else {
+        // Não logado → redireciona pro auth
+        profileBtn.style.display = 'none';
+        window.location.href = '/auth.html';
+      }
+    });
 
-        setInterval(() => { if (auth.currentUser) refresh(auth.currentUser); }, 60000);
-
-      } catch (e) { console.error("[CodeHUB] init:", e.message); }
-    })();
+    // AppShell + AppMenu
+    if (window.AppShell) new AppShell().mount();
+    if (window.AppMenu && typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
+      const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
+      root.render(React.createElement(window.AppMenu));
+    }
   </script>
 </body>
 </html>
