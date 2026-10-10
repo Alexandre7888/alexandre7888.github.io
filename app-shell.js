@@ -1,10 +1,12 @@
 // ============================================================
 // app-shell.js
-// Menu + navegação + perfil (Firebase Auth incluído)
+// Menu + navegação + perfil (dados vêm do WORKER, não do Firebase)
 // ============================================================
 
 (function () {
   "use strict";
+
+  const WORKER_URL = window.WORKER_URL || "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
   const STYLES = `
     .app-shell-menu-btn{
@@ -147,10 +149,9 @@
   const DETECT = {
     home:          ["/", "/index.html", "/home"],
     developer:     ["/developer", "/developer/", "/developer/index.html", "/dev"],
-    notifications: ["/notificacoes", "/notificacoes", "/notificacoes.html", "/notifications.html", "/notifications"]
+    notifications: ["/notificacoes", "/notificacoes/", "/notificacoes.html", "/notifications.html", "/notifications"]
   };
 
-  // 🔥 Configs do Firebase Auth
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
     authDomain: "html-15e80.firebaseapp.com",
@@ -173,7 +174,7 @@
 
     constructor(options = {}) {
       this.user           = options.user || null;
-      this.autoFirebase   = options.autoFirebase !== false; // liga por padrão
+      this.autoFirebase   = options.autoFirebase !== false;
       this.currentView    = this._detectView();
       this.isOpen         = false;
       this._dropdownOpen  = false;
@@ -219,14 +220,13 @@
     }
 
     // ============================================================
-    // Firebase Auth — escuta e chama setUser automaticamente
+    // Firebase Auth — só pra pegar o token, dados vêm do Worker
     // ============================================================
     async _initFirebaseAuth() {
       try {
         const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
         const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
 
-        // evita inicializar duas vezes
         let app;
         if (getApps && getApps().length) {
           app = getApps()[0];
@@ -237,26 +237,115 @@
         const auth = getAuth(app);
         this._auth = auth;
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
           if (user) {
+            // Primeiro mostra dados do Firebase Auth (fallback rápido)
             this.setUser({
               name: user.displayName || user.email || "Usuário",
               email: user.email || "",
               photoUrl: user.photoURL || null,
               uid: user.uid
             });
+
+            // Depois busca do WORKER (dados completos)
+            const userData = await this._fetchFromWorker(user);
+            if (userData){
+              this.setUser({
+                name: userData.displayName || userData.username || userData.email || "Usuário",
+                email: userData.email || "",
+                photoUrl: userData.photoURL || userData.profilePicture || userData.avatar || null,
+                uid: userData.uid || user.uid,
+                ...userData
+              });
+            }
+
+            // Renova cookie a cada 60s
+            setInterval(async () => {
+              if (auth.currentUser){
+                try {
+                  const t = await auth.currentUser.getIdToken(true);
+                  document.cookie = "firebaseToken=" + t + "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
+                } catch (e) {}
+              }
+            }, 60000);
+
           } else {
             this.setUser(null);
           }
         });
 
         this._firebaseReady = true;
-
-        // expõe globalmente pra debug
         window.shell = this;
 
       } catch (e) {
         console.warn("[AppShell] Firebase Auth falhou:", e.message);
+      }
+    }
+
+    // ============================================================
+    // Chama o Worker pra pegar os dados do user
+    // ============================================================
+    async _fetchFromWorker(user){
+      try {
+        const token = await user.getIdToken(true);
+
+        const deviceId = (() => {
+          let id = localStorage.getItem('codehub_deviceId');
+          if (!id){
+            id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('codehub_deviceId', id);
+          }
+          return id;
+        })();
+
+        const detectDeviceName = () => {
+          const ua = navigator.userAgent;
+          let browser = "Navegador", os = "Dispositivo";
+          if (ua.includes("Firefox")) browser = "Firefox";
+          else if (ua.includes("Edg")) browser = "Edge";
+          else if (ua.includes("Chrome")) browser = "Chrome";
+          else if (ua.includes("Safari")) browser = "Safari";
+          if (ua.includes("Windows")) os = "Windows";
+          else if (ua.includes("Mac")) os = "Mac";
+          else if (ua.includes("Android")) os = "Android";
+          else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+          else if (ua.includes("Linux")) os = "Linux";
+          return `${browser} no ${os}`;
+        };
+
+        let currentSubId = null;
+        try {
+          currentSubId = window.__OneSignal?.User?.PushSubscription?.id || null;
+        } catch {}
+
+        const r = await fetch(`${WORKER_URL}/GetUserData?tokenid=${encodeURIComponent(token)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Device-Id": deviceId
+          },
+          body: JSON.stringify({
+            device_id: deviceId,
+            device_name: detectDeviceName(),
+            platform: navigator.platform || "Desconhecido",
+            language: navigator.language || "Desconhecido",
+            user_agent: navigator.userAgent,
+            current_subscription_id: currentSubId
+          })
+        });
+
+        const data = await r.json();
+        if (!data.ok) {
+          console.warn("[AppShell] Worker erro:", data);
+          return null;
+        }
+
+        console.log("[AppShell] Dados do Worker:", data);
+        return data.user;
+
+      } catch (e){
+        console.warn("[AppShell] Falha no Worker:", e.message);
+        return null;
       }
     }
 
@@ -395,7 +484,7 @@
     _onDropdownAction(action) {
       switch (action) {
         case "logout": {
-          const go = () => location.reload();
+          const go = () => location.href = "/auth.html";
           if (confirm("Sair da conta?")) {
             document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
             if (this._auth) {
@@ -421,10 +510,8 @@
         return;
       }
 
-      // mostra o botão
       this._profile.classList.add("show");
 
-      // avatar (foto do Firebase)
       if (user.photoUrl) {
         this._profile.innerHTML = `<img src="${user.photoUrl}" alt="" referrerpolicy="no-referrer">`;
       } else {
@@ -432,7 +519,6 @@
         this._profile.innerHTML = `<span>${initial}</span>`;
       }
 
-      // header do dropdown
       const header = this._dropdown.querySelector(".app-shell-dropdown-header");
       if (header) {
         header.querySelector(".name").textContent  = user.name || "Usuário";
