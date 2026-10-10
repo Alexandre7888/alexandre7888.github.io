@@ -1,6 +1,6 @@
 // ============================================================
-// app-shell.js
-// Menu + navegação + perfil (dados vêm do WORKER, não do Firebase)
+// app-shell.js v2.1.0
+// Menu + navegação + perfil (dados do WORKER; foto do Auth SDK)
 // ============================================================
 
 (function () {
@@ -79,7 +79,6 @@
 
     .app-shell-footer{padding:18px 22px;border-top:1px solid #1f2a44;color:#8fa0bd;font-size:.72rem;text-align:center;letter-spacing:.3px}
 
-    /* ===== PERFIL ===== */
     .app-shell-profile{
       position:fixed;top:14px;right:16px;z-index:1200;
       width:52px;height:52px;border-radius:50%;
@@ -220,7 +219,8 @@
     }
 
     // ============================================================
-    // Firebase Auth — só pra pegar o token, dados vêm do Worker
+    // Firebase Auth → pega token + user.photoURL (foto)
+    // Dados adicionais (nome/username) vêm do WORKER
     // ============================================================
     async _initFirebaseAuth() {
       try {
@@ -239,23 +239,26 @@
 
         onAuthStateChanged(auth, async (user) => {
           if (user) {
-            // Primeiro mostra dados do Firebase Auth (fallback rápido)
+            // 1) Mostra dados básicos do Auth (foto + email vêm daqui)
             this.setUser({
               name: user.displayName || user.email || "Usuário",
               email: user.email || "",
-              photoUrl: user.photoURL || null,
+              photoUrl: user.photoURL || null,   // ✅ foto do Auth
               uid: user.uid
             });
 
-            // Depois busca do WORKER (dados completos)
+            // 2) Busca nome/username do WORKER
             const userData = await this._fetchFromWorker(user);
             if (userData){
               this.setUser({
-                name: userData.displayName || userData.username || userData.email || "Usuário",
-                email: userData.email || "",
-                photoUrl: userData.photoURL || userData.profilePicture || userData.avatar || null,
+                // Nome vem do banco (displayName/username)
+                name: userData.displayName || userData.username || user.displayName || user.email || "Usuário",
+                email: userData.email || user.email || "",
+                // ⚠️ Foto SEMPRE do Auth, nunca do banco
+                photoUrl: user.photoURL || null,
                 uid: userData.uid || user.uid,
-                ...userData
+                ...userData,
+                photoUrl: user.photoURL || null
               });
             }
 
@@ -283,7 +286,7 @@
     }
 
     // ============================================================
-    // Chama o Worker pra pegar os dados do user
+    // Chama o Worker /GetUserData
     // ============================================================
     async _fetchFromWorker(user){
       try {
@@ -541,7 +544,7 @@
 })();
 
 // ============================================================
-// AppMenu (React) — renderiza no #app-menu-root se existir
+// AppMenu (React)
 // ============================================================
 (function () {
   function renderAppMenu() {
