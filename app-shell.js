@@ -1,10 +1,4 @@
-// ============================================================
-// app-shell.js v2.2.0
-// - Foto de perfil: SEMPRE do Firebase Auth SDK (user.photoURL)
-// - Nome/username: do Worker (Firebase Database via Google Script)
-// - Detecta device novo (armadilha) sem spam
-// ============================================================
-
+// app-shell.js v2.3.0
 (function () {
   "use strict";
 
@@ -98,6 +92,15 @@
     .app-shell-profile img{width:100%;height:100%;object-fit:cover;display:block}
     .app-shell-profile span{pointer-events:none}
 
+    .app-shell-spinner{
+      width:22px;height:22px;
+      border:2.5px solid rgba(255,255,255,.25);
+      border-top-color:#fff;
+      border-radius:50%;
+      animation:appShellSpin .8s linear infinite;
+    }
+    @keyframes appShellSpin{to{transform:rotate(360deg)}}
+
     .app-shell-dropdown{
       position:fixed;top:76px;right:16px;z-index:1230;
       min-width:220px;
@@ -171,6 +174,31 @@
     document.head.appendChild(style);
   }
 
+  function getDeviceId(){
+    let id = localStorage.getItem('codehub_deviceId');
+    if (!id){
+      id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('codehub_deviceId', id);
+    }
+    return id;
+  }
+
+  function detectDeviceName(){
+    const ua = navigator.userAgent;
+    let browser = "Navegador", os = "Dispositivo";
+    if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("Edg")) browser = "Edge";
+    else if (ua.includes("Chrome")) browser = "Chrome";
+    else if (ua.includes("Safari")) browser = "Safari";
+    else if (ua.includes("Opera")) browser = "Opera";
+    if (ua.includes("Windows")) os = "Windows";
+    else if (ua.includes("Mac")) os = "Mac";
+    else if (ua.includes("Android")) os = "Android";
+    else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+    else if (ua.includes("Linux")) os = "Linux";
+    return `${browser} no ${os}`;
+  }
+
   class AppShell {
 
     constructor(options = {}) {
@@ -220,11 +248,6 @@
       return this;
     }
 
-    // ============================================================
-    // Firebase Auth
-    // - foto SEMPRE do Auth SDK (user.photoURL)
-    // - nome/username do Worker (Firebase DB)
-    // ============================================================
     async _initFirebaseAuth() {
       try {
         const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
@@ -241,44 +264,34 @@
         this._auth = auth;
 
         onAuthStateChanged(auth, async (user) => {
-          if (user) {
-            // ⚠️ Foto SEMPRE do Auth SDK — guardada em var local
-            const authPhoto = user.photoURL || null;
-            const authEmail = user.email || "";
-
-            // 1) Mostra dados básicos do Auth (foto + nome fallback)
-            this.setUser({
-              name: user.displayName || user.email || "Usuário",
-              email: authEmail,
-              photoUrl: authPhoto,
-              uid: user.uid
-            });
-
-            // 2) Busca nome/username do Worker (não mexe na foto)
-            const userData = await this._fetchFromWorker(user);
-            if (userData){
-              this.setUser({
-                // Nome vem do Worker (Firebase DB)
-                name: userData.displayName || userData.username || user.displayName || authEmail || "Usuário",
-                email: userData.email || authEmail,
-                // ⚠️ Foto SEMPRE do Auth SDK
-                photoUrl: authPhoto,
-                uid: userData.uid || user.uid
-              });
-            }
-
-            // Renova cookie a cada 60s
-            setInterval(async () => {
-              if (auth.currentUser){
-                try {
-                  const t = await auth.currentUser.getIdToken(true);
-                  document.cookie = "firebaseToken=" + t + "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
-                } catch (e) {}
-              }
-            }, 60000);
-
-          } else {
+          if (!user) {
             this.setUser(null);
+            this._showProfilePlaceholder('?');
+            return;
+          }
+
+          this._showProfileLoading();
+
+          const userData = await this._fetchFromWorker(user);
+
+          if (userData){
+            this.setUser({
+              uid: userData.uid || user.uid,
+              name: userData.displayName || userData.username || null,
+              username: userData.username || null,
+              email: userData.email || null,
+              photoUrl: userData.photoURL || null,
+              city: userData.city || null,
+              state: userData.state || null,
+              status: userData.status || null
+            });
+          } else {
+            this.setUser({
+              uid: user.uid,
+              name: user.email || 'Usuário',
+              email: user.email || '',
+              photoUrl: null
+            });
           }
         });
 
@@ -286,40 +299,13 @@
         window.shell = this;
 
       } catch (e) {
-        console.warn("[AppShell] Firebase Auth falhou:", e.message);
+        console.warn("[AppShell] init:", e.message);
       }
     }
 
-    // ============================================================
-    // Chama /GetUserData do Worker (pega nome/username do banco)
-    // ============================================================
     async _fetchFromWorker(user){
       try {
         const token = await user.getIdToken(true);
-
-        const deviceId = (() => {
-          let id = localStorage.getItem('codehub_deviceId');
-          if (!id){
-            id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('codehub_deviceId', id);
-          }
-          return id;
-        })();
-
-        const detectDeviceName = () => {
-          const ua = navigator.userAgent;
-          let browser = "Navegador", os = "Dispositivo";
-          if (ua.includes("Firefox")) browser = "Firefox";
-          else if (ua.includes("Edg")) browser = "Edge";
-          else if (ua.includes("Chrome")) browser = "Chrome";
-          else if (ua.includes("Safari")) browser = "Safari";
-          if (ua.includes("Windows")) os = "Windows";
-          else if (ua.includes("Mac")) os = "Mac";
-          else if (ua.includes("Android")) os = "Android";
-          else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
-          else if (ua.includes("Linux")) os = "Linux";
-          return `${browser} no ${os}`;
-        };
 
         let currentSubId = null;
         try {
@@ -330,10 +316,10 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Device-Id": deviceId
+            "X-Device-Id": getDeviceId()
           },
           body: JSON.stringify({
-            device_id: deviceId,
+            device_id: getDeviceId(),
             device_name: detectDeviceName(),
             platform: navigator.platform || "Desconhecido",
             language: navigator.language || "Desconhecido",
@@ -348,11 +334,10 @@
           return null;
         }
 
-        console.log("[AppShell] Dados do Worker:", data);
         return data.user;
 
       } catch (e){
-        console.warn("[AppShell] Falha no Worker:", e.message);
+        console.warn("[AppShell] fetch:", e.message);
         return null;
       }
     }
@@ -401,11 +386,14 @@
     }
 
     _renderProfile() {
-      const p = document.createElement("div");
-      p.className = "app-shell-profile";
-      p.id = "appShellProfile";
-      p.innerHTML = `<span>?</span>`;
-      document.body.appendChild(p);
+      let p = document.getElementById('appShellProfile');
+      if (!p){
+        p = document.createElement("div");
+        p.className = "app-shell-profile";
+        p.id = "appShellProfile";
+        p.innerHTML = `<span>?</span>`;
+        document.body.appendChild(p);
+      }
       this._profile = p;
     }
 
@@ -449,6 +437,7 @@
 
       this._profile.addEventListener("click", (e) => {
         e.stopPropagation();
+        if (this._profile.classList.contains("loading")) return;
         this._toggleDropdown();
       });
 
@@ -510,27 +499,40 @@
       }
     }
 
+    _showProfileLoading(){
+      this._profile.classList.add("show");
+      this._profile.classList.add("loading");
+      this._profile.innerHTML = `<div class="app-shell-spinner"></div>`;
+    }
+
+    _showProfilePlaceholder(letter){
+      this._profile.classList.add("show");
+      this._profile.classList.remove("loading");
+      this._profile.innerHTML = `<span>${letter}</span>`;
+    }
+
     setUser(user) {
       this.user = user;
 
       if (!user) {
         this._profile.classList.remove("show");
+        this._profile.classList.remove("loading");
         return;
       }
 
       this._profile.classList.add("show");
+      this._profile.classList.remove("loading");
 
-      // ⚠️ Foto: só usa se NÃO for null/vazia. Senão mostra inicial.
       if (user.photoUrl && typeof user.photoUrl === "string" && user.photoUrl.trim() !== ""){
         this._profile.innerHTML = `<img src="${user.photoUrl}" alt="" referrerpolicy="no-referrer">`;
       } else {
-        const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
+        const initial = (user.name || user.username || user.email || "?").charAt(0).toUpperCase();
         this._profile.innerHTML = `<span>${initial}</span>`;
       }
 
       const header = this._dropdown.querySelector(".app-shell-dropdown-header");
       if (header) {
-        header.querySelector(".name").textContent  = user.name || "Usuário";
+        header.querySelector(".name").textContent  = user.name || user.username || "Usuário";
         header.querySelector(".email").textContent = user.email || "";
       }
     }
@@ -549,26 +551,18 @@
 
 })();
 
-// ============================================================
-// AppMenu (React) — renderiza no #app-menu-root se existir
-// ============================================================
 (function () {
   function renderAppMenu() {
     const root = document.getElementById("app-menu-root");
     if (!root) return;
 
-    if (typeof window.AppMenu === "undefined") {
-      console.warn("[app-shell] window.AppMenu não encontrado.");
-      return;
-    }
+    if (typeof window.AppMenu === "undefined") return;
 
     if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
       try {
         ReactDOM.createRoot(root).render(React.createElement(window.AppMenu));
         return;
-      } catch (e) {
-        console.warn("[app-shell] Erro React:", e);
-      }
+      } catch (e) {}
     }
 
     if (typeof window.AppMenu === "function") {
