@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minha Conta · CodeHUB</title>
+<link rel="icon" type="image/png" href="https://alexandre7888.github.io/InShot_20250807_112151490.jpg">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-1:#0a0e1a;--bg-2:#05070f;
+  --surface:#101626;--surface-2:#151c30;
+  --border:#1f2a44;--border-strong:#2d3b5c;
+  --text:#e8eef8;--text-2:#8fa0bd;
+  --accent:#4f8cff;--accent-2:#7aa8ff;
+  --accent-glow:rgba(79,140,255,.35);
+  --danger:#ef4444;--success:#22c55e;--warning:#f59e0b;
+}
+body{font-family:'Segoe UI',sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px}
+.wrap{max-width:760px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.header h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
+.header h1 svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:2}
+.btn{padding:11px 18px;border:none;border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 6px 20px var(--accent-glow)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{background:transparent;border:1.5px solid var(--border-strong);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent-2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+.card h2{font-size:1.05rem;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card h2 svg{width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.device{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;transition:.2s}
+.device:hover{border-color:var(--border-strong)}
+.device.current{border-color:var(--accent);background:rgba(79,140,255,.06)}
+.device.blocked{border-color:var(--danger);background:rgba(239,68,68,.06);opacity:.8}
+.device-icon{width:44px;height:44px;border-radius:12px;background:rgba(79,140,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.device-icon svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.device.blocked .device-icon{background:rgba(239,68,68,.1)}
+.device.blocked .device-icon svg{stroke:var(--danger)}
+.device-info{flex:1;min-width:0}
+.device-info h3{font-size:.95rem;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.device-info p{font-size:.75rem;color:var(--text-2)}
+.device-actions{display:flex;gap:6px}
+.badge{font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase}
+.badge-current{background:rgba(79,140,255,.2);color:var(--accent-2)}
+.badge-blocked{background:rgba(239,68,68,.2);color:#ff8a8a}
+.badge-active{background:rgba(34,197,94,.15);color:#6ee7a0}
+.status{padding:12px 14px;border-radius:12px;font-size:.85rem;margin-bottom:16px;display:none;align-items:flex-start;gap:10px;line-height:1.5}
+.status.show{display:flex}
+.status.ok{background:rgba(34,197,94,.12);color:var(--success);border:1px solid rgba(34,197,94,.3)}
+.status.err{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
+.status.warn{background:rgba(245,158,11,.12);color:var(--warning);border:1px solid rgba(245,158,11,.3)}
+.status.info{background:rgba(79,140,255,.12);color:var(--accent-2);border:1px solid rgba(79,140,255,.3)}
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.15);border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.empty{text-align:center;padding:30px;color:var(--text-2);font-size:.9rem}
+.blocked-screen{max-width:500px;margin:60px auto;text-align:center;padding:40px 24px}
+.blocked-screen svg{width:64px;height:64px;stroke:var(--danger);fill:none;stroke-width:2;margin-bottom:16px}
+.blocked-screen h1{color:var(--danger);font-size:1.4rem;margin-bottom:10px}
+.blocked-screen p{color:var(--text-2);margin-bottom:8px;line-height:1.6}
+#modalOverlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+#modalOverlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:400px;width:100%}
+.modal h3{font-size:1.1rem;margin-bottom:12px}
+.modal p{font-size:.85rem;color:var(--text-2);margin-bottom:16px;line-height:1.5}
+.modal-actions{display:flex;gap:10px;margin-top:18px}
+.modal-actions .btn{flex:1;justify-content:center}
+</style>
+</head>
+<body>
+
+<div id="loading" style="text-align:center;padding:60px">
+  <div class="spinner" style="margin:0 auto 12px;width:24px;height:24px"></div>
+  <p style="color:var(--text-2)">Carregando...</p>
+</div>
+
+<div id="app" class="wrap hidden">
+  <div class="header">
+    <h1>
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Minha Conta
+    </h1>
+    <button class="btn btn-outline" id="btnLogout">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sair
+    </button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="card">
+    <h2>
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Meus dispositivos
+    </h2>
+    <div id="devicesList">
+      <div class="empty"><div class="spinner" style="margin:0 auto 10px"></div>Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<div id="blocked" class="blocked-screen hidden">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+  <h1>Acesso negado</h1>
+  <p>Este dispositivo foi bloqueado nesta conta.</p>
+  <p>Pra recuperar o acesso, verifique sua identidade.</p>
+  <button class="btn btn-primary" id="btnVerifyEmail" style="margin-top:20px">
+    <svg viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+    Verificar por e-mail
+  </button>
+  <div id="verifyStatus" class="status" style="margin-top:16px"></div>
+</div>
+
+<div id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Bloquear dispositivo</h3>
+    <p id="modalDesc">Tem certeza? O dispositivo perderá acesso à conta.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modalCancel">Cancelar</button>
+      <button class="btn btn-danger" id="modalConfirm">Bloquear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+  authDomain: "html-15e80.firebaseapp.com",
+  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+  projectId: "html-15e80",
+  storageBucket: "html-15e80.firebasestorage.app",
+  messagingSenderId: "1068148640439",
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+};
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+
+// ===== DEVICE ID =====
+function getDeviceId() {
+  let id = localStorage.getItem("codehub_deviceId");
+  if (!id) {
+    id = "dev_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem("codehub_deviceId", id);
+  }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
+
+// ===== HELPERS =====
+function $(id){ return document.getElementById(id); }
+function showStatus(msg, tipo = "info") {
+  const s = $("status");
+  s.className = "status show " + tipo;
+  s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + '<span>' + msg + '</span>';
+}
+function hideStatus(){ $("status").className = "status"; }
+function showVerifyStatus(msg, tipo = "info") {
+  const s = $("verifyStatus");
+  s.className = "status show " + tipo;
+  s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + '<span>' + msg + '</span>';
+}
+
+// ===== MODAL =====
+let modalCallback = null;
+function abrirModal(titulo, desc, textoBotao, callback) {
+  $("modalTitle").textContent = titulo;
+  $("modalDesc").textContent = desc;
+  $("modalConfirm").textContent = textoBotao;
+  modalCallback = callback;
+  $("modalOverlay").classList.add("show");
+}
+function fecharModal() {
+  $("modalOverlay").classList.remove("show");
+  modalCallback = null;
+}
+$("modalCancel").onclick = fecharModal;
+$("modalConfirm").onclick = () => {
+  const cb = modalCallback;
+  fecharModal();
+  if (cb) cb();
+};
+
+// ===== INIT =====
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    window.location.href = "/auth.html";
+    return;
+  }
+  await iniciar();
+});
+
+async function iniciar() {
+  let token;
+  try {
+    token = await auth.currentUser.getIdToken(true);
+  } catch (e) {
+    window.location.href = "/auth.html";
+    return;
+  }
+
+  // 1) Registra/atualiza device
+  try {
+    await fetch(WORKER + "/device/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenid: token, device_id: DEVICE_ID })
+    }).then(r => r.json());
+  } catch (e) {
+    console.warn("register falhou:", e);
+  }
+
+  // 2) Verifica se está bloqueado
+  let check;
+  try {
+    check = await fetch(WORKER + "/device/check?tokenid=" + encodeURIComponent(token) + "&device_id=" + encodeURIComponent(DEVICE_ID)).then(r => r.json());
+  } catch (e) {
+    check = { blocked: false };
+  }
+
+  $("loading").classList.add("hidden");
+
+  if (check && check.blocked) {
+    $("blocked").classList.remove("hidden");
+    return;
+  }
+
+  $("app").classList.remove("hidden");
+  await carregarDispositivos();
+}
+
+// ===== LISTA DISPOSITIVOS =====
+async function carregarDispositivos() {
+  const token = await auth.currentUser.getIdToken(true);
+
+  let res;
+  try {
+    res = await fetch(WORKER + "/device/list?tokenid=" + encodeURIComponent(token)).then(r => r.json());
+  } catch (e) {
+    $("devicesList").innerHTML = '<div class="empty">Erro ao carregar dispositivos.</div>';
+    return;
+  }
+
+  if (!res.ok || !res.devices || res.devices.length === 0) {
+    $("devicesList").innerHTML = '<div class="empty">Nenhum dispositivo registrado.</div>';
+    return;
+  }
+
+  const html = res.devices.map(d => {
+    const isCurrent = d.device_id === DEVICE_ID;
+    const isBlocked = d.blocked;
+    const cls = "device" + (isCurrent ? " current" : "") + (isBlocked ? " blocked" : "");
+
+    let badge = '';
+    if (isCurrent) badge = '<span class="badge badge-current">Este dispositivo</span>';
+    else if (isBlocked) badge = '<span class="badge badge-blocked">Bloqueado</span>';
+    else badge = '<span class="badge badge-active">Ativo</span>';
+
+    const actionBtn = isCurrent
+      ? ''
+      : (isBlocked
+        ? `<button class="btn btn-outline" data-action="unblock" data-id="${d.device_id}">
+             <svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+             Desbloquear
+           </button>`
+        : `<button class="btn btn-danger" data-action="block" data-id="${d.device_id}">
+             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+             Bloquear
+           </button>`
+      );
+
+    return `
+      <div class="${cls}">
+        <div class="device-icon">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="device-info">
+          <h3>${d.device_name} ${badge}</h3>
+          <p>Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p>
+        </div>
+        <div class="device-actions">${actionBtn}</div>
+      </div>
+    `;
+  }).join("");
+
+  $("devicesList").innerHTML = html;
+
+  // Eventos dos botões
+  $("devicesList").querySelectorAll("[data-action]").forEach(btn => {
+    btn.onclick = () => {
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      if (action === "block") {
+        abrirModal(
+          "Bloquear dispositivo",
+          "Este dispositivo perderá o acesso à conta imediatamente. Você pode desbloquear depois.",
+          "Bloquear",
+          () => bloquearDispositivo(id)
+        );
+      } else if (action === "unblock") {
+        abrirModal(
+          "Desbloquear dispositivo",
+          "O dispositivo voltará a ter acesso à conta.",
+          "Desbloquear",
+          () => desbloquearDispositivo(id)
+        );
+      }
+    };
+  });
+}
+
+// ===== AÇÕES =====
+async function bloquearDispositivo(deviceId) {
+  showStatus("Bloqueando dispositivo...", "info");
+  try {
+    const token = await auth.currentUser.getIdToken(true);
+    const r = await fetch(WORKER + "/device/block", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenid: token, device_id: deviceId })
+    }).then(r => r.json());
+
+    if (!r.ok) throw new Error(r.erro || "Erro");
+    showStatus("Dispositivo bloqueado.", "ok");
+    await carregarDispositivos();
+    setTimeout(hideStatus, 2000);
+  } catch (e) {
+    showStatus("Erro: " + e.message, "err");
+  }
+}
+
+async function desbloquearDispositivo(deviceId) {
+  showStatus("Desbloqueando dispositivo...", "info");
+  try {
+    const token = await auth.currentUser.getIdToken(true);
+    const r = await fetch(WORKER + "/device/unblock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenid: token, device_id: deviceId })
+    }).then(r => r.json());
+
+    if (!r.ok) throw new Error(r.erro || "Erro");
+    showStatus("Dispositivo desbloqueado.", "ok");
+    await carregarDispositivos();
+    setTimeout(hideStatus, 2000);
+  } catch (e) {
+    showStatus("Erro: " + e.message, "err");
+  }
+}
+
+// ===== VERIFICAR POR E-MAIL (device bloqueado) =====
+$("btnVerifyEmail").onclick = async () => {
+  try {
+    showVerifyStatus("Solicitando verificação...", "info");
+    const token = await auth.currentUser.getIdToken(true);
+    const r = await fetch(WORKER + "/device/verify-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenid: token, device_id: DEVICE_ID })
+    }).then(r => r.json());
+
+    if (!r.ok) throw new Error(r.erro || "Erro");
+    showVerifyStatus("Verificação solicitada! Confirme pelo e-mail " + auth.currentUser.email, "ok");
+  } catch (e) {
+    showVerifyStatus("Erro: " + e.message, "err");
+  }
+};
+
+// ===== LOGOUT =====
+$("btnLogout").onclick = async () => {
+  if (confirm("Sair da conta?")) {
+    await auth.signOut();
+    window.location.href = "/auth.html";
+  }
+};
+</script>
+</body>
+</html>
