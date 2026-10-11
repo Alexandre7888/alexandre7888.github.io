@@ -70,8 +70,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .modal p{font-size:.85rem;color:var(--text-2);margin-bottom:16px;line-height:1.5}
 .modal-actions{display:flex;gap:10px;margin-top:18px}
 .modal-actions .btn{flex:1;justify-content:center}
-.debug-box{margin-top:16px;background:#0a0e1a;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:monospace;font-size:11px;color:#8fa0bd;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all}
-.debug-box strong{color:var(--accent-2)}
 </style>
 </head>
 <body>
@@ -103,7 +101,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
     <div id="devicesList">
       <div class="empty"><div class="spinner" style="margin:0 auto 10px"></div>Carregando...</div>
     </div>
-    <div class="debug-box" id="debugBox"></div>
   </div>
 </div>
 
@@ -170,10 +167,10 @@ function showVerifyStatus(msg, tipo) {
   s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + '<span>' + msg + '</span>';
 }
 
-function debug(msg) {
-  const d = $("debugBox");
-  d.innerHTML += "\n" + msg;
-  d.scrollTop = d.scrollHeight;
+function mostrarBloqueado() {
+  $("loading").classList.add("hidden");
+  $("app").classList.add("hidden");
+  $("blocked").classList.remove("hidden");
 }
 
 // ===== MODAL =====
@@ -197,23 +194,24 @@ $("modalConfirm").onclick = () => {
 };
 
 // ============================================
-// FUNÇÃO ÚNICA: CHAMA O WORKER
+// API: CHAMA O WORKER
 // ============================================
 async function deviceManage(action, extra = {}) {
   const token = await auth.currentUser.getIdToken(true);
-  debug("→ POST /device/manage action=" + action);
   const r = await fetch(WORKER + "/device/manage", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      tokenid: token,
-      action: action,
-      ...extra
-    })
+    body: JSON.stringify({ tokenid: token, action, ...extra })
   });
-  debug("← HTTP " + r.status);
+
   const data = await r.json();
-  debug("← " + JSON.stringify(data).substring(0, 500));
+
+  // ⭐ Se o worker retornar bloqueado, mostra tela de acesso negado
+  if (data.blocked) {
+    mostrarBloqueado();
+    throw new Error("Dispositivo bloqueado");
+  }
+
   return data;
 }
 
@@ -226,46 +224,35 @@ auth.onAuthStateChanged(async (user) => {
     return;
   }
 
-  debug("User: " + user.uid);
-  debug("DeviceID: " + DEVICE_ID);
-
-  // 1) Registra
   try {
-    const reg = await deviceManage("register", { device_id: DEVICE_ID });
-    debug("register: " + JSON.stringify(reg));
+    // 1) Registra
+    await deviceManage("register", { device_id: DEVICE_ID });
+
+    // 2) Lista
+    const listRes = await deviceManage("list");
+
+    // 3) Descobre se ESTE dispositivo está bloqueado
+    const meuIpKey = listRes.current_ip_key;
+    const esteDevice = listRes.devices?.find(d => d.ip_key === meuIpKey);
+
+    if (esteDevice && esteDevice.blocked) {
+      mostrarBloqueado();
+      return;
+    }
+
+    $("loading").classList.add("hidden");
+    $("app").classList.remove("hidden");
+
+    renderDispositivos(listRes.devices || [], meuIpKey);
+
   } catch (e) {
-    debug("register ERRO: " + e.message);
+    console.warn("Bloqueado ou erro:", e.message);
+    // Se já mostrou tela de bloqueio, não faz nada
   }
-
-  // 2) Lista
-  let listRes;
-  try {
-    listRes = await deviceManage("list");
-  } catch (e) {
-    debug("list ERRO: " + e.message);
-    listRes = { ok: false, devices: [] };
-  }
-
-  $("loading").classList.add("hidden");
-  $("app").classList.remove("hidden");
-
-  debug("Total: " + (listRes.devices?.length || 0));
-
-  // 3) Verifica bloqueio
-  const meuIpKey = listRes.current_ip_key;
-  const esteDevice = listRes.devices?.find(d => d.ip_key === meuIpKey);
-
-  if (esteDevice && esteDevice.blocked) {
-    $("blocked").classList.remove("hidden");
-    $("app").classList.add("hidden");
-    return;
-  }
-
-  renderDispositivos(listRes.devices || [], meuIpKey);
 });
 
 // ============================================
-// RENDERIZA LISTA
+// RENDER
 // ============================================
 function renderDispositivos(devices, meuIpKey) {
   if (!devices || devices.length === 0) {
