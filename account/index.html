@@ -155,15 +155,17 @@ const DEVICE_ID = getDeviceId();
 
 // ===== HELPERS =====
 function $(id){ return document.getElementById(id); }
-function showStatus(msg, tipo = "info") {
+
+function showStatus(msg, tipo) {
   const s = $("status");
-  s.className = "status show " + tipo;
+  s.className = "status show " + (tipo || "info");
   s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + '<span>' + msg + '</span>';
 }
 function hideStatus(){ $("status").className = "status"; }
-function showVerifyStatus(msg, tipo = "info") {
+
+function showVerifyStatus(msg, tipo) {
   const s = $("verifyStatus");
-  s.className = "status show " + tipo;
+  s.className = "status show " + (tipo || "info");
   s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + '<span>' + msg + '</span>';
 }
 
@@ -187,83 +189,74 @@ $("modalConfirm").onclick = () => {
   if (cb) cb();
 };
 
-// ===== INIT =====
+// ============================================
+// FUNÇÃO ÚNICA: CHAMA O WORKER
+// ============================================
+async function deviceManage(action, extra = {}) {
+  const token = await auth.currentUser.getIdToken(true);
+  const r = await fetch(WORKER + "/device/manage", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      tokenid: token,
+      action: action,
+      ...extra
+    })
+  });
+  return await r.json();
+}
+
+// ============================================
+// INIT
+// ============================================
 auth.onAuthStateChanged(async (user) => {
   if (!user) {
     window.location.href = "/auth.html";
     return;
   }
-  await iniciar();
-});
 
-async function iniciar() {
-  if (!auth.currentUser) {
-    window.location.href = "/auth.html";
-    return;
-  }
-
-  // ===== 1) REGISTRA DEVICE =====
+  // 1) Registra dispositivo
   try {
-    const token = await auth.currentUser.getIdToken(true);
-    console.log("[init] token obtido, tamanho:", token.length);
-
-    const r = await fetch(WORKER + "/device/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tokenid: token,
-        device_id: DEVICE_ID
-      })
-    }).then(r => r.json());
-
-    console.log("[device/register] resposta:", r);
+    const reg = await deviceManage("register", { device_id: DEVICE_ID });
+    console.log("[register]", reg);
   } catch (e) {
     console.warn("register falhou:", e);
   }
 
-  // ===== 2) VERIFICA SE ESTÁ BLOQUEADO =====
-  let check = { blocked: false };
+  // 2) Verifica se está bloqueado
+  let listRes;
   try {
-    const token = await auth.currentUser.getIdToken(true);
-    check = await fetch(
-      WORKER + "/device/check?tokenid=" + encodeURIComponent(token) +
-      "&device_id=" + encodeURIComponent(DEVICE_ID)
-    ).then(r => r.json());
-    console.log("[device/check] resposta:", check);
+    listRes = await deviceManage("list");
   } catch (e) {
-    console.warn("check falhou:", e);
+    listRes = { ok: false };
   }
 
   $("loading").classList.add("hidden");
 
-  if (check && check.blocked) {
+  // Descobre o ipKey deste dispositivo
+  const meuIpKey = listRes.current_ip_key;
+  const esteDevice = listRes.devices?.find(d => d.ip_key === meuIpKey);
+
+  if (esteDevice && esteDevice.blocked) {
     $("blocked").classList.remove("hidden");
     return;
   }
 
   $("app").classList.remove("hidden");
-  await carregarDispositivos();
-}
+  renderDispositivos(listRes.devices || [], meuIpKey);
+});
 
-// ===== LISTA DISPOSITIVOS =====
-async function carregarDispositivos() {
-  let res;
-  try {
-    const token = await auth.currentUser.getIdToken(true);
-    res = await fetch(WORKER + "/device/list?tokenid=" + encodeURIComponent(token)).then(r => r.json());
-    console.log("[device/list] resposta:", res);
-  } catch (e) {
-    $("devicesList").innerHTML = '<div class="empty">Erro ao carregar dispositivos.</div>';
-    return;
-  }
-
-  if (!res.ok || !res.devices || res.devices.length === 0) {
+// ============================================
+// RENDERIZA LISTA
+// ============================================
+function renderDispositivos(devices, meuIpKey) {
+  if (!devices || devices.length === 0) {
     $("devicesList").innerHTML = '<div class="empty">Nenhum dispositivo registrado.</div>';
     return;
   }
 
-  const html = res.devices.map(d => {
-    const isCurrent = d.device_id === DEVICE_ID;
+  const html = devices.map(d => {
+    const isCurrent = d.ip_key === meuIpKey;
     const isBlocked = d.blocked;
     const cls = "device" + (isCurrent ? " current" : "") + (isBlocked ? " blocked" : "");
 
@@ -301,7 +294,6 @@ async function carregarDispositivos() {
 
   $("devicesList").innerHTML = html;
 
-  // Eventos dos botões
   $("devicesList").querySelectorAll("[data-action]").forEach(btn => {
     btn.onclick = () => {
       const action = btn.dataset.action;
@@ -312,70 +304,61 @@ async function carregarDispositivos() {
           "Bloquear dispositivo",
           "Este dispositivo perderá o acesso à conta imediatamente. Você pode desbloquear depois.",
           "Bloquear",
-          () => bloquearDispositivo(ipKey)
+          () => bloquear(ipKey)
         );
       } else if (action === "unblock") {
         abrirModal(
           "Desbloquear dispositivo",
           "O dispositivo voltará a ter acesso à conta.",
           "Desbloquear",
-          () => desbloquearDispositivo(ipKey)
+          () => desbloquear(ipKey)
         );
       }
     };
   });
 }
 
-// ===== AÇÕES =====
-async function bloquearDispositivo(ipKey) {
+// ============================================
+// AÇÕES (chamam deviceManage)
+// ============================================
+async function bloquear(ipKey) {
   showStatus("Bloqueando dispositivo...", "info");
   try {
-    const token = await auth.currentUser.getIdToken(true);
-    const r = await fetch(WORKER + "/device/block", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token, ip_key: ipKey })
-    }).then(r => r.json());
-
+    const r = await deviceManage("block", { ip_key: ipKey });
     if (!r.ok) throw new Error(r.erro || "Erro");
     showStatus("Dispositivo bloqueado.", "ok");
-    await carregarDispositivos();
+    await recarregarLista();
     setTimeout(hideStatus, 2000);
   } catch (e) {
     showStatus("Erro: " + e.message, "err");
   }
 }
 
-async function desbloquearDispositivo(ipKey) {
+async function desbloquear(ipKey) {
   showStatus("Desbloqueando dispositivo...", "info");
   try {
-    const token = await auth.currentUser.getIdToken(true);
-    const r = await fetch(WORKER + "/device/unblock", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token, ip_key: ipKey })
-    }).then(r => r.json());
-
+    const r = await deviceManage("unblock", { ip_key: ipKey });
     if (!r.ok) throw new Error(r.erro || "Erro");
     showStatus("Dispositivo desbloqueado.", "ok");
-    await carregarDispositivos();
+    await recarregarLista();
     setTimeout(hideStatus, 2000);
   } catch (e) {
     showStatus("Erro: " + e.message, "err");
   }
 }
 
-// ===== VERIFICAR POR E-MAIL =====
+async function recarregarLista() {
+  const listRes = await deviceManage("list");
+  renderDispositivos(listRes.devices || [], listRes.current_ip_key);
+}
+
+// ============================================
+// VERIFICAR POR EMAIL (device bloqueado)
+// ============================================
 $("btnVerifyEmail").onclick = async () => {
   try {
     showVerifyStatus("Solicitando verificação...", "info");
-    const token = await auth.currentUser.getIdToken(true);
-    const r = await fetch(WORKER + "/device/verify-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token })
-    }).then(r => r.json());
-
+    const r = await deviceManage("verify-email");
     if (!r.ok) throw new Error(r.erro || "Erro");
     showVerifyStatus("Verificação solicitada! Confirme pelo e-mail " + auth.currentUser.email, "ok");
   } catch (e) {
@@ -383,7 +366,9 @@ $("btnVerifyEmail").onclick = async () => {
   }
 };
 
-// ===== LOGOUT =====
+// ============================================
+// LOGOUT
+// ============================================
 $("btnLogout").onclick = async () => {
   if (confirm("Sair da conta?")) {
     await auth.signOut();
