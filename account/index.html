@@ -8,7 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
+*{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg-1:#0a0e1a;--bg-2:#05070f;
   --surface:#101626;--surface-2:#151c30;
@@ -18,11 +18,11 @@
   --accent-glow:rgba(79,140,255,.35);
   --danger:#ef4444;--success:#22c55e;--warning:#f59e0b;
 }
-body{font-family:'Segoe UI',sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px}
+body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px}
 .wrap{max-width:760px;margin:0 auto}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .header h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
-.header h1 svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:2}
+.header h1 svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .btn{padding:11px 18px;border:none;border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
 .btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 6px 20px var(--accent-glow)}
@@ -42,7 +42,7 @@ body{font-family:'Segoe UI',sans-serif;background:radial-gradient(circle at 30% 
 .device.blocked .device-icon{background:rgba(239,68,68,.1)}
 .device.blocked .device-icon svg{stroke:var(--danger)}
 .device-info{flex:1;min-width:0}
-.device-info h3{font-size:.95rem;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.device-info h3{font-size:.95rem;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .device-info p{font-size:.75rem;color:var(--text-2)}
 .device-actions{display:flex;gap:6px}
 .badge{font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase}
@@ -197,31 +197,41 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 async function iniciar() {
-  let token;
-  try {
-    token = await auth.currentUser.getIdToken(true);
-  } catch (e) {
+  if (!auth.currentUser) {
     window.location.href = "/auth.html";
     return;
   }
 
-  // 1) Registra/atualiza device
+  // ===== 1) REGISTRA DEVICE =====
   try {
-    await fetch(WORKER + "/device/register", {
+    const token = await auth.currentUser.getIdToken(true);
+    console.log("[init] token obtido, tamanho:", token.length);
+
+    const r = await fetch(WORKER + "/device/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token, device_id: DEVICE_ID })
+      body: JSON.stringify({
+        tokenid: token,
+        device_id: DEVICE_ID
+      })
     }).then(r => r.json());
+
+    console.log("[device/register] resposta:", r);
   } catch (e) {
     console.warn("register falhou:", e);
   }
 
-  // 2) Verifica se está bloqueado
-  let check;
+  // ===== 2) VERIFICA SE ESTÁ BLOQUEADO =====
+  let check = { blocked: false };
   try {
-    check = await fetch(WORKER + "/device/check?tokenid=" + encodeURIComponent(token) + "&device_id=" + encodeURIComponent(DEVICE_ID)).then(r => r.json());
+    const token = await auth.currentUser.getIdToken(true);
+    check = await fetch(
+      WORKER + "/device/check?tokenid=" + encodeURIComponent(token) +
+      "&device_id=" + encodeURIComponent(DEVICE_ID)
+    ).then(r => r.json());
+    console.log("[device/check] resposta:", check);
   } catch (e) {
-    check = { blocked: false };
+    console.warn("check falhou:", e);
   }
 
   $("loading").classList.add("hidden");
@@ -237,11 +247,11 @@ async function iniciar() {
 
 // ===== LISTA DISPOSITIVOS =====
 async function carregarDispositivos() {
-  const token = await auth.currentUser.getIdToken(true);
-
   let res;
   try {
+    const token = await auth.currentUser.getIdToken(true);
     res = await fetch(WORKER + "/device/list?tokenid=" + encodeURIComponent(token)).then(r => r.json());
+    console.log("[device/list] resposta:", res);
   } catch (e) {
     $("devicesList").innerHTML = '<div class="empty">Erro ao carregar dispositivos.</div>';
     return;
@@ -265,11 +275,11 @@ async function carregarDispositivos() {
     const actionBtn = isCurrent
       ? ''
       : (isBlocked
-        ? `<button class="btn btn-outline" data-action="unblock" data-id="${d.device_id}">
+        ? `<button class="btn btn-outline" data-action="unblock" data-ip="${d.ip_key}">
              <svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
              Desbloquear
            </button>`
-        : `<button class="btn btn-danger" data-action="block" data-id="${d.device_id}">
+        : `<button class="btn btn-danger" data-action="block" data-ip="${d.ip_key}">
              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
              Bloquear
            </button>`
@@ -295,21 +305,21 @@ async function carregarDispositivos() {
   $("devicesList").querySelectorAll("[data-action]").forEach(btn => {
     btn.onclick = () => {
       const action = btn.dataset.action;
-      const id = btn.dataset.id;
+      const ipKey = btn.dataset.ip;
 
       if (action === "block") {
         abrirModal(
           "Bloquear dispositivo",
           "Este dispositivo perderá o acesso à conta imediatamente. Você pode desbloquear depois.",
           "Bloquear",
-          () => bloquearDispositivo(id)
+          () => bloquearDispositivo(ipKey)
         );
       } else if (action === "unblock") {
         abrirModal(
           "Desbloquear dispositivo",
           "O dispositivo voltará a ter acesso à conta.",
           "Desbloquear",
-          () => desbloquearDispositivo(id)
+          () => desbloquearDispositivo(ipKey)
         );
       }
     };
@@ -317,14 +327,14 @@ async function carregarDispositivos() {
 }
 
 // ===== AÇÕES =====
-async function bloquearDispositivo(deviceId) {
+async function bloquearDispositivo(ipKey) {
   showStatus("Bloqueando dispositivo...", "info");
   try {
     const token = await auth.currentUser.getIdToken(true);
     const r = await fetch(WORKER + "/device/block", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token, device_id: deviceId })
+      body: JSON.stringify({ tokenid: token, ip_key: ipKey })
     }).then(r => r.json());
 
     if (!r.ok) throw new Error(r.erro || "Erro");
@@ -336,14 +346,14 @@ async function bloquearDispositivo(deviceId) {
   }
 }
 
-async function desbloquearDispositivo(deviceId) {
+async function desbloquearDispositivo(ipKey) {
   showStatus("Desbloqueando dispositivo...", "info");
   try {
     const token = await auth.currentUser.getIdToken(true);
     const r = await fetch(WORKER + "/device/unblock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token, device_id: deviceId })
+      body: JSON.stringify({ tokenid: token, ip_key: ipKey })
     }).then(r => r.json());
 
     if (!r.ok) throw new Error(r.erro || "Erro");
@@ -355,7 +365,7 @@ async function desbloquearDispositivo(deviceId) {
   }
 }
 
-// ===== VERIFICAR POR E-MAIL (device bloqueado) =====
+// ===== VERIFICAR POR E-MAIL =====
 $("btnVerifyEmail").onclick = async () => {
   try {
     showVerifyStatus("Solicitando verificação...", "info");
@@ -363,7 +373,7 @@ $("btnVerifyEmail").onclick = async () => {
     const r = await fetch(WORKER + "/device/verify-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token, device_id: DEVICE_ID })
+      body: JSON.stringify({ tokenid: token })
     }).then(r => r.json());
 
     if (!r.ok) throw new Error(r.erro || "Erro");
