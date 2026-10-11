@@ -53,7 +53,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .status.show{display:flex}
 .status.ok{background:rgba(34,197,94,.12);color:var(--success);border:1px solid rgba(34,197,94,.3)}
 .status.err{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
-.status.warn{background:rgba(245,158,11,.12);color:var(--warning);border:1px solid rgba(245,158,11,.3)}
 .status.info{background:rgba(79,140,255,.12);color:var(--accent-2);border:1px solid rgba(79,140,255,.3)}
 .spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.15);border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -142,16 +141,6 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 
-function getDeviceId() {
-  let id = localStorage.getItem("codehub_deviceId");
-  if (!id) {
-    id = "dev_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem("codehub_deviceId", id);
-  }
-  return id;
-}
-const DEVICE_ID = getDeviceId();
-
 function $(id){ return document.getElementById(id); }
 
 function showStatus(msg, tipo) {
@@ -173,7 +162,6 @@ function mostrarBloqueado() {
   $("blocked").classList.remove("hidden");
 }
 
-// ===== MODAL =====
 let modalCallback = null;
 function abrirModal(titulo, desc, textoBotao, callback) {
   $("modalTitle").textContent = titulo;
@@ -193,9 +181,6 @@ $("modalConfirm").onclick = () => {
   if (cb) cb();
 };
 
-// ============================================
-// API: CHAMA O WORKER
-// ============================================
 async function deviceManage(action, extra = {}) {
   const token = await auth.currentUser.getIdToken(true);
   const r = await fetch(WORKER + "/device/manage", {
@@ -206,7 +191,6 @@ async function deviceManage(action, extra = {}) {
 
   const data = await r.json();
 
-  // ⭐ Se o worker retornar bloqueado, mostra tela de acesso negado
   if (data.blocked) {
     mostrarBloqueado();
     throw new Error("Dispositivo bloqueado");
@@ -215,9 +199,6 @@ async function deviceManage(action, extra = {}) {
   return data;
 }
 
-// ============================================
-// INIT
-// ============================================
 auth.onAuthStateChanged(async (user) => {
   if (!user) {
     window.location.href = "/auth.html";
@@ -225,13 +206,9 @@ auth.onAuthStateChanged(async (user) => {
   }
 
   try {
-    // 1) Registra
-    await deviceManage("register", { device_id: DEVICE_ID });
-
-    // 2) Lista
+    await deviceManage("register");
     const listRes = await deviceManage("list");
 
-    // 3) Descobre se ESTE dispositivo está bloqueado
     const meuIpKey = listRes.current_ip_key;
     const esteDevice = listRes.devices?.find(d => d.ip_key === meuIpKey);
 
@@ -242,18 +219,13 @@ auth.onAuthStateChanged(async (user) => {
 
     $("loading").classList.add("hidden");
     $("app").classList.remove("hidden");
-
     renderDispositivos(listRes.devices || [], meuIpKey);
 
   } catch (e) {
     console.warn("Bloqueado ou erro:", e.message);
-    // Se já mostrou tela de bloqueio, não faz nada
   }
 });
 
-// ============================================
-// RENDER
-// ============================================
 function renderDispositivos(devices, meuIpKey) {
   if (!devices || devices.length === 0) {
     $("devicesList").innerHTML = '<div class="empty">Nenhum dispositivo registrado.</div>';
@@ -305,7 +277,7 @@ function renderDispositivos(devices, meuIpKey) {
       const ipKey = btn.dataset.ip;
 
       if (action === "block") {
-        abrirModal("Bloquear dispositivo", "Este dispositivo perderá o acesso à conta imediatamente. Você pode desbloquear depois.", "Bloquear", () => bloquear(ipKey));
+        abrirModal("Bloquear dispositivo", "Este dispositivo perderá o acesso à conta imediatamente.", "Bloquear", () => bloquear(ipKey));
       } else if (action === "unblock") {
         abrirModal("Desbloquear dispositivo", "O dispositivo voltará a ter acesso à conta.", "Desbloquear", () => desbloquear(ipKey));
       }
@@ -313,9 +285,6 @@ function renderDispositivos(devices, meuIpKey) {
   });
 }
 
-// ============================================
-// AÇÕES
-// ============================================
 async function bloquear(ipKey) {
   showStatus("Bloqueando dispositivo...", "info");
   try {
