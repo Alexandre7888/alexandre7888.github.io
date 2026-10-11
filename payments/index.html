@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout Seguro</title>
+  <style>
+    /* Reseta o estilo para o iframe ocupar a tela inteira */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden; /* Evita barras de rolagem no corpo principal */
+    }
+    #checkout-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- O iframe que carrega o checkout do Worker -->
+  <iframe 
+    id="checkout-frame" 
+    src="" 
+    allow="payment; fullscreen"
+    sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation"
+  ></iframe>
+
+  <!-- SDK do Firebase (v9 modular, via CDN) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // ===== CONFIGURAÇÃO DO FIREBASE =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+    };
+
+    // ===== INICIALIZA O FIREBASE =====
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // ===== ELEMENTOS =====
+    const iframe = document.getElementById('checkout-frame');
+
+    // O ID do pagamento (plano) que você quer carregar
+    // Você pode passar isso via query string na URL do embed.html, ex: embed.html?id=plano_premium
+    const urlParams = new URLSearchParams(window.location.search);
+    const payId = urlParams.get('id') || 'plano_premium'; // Fallback para um ID padrão
+
+    // ===== FUNÇÃO PARA CARREGAR O CHECKOUT =====
+    async function carregarCheckout(user) {
+      if (!user) {
+        console.warn('Usuário não está logado. O checkout não pode ser carregado.');
+        // Opcional: redirecionar para login ou mostrar mensagem
+        // window.location.href = '/auth.html';
+        return;
+      }
+
+      try {
+        // 1. Obtém o ID Token do Firebase (JWT)
+        const tokenId = await user.getIdToken(true);
+        console.log('ID Token gerado com sucesso.');
+
+        // 2. Monta a URL do checkout do Worker com o token e o ID do pagamento
+        const checkoutUrl = `https://proud-flower-677b.braatzjunioralexandre5.workers.dev/?id=${encodeURIComponent(payId)}&tokenid=${encodeURIComponent(tokenId)}`;
+
+        // 3. Define o src do iframe
+        iframe.src = checkoutUrl;
+        console.log('Checkout carregado no iframe.');
+
+      } catch (error) {
+        console.error('Erro ao obter o ID Token ou montar a URL:', error);
+      }
+    }
+
+    // ===== OBSERVA O ESTADO DE AUTENTICAÇÃO =====
+    onAuthStateChanged(auth, (user) => {
+      carregarCheckout(user);
+    });
+
+    // ===== ESCUTA MENSAGENS DO IFRAME =====
+    // O checkout dentro do iframe pode enviar uma mensagem quando o pagamento for concluído
+    window.addEventListener('message', (event) => {
+      // Valida a origem da mensagem (deve ser o domínio do seu Worker)
+      if (event.origin !== 'https://proud-flower-677b.braatzjunioralexandre5.workers.dev') {
+        return;
+      }
+
+      const data = event.data;
+
+      // Exemplo: se o checkout enviar um evento de sucesso com uma URL de redirecionamento
+      if (data && data.type === 'checkout_success' && data.redirectUrl) {
+        console.log('Pagamento concluído! Redirecionando para:', data.redirectUrl);
+        // Redireciona a página principal (fora do iframe)
+        window.top.location.href = data.redirectUrl;
+      }
+
+      // Exemplo: se o checkout enviar um evento de erro
+      if (data && data.type === 'checkout_error') {
+        console.error('Erro no checkout:', data.message);
+        // Você pode mostrar um alerta ou redirecionar para uma página de erro
+        // alert('Ocorreu um erro no pagamento: ' + data.message);
+      }
+    });
+
+  </script>
+</body>
+</html>
