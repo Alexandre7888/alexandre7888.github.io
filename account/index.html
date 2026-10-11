@@ -49,7 +49,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .badge-current{background:rgba(79,140,255,.2);color:var(--accent-2)}
 .badge-blocked{background:rgba(239,68,68,.2);color:#ff8a8a}
 .badge-active{background:rgba(34,197,94,.15);color:#6ee7a0}
-.status{padding:12px 14px;border-radius:12px;font-size:.85rem;margin-bottom:16px;display:none;align-items:flex-start;gap:10px;line-height:1.5}
+.status{padding:12px 14px;border-radius:12px;font-size:.85rem;margin-bottom:16px;display:none;align-items:flex-start;gap:10px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .status.show{display:flex}
 .status.ok{background:rgba(34,197,94,.12);color:var(--success);border:1px solid rgba(34,197,94,.3)}
 .status.err{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
@@ -70,6 +70,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .modal p{font-size:.85rem;color:var(--text-2);margin-bottom:16px;line-height:1.5}
 .modal-actions{display:flex;gap:10px;margin-top:18px}
 .modal-actions .btn{flex:1;justify-content:center}
+.debug-box{margin-top:16px;background:#0a0e1a;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:monospace;font-size:11px;color:#8fa0bd;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.debug-box strong{color:var(--accent-2)}
 </style>
 </head>
 <body>
@@ -101,6 +103,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
     <div id="devicesList">
       <div class="empty"><div class="spinner" style="margin:0 auto 10px"></div>Carregando...</div>
     </div>
+    <div class="debug-box" id="debugBox"></div>
   </div>
 </div>
 
@@ -142,7 +145,6 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 
-// ===== DEVICE ID =====
 function getDeviceId() {
   let id = localStorage.getItem("codehub_deviceId");
   if (!id) {
@@ -153,7 +155,6 @@ function getDeviceId() {
 }
 const DEVICE_ID = getDeviceId();
 
-// ===== HELPERS =====
 function $(id){ return document.getElementById(id); }
 
 function showStatus(msg, tipo) {
@@ -167,6 +168,12 @@ function showVerifyStatus(msg, tipo) {
   const s = $("verifyStatus");
   s.className = "status show " + (tipo || "info");
   s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + '<span>' + msg + '</span>';
+}
+
+function debug(msg) {
+  const d = $("debugBox");
+  d.innerHTML += "\n" + msg;
+  d.scrollTop = d.scrollHeight;
 }
 
 // ===== MODAL =====
@@ -194,6 +201,7 @@ $("modalConfirm").onclick = () => {
 // ============================================
 async function deviceManage(action, extra = {}) {
   const token = await auth.currentUser.getIdToken(true);
+  debug("→ POST /device/manage action=" + action);
   const r = await fetch(WORKER + "/device/manage", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -203,7 +211,10 @@ async function deviceManage(action, extra = {}) {
       ...extra
     })
   });
-  return await r.json();
+  debug("← HTTP " + r.status);
+  const data = await r.json();
+  debug("← " + JSON.stringify(data).substring(0, 500));
+  return data;
 }
 
 // ============================================
@@ -215,34 +226,41 @@ auth.onAuthStateChanged(async (user) => {
     return;
   }
 
-  // 1) Registra dispositivo
+  debug("User: " + user.uid);
+  debug("DeviceID: " + DEVICE_ID);
+
+  // 1) Registra
   try {
     const reg = await deviceManage("register", { device_id: DEVICE_ID });
-    console.log("[register]", reg);
+    debug("register: " + JSON.stringify(reg));
   } catch (e) {
-    console.warn("register falhou:", e);
+    debug("register ERRO: " + e.message);
   }
 
-  // 2) Verifica se está bloqueado
+  // 2) Lista
   let listRes;
   try {
     listRes = await deviceManage("list");
   } catch (e) {
-    listRes = { ok: false };
+    debug("list ERRO: " + e.message);
+    listRes = { ok: false, devices: [] };
   }
 
   $("loading").classList.add("hidden");
+  $("app").classList.remove("hidden");
 
-  // Descobre o ipKey deste dispositivo
+  debug("Total: " + (listRes.devices?.length || 0));
+
+  // 3) Verifica bloqueio
   const meuIpKey = listRes.current_ip_key;
   const esteDevice = listRes.devices?.find(d => d.ip_key === meuIpKey);
 
   if (esteDevice && esteDevice.blocked) {
     $("blocked").classList.remove("hidden");
+    $("app").classList.add("hidden");
     return;
   }
 
-  $("app").classList.remove("hidden");
   renderDispositivos(listRes.devices || [], meuIpKey);
 });
 
@@ -284,7 +302,7 @@ function renderDispositivos(devices, meuIpKey) {
           <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         </div>
         <div class="device-info">
-          <h3>${d.device_name} ${badge}</h3>
+          <h3>${d.device_name || 'Dispositivo'} ${badge}</h3>
           <p>Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p>
         </div>
         <div class="device-actions">${actionBtn}</div>
@@ -300,26 +318,16 @@ function renderDispositivos(devices, meuIpKey) {
       const ipKey = btn.dataset.ip;
 
       if (action === "block") {
-        abrirModal(
-          "Bloquear dispositivo",
-          "Este dispositivo perderá o acesso à conta imediatamente. Você pode desbloquear depois.",
-          "Bloquear",
-          () => bloquear(ipKey)
-        );
+        abrirModal("Bloquear dispositivo", "Este dispositivo perderá o acesso à conta imediatamente. Você pode desbloquear depois.", "Bloquear", () => bloquear(ipKey));
       } else if (action === "unblock") {
-        abrirModal(
-          "Desbloquear dispositivo",
-          "O dispositivo voltará a ter acesso à conta.",
-          "Desbloquear",
-          () => desbloquear(ipKey)
-        );
+        abrirModal("Desbloquear dispositivo", "O dispositivo voltará a ter acesso à conta.", "Desbloquear", () => desbloquear(ipKey));
       }
     };
   });
 }
 
 // ============================================
-// AÇÕES (chamam deviceManage)
+// AÇÕES
 // ============================================
 async function bloquear(ipKey) {
   showStatus("Bloqueando dispositivo...", "info");
@@ -352,9 +360,6 @@ async function recarregarLista() {
   renderDispositivos(listRes.devices || [], listRes.current_ip_key);
 }
 
-// ============================================
-// VERIFICAR POR EMAIL (device bloqueado)
-// ============================================
 $("btnVerifyEmail").onclick = async () => {
   try {
     showVerifyStatus("Solicitando verificação...", "info");
@@ -366,9 +371,6 @@ $("btnVerifyEmail").onclick = async () => {
   }
 };
 
-// ============================================
-// LOGOUT
-// ============================================
 $("btnLogout").onclick = async () => {
   if (confirm("Sair da conta?")) {
     await auth.signOut();
