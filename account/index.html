@@ -43,7 +43,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .device.blocked .device-icon svg{stroke:var(--danger)}
 .device-info{flex:1;min-width:0}
 .device-info h3{font-size:.95rem;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.device-info p{font-size:.75rem;color:var(--text-2)}
+.device-info p{font-size:.72rem;color:var(--text-2);word-break:break-all}
 .device-actions{display:flex;gap:6px}
 .badge{font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase}
 .badge-current{background:rgba(79,140,255,.2);color:var(--accent-2)}
@@ -53,6 +53,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .status.show{display:flex}
 .status.ok{background:rgba(34,197,94,.12);color:var(--success);border:1px solid rgba(34,197,94,.3)}
 .status.err{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
+.status.warn{background:rgba(245,158,11,.12);color:var(--warning);border:1px solid rgba(245,158,11,.3)}
 .status.info{background:rgba(79,140,255,.12);color:var(--accent-2);border:1px solid rgba(79,140,255,.3)}
 .spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.15);border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -181,6 +182,9 @@ $("modalConfirm").onclick = () => {
   if (cb) cb();
 };
 
+// ============================================
+// CHAMA O WORKER
+// ============================================
 async function deviceManage(action, extra = {}) {
   const token = await auth.currentUser.getIdToken(true);
   const r = await fetch(WORKER + "/device/manage", {
@@ -199,6 +203,9 @@ async function deviceManage(action, extra = {}) {
   return data;
 }
 
+// ============================================
+// INIT
+// ============================================
 auth.onAuthStateChanged(async (user) => {
   if (!user) {
     window.location.href = "/auth.html";
@@ -206,12 +213,17 @@ auth.onAuthStateChanged(async (user) => {
   }
 
   try {
+    // 1) Registra o dispositivo atual
     await deviceManage("register");
+
+    // 2) Lista todos
     const listRes = await deviceManage("list");
 
-    const meuIpKey = listRes.current_ip_key;
-    const esteDevice = listRes.devices?.find(d => d.ip_key === meuIpKey);
+    // 3) Descobre qual é o atual
+    const meuDeviceKey = listRes.current_device_key;
+    const esteDevice = listRes.devices?.find(d => d.device_key === meuDeviceKey);
 
+    // 4) Se este tá bloqueado → tela de acesso negado
     if (esteDevice && esteDevice.blocked) {
       mostrarBloqueado();
       return;
@@ -219,21 +231,24 @@ auth.onAuthStateChanged(async (user) => {
 
     $("loading").classList.add("hidden");
     $("app").classList.remove("hidden");
-    renderDispositivos(listRes.devices || [], meuIpKey);
+    renderDispositivos(listRes.devices || [], meuDeviceKey);
 
   } catch (e) {
     console.warn("Bloqueado ou erro:", e.message);
   }
 });
 
-function renderDispositivos(devices, meuIpKey) {
+// ============================================
+// RENDER
+// ============================================
+function renderDispositivos(devices, meuDeviceKey) {
   if (!devices || devices.length === 0) {
     $("devicesList").innerHTML = '<div class="empty">Nenhum dispositivo registrado.</div>';
     return;
   }
 
   const html = devices.map(d => {
-    const isCurrent = d.ip_key === meuIpKey;
+    const isCurrent = d.device_key === meuDeviceKey;
     const isBlocked = d.blocked;
     const cls = "device" + (isCurrent ? " current" : "") + (isBlocked ? " blocked" : "");
 
@@ -245,11 +260,11 @@ function renderDispositivos(devices, meuIpKey) {
     const actionBtn = isCurrent
       ? ''
       : (isBlocked
-        ? `<button class="btn btn-outline" data-action="unblock" data-ip="${d.ip_key}">
+        ? `<button class="btn btn-outline" data-action="unblock" data-key="${d.device_key}">
              <svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
              Desbloquear
            </button>`
-        : `<button class="btn btn-danger" data-action="block" data-ip="${d.ip_key}">
+        : `<button class="btn btn-danger" data-action="block" data-key="${d.device_key}">
              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
              Bloquear
            </button>`
@@ -262,7 +277,7 @@ function renderDispositivos(devices, meuIpKey) {
         </div>
         <div class="device-info">
           <h3>${d.device_name || 'Dispositivo'} ${badge}</h3>
-          <p>Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p>
+          <p>IP: ${d.ip || '—'} • Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p>
         </div>
         <div class="device-actions">${actionBtn}</div>
       </div>
@@ -274,21 +289,34 @@ function renderDispositivos(devices, meuIpKey) {
   $("devicesList").querySelectorAll("[data-action]").forEach(btn => {
     btn.onclick = () => {
       const action = btn.dataset.action;
-      const ipKey = btn.dataset.ip;
+      const deviceKey = btn.dataset.key;
 
       if (action === "block") {
-        abrirModal("Bloquear dispositivo", "Este dispositivo perderá o acesso à conta imediatamente.", "Bloquear", () => bloquear(ipKey));
+        abrirModal(
+          "Bloquear dispositivo",
+          "Este dispositivo perderá o acesso à conta imediatamente. Você pode desbloquear depois.",
+          "Bloquear",
+          () => bloquear(deviceKey)
+        );
       } else if (action === "unblock") {
-        abrirModal("Desbloquear dispositivo", "O dispositivo voltará a ter acesso à conta.", "Desbloquear", () => desbloquear(ipKey));
+        abrirModal(
+          "Desbloquear dispositivo",
+          "O dispositivo voltará a ter acesso à conta.",
+          "Desbloquear",
+          () => desbloquear(deviceKey)
+        );
       }
     };
   });
 }
 
-async function bloquear(ipKey) {
+// ============================================
+// AÇÕES
+// ============================================
+async function bloquear(deviceKey) {
   showStatus("Bloqueando dispositivo...", "info");
   try {
-    const r = await deviceManage("block", { ip_key: ipKey });
+    const r = await deviceManage("block", { device_key: deviceKey });
     if (!r.ok) throw new Error(r.erro || "Erro");
     showStatus("Dispositivo bloqueado.", "ok");
     await recarregarLista();
@@ -298,10 +326,10 @@ async function bloquear(ipKey) {
   }
 }
 
-async function desbloquear(ipKey) {
+async function desbloquear(deviceKey) {
   showStatus("Desbloqueando dispositivo...", "info");
   try {
-    const r = await deviceManage("unblock", { ip_key: ipKey });
+    const r = await deviceManage("unblock", { device_key: deviceKey });
     if (!r.ok) throw new Error(r.erro || "Erro");
     showStatus("Dispositivo desbloqueado.", "ok");
     await recarregarLista();
@@ -313,9 +341,12 @@ async function desbloquear(ipKey) {
 
 async function recarregarLista() {
   const listRes = await deviceManage("list");
-  renderDispositivos(listRes.devices || [], listRes.current_ip_key);
+  renderDispositivos(listRes.devices || [], listRes.current_device_key);
 }
 
+// ============================================
+// VERIFICAR POR EMAIL
+// ============================================
 $("btnVerifyEmail").onclick = async () => {
   try {
     showVerifyStatus("Solicitando verificação...", "info");
@@ -327,6 +358,9 @@ $("btnVerifyEmail").onclick = async () => {
   }
 };
 
+// ============================================
+// LOGOUT
+// ============================================
 $("btnLogout").onclick = async () => {
   if (confirm("Sair da conta?")) {
     await auth.signOut();
