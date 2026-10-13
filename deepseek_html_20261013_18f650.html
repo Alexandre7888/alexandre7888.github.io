@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teste de Webhook Stripe</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;padding:20px;display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
+.container{max-width:640px;width:100%;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.12);padding:24px}
+h1{font-size:20px;margin-bottom:8px;color:#1a1a1a}
+p.desc{color:#666;font-size:13px;margin-bottom:20px;line-height:1.5}
+label{display:block;font-size:12px;font-weight:600;color:#212529;margin-bottom:4px;margin-top:14px}
+input,textarea,select{width:100%;padding:10px 12px;border:2px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:monospace;background:#fff;color:#333}
+input:focus,textarea:focus,select:focus{border-color:#635bff;outline:none}
+textarea{min-height:120px;resize:vertical}
+.hint{font-size:11px;color:#888;margin-top:3px}
+button{width:100%;padding:12px;margin-top:16px;border:none;border-radius:8px;background:#635bff;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;font-family:inherit}
+button:hover{transform:translateY(-1px)}
+button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-clear{background:#e0e0e0;color:#333;margin-top:8px}
+#output{margin-top:20px;padding:16px;border-radius:8px;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;display:none;max-height:400px;overflow-y:auto;line-height:1.5}
+.success{background:#e8f5e9;color:#1b5e20;border:1px solid #4caf50}
+.error{background:#ffebee;color:#b71c1c;border:1px solid #f44336}
+.info{background:#e3f2fd;color:#0d47a1;border:1px solid #2196f3}
+.row{display:flex;gap:8px;margin-top:14px}
+.row > div{flex:1}
+.log{margin-top:20px;padding:12px;background:#1e1e1e;color:#ddd;border-radius:8px;font-family:monospace;font-size:11px;max-height:300px;overflow-y:auto;display:none;line-height:1.5}
+.log-line{padding:2px 0;border-bottom:1px solid #333}
+.log-line:last-child{border-bottom:none}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;margin-right:6px}
+.tag-info{background:#2196f3;color:#fff}
+.tag-success{background:#4caf50;color:#fff}
+.tag-error{background:#f44336;color:#fff}
+.tag-warn{background:#ff9800;color:#fff}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🧪 Teste de Webhook Stripe</h1>
+  <p class="desc">Esse HTML dispara um POST pro seu Worker simulando um evento <code>payment_intent.succeeded</code> do Stripe. <strong>NÃO faz pagamento real</strong> — só testa o webhook.</p>
+
+  <label>URL do Webhook</label>
+  <input type="text" id="urlInput" value="https://proud-flower-677b.braatzjunioralexandre5.workers.dev/webhook/stripe" />
+
+  <label>Webhook Secret (whsec_...)</label>
+  <input type="text" id="whsecInput" placeholder="whsec_..." />
+
+  <div class="row">
+    <div>
+      <label>UID do usuário</label>
+      <input type="text" id="uidInput" placeholder="ex: abc123xyz" />
+    </div>
+    <div>
+      <label>Assinatura ID</label>
+      <input type="text" id="assinaturaInput" value="plano-premium" />
+    </div>
+  </div>
+
+  <label>Tipo de evento</label>
+  <select id="eventType">
+    <option value="payment_intent.succeeded">payment_intent.succeeded</option>
+    <option value="payment_intent.payment_failed">payment_intent.payment_failed</option>
+  </select>
+
+  <label>Payment Intent ID</label>
+  <input type="text" id="piInput" placeholder="pi_test_123 (pode ser qualquer valor para teste)" value="pi_test_webhook_123" />
+
+  <button id="sendBtn" onclick="enviarWebhook()">🚀 Enviar Webhook de Teste</button>
+  <button class="btn-clear" onclick="limpar()">Limpar</button>
+
+  <div id="output"></div>
+  <div id="log" class="log"></div>
+</div>
+
+<script>
+const logEl = document.getElementById('log');
+const outputEl = document.getElementById('output');
+
+function log(msg, tipo = 'info') {
+  logEl.style.display = 'block';
+  const now = new Date().toLocaleTimeString('pt-BR');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="tag tag-${tipo}">${tipo.toUpperCase()}</span>${now} — ${msg}`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function mostrarOutput(titulo, conteudo, tipo = 'info') {
+  outputEl.style.display = 'block';
+  outputEl.className = tipo;
+  outputEl.textContent = `=== ${titulo} ===\n\n${conteudo}`;
+}
+
+async function gerarAssinaturaStripe(payload, secret) {
+  // Cria a assinatura HMAC SHA-256 igual o Stripe faz
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signedPayload = `${timestamp}.${payload}`;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(signedPayload)
+  );
+
+  const hex = [...new Uint8Array(signature)]
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return `t=${timestamp},v1=${hex}`;
+}
+
+async function enviarWebhook() {
+  const url = document.getElementById('urlInput').value.trim();
+  const whsec = document.getElementById('whsecInput').value.trim();
+  const uid = document.getElementById('uidInput').value.trim();
+  const assinaturaId = document.getElementById('assinaturaInput').value.trim();
+  const eventType = document.getElementById('eventType').value;
+  const piId = document.getElementById('piInput').value.trim();
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  outputEl.style.display = 'none';
+
+  // Validações
+  if (!url) { mostrarOutput('ERRO', 'Preencha a URL do webhook', 'error'); btn.disabled = false; return; }
+  if (!whsec) { mostrarOutput('ERRO', 'Preencha o Webhook Secret (whsec_...)', 'error'); btn.disabled = false; return; }
+  if (!whsec.startsWith('whsec_')) { mostrarOutput('ERRO', 'O secret deve começar com whsec_', 'error'); btn.disabled = false; return; }
+  if (!uid) { mostrarOutput('ERRO', 'Preencha o UID do usuário', 'error'); btn.disabled = false; return; }
+
+  log('Iniciando teste...', 'info');
+  log(`URL: ${url}`, 'info');
+  log(`UID: ${uid}`, 'info');
+  log(`Evento: ${eventType}`, 'info');
+
+  try {
+    // Monta o evento fake do Stripe
+    const event = {
+      id: 'evt_test_' + Date.now(),
+      object: 'event',
+      type: eventType,
+      created: Math.floor(Date.now() / 1000),
+      data: {
+        object: {
+          id: piId,
+          object: 'payment_intent',
+          amount: 10000,
+          amount_received: 10000,
+          currency: 'brl',
+          status: 'succeeded',
+          metadata: {
+            uid: uid,
+            assinatura_id: assinaturaId,
+            is_test: 'true',
+            method: 'card',
+            nome: 'Plano Premium',
+            test_webhook_secret: whsec,
+            notification_sub_id: ''
+          }
+        }
+      },
+      livemode: false
+    };
+
+    const payload = JSON.stringify(event);
+    log('Evento montado com sucesso', 'success');
+    log(`Payload: ${payload.length} chars`, 'info');
+
+    // Gera a assinatura HMAC
+    log('Gerando assinatura HMAC SHA-256...', 'info');
+    const signature = await gerarAssinaturaStripe(payload, whsec);
+    log(`Assinatura: ${signature.substring(0, 50)}...`, 'success');
+
+    // Envia o POST
+    log('Enviando POST pro webhook...', 'info');
+    const inicio = Date.now();
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': signature
+      },
+      body: payload
+    });
+
+    const duracao = Date.now() - inicio;
+    log(`Resposta recebida em ${duracao}ms — HTTP ${res.status}`, res.ok ? 'success' : 'error');
+
+    const texto = await res.text();
+    log(`Resposta: ${texto.substring(0, 200)}`, res.ok ? 'success' : 'error');
+
+    // Tenta parsear JSON
+    let json;
+    try { json = JSON.parse(texto); } catch { json = null; }
+
+    // Monta o output
+    let output = `HTTP Status: ${res.status} ${res.statusText}\n`;
+    output += `Tempo: ${duracao}ms\n\n`;
+    output += `Resposta do Worker:\n`;
+    output += json ? JSON.stringify(json, null, 2) : texto;
+
+    if (json && json.salvo_firebase === true) {
+      output += `\n\n✅ SUCESSO — Firebase foi atualizado!`;
+      mostrarOutput('✅ WEBHOOK FUNCIONOU', output, 'success');
+      log('✅ TUDO OK — Firebase atualizado', 'success');
+    } else if (json && json.salvo_firebase === false) {
+      output += `\n\n⚠️ Webhook processou mas NÃO gravou no Firebase`;
+      output += `\nVerifique a linha "gs_resposta" acima`;
+      mostrarOutput('⚠️ PARCIAL — Não gravou no Firebase', output, 'error');
+      log('⚠️ Webhook rodou mas Firebase não foi atualizado', 'warn');
+    } else if (json && json.error) {
+      output += `\n\n❌ ERRO: ${json.error}`;
+      mostrarOutput('❌ ERRO NO WEBHOOK', output, 'error');
+      log(`❌ Erro: ${json.error}`, 'error');
+    } else {
+      mostrarOutput('Resposta do Worker', output, json ? 'info' : 'error');
+    }
+
+  } catch (e) {
+    log(`❌ Erro no fetch: ${e.message}`, 'error');
+    mostrarOutput('❌ ERRO DE CONEXÃO', 
+      `Não foi possível conectar ao webhook.\n\n` +
+      `Motivo: ${e.message}\n\n` +
+      `Verifique:\n` +
+      `1. A URL está correta?\n` +
+      `2. O Worker está online?\n` +
+      `3. CORS está configurado?\n` +
+      `4. Você tem internet?`,
+      'error'
+    );
+  }
+
+  btn.disabled = false;
+}
+
+function limpar() {
+  outputEl.style.display = 'none';
+  logEl.innerHTML = '';
+  logEl.style.display = 'none';
+  document.getElementById('whsecInput').value = '';
+  document.getElementById('uidInput').value = '';
+}
+
+// Log inicial
+log('Pronto pra testar. Preencha os campos e clique em Enviar.', 'info');
+</script>
+</body>
+</html>
