@@ -57,7 +57,7 @@ body{
 
 h1{
   color:var(--text);font-size:1.7rem;
-  margin-bottom:8px;display:flex;align-items:center;gap:10px;
+  margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
 }
 h1 .ver{
   display:inline-block;background:var(--accent-soft);color:var(--accent);
@@ -109,6 +109,24 @@ code{
 }
 .feature-card h4 svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .feature-card p{color:var(--text-2);font-size:.78rem;margin:0}
+
+.token-box{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-left:4px solid var(--accent);
+  border-radius:12px;
+  padding:14px 18px;
+  margin:16px 0;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  font-size:.85rem;
+}
+.token-box svg{width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.token-box .label{color:var(--text-2)}
+.token-box .value{
+  font-family:monospace;font-weight:700;color:var(--accent);
+  background:var(--accent-soft);padding:4px 10px;border-radius:6px;
+  user-select:all;word-break:break-all;
+}
 
 .iframe-wrap{
   position:relative;width:100%;
@@ -244,11 +262,18 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
     <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
     Teste ao vivo
   </h2>
-  <p>O iframe abaixo carrega o site de teste com o SDK v1.5 integrado. O popup de login, o botão de App Token e o perfil completo funcionam <strong>dentro do iframe</strong>.</p>
+  <p>O iframe abaixo carrega o site de teste com o SDK v1.5. O popup de login, o botão de App Token e o perfil completo funcionam <strong>dentro do iframe</strong>.</p>
+
+  <div class="token-box">
+    <svg viewBox="0 0 24 24"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    <span class="label">App Token em uso:</span>
+    <span class="value" id="displayToken">—</span>
+  </div>
 
   <div class="iframe-wrap">
     <iframe
-      src="https://teste-continuar-conta--narrownarwhal3891229.on.websim.com"
+      id="testeIframe"
+      src="about:blank"
       allow="clipboard-read; clipboard-write; popups; popup; same-origin"
       sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-top-navigation-by-user-activation allow-downloads"
       referrerpolicy="no-referrer-when-downgrade"
@@ -265,11 +290,11 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
     <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
     Código completo do site de teste
   </h2>
-  <p>Cole esse HTML num arquivo <code>teste.html</code> no seu servidor. Ele já vem com o SDK v1.5 integrado.</p>
+  <p>Cole esse HTML num arquivo <code>teste.html</code> no seu servidor. Ele já vem com o SDK v1.5 integrado e lê o <code>appToken</code> da URL.</p>
 
   <div class="exemplo-box">
     <div class="box-header">
-      <h3>📋 teste.html — SDK v1.5 + Firebase + App Token</h3>
+      <h3>📋 teste.html — SDK v1.5 + App Token via URL</h3>
       <button class="btn-copiar" onclick="copiarCodigo('codigoTeste', this)">
         <svg viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
         Copiar HTML
@@ -281,10 +306,6 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
 &lt;meta charset="UTF-8"&gt;
 &lt;meta name="viewport" content="width=device-width,initial-scale=1"&gt;
 &lt;title&gt;CodeHUB SDK v1.5 — Teste&lt;/title&gt;
-
-&lt;script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"&gt;&lt;/script&gt;
-&lt;script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"&gt;&lt;/script&gt;
-&lt;script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"&gt;&lt;/script&gt;
 
 &lt;style&gt;
 *{margin:0;padding:0;box-sizing:border-box}
@@ -372,26 +393,18 @@ p.email{text-align:center;color:var(--text-2);font-size:.82rem;margin-bottom:16p
 &lt;script type="module"&gt;
 import { CodeHub } from "https://app.codehub.site.je/sdk.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-  authDomain: "html-15e80.firebaseapp.com",
-  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-  projectId: "html-15e80",
-  storageBucket: "html-15e80.firebasestorage.app",
-  messagingSenderId: "1068148640439",
-  appId: "1:1068148640439:web:1ac651348e624f6be41b32",
-  measurementId: "G-7E1VWN07GM"
-};
-
-if (typeof firebase !== "undefined" && !firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-
 const $ = id =&gt; document.getElementById(id);
 
-const sdk = new CodeHub({
-  appToken: "cpeaKOW1aSU6RyFhJnz1"
-});
+const params = new URLSearchParams(location.search);
+const APP_TOKEN = params.get("token") || "";
+
+if (!APP_TOKEN) {
+  document.getElementById("status").innerHTML = "❌ appToken não informado na URL (?token=...)";
+  document.getElementById("status").className = "err";
+  throw new Error("appToken obrigatório");
+}
+
+const sdk = new CodeHub({ appToken: APP_TOKEN });
 
 function status(msg, cls = "", spinner = false) {
   const s = $("status");
@@ -514,7 +527,7 @@ $("btnCopy").addEventListener("click", async () =&gt; {
 });
 
 (async () =&gt; {
-  console.log("SDK v" + sdk.version + " carregado.");
+  console.log("SDK v" + sdk.version + " carregado com appToken:", APP_TOKEN);
   if (!sdk.readSession()) {
     status("Nenhuma sessão. Faça login ou use App Token.");
     hideAccount();
@@ -546,10 +559,6 @@ $("btnCopy").addEventListener("click", async () =&gt; {
     <strong>⚠️ Sobre o iframe:</strong> o site de teste precisa permitir ser embutido (não pode enviar <code>X-Frame-Options: DENY</code> nem <code>frame-ancestors 'none'</code>). Se não abrir, é porque o servidor está bloqueando.
   </div>
 
-  <div class="note">
-    <strong>🔑 appToken usado:</strong> <code>cpeaKOW1aSU6RyFhJnz1</code>
-  </div>
-
 </div>
 
 <div class="theme-panel">
@@ -564,6 +573,14 @@ $("btnCopy").addEventListener("click", async () =&gt; {
 </div>
 
 <script>
+const APP_TOKEN = "cpeaKOW1aSU6RyFhJnz1";
+const TESTE_URL = "https://teste-continuar-conta--narrownarwhal3891229.on.websim.com";
+
+document.getElementById("displayToken").textContent = APP_TOKEN;
+
+const iframe = document.getElementById("testeIframe");
+iframe.src = TESTE_URL + "?token=" + encodeURIComponent(APP_TOKEN);
+
 function copiarCodigo(id, btn) {
   const el = document.getElementById(id);
   if (!el) return;
