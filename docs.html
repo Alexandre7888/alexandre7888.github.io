@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentação API CodeHUB — SDK v1.5</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root, html[data-theme="dark"]{
+  --bg-1:#0a0e1a;--bg-2:#05070f;
+  --surface:#101626;--surface-2:#151c30;
+  --border:#1f2a44;--border-strong:#2d3b5c;
+  --text:#e8eef8;--text-2:#8fa0bd;
+  --accent:#4f8cff;--accent-2:#7aa8ff;
+  --accent-glow:rgba(79,140,255,0.35);
+  --accent-soft:rgba(79,140,255,0.1);
+  --shadow:rgba(0,0,0,0.55);
+  --code-bg:#0a0d18;
+  --code-text:#e8eef8;
+}
+
+html[data-theme="light"]{
+  --bg-1:#f7f9fc;--bg-2:#eef2f8;
+  --surface:#ffffff;--surface-2:#f5f8fd;
+  --border:#e2e8f2;--border-strong:#c8d3e5;
+  --text:#0f172a;--text-2:#5b6b85;
+  --accent:#2563eb;--accent-2:#3b82f6;
+  --accent-glow:rgba(37,99,235,0.25);
+  --accent-soft:rgba(37,99,235,0.07);
+  --shadow:rgba(15,23,42,0.08);
+  --code-bg:#f4f4f8;
+  --code-text:#1e293b;
+}
+
+body{
+  background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;
+  color:var(--text);min-height:100vh;
+  padding:32px 20px 80px;
+  transition:background .4s ease,color .3s ease;
+}
+
+.container{
+  max-width:1100px;margin:0 auto;
+  background:var(--surface);
+  border-radius:24px;
+  padding:36px 32px;
+  box-shadow:0 20px 45px -10px var(--shadow),0 0 0 1px var(--border) inset;
+  position:relative;overflow:hidden;
+}
+.container::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+}
+
+h1{
+  color:var(--text);font-size:1.7rem;
+  margin-bottom:8px;display:flex;align-items:center;gap:10px;
+}
+h1 .ver{
+  display:inline-block;background:var(--accent-soft);color:var(--accent);
+  font-size:.72rem;padding:3px 10px;border-radius:6px;
+  font-family:monospace;font-weight:700;margin-left:6px;
+}
+
+.subtitle{color:var(--text-2);font-size:.9rem;margin-bottom:24px}
+
+h2{
+  color:var(--text);font-size:1.15rem;
+  margin-top:32px;margin-bottom:14px;
+  padding-bottom:10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+h2 svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+h3{
+  color:var(--text);font-size:1rem;
+  margin-top:20px;margin-bottom:10px;
+}
+
+p{color:var(--text-2);font-size:.9rem;line-height:1.6;margin-bottom:12px}
+
+ul{color:var(--text-2);font-size:.88rem;line-height:1.8;padding-left:22px;margin-bottom:12px}
+ul li strong{color:var(--text)}
+
+code{
+  background:var(--surface-2);padding:2px 6px;border-radius:4px;
+  font-family:monospace;font-size:.85em;color:var(--accent);
+  border:1px solid var(--border);
+}
+
+.feature-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;margin:16px 0 24px;
+}
+.feature-card{
+  background:var(--surface-2);
+  padding:16px;border-radius:16px;
+  border:1px solid var(--border);
+  transition:.2s;
+}
+.feature-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.feature-card h4{
+  color:var(--accent);font-size:.88rem;margin-bottom:6px;
+  display:flex;align-items:center;gap:8px;
+}
+.feature-card h4 svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.feature-card p{color:var(--text-2);font-size:.78rem;margin:0}
+
+.iframe-wrap{
+  position:relative;width:100%;
+  border-radius:16px;overflow:hidden;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  margin:16px 0 24px;
+  box-shadow:0 8px 24px -8px var(--shadow);
+}
+.iframe-wrap iframe{
+  width:100%;height:760px;border:none;display:block;
+  background:var(--surface);
+}
+
+.exemplo-box{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px;
+  margin:20px 0;
+}
+.exemplo-box .box-header{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin-bottom:14px;flex-wrap:wrap;
+}
+.exemplo-box h3{margin:0;color:var(--accent);font-size:.95rem}
+
+.btn-copiar{
+  background:var(--accent);color:#fff;border:none;
+  padding:9px 16px;border-radius:10px;cursor:pointer;
+  font-size:.82rem;font-weight:600;font-family:inherit;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:.2s;box-shadow:0 4px 12px var(--accent-glow);
+}
+.btn-copiar:hover{transform:translateY(-1px);background:var(--accent-2)}
+.btn-copiar svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-copiar.copiado{background:#22c55e}
+
+pre{
+  background:var(--code-bg);
+  color:var(--code-text);
+  padding:16px;border-radius:12px;
+  overflow-x:auto;overflow-y:auto;
+  max-height:520px;
+  font-family:'Consolas','Monaco',monospace;
+  font-size:12.5px;
+  line-height:1.55;
+  border:1px solid var(--border);
+  white-space:pre;
+  tab-size:2;
+}
+pre::-webkit-scrollbar{width:8px;height:8px}
+pre::-webkit-scrollbar-track{background:transparent}
+pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
+
+.note, .warning, .success{
+  padding:14px 16px;margin:16px 0;
+  border-radius:12px;font-size:.85rem;line-height:1.6;
+}
+.note{background:var(--accent-soft);border-left:4px solid var(--accent);color:var(--text)}
+.warning{background:rgba(255,193,7,.1);border-left:4px solid #ffc107;color:var(--text)}
+.success{background:rgba(34,197,94,.1);border-left:4px solid #22c55e;color:var(--text)}
+.note strong, .warning strong, .success strong{color:var(--text)}
+
+.theme-panel{
+  position:fixed;bottom:24px;right:24px;z-index:1050;
+  background:var(--surface);backdrop-filter:blur(12px);
+  border-radius:48px;padding:6px;display:flex;gap:6px;
+  border:1px solid var(--border);box-shadow:0 8px 20px var(--shadow);
+}
+.theme-btn{
+  background:transparent;border:none;border-radius:40px;
+  padding:8px 14px;font-size:.8rem;font-weight:600;cursor:pointer;
+  color:var(--text-2);display:flex;align-items:center;gap:6px;
+  transition:.2s;font-family:inherit;
+}
+.theme-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.theme-btn:hover{color:var(--text);background:var(--accent-soft)}
+.theme-btn.active{background:var(--accent);color:#fff;box-shadow:0 0 12px var(--accent-glow)}
+.theme-btn.active svg{stroke:#fff}
+
+@media(max-width:600px){
+  .container{padding:24px 18px;border-radius:18px}
+  h1{font-size:1.3rem}
+  .iframe-wrap iframe{height:600px}
+  pre{font-size:11.5px;max-height:400px}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>📚 Documentação API CodeHUB <span class="ver">v1.5</span></h1>
+  <p class="subtitle">SDK oficial — autenticação, perfil e App Token</p>
+
+  <div class="success">
+    <strong>✨ NOVIDADE!</strong> O SDK v1.5 pega foto, nome e e-mail direto do Firebase Auth — sem expor o token em lugar nenhum.
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Login popup
+      </h4>
+      <p>Abre popup seguro e aguarda confirmação via SSE.</p>
+    </div>
+    <div class="feature-card">
+      <h4>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>
+        App Token
+      </h4>
+      <p>Cria AuthID confirmado direto via <code>appToken</code>.</p>
+    </div>
+    <div class="feature-card">
+      <h4>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/></svg>
+        Perfil completo
+      </h4>
+      <p>Foto, nome, e-mail e verificação via <code>/GetProfileByAuthId</code>.</p>
+    </div>
+    <div class="feature-card">
+      <h4>
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Sem Firebase Token
+      </h4>
+      <p>O token do Firebase nunca é gravado, exposto ou retornado ao cliente.</p>
+    </div>
+  </div>
+
+  <h2>
+    <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Teste ao vivo
+  </h2>
+  <p>O iframe abaixo carrega o site de teste com o SDK v1.5 integrado. O popup de login, o botão de App Token e o perfil completo funcionam <strong>dentro do iframe</strong>.</p>
+
+  <div class="iframe-wrap">
+    <iframe
+      src="https://teste-continuar-conta--narrownarwhal3891229.on.websim.com"
+      allow="clipboard-read; clipboard-write; popups; popup; same-origin"
+      sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-top-navigation-by-user-activation allow-downloads"
+      referrerpolicy="no-referrer-when-downgrade"
+      loading="lazy"
+      title="Teste do SDK v1.5"
+    ></iframe>
+  </div>
+
+  <div class="note">
+    <strong>🔒 Sandbox ativado.</strong> O iframe tem permissão para: rodar scripts, acessar <code>localStorage</code>, abrir popups, usar formulários e redirecionar a aba pai após login.
+  </div>
+
+  <h2>
+    <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+    Código completo do site de teste
+  </h2>
+  <p>Cole esse HTML num arquivo <code>teste.html</code> no seu servidor. Ele já vem com o SDK v1.5 integrado.</p>
+
+  <div class="exemplo-box">
+    <div class="box-header">
+      <h3>📋 teste.html — SDK v1.5 + Firebase + App Token</h3>
+      <button class="btn-copiar" onclick="copiarCodigo('codigoTeste', this)">
+        <svg viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        Copiar HTML
+      </button>
+    </div>
+    <pre id="codigoTeste">&lt;!DOCTYPE html&gt;
+&lt;html lang="pt-BR" data-theme="dark"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width,initial-scale=1"&gt;
+&lt;title&gt;CodeHUB SDK v1.5 — Teste&lt;/title&gt;
+
+&lt;script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"&gt;&lt;/script&gt;
+&lt;script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"&gt;&lt;/script&gt;
+&lt;script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"&gt;&lt;/script&gt;
+
+&lt;style&gt;
+*{margin:0;padding:0;box-sizing:border-box}
+:root,html[data-theme="dark"]{--bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;--border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);--accent-soft:rgba(79,140,255,.1);--shadow:rgba(0,0,0,.55);--toggle-bg:#151c30}
+html[data-theme="light"]{--bg-1:#f7f9fc;--bg-2:#eef2f8;--surface:#fff;--surface-2:#f5f8fd;--border:#e2e8f2;--text:#0f172a;--text-2:#5b6b85;--accent:#2563eb;--accent-2:#3b82f6;--accent-glow:rgba(37,99,235,.25);--accent-soft:rgba(37,99,235,.07);--shadow:rgba(15,23,42,.08);--toggle-bg:#f1f5fb}
+body{background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;transition:background .4s,color .3s}
+.card{width:100%;max-width:480px;background:var(--surface);border-radius:32px;padding:28px 26px;box-shadow:0 20px 45px -10px var(--shadow),0 0 0 1px var(--border) inset;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.header{text-align:center;margin-bottom:22px}
+.header h1{font-size:1.35rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
+.header .ver{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:.7rem;padding:3px 9px;border-radius:6px;font-family:monospace;font-weight:700}
+.header .sub{color:var(--text-2);font-size:.85rem}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-weight:600;font-size:.95rem;cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:.2s}
+.btn:not(:disabled):hover{transform:translateY(-1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.primary{background:var(--accent);color:#fff;box-shadow:0 6px 16px var(--accent-glow)}
+.success{background:#22c55e;color:#fff}
+.secondary{background:var(--toggle-bg);color:var(--text);border:1px solid var(--border)}
+.danger{background:transparent;color:#ef4444;border:1px solid var(--border)}
+#status{margin-top:18px;text-align:center;font-size:.9rem;color:var(--text-2);overflow-wrap:anywhere;display:flex;align-items:center;justify-content:center;gap:8px;min-height:24px;padding:10px;background:var(--surface-2);border-radius:12px;border:1px solid var(--border)}
+.ok{color:#22c55e!important;border-color:#22c55e!important}
+.err{color:#ef4444!important;border-color:#ef4444!important}
+.pend{color:#f59e0b!important;border-color:#f59e0b!important}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.profile{display:none;margin-top:20px;padding:18px;background:var(--surface-2);border:1px solid var(--border);border-radius:20px}
+.profile.show{display:block}
+.avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));margin:0 auto 14px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid var(--border);box-shadow:0 6px 18px var(--accent-glow)}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.avatar .fallback{font-size:1.8rem;color:#fff;font-weight:700}
+h3.name{text-align:center;margin-bottom:4px;font-size:1.1rem}
+p.email{text-align:center;color:var(--text-2);font-size:.82rem;margin-bottom:16px;overflow-wrap:anywhere}
+.line{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--border);font-size:.82rem}
+.line:first-of-type{border-top:none}
+.key{color:var(--text-2)}
+.value{max-width:68%;overflow-wrap:anywhere;text-align:right;font-family:monospace;font-size:.76rem;color:var(--text)}
+.token-title{font-size:.8rem;color:var(--text-2);margin-top:16px;margin-bottom:6px}
+.token{margin-top:6px;background:var(--bg-2);padding:12px;border-radius:10px;border:1px solid var(--border);overflow-wrap:anywhere;font:12px monospace;max-height:180px;overflow:auto;user-select:text;white-space:pre-wrap;color:var(--text)}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class="card"&gt;
+  &lt;div class="header"&gt;
+    &lt;h1&gt;CodeHUB SDK &lt;span class="ver"&gt;v1.5&lt;/span&gt;&lt;/h1&gt;
+    &lt;p class="sub"&gt;Autenticação + AuthID + App Token&lt;/p&gt;
+  &lt;/div&gt;
+
+  &lt;button class="btn primary" id="btnLogin"&gt;
+    &lt;svg viewBox="0 0 24 24"&gt;&lt;path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/&gt;&lt;polyline points="10 17 15 12 10 7"/&gt;&lt;line x1="15" y1="12" x2="3" y2="12"/&gt;&lt;/svg&gt;
+    Abrir login (popup)
+  &lt;/button&gt;
+
+  &lt;button class="btn success" id="btnAuthByApp"&gt;
+    &lt;svg viewBox="0 0 24 24"&gt;&lt;circle cx="12" cy="12" r="10"/&gt;&lt;path d="M12 2v20M2 12h20"/&gt;&lt;/svg&gt;
+    Autenticar via App Token
+  &lt;/button&gt;
+
+  &lt;button class="btn secondary" id="btnRefresh"&gt;
+    &lt;svg viewBox="0 0 24 24"&gt;&lt;path d="M21 12a9 9 0 1 1-3-6.7L21 8"/&gt;&lt;path d="M21 3v5h-5"/&gt;&lt;/svg&gt;
+    Atualizar conta
+  &lt;/button&gt;
+
+  &lt;button class="btn danger" id="btnLogout"&gt;
+    &lt;svg viewBox="0 0 24 24"&gt;&lt;path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/&gt;&lt;polyline points="16 17 21 12 16 7"/&gt;&lt;line x1="21" y1="12" x2="9" y2="12"/&gt;&lt;/svg&gt;
+    Sair da conta
+  &lt;/button&gt;
+
+  &lt;div id="status"&gt;&lt;span class="spinner"&gt;&lt;/span&gt; Verificando sessão...&lt;/div&gt;
+
+  &lt;div class="profile" id="profile"&gt;
+    &lt;div class="avatar" id="avatar"&gt;&lt;span class="fallback"&gt;?&lt;/span&gt;&lt;/div&gt;
+    &lt;h3 class="name" id="name"&gt;—&lt;/h3&gt;
+    &lt;p class="email" id="email"&gt;—&lt;/p&gt;
+    &lt;div class="line"&gt;&lt;span class="key"&gt;UID&lt;/span&gt;&lt;span class="value" id="uid"&gt;—&lt;/span&gt;&lt;/div&gt;
+    &lt;div class="line"&gt;&lt;span class="key"&gt;E-mail verificado&lt;/span&gt;&lt;span class="value" id="verified"&gt;—&lt;/span&gt;&lt;/div&gt;
+    &lt;div class="line"&gt;&lt;span class="key"&gt;Auth ID&lt;/span&gt;&lt;span class="value" id="authid"&gt;—&lt;/span&gt;&lt;/div&gt;
+    &lt;div class="line"&gt;&lt;span class="key"&gt;Cidade / Estado&lt;/span&gt;&lt;span class="value" id="loc"&gt;—&lt;/span&gt;&lt;/div&gt;
+    &lt;div class="token-title"&gt;Status da sessão&lt;/div&gt;
+    &lt;div class="token" id="token"&gt;Nenhum status carregado.&lt;/div&gt;
+    &lt;button class="btn secondary" id="btnCopy" style="margin-top:10px;font-size:.85rem"&gt;Copiar status&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script type="module"&gt;
+import { CodeHub } from "https://app.codehub.site.je/sdk.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+  authDomain: "html-15e80.firebaseapp.com",
+  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+  projectId: "html-15e80",
+  storageBucket: "html-15e80.firebasestorage.app",
+  messagingSenderId: "1068148640439",
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32",
+  measurementId: "G-7E1VWN07GM"
+};
+
+if (typeof firebase !== "undefined" && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const $ = id =&gt; document.getElementById(id);
+
+const sdk = new CodeHub({
+  appToken: "cpeaKOW1aSU6RyFhJnz1"
+});
+
+function status(msg, cls = "", spinner = false) {
+  const s = $("status");
+  s.className = cls;
+  s.innerHTML = spinner ? `&lt;span class="spinner"&gt;&lt;/span&gt; ${msg}` : msg;
+}
+
+function setAvatar(photoUrl, name) {
+  const el = $("avatar");
+  const initial = (name || "?").trim().charAt(0).toUpperCase() || "?";
+  if (photoUrl) {
+    el.innerHTML = `&lt;img src="${photoUrl}" alt="avatar" onerror="this.style.display='none';this.parentElement.innerHTML='&lt;span class=&quot;fallback&quot;&gt;${initial}&lt;/span&gt;'"&gt;`;
+  } else {
+    el.innerHTML = `&lt;span class="fallback"&gt;${initial}&lt;/span&gt;`;
+  }
+}
+
+function showAccount(conta, authId) {
+  $("name").textContent = conta.name || "(sem nome)";
+  $("email").textContent = conta.email || "(sem e-mail)";
+  $("uid").textContent = conta.uid || "—";
+  $("verified").textContent = conta.emailVerified ? "Sim" : "Não";
+  $("authid").textContent = authId || "—";
+  $("loc").textContent = [conta.city, conta.state].filter(Boolean).join(" / ") || "—";
+  setAvatar(conta.photoUrl, conta.name);
+  $("profile").classList.add("show");
+}
+
+function hideAccount() {
+  $("profile").classList.remove("show");
+  $("token").textContent = "Nenhum status carregado.";
+}
+
+async function recarregarConta(silencioso = false) {
+  if (!silencioso) status("Carregando sessão...", "pend", true);
+  try {
+    const authId = sdk.readSession();
+    if (!authId) {
+      status("Nenhuma sessão salva. Faça login primeiro.");
+      hideAccount();
+      return null;
+    }
+
+    const st = await sdk.getAuthStatus(authId);
+    $("token").textContent = JSON.stringify(st, null, 2);
+
+    if (!st || st.status !== "confirmed") {
+      status("Sessão não confirmada: " + ((st &amp;&amp; st.status) || "desconhecido"), "err");
+      return null;
+    }
+
+    const conta = await sdk.getAccount(authId);
+    showAccount(conta, authId);
+    if (!silencioso) status("Conta carregada com sucesso.", "ok");
+    return { ok: true, status: st.status, conta, authId };
+  } catch (e) {
+    if (!silencioso) status("Erro: " + (e.message || e), "err");
+    console.error(e);
+    return null;
+  }
+}
+
+sdk.on("pending", () =&gt; status("Aguardando autenticação...", "pend", true));
+
+sdk.on("confirmed", async () =&gt; {
+  status("Login confirmado! Carregando perfil...", "ok");
+  await recarregarConta(true);
+});
+
+sdk.on("error", e =&gt; {
+  status("Erro: " + (e.message || e), "err");
+});
+
+$("btnLogin").addEventListener("click", async () =&gt; {
+  try {
+    status("Abrindo login...", "pend", true);
+    await sdk.login(undefined, true);
+  } catch (e) {
+    status("Erro: " + (e.message || e), "err");
+  }
+});
+
+$("btnAuthByApp").addEventListener("click", async () =&gt; {
+  try {
+    status("Autenticando via App Token...", "pend", true);
+    const d = await sdk.authByApp();
+    if (!d.ok) throw new Error(d.erro || "Falha");
+    status("AuthID criado via App Token!", "ok");
+    await recarregarConta(true);
+  } catch (e) {
+    status("Erro: " + (e.message || e), "err");
+    console.error(e);
+  }
+});
+
+$("btnRefresh").addEventListener("click", () =&gt; recarregarConta(false));
+
+$("btnLogout").addEventListener("click", async () =&gt; {
+  try {
+    const r = await sdk.logout();
+    if (r.ok) {
+      hideAccount();
+      status("Sessão removida.", "ok");
+    } else {
+      status("Cancelado ou falhou: " + r.msg, "err");
+    }
+  } catch (e) {
+    status("Erro: " + (e.message || e), "err");
+  }
+});
+
+$("btnCopy").addEventListener("click", async () =&gt; {
+  const valor = $("token").textContent;
+  try {
+    await navigator.clipboard.writeText(valor);
+    status("Status copiado.", "ok");
+  } catch {
+    status("Não foi possível copiar.", "err");
+  }
+});
+
+(async () =&gt; {
+  console.log("SDK v" + sdk.version + " carregado.");
+  if (!sdk.readSession()) {
+    status("Nenhuma sessão. Faça login ou use App Token.");
+    hideAccount();
+    return;
+  }
+  await recarregarConta(false);
+})();
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <h2>
+    <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    Métodos do SDK v1.5
+  </h2>
+  <ul>
+    <li><code>sdk.login()</code> — abre popup e aguarda login</li>
+    <li><code>sdk.authByApp()</code> — cria AuthID confirmado via <code>appToken</code></li>
+    <li><code>sdk.getAuthStatus(authId)</code> — lê o status da sessão</li>
+    <li><code>sdk.getProfile(authId)</code> — pega foto, nome, e-mail</li>
+    <li><code>sdk.getAccount(authId)</code> — perfil formatado (uid, name, photoUrl, etc)</li>
+    <li><code>sdk.reloadAccount()</code> — recarrega o perfil inteiro</li>
+    <li><code>sdk.logout()</code> — apaga o authId do banco e da memória</li>
+    <li><code>sdk.version</code> — retorna "1.5"</li>
+  </ul>
+
+  <div class="warning">
+    <strong>⚠️ Sobre o iframe:</strong> o site de teste precisa permitir ser embutido (não pode enviar <code>X-Frame-Options: DENY</code> nem <code>frame-ancestors 'none'</code>). Se não abrir, é porque o servidor está bloqueando.
+  </div>
+
+  <div class="note">
+    <strong>🔑 appToken usado:</strong> <code>cpeaKOW1aSU6RyFhJnz1</code>
+  </div>
+
+</div>
+
+<div class="theme-panel">
+  <button class="theme-btn active" id="themeDark">
+    <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    Dark
+  </button>
+  <button class="theme-btn" id="themeLight">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    Light
+  </button>
+</div>
+
+<script>
+function copiarCodigo(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const texto = el.innerText;
+  navigator.clipboard.writeText(texto).then(() => {
+    const original = btn.innerHTML;
+    btn.classList.add("copiado");
+    btn.innerHTML = "✅ Copiado!";
+    setTimeout(() => {
+      btn.classList.remove("copiado");
+      btn.innerHTML = original;
+    }, 2000);
+  }).catch(() => {
+    alert("Erro ao copiar");
+  });
+}
+
+document.getElementById("themeDark").addEventListener("click", () => {
+  document.documentElement.setAttribute("data-theme", "dark");
+  document.getElementById("themeDark").classList.add("active");
+  document.getElementById("themeLight").classList.remove("active");
+  try { localStorage.setItem("docs_theme", "dark"); } catch {}
+});
+
+document.getElementById("themeLight").addEventListener("click", () => {
+  document.documentElement.setAttribute("data-theme", "light");
+  document.getElementById("themeLight").classList.add("active");
+  document.getElementById("themeDark").classList.remove("active");
+  try { localStorage.setItem("docs_theme", "light"); } catch {}
+});
+
+try {
+  const salvo = localStorage.getItem("docs_theme");
+  if (salvo === "light") document.getElementById("themeLight").click();
+} catch {}
+</script>
+
+</body>
+</html>
