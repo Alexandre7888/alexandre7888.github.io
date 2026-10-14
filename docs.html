@@ -272,8 +272,7 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
 
   <div class="iframe-wrap">
     <iframe
-      id="testeIframe"
-      src="about:blank"
+      src="https://teste-continuar-conta--narrownarwhal3891229.on.websim.com"
       allow="clipboard-read; clipboard-write; popups; popup; same-origin"
       sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-top-navigation-by-user-activation allow-downloads"
       referrerpolicy="no-referrer-when-downgrade"
@@ -290,11 +289,11 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
     <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
     Código completo do site de teste
   </h2>
-  <p>Cole esse HTML num arquivo <code>teste.html</code> no seu servidor. Ele já vem com o SDK v1.5 integrado e lê o <code>appToken</code> da URL.</p>
+  <p>Cole esse HTML num arquivo <code>teste.html</code> no seu servidor. Ele já vem com o SDK v1.5 integrado, usando a constante <code>APP_TOKEN</code>.</p>
 
   <div class="exemplo-box">
     <div class="box-header">
-      <h3>📋 teste.html — SDK v1.5 + App Token via URL</h3>
+      <h3>📋 teste.html — SDK v1.5 com constante APP_TOKEN</h3>
       <button class="btn-copiar" onclick="copiarCodigo('codigoTeste', this)">
         <svg viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
         Copiar HTML
@@ -393,16 +392,9 @@ p.email{text-align:center;color:var(--text-2);font-size:.82rem;margin-bottom:16p
 &lt;script type="module"&gt;
 import { CodeHub } from "https://app.codehub.site.je/sdk.js";
 
+const APP_TOKEN = "TESTE";
+
 const $ = id =&gt; document.getElementById(id);
-
-const params = new URLSearchParams(location.search);
-const APP_TOKEN = params.get("token") || "";
-
-if (!APP_TOKEN) {
-  document.getElementById("status").innerHTML = "❌ appToken não informado na URL (?token=...)";
-  document.getElementById("status").className = "err";
-  throw new Error("appToken obrigatório");
-}
 
 const sdk = new CodeHub({ appToken: APP_TOKEN });
 
@@ -447,15 +439,12 @@ async function recarregarConta(silencioso = false) {
       hideAccount();
       return null;
     }
-
     const st = await sdk.getAuthStatus(authId);
     $("token").textContent = JSON.stringify(st, null, 2);
-
     if (!st || st.status !== "confirmed") {
       status("Sessão não confirmada: " + ((st &amp;&amp; st.status) || "desconhecido"), "err");
       return null;
     }
-
     const conta = await sdk.getAccount(authId);
     showAccount(conta, authId);
     if (!silencioso) status("Conta carregada com sucesso.", "ok");
@@ -468,23 +457,15 @@ async function recarregarConta(silencioso = false) {
 }
 
 sdk.on("pending", () =&gt; status("Aguardando autenticação...", "pend", true));
-
 sdk.on("confirmed", async () =&gt; {
   status("Login confirmado! Carregando perfil...", "ok");
   await recarregarConta(true);
 });
-
-sdk.on("error", e =&gt; {
-  status("Erro: " + (e.message || e), "err");
-});
+sdk.on("error", e =&gt; status("Erro: " + (e.message || e), "err"));
 
 $("btnLogin").addEventListener("click", async () =&gt; {
-  try {
-    status("Abrindo login...", "pend", true);
-    await sdk.login(undefined, true);
-  } catch (e) {
-    status("Erro: " + (e.message || e), "err");
-  }
+  try { status("Abrindo login...", "pend", true); await sdk.login(undefined, true); }
+  catch (e) { status("Erro: " + (e.message || e), "err"); }
 });
 
 $("btnAuthByApp").addEventListener("click", async () =&gt; {
@@ -494,10 +475,7 @@ $("btnAuthByApp").addEventListener("click", async () =&gt; {
     if (!d.ok) throw new Error(d.erro || "Falha");
     status("AuthID criado via App Token!", "ok");
     await recarregarConta(true);
-  } catch (e) {
-    status("Erro: " + (e.message || e), "err");
-    console.error(e);
-  }
+  } catch (e) { status("Erro: " + (e.message || e), "err"); console.error(e); }
 });
 
 $("btnRefresh").addEventListener("click", () =&gt; recarregarConta(false));
@@ -505,25 +483,15 @@ $("btnRefresh").addEventListener("click", () =&gt; recarregarConta(false));
 $("btnLogout").addEventListener("click", async () =&gt; {
   try {
     const r = await sdk.logout();
-    if (r.ok) {
-      hideAccount();
-      status("Sessão removida.", "ok");
-    } else {
-      status("Cancelado ou falhou: " + r.msg, "err");
-    }
-  } catch (e) {
-    status("Erro: " + (e.message || e), "err");
-  }
+    if (r.ok) { hideAccount(); status("Sessão removida.", "ok"); }
+    else { status("Cancelado ou falhou: " + r.msg, "err"); }
+  } catch (e) { status("Erro: " + (e.message || e), "err"); }
 });
 
 $("btnCopy").addEventListener("click", async () =&gt; {
   const valor = $("token").textContent;
-  try {
-    await navigator.clipboard.writeText(valor);
-    status("Status copiado.", "ok");
-  } catch {
-    status("Não foi possível copiar.", "err");
-  }
+  try { await navigator.clipboard.writeText(valor); status("Status copiado.", "ok"); }
+  catch { status("Não foi possível copiar.", "err"); }
 });
 
 (async () =&gt; {
@@ -573,13 +541,8 @@ $("btnCopy").addEventListener("click", async () =&gt; {
 </div>
 
 <script>
-const APP_TOKEN = "cpeaKOW1aSU6RyFhJnz1";
-const TESTE_URL = "https://teste-continuar-conta--narrownarwhal3891229.on.websim.com";
-
+const APP_TOKEN = "TESTE";
 document.getElementById("displayToken").textContent = APP_TOKEN;
-
-const iframe = document.getElementById("testeIframe");
-iframe.src = TESTE_URL + "?token=" + encodeURIComponent(APP_TOKEN);
 
 function copiarCodigo(id, btn) {
   const el = document.getElementById(id);
@@ -593,9 +556,7 @@ function copiarCodigo(id, btn) {
       btn.classList.remove("copiado");
       btn.innerHTML = original;
     }, 2000);
-  }).catch(() => {
-    alert("Erro ao copiar");
-  });
+  }).catch(() => alert("Erro ao copiar"));
 }
 
 document.getElementById("themeDark").addEventListener("click", () => {
