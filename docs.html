@@ -272,7 +272,8 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
 
   <div class="iframe-wrap">
     <iframe
-      src="https://teste-continuar-conta--narrownarwhal3891229.on.websim.com"
+      id="testeIframe"
+      src="about:blank"
       allow="clipboard-read; clipboard-write; popups; popup; same-origin"
       sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-top-navigation-by-user-activation allow-downloads"
       referrerpolicy="no-referrer-when-downgrade"
@@ -305,7 +306,6 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
 &lt;meta charset="UTF-8"&gt;
 &lt;meta name="viewport" content="width=device-width,initial-scale=1"&gt;
 &lt;title&gt;CodeHUB SDK v1.5 — Teste&lt;/title&gt;
-
 &lt;style&gt;
 *{margin:0;padding:0;box-sizing:border-box}
 :root,html[data-theme="dark"]{--bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;--border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);--accent-soft:rgba(79,140,255,.1);--shadow:rgba(0,0,0,.55);--toggle-bg:#151c30}
@@ -352,29 +352,23 @@ p.email{text-align:center;color:var(--text-2);font-size:.82rem;margin-bottom:16p
     &lt;h1&gt;CodeHUB SDK &lt;span class="ver"&gt;v1.5&lt;/span&gt;&lt;/h1&gt;
     &lt;p class="sub"&gt;Autenticação + AuthID + App Token&lt;/p&gt;
   &lt;/div&gt;
-
   &lt;button class="btn primary" id="btnLogin"&gt;
     &lt;svg viewBox="0 0 24 24"&gt;&lt;path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/&gt;&lt;polyline points="10 17 15 12 10 7"/&gt;&lt;line x1="15" y1="12" x2="3" y2="12"/&gt;&lt;/svg&gt;
     Abrir login (popup)
   &lt;/button&gt;
-
   &lt;button class="btn success" id="btnAuthByApp"&gt;
     &lt;svg viewBox="0 0 24 24"&gt;&lt;circle cx="12" cy="12" r="10"/&gt;&lt;path d="M12 2v20M2 12h20"/&gt;&lt;/svg&gt;
     Autenticar via App Token
   &lt;/button&gt;
-
   &lt;button class="btn secondary" id="btnRefresh"&gt;
     &lt;svg viewBox="0 0 24 24"&gt;&lt;path d="M21 12a9 9 0 1 1-3-6.7L21 8"/&gt;&lt;path d="M21 3v5h-5"/&gt;&lt;/svg&gt;
     Atualizar conta
   &lt;/button&gt;
-
   &lt;button class="btn danger" id="btnLogout"&gt;
     &lt;svg viewBox="0 0 24 24"&gt;&lt;path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/&gt;&lt;polyline points="16 17 21 12 16 7"/&gt;&lt;line x1="21" y1="12" x2="9" y2="12"/&gt;&lt;/svg&gt;
     Sair da conta
   &lt;/button&gt;
-
   &lt;div id="status"&gt;&lt;span class="spinner"&gt;&lt;/span&gt; Verificando sessão...&lt;/div&gt;
-
   &lt;div class="profile" id="profile"&gt;
     &lt;div class="avatar" id="avatar"&gt;&lt;span class="fallback"&gt;?&lt;/span&gt;&lt;/div&gt;
     &lt;h3 class="name" id="name"&gt;—&lt;/h3&gt;
@@ -388,14 +382,11 @@ p.email{text-align:center;color:var(--text-2);font-size:.82rem;margin-bottom:16p
     &lt;button class="btn secondary" id="btnCopy" style="margin-top:10px;font-size:.85rem"&gt;Copiar status&lt;/button&gt;
   &lt;/div&gt;
 &lt;/div&gt;
-
 &lt;script type="module"&gt;
 import { CodeHub } from "https://app.codehub.site.je/sdk.js";
 
 const APP_TOKEN = "TESTE";
-
 const $ = id =&gt; document.getElementById(id);
-
 const sdk = new CodeHub({ appToken: APP_TOKEN });
 
 function status(msg, cls = "", spinner = false) {
@@ -434,11 +425,7 @@ async function recarregarConta(silencioso = false) {
   if (!silencioso) status("Carregando sessão...", "pend", true);
   try {
     const authId = sdk.readSession();
-    if (!authId) {
-      status("Nenhuma sessão salva. Faça login primeiro.");
-      hideAccount();
-      return null;
-    }
+    if (!authId) { status("Nenhuma sessão salva. Faça login primeiro."); hideAccount(); return null; }
     const st = await sdk.getAuthStatus(authId);
     $("token").textContent = JSON.stringify(st, null, 2);
     if (!st || st.status !== "confirmed") {
@@ -457,10 +444,7 @@ async function recarregarConta(silencioso = false) {
 }
 
 sdk.on("pending", () =&gt; status("Aguardando autenticação...", "pend", true));
-sdk.on("confirmed", async () =&gt; {
-  status("Login confirmado! Carregando perfil...", "ok");
-  await recarregarConta(true);
-});
+sdk.on("confirmed", async () =&gt; { status("Login confirmado! Carregando perfil...", "ok"); await recarregarConta(true); });
 sdk.on("error", e =&gt; status("Erro: " + (e.message || e), "err"));
 
 $("btnLogin").addEventListener("click", async () =&gt; {
@@ -541,8 +525,22 @@ $("btnCopy").addEventListener("click", async () =&gt; {
 </div>
 
 <script>
+// ============================================
+// CONSTANTE — appToken usado na documentação
+// ============================================
 const APP_TOKEN = "TESTE";
+
+// ============================================
+// URL do site de teste (websim)
+// ============================================
+const TESTE_URL = "https://teste-continuar-conta--narrownarwhal3891229.on.websim.com";
+
+// Mostra o token na tela
 document.getElementById("displayToken").textContent = APP_TOKEN;
+
+// ⭐ Injeta o token na URL do iframe
+const iframe = document.getElementById("testeIframe");
+iframe.src = TESTE_URL + "?token=" + encodeURIComponent(APP_TOKEN);
 
 function copiarCodigo(id, btn) {
   const el = document.getElementById(id);
