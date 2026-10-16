@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Face ID 3D</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+    <!-- Import Map para Three.js (ES Module) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+        }
+    }
+    </script>
+
+    <style>
+        :root { --bg: #0a0a0f; --surface: #1a1a2e; --primary: #6c5ce7; --accent: #a855f7; --gold: #f59e0b; --success: #10b981; --danger: #ef4444; --text: #e2e8f0; --text-secondary: #94a3b8; --border: #334155; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); min-height: 100vh; display: flex; justify-content: center; align-items: center; color: var(--text); overflow: hidden; }
+        .container { width: 100%; max-width: 500px; height: 100vh; max-height: 850px; background: var(--surface); padding: 15px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+        
+        .header { text-align: center; padding: 5px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .header h1 { font-size: 1.1em; background: linear-gradient(135deg, #c4b5fd, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; flex: 1; text-align: left; }
+        
+        .tts-toggle { background: rgba(20,20,40,0.6); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; color: var(--text-secondary); font-size: 0.65em; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+        .tts-toggle.on { border-color: var(--success); color: var(--success); background: rgba(16,185,129,0.15); }
+        
+        .mode-switcher { display: flex; gap: 4px; background: rgba(20,20,40,0.6); border: 1px solid var(--border); border-radius: 12px; padding: 4px; }
+        .mode-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-secondary); font-size: 0.75em; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .mode-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+        
+        .camera-zone { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; min-height: 0; }
+        .oval-frame { position: relative; overflow: hidden; box-shadow: 0 0 0 3px var(--border); background: #000; width: 100%; max-width: 320px; height: 100%; max-height: 380px; border-radius: 50% / 40%; transition: box-shadow 0.5s; }
+        .oval-frame.active { box-shadow: 0 0 0 3px var(--accent), 0 0 30px var(--accent); }
+        .oval-frame.good { box-shadow: 0 0 0 3px var(--success), 0 0 30px var(--success); }
+        .oval-frame.capture { animation: flash 0.3s; }
+        @keyframes flash { 0%, 100% { box-shadow: 0 0 0 3px var(--accent); } 50% { box-shadow: 0 0 0 6px white, 0 0 50px white; } }
+        
+        .video-wrapper { width: 100%; height: 100%; overflow: hidden; position: relative; }
+        video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1) scale(1); transition: transform 0.1s linear; transform-origin: center center; }
+        
+        .pose-badge { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 6px 14px; border-radius: 20px; font-size: 0.7em; color: var(--text); backdrop-filter: blur(10px); border: 1px solid var(--border); z-index: 5; white-space: nowrap; }
+        .pose-badge.center { border-color: var(--success); color: var(--success); }
+        .pose-badge.left, .pose-badge.right { border-color: var(--gold); color: var(--gold); }
+        
+        .zoom-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 4px 12px; border-radius: 20px; font-size: 0.6em; color: var(--text-secondary); display: none; backdrop-filter: blur(10px); border: 1px solid var(--border); z-index: 5; white-space: nowrap; }
+        .zoom-indicator.active { display: block; }
+        .zoom-indicator .zoom-val { color: var(--accent); font-weight: 700; }
+        
+        .focus-indicator { position: absolute; top: 40px; right: 8px; background: rgba(0,0,0,0.75); padding: 3px 8px; border-radius: 10px; font-size: 0.55em; color: var(--text-secondary); display: none; backdrop-filter: blur(10px); border: 1px solid var(--border); z-index: 5; }
+        .focus-indicator.active { display: block; color: var(--success); }
+        
+        .countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8em;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 0 30px var(--accent), 0 0 60px var(--accent);
+            z-index: 10;
+            display: none;
+            pointer-events: none;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        .countdown.active { display: block; }
+        .countdown.pop { animation: countPop 0.6s ease-out; }
+        @keyframes countPop {
+            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+            30% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        
+        .flash-light {
+            position: absolute;
+            inset: 0;
+            background: white;
+            z-index: 9;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .flash-light.on { animation: flashLight 0.6s ease-out; }
+        @keyframes flashLight {
+            0% { opacity: 0; }
+            20% { opacity: 0.9; }
+            100% { opacity: 0; }
+        }
+        
+        .angles-bar { display: flex; justify-content: center; gap: 20px; padding: 8px; background: rgba(20,20,40,0.6); border-radius: 12px; border: 1px solid var(--border); }
+        .angle-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 0.6em; color: var(--text-secondary); }
+        .angle-circle { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; background: rgba(0,0,0,0.3); transition: all 0.3s; }
+        .angle-item.active .angle-circle { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); animation: pulse 1s infinite; }
+        .angle-item.done .angle-circle { border-color: var(--success); background: var(--success); color: black; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+        .angle-item.done { color: var(--success); }
+        .angle-item.active { color: var(--accent); }
+        
+        .status { text-align: center; font-size: 0.85em; color: var(--text-secondary); min-height: 20px; font-weight: 500; }
+        .status.success { color: var(--success); }
+        .status.warn { color: var(--gold); }
+        .status.info { color: var(--accent); }
+        .status.error { color: var(--danger); }
+        
+        .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .btn { padding: 8px 18px; border-radius: 20px; border: none; font-size: 0.7em; font-weight: 600; text-transform: uppercase; cursor: pointer; transition: all 0.3s; }
+        .btn.green { background: #059669; color: white; }
+        .btn.blue { background: #2563eb; color: white; }
+        .btn.gray { background: var(--border); color: var(--text); }
+        .btn.purple { background: linear-gradient(135deg, #6c5ce7, #a855f7); color: white; }
+        .btn:hover { transform: scale(1.05); }
+        
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 25px; max-width: 380px; width: 100%; max-height: 80vh; overflow-y: auto; }
+        .modal-icon { width: 50px; height: 50px; margin: 0 auto 12px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .modal-title { text-align: center; font-size: 1.05em; font-weight: 700; margin-bottom: 5px; color: #c4b5fd; }
+        .modal-sub { text-align: center; font-size: 0.75em; color: var(--text-secondary); margin-bottom: 15px; }
+        .modal input { width: 100%; padding: 12px; background: rgba(20,20,40,0.8); border: 2px solid var(--border); border-radius: 10px; color: var(--text); font-size: 1em; outline: none; margin-bottom: 12px; }
+        .modal input:focus { border-color: var(--accent); }
+        .modal-btns { display: flex; gap: 8px; }
+        .modal-btns button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 0.8em; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+        .modal-btns .primary { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+        .modal-btns .secondary { background: var(--border); color: var(--text); }
+        
+        .user-item { padding: 12px 15px; background: rgba(30,30,50,0.8); border: 2px solid var(--border); border-radius: 10px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s; }
+        .user-item:hover { border-color: var(--accent); transform: translateX(4px); }
+        .user-item .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .user-item .info { flex: 1; }
+        .user-item .name { font-weight: 600; font-size: 0.9em; }
+        .user-item .hash { font-size: 0.6em; color: var(--text-secondary); font-family: monospace; }
+        
+        .result-box { text-align: center; }
+        .result-box.ok { border: 2px solid var(--success); }
+        .result-box.fail { border: 2px solid var(--danger); }
+        .result-avatar { width: 90px; height: 90px; margin: 0 auto 15px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 45px; background: linear-gradient(135deg, var(--success), #059669); }
+        .result-box.fail .result-avatar { background: linear-gradient(135deg, var(--danger), #b91c1c); }
+        .result-name { font-size: 1.5em; font-weight: 700; color: #c4b5fd; margin-bottom: 8px; }
+        .result-box.fail .result-name { color: #fca5a5; }
+        .result-detail { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 15px; }
+        .result-angles { display: flex; justify-content: center; gap: 15px; margin: 12px 0; font-size: 0.75em; }
+        .result-angle { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .result-angle .val { font-weight: 700; }
+        .result-angle.ok .val { color: var(--success); }
+        .result-angle.fail .val { color: var(--danger); }
+        
+        /* VISUALIZADOR 3D */
+        .viewer-container {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            display: none;
+        }
+        .viewer-container.active { display: block; }
+        #threeCanvas { width: 100%; height: 100%; display: block; touch-action: none; }
+        .viewer-overlay {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.7);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.65em;
+            color: var(--text);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            z-index: 5;
+        }
+        .viewer-overlay .name { color: var(--accent); font-weight: 700; }
+        .viewer-controls {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 5;
+        }
+        .viewer-btn {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: rgba(0,0,0,0.75);
+            color: var(--text);
+            font-size: 0.65em;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+        .viewer-btn.on {
+            border-color: var(--success);
+            color: var(--success);
+            background: rgba(16,185,129,0.15);
+        }
+        .viewer-empty {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            text-align: center;
+            padding: 20px;
+        }
+        .viewer-empty .icon { font-size: 3em; opacity: 0.5; }
+    </style>
+</head>
+<body>
+
+    <div class="modal" id="nameModal">
+        <div class="modal-box">
+            <div class="modal-icon">👤</div>
+            <div class="modal-title">Digite o nome</div>
+            <div class="modal-sub">Nome da pessoa a ser cadastrada</div>
+            <input type="text" id="nameInput" placeholder="Nome..." maxlength="50">
+            <div class="modal-btns">
+                <button class="secondary" id="btnCancelName">Cancelar</button>
+                <button class="primary" id="btnConfirmName">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="userModal">
+        <div class="modal-box">
+            <div class="modal-icon">🔍</div>
+            <div class="modal-title">Quem é você?</div>
+            <div class="modal-sub">Escolha seu nome</div>
+            <div id="userList"></div>
+            <div class="modal-btns" style="margin-top:12px;">
+                <button class="secondary" id="btnCancelUser">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DO VISUALIZADOR 3D -->
+    <div class="modal" id="viewerUserModal">
+        <div class="modal-box">
+            <div class="modal-icon">🧊</div>
+            <div class="modal-title">Visualizar em 3D</div>
+            <div class="modal-sub">Escolha quem quer ver</div>
+            <div id="viewerUserList"></div>
+            <div class="modal-btns" style="margin-top:12px;">
+                <button class="secondary" id="btnCancelViewer">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="resultModal">
+        <div class="modal-box result-box" id="resultBox">
+            <div class="result-avatar" id="resultAvatar">✅</div>
+            <div class="result-name" id="resultName">--</div>
+            <div class="result-detail" id="resultDetail">--</div>
+            <div class="result-angles" id="resultAngles"></div>
+            <button id="btnCloseResult" style="width:100%;margin-top:15px;padding:12px;border:none;border-radius:10px;font-weight:700;text-transform:uppercase;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;cursor:pointer;">OK</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Face ID 3D</h1>
+            <button class="tts-toggle" id="ttsToggle">🔇 TTS</button>
+        </div>
+
+        <div class="mode-switcher">
+            <button class="mode-btn active" id="btnRegister">📝 Cadastrar</button>
+            <button class="mode-btn" id="btnVerify">🔍 Verificar</button>
+            <button class="mode-btn" id="btnView3D">🧊 Ver em 3D</button>
+        </div>
+
+        <div class="camera-zone">
+            <div class="oval-frame" id="ovalFrame">
+                <div class="video-wrapper" id="videoWrapper">
+                    <video id="video" autoplay playsinline muted></video>
+                </div>
+                <div class="pose-badge" id="poseBadge" style="display:none;">👁️ Centro</div>
+                <div class="zoom-indicator" id="zoomIndicator">🔍 Zoom: <span class="zoom-val" id="zoomVal">1.0x</span></div>
+                <div class="focus-indicator" id="focusIndicator">🎯 Foco automático</div>
+                <div class="countdown" id="countdown">3</div>
+                <div class="flash-light" id="flashLight"></div>
+            </div>
+
+            <!-- VISUALIZADOR 3D -->
+            <div class="viewer-container" id="viewerContainer">
+                <canvas id="threeCanvas"></canvas>
+                <div class="viewer-overlay" id="viewerOverlay" style="display:none;">
+                    👤 <span class="name" id="viewerName">--</span>
+                </div>
+                <div class="viewer-empty" id="viewerEmpty">
+                    <div class="icon">🧊</div>
+                    <div>Escolha um usuário para ver os pontos em 3D</div>
+                </div>
+                <div class="viewer-controls" id="viewerControls" style="display:none;">
+                    <button class="viewer-btn on" id="btnRotate">🔄 Girar</button>
+                    <button class="viewer-btn on" id="btnWireframe">🔗 Linhas</button>
+                    <button class="viewer-btn" id="btnChangeUser">👤 Trocar</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="angles-bar" id="anglesBar" style="display:none;">
+            <div class="angle-item" id="angleLeft">
+                <div class="angle-circle">➡️</div>
+                <div>Direita</div>
+            </div>
+            <div class="angle-item active" id="angleCenter">
+                <div class="angle-circle">⬆️</div>
+                <div>Centro</div>
+            </div>
+            <div class="angle-item" id="angleRight">
+                <div class="angle-circle">⬅️</div>
+                <div>Esquerda</div>
+            </div>
+        </div>
+
+        <div class="status info" id="status">📸 Carregando modelos...</div>
+
+        <div class="actions" id="mainActions">
+            <button class="btn purple" id="startBtn">▶️ Iniciar</button>
+            <button class="btn green" id="btnCamera">🔄 Câmera</button>
+            <button class="btn blue" id="btnList">📋 Listar</button>
+            <button class="btn gray" id="btnDelete">🗑️ Limpar</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // ============================================================
+        // IMPORTAÇÕES
+        // ============================================================
+        import * as THREE from 'three';
+
+        // ============================================================
+        // CONFIGURAÇÃO
+        // ============================================================
+        const SIMILARITY_THRESHOLD = 0.10;
+        const POSE_THRESHOLD = 0.15;
+        const ANGLE_ORDER = ['center', 'right', 'left'];
+        const COUNTDOWN_SECONDS = 3;
+        
+        const IDEAL_FACE_SIZE = 180;
+        const MAX_ZOOM = 3.5;
+        const MIN_ZOOM = 1.0;
+        const ZOOM_SMOOTHING = 0.08;
+        
+        const ANGLE_LABELS = {
+            center: 'CENTRO ⬆️',
+            right: 'ESQUERDA ⬅️',
+            left: 'DIREITA ➡️'
+        };
+        
+        const ANGLE_TTS = {
+            center: 'centro',
+            right: 'esquerda',
+            left: 'direita'
+        };
+
+        // ============================================================
+        // TTS
+        // ============================================================
+        let ttsEnabled = false;
+        let ttsVoice = null;
+
+        function initTTS() {
+            if ('speechSynthesis' in window) {
+                const loadVoices = () => {
+                    const voices = speechSynthesis.getVoices();
+                    ttsVoice = voices.find(v => v.lang.startsWith('pt')) || voices[0];
+                };
+                loadVoices();
+                speechSynthesis.onvoiceschanged = loadVoices;
+            }
+        }
+
+        function speak(text) {
+            if (!ttsEnabled) return;
+            if (!('speechSynthesis' in window)) return;
+            speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'pt-BR';
+            utter.rate = 1.15;
+            utter.pitch = 1.0;
+            utter.volume = 1.0;
+            if (ttsVoice) utter.voice = ttsVoice;
+            speechSynthesis.speak(utter);
+        }
+
+        function toggleTTS() {
+            ttsEnabled = !ttsEnabled;
+            const btn = document.getElementById('ttsToggle');
+            btn.classList.toggle('on', ttsEnabled);
+            btn.textContent = ttsEnabled ? '🔊 TTS' : '🔇 TTS';
+            if (ttsEnabled) speak('áudio ativado');
+            else speechSynthesis.cancel();
+        }
+
+        // ============================================================
+        // VIBRAÇÃO
+        // ============================================================
+        function vibrate(pattern) {
+            if (navigator.vibrate) {
+                try { navigator.vibrate(pattern); } catch(e) {}
+            }
+        }
+
+        // ============================================================
+        // FIREBASE
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBzRLpZJDMeFASIjje4SJBfTInIEO-GKVI",
+            authDomain: "html-785e3.firebaseapp.com",
+            databaseURL: "https://html-785e3-default-rtdb.firebaseio.com",
+            projectId: "html-785e3",
+            storageBucket: "html-785e3.firebasestorage.app",
+            messagingSenderId: "389467952076",
+            appId: "1:389467952076:web:fcad8e95181b9050494369"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // ============================================================
+        // ELEMENTOS
+        // ============================================================
+        const video = document.getElementById('video');
+        const ovalFrame = document.getElementById('ovalFrame');
+        const poseBadge = document.getElementById('poseBadge');
+        const statusEl = document.getElementById('status');
+        const anglesBar = document.getElementById('anglesBar');
+        const nameModal = document.getElementById('nameModal');
+        const userModal = document.getElementById('userModal');
+        const resultModal = document.getElementById('resultModal');
+        const nameInput = document.getElementById('nameInput');
+        const userListEl = document.getElementById('userList');
+        const countdownEl = document.getElementById('countdown');
+        const flashLight = document.getElementById('flashLight');
+        const zoomIndicator = document.getElementById('zoomIndicator');
+        const zoomVal = document.getElementById('zoomVal');
+        const focusIndicator = document.getElementById('focusIndicator');
+        const viewerContainer = document.getElementById('viewerContainer');
+        const viewerUserModal = document.getElementById('viewerUserModal');
+        const viewerUserList = document.getElementById('viewerUserList');
+
+        // ============================================================
+        // ESTADO
+        // ============================================================
+        let stream = null;
+        let videoTrack = null;
+        let loopRunning = false;
+        let modelsReady = false;
+        let currentCamera = 'user';
+        let mode = 'register';
+        
+        let flowActive = false;
+        let currentAngleIndex = 0;
+        let captureState = 'idle';
+        let currentPose = 'center';
+        let currentDescriptor = null;
+        let currentLandmarks = null;
+        
+        let samples = { center: [], right: [], left: [] };
+        let samplesLandmarks = { center: [], right: [], left: [] };
+        let declaredUser = null;
+        
+        let currentZoom = 1.0;
+        let targetZoom = 1.0;
+        let zoomSmoothInterval = null;
+
+        // ============================================================
+        // UI
+        // ============================================================
+        function setStatus(msg, type = 'info') {
+            statusEl.textContent = msg;
+            statusEl.className = 'status ' + type;
+        }
+        
+        function setMode(m) {
+            mode = m;
+            document.getElementById('btnRegister').classList.toggle('active', m === 'register');
+            document.getElementById('btnVerify').classList.toggle('active', m === 'verify');
+            document.getElementById('btnView3D').classList.toggle('active', m === 'view3d');
+            
+            if (m === 'view3d') {
+                ovalFrame.style.display = 'none';
+                viewerContainer.classList.add('active');
+                openViewerSelect();
+                document.getElementById('mainActions').style.display = 'none';
+                anglesBar.style.display = 'none';
+                setStatus('🧊 Escolha um usuário para ver em 3D', 'info');
+            } else {
+                ovalFrame.style.display = '';
+                viewerContainer.classList.remove('active');
+                document.getElementById('mainActions').style.display = '';
+                resetFlow();
+            }
+        }
+
+        function updateAnglesUI() {
+            const ids = { center: 'angleCenter', right: 'angleRight', left: 'angleLeft' };
+            ANGLE_ORDER.forEach((angle, i) => {
+                const el = document.getElementById(ids[angle]);
+                el.classList.remove('active', 'done');
+                if (samples[angle].length >= 1) {
+                    el.classList.add('done');
+                } else if (i === currentAngleIndex) {
+                    el.classList.add('active');
+                }
+            });
+        }
+
+        function showPose(pose) {
+            poseBadge.style.display = 'block';
+            poseBadge.className = 'pose-badge ' + pose;
+            const label = pose === 'center' ? '👁️ Centro' : pose === 'right' ? '⬅️ Esquerda' : '➡️ Direita';
+            poseBadge.textContent = label;
+        }
+
+        // ============================================================
+        // ZOOM
+        // ============================================================
+        function startZoomLoop() {
+            if (zoomSmoothInterval) clearInterval(zoomSmoothInterval);
+            zoomSmoothInterval = setInterval(() => {
+                const diff = targetZoom - currentZoom;
+                if (Math.abs(diff) > 0.01) {
+                    currentZoom += diff * ZOOM_SMOOTHING;
+                    applyZoom(currentZoom);
+                }
+            }, 30);
+        }
+
+        function applyZoom(zoom) {
+            video.style.transform = `scaleX(-1) scale(${zoom})`;
+            zoomIndicator.classList.add('active');
+            zoomVal.textContent = zoom.toFixed(1) + 'x';
+            
+            if (videoTrack) {
+                try {
+                    const caps = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+                    if (caps.zoom) {
+                        const nativeZoom = Math.min(caps.zoom.max, caps.zoom.min + (zoom - 1) * 2);
+                        videoTrack.applyConstraints({ advanced: [{ zoom: nativeZoom }] }).catch(() => {});
+                    }
+                } catch(e) {}
+            }
+        }
+
+        function updateAutoZoom(faceSize) {
+            if (faceSize < 20) return;
+            let newTarget = IDEAL_FACE_SIZE / faceSize;
+            newTarget = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newTarget));
+            targetZoom = newTarget;
+        }
+
+        // ============================================================
+        // CARREGAR MODELOS
+        // ============================================================
+        async function loadModels() {
+            try {
+                const URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(URL)
+                ]);
+                modelsReady = true;
+                setStatus('✅ Modelos prontos! Clique em ▶️ Iniciar', 'success');
+                return true;
+            } catch (e) {
+                setStatus('❌ Erro ao carregar modelos', 'error');
+                console.error(e);
+                return false;
+            }
+        }
+
+        // ============================================================
+        // CÂMERA
+        // ============================================================
+        async function switchCamera() {
+            currentCamera = currentCamera === 'user' ? 'environment' : 'user';
+            await initCamera();
+        }
+
+        async function initCamera() {
+            try {
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                
+                const constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: currentCamera,
+                        focusMode: 'continuous',
+                        exposureMode: 'continuous',
+                        whiteBalanceMode: 'continuous'
+                    }
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                videoTrack = stream.getVideoTracks()[0];
+                
+                await video.play();
+                
+                setTimeout(async () => {
+                    try {
+                        const caps = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+                        const advanced = [];
+                        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+                            advanced.push({ focusMode: 'continuous' });
+                        }
+                        if (caps.exposureMode && caps.exposureMode.includes('continuous')) {
+                            advanced.push({ exposureMode: 'continuous' });
+                        }
+                        if (caps.whiteBalanceMode && caps.whiteBalanceMode.includes('continuous')) {
+                            advanced.push({ whiteBalanceMode: 'continuous' });
+                        }
+                        if (advanced.length > 0) {
+                            await videoTrack.applyConstraints({ advanced });
+                            focusIndicator.classList.add('active');
+                            focusIndicator.textContent = '🎯 Foco automático ON';
+                            setTimeout(() => focusIndicator.classList.remove('active'), 2500);
+                        }
+                    } catch(e) {}
+                }, 500);
+                
+                if (!loopRunning) startLoop();
+                if (!zoomSmoothInterval) startZoomLoop();
+                
+            } catch (e) {
+                setStatus('❌ Erro na câmera: ' + e.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // DETECÇÃO DE POSE
+        // ============================================================
+        function detectPose(landmarks) {
+            const nose = landmarks.positions[30];
+            const eyeL = landmarks.positions[36];
+            const eyeR = landmarks.positions[45];
+            const eyeCenterX = (eyeL.x + eyeR.x) / 2;
+            const eyeDist = Math.abs(eyeR.x - eyeL.x) || 0.001;
+            const offset = (nose.x - eyeCenterX) / eyeDist;
+            
+            if (offset > POSE_THRESHOLD) return 'right';
+            if (offset < -POSE_THRESHOLD) return 'left';
+            return 'center';
+        }
+
+        // ============================================================
+        // LOOP
+        // ============================================================
+        function startLoop() {
+            loopRunning = true;
+            const loop = async () => {
+                if (!loopRunning) return;
+                if (!modelsReady || !video || video.readyState < 2) {
+                    requestAnimationFrame(loop);
+                    return;
+                }
+                
+                if (mode === 'view3d') {
+                    requestAnimationFrame(loop);
+                    return;
+                }
+                
+                try {
+                    const det = await faceapi
+                        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+                        .withFaceLandmarks()
+                        .withFaceDescriptor();
+                    
+                    if (det) {
+                        currentDescriptor = Array.from(det.descriptor);
+                        currentPose = detectPose(det.landmarks);
+                        currentLandmarks = det.landmarks.positions.map(p => ({
+                            x: p.x, y: p.y, z: p.z || 0
+                        }));
+                        showPose(currentPose);
+                        
+                        const box = det.detection.box;
+                        const faceSize = Math.max(box.width, box.height);
+                        updateAutoZoom(faceSize);
+                        
+                        if (flowActive && captureState === 'waiting') {
+                            const targetAngle = ANGLE_ORDER[currentAngleIndex];
+                            if (currentPose === targetAngle) {
+                                ovalFrame.classList.add('good');
+                            } else {
+                                ovalFrame.classList.remove('good');
+                            }
+                        }
+                    } else {
+                        if (flowActive && captureState === 'waiting') {
+                            setStatus('📸 Aproxime o rosto...', 'warn');
+                        }
+                    }
+                } catch (e) { /* silencioso */ }
+                
+                requestAnimationFrame(loop);
+            };
+            loop();
+        }
+
+        // ============================================================
+        // CONTADOR 3-2-1
+        // ============================================================
+        async function doCountdown() {
+            return new Promise(resolve => {
+                let count = COUNTDOWN_SECONDS;
+                
+                countdownEl.textContent = count;
+                countdownEl.classList.add('active', 'pop');
+                
+                flashLight.classList.add('on');
+                setTimeout(() => flashLight.classList.remove('on'), 600);
+                vibrate([100, 100, 100, 100, 100]);
+                speak(count.toString());
+                
+                const tick = () => {
+                    count--;
+                    if (count > 0) {
+                        countdownEl.textContent = count;
+                        countdownEl.classList.remove('pop');
+                        void countdownEl.offsetWidth;
+                        countdownEl.classList.add('pop');
+                        
+                        flashLight.classList.remove('on');
+                        void flashLight.offsetWidth;
+                        flashLight.classList.add('on');
+                        setTimeout(() => flashLight.classList.remove('on'), 400);
+                        
+                        vibrate(150);
+                        speak(count.toString());
+                        
+                        setTimeout(tick, 1000);
+                    } else {
+                        countdownEl.textContent = '✓';
+                        vibrate([200, 50, 200]);
+                        speak('capturando');
+                        
+                        flashLight.classList.remove('on');
+                        void flashLight.offsetWidth;
+                        flashLight.classList.add('on');
+                        
+                        setTimeout(() => {
+                            countdownEl.classList.remove('active', 'pop');
+                            flashLight.classList.remove('on');
+                            resolve();
+                        }, 500);
+                    }
+                };
+                
+                setTimeout(tick, 1000);
+            });
+        }
+
+        // ============================================================
+        // FLUXO POR ÂNGULO
+        // ============================================================
+        async function processAngle(angleIndex) {
+            const angle = ANGLE_ORDER[angleIndex];
+            const label = ANGLE_LABELS[angle];
+            const ttsLabel = ANGLE_TTS[angle];
+            
+            setStatus(`📸 Vire para ${label}`, 'warn');
+            speak(`vire para ${ttsLabel}`);
+            
+            captureState = 'waiting';
+            ovalFrame.classList.add('active');
+            
+            await waitForPose(angle);
+            
+            captureState = 'countdown';
+            await doCountdown();
+            
+            captureState = 'capturing';
+            samples[angle].push([...currentDescriptor]);
+            samplesLandmarks[angle].push(currentLandmarks.map(p => ({...p})));
+            console.log(`✅ ${angle}: capturado com ${currentLandmarks.length} pontos`);
+            
+            ovalFrame.classList.add('capture');
+            setTimeout(() => ovalFrame.classList.remove('capture'), 300);
+            ovalFrame.classList.remove('good');
+            
+            updateAnglesUI();
+            
+            currentAngleIndex++;
+            if (currentAngleIndex >= ANGLE_ORDER.length) {
+                speak('captura completa');
+                captureState = 'done';
+                flowActive = false;
+                ovalFrame.classList.remove('active', 'good');
+                finishCapture();
+            } else {
+                speak('próximo');
+                await sleep(600);
+                await processAngle(currentAngleIndex);
+            }
+        }
+
+        function waitForPose(targetAngle) {
+            return new Promise(resolve => {
+                const check = () => {
+                    if (!flowActive) return resolve();
+                    if (currentPose === targetAngle) {
+                        resolve();
+                    } else {
+                        setTimeout(check, 100);
+                    }
+                };
+                check();
+            });
+        }
+
+        function sleep(ms) {
+            return new Promise(r => setTimeout(r, ms));
+        }
+
+        // ============================================================
+        // INICIAR / RESET
+        // ============================================================
+        async function startFlow() {
+            samples = { center: [], right: [], left: [] };
+            samplesLandmarks = { center: [], right: [], left: [] };
+            currentAngleIndex = 0;
+            flowActive = true;
+            captureState = 'idle';
+            
+            anglesBar.style.display = 'flex';
+            ovalFrame.classList.add('active');
+            updateAnglesUI();
+            
+            await sleep(400);
+            await processAngle(0);
+        }
+
+        function resetFlow() {
+            flowActive = false;
+            captureState = 'idle';
+            samples = { center: [], right: [], left: [] };
+            samplesLandmarks = { center: [], right: [], left: [] };
+            currentAngleIndex = 0;
+            declaredUser = null;
+            
+            anglesBar.style.display = 'none';
+            ovalFrame.classList.remove('active', 'good', 'capture');
+            poseBadge.style.display = 'none';
+            countdownEl.classList.remove('active', 'pop');
+            flashLight.classList.remove('on');
+            
+            if (mode === 'register') {
+                setStatus('📝 Clique em ▶️ Iniciar para cadastrar', 'info');
+            } else if (mode === 'verify') {
+                setStatus('🔍 Clique em ▶️ Iniciar para verificar', 'info');
+            }
+        }
+
+        function finishCapture() {
+            anglesBar.style.display = 'none';
+            ovalFrame.classList.remove('active', 'good');
+            
+            if (mode === 'register') {
+                setStatus('✅ Captura completa! Digite o nome', 'success');
+                speak('captura completa. digite o nome');
+                showNameModal();
+            } else {
+                setStatus('✅ Captura completa! Verificando...', 'success');
+                speak('verificando');
+                verifyUser();
+            }
+        }
+
+        // ============================================================
+        // MÉDIA E COMPARAÇÃO
+        // ============================================================
+        function averageDescriptors(descriptors) {
+            if (descriptors.length === 0) return null;
+            const len = descriptors[0].length;
+            const avg = new Array(len).fill(0);
+            for (const d of descriptors) {
+                for (let i = 0; i < len; i++) avg[i] += d[i];
+            }
+            for (let i = 0; i < len; i++) avg[i] /= descriptors.length;
+            return avg;
+        }
+
+        function averageLandmarks(landmarkSets) {
+            if (landmarkSets.length === 0) return null;
+            const numPoints = landmarkSets[0].length;
+            const avg = [];
+            for (let i = 0; i < numPoints; i++) {
+                let x = 0, y = 0, z = 0;
+                for (const set of landmarkSets) {
+                    x += set[i].x;
+                    y += set[i].y;
+                    z += set[i].z || 0;
+                }
+                avg.push({
+                    x: x / landmarkSets.length,
+                    y: y / landmarkSets.length,
+                    z: z / landmarkSets.length
+                });
+            }
+            return avg;
+        }
+
+        function compareDescriptors(d1, d2) {
+            if (!d1 || !d2 || d1.length !== d2.length) return { sim: 0, dist: 1 };
+            let sum = 0;
+            for (let i = 0; i < d1.length; i++) {
+                const diff = d1[i] - d2[i];
+                sum += diff * diff;
+            }
+            const dist = Math.sqrt(sum);
+            const sim = Math.max(0, 1 - (dist / 0.6));
+            return { sim, dist };
+        }
+
+        // ============================================================
+        // MODAIS
+        // ============================================================
+        function showNameModal() {
+            nameModal.classList.add('active');
+            nameInput.value = '';
+            setTimeout(() => nameInput.focus(), 100);
+        }
+        function cancelName() {
+            nameModal.classList.remove('active');
+            resetFlow();
+        }
+        async function confirmName() {
+            const name = nameInput.value.trim();
+            if (!name) {
+                nameInput.style.borderColor = 'var(--danger)';
+                return;
+            }
+            nameModal.classList.remove('active');
+            
+            const avgCenter = averageDescriptors(samples.center);
+            const avgRight = averageDescriptors(samples.right);
+            const avgLeft = averageDescriptors(samples.left);
+            
+            const lmCenter = averageLandmarks(samplesLandmarks.center);
+            const lmRight = averageLandmarks(samplesLandmarks.right);
+            const lmLeft = averageLandmarks(samplesLandmarks.left);
+            
+            const hash = generateHash(avgCenter);
+            
+            const data = {
+                name,
+                faceHash: hash,
+                descriptor: {
+                    center: avgCenter,
+                    right: avgRight,
+                    left: avgLeft
+                },
+                landmarks3D: {
+                    center: lmCenter,
+                    right: lmRight,
+                    left: lmLeft
+                },
+                is3D: true,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                registeredAt: new Date().toLocaleString()
+            };
+            
+            try {
+                setStatus('💾 Salvando...', 'info');
+                await db.collection('registered_faces').add(data);
+                setStatus(`✅ ${name} cadastrado(a)!`, 'success');
+                speak(`${name} cadastrado com sucesso`);
+                setTimeout(resetFlow, 2000);
+            } catch (e) {
+                setStatus('❌ Erro ao salvar: ' + e.message, 'error');
+            }
+        }
+        
+        nameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') confirmName(); });
+
+        function generateHash(desc) {
+            if (!desc) return 'XX-XXXX-XX';
+            const str = desc.slice(0, 8).map(v => Math.abs(v).toFixed(4)).join('');
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash = hash & hash;
+            }
+            const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
+            return `${hex.substring(0,2)}-${hex.substring(2,6)}-${hex.substring(6,8)}`;
+        }
+
+        // ============================================================
+        // LISTAR / LIMPAR
+        // ============================================================
+        async function listUsers() {
+            try {
+                const snap = await db.collection('registered_faces').get();
+                if (snap.empty) {
+                    alert('📭 Nenhum usuário cadastrado.');
+                    return;
+                }
+                let txt = `📋 Cadastrados (${snap.size}):\n\n`;
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    txt += `👤 ${d.name}\n   🔑 ${d.faceHash}\n   🧊 3D: ${d.landmarks3D ? 'Sim' : 'Não'}\n   📅 ${d.registeredAt || '--'}\n\n`;
+                });
+                alert(txt);
+            } catch (e) {
+                alert('❌ Erro: ' + e.message);
+            }
+        }
+
+        async function deleteAll() {
+            if (!confirm('⚠️ Apagar TODOS?')) return;
+            try {
+                const snap = await db.collection('registered_faces').get();
+                const batch = db.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                alert(`🗑️ ${snap.size} removidos`);
+            } catch (e) {
+                alert('❌ Erro: ' + e.message);
+            }
+        }
+
+        // ============================================================
+        // ESCOLHA DE USUÁRIO (VERIFICAR)
+        // ============================================================
+        async function showUserSelect() {
+            userListEl.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:15px;">Carregando...</div>';
+            userModal.classList.add('active');
+            
+            try {
+                const snap = await db.collection('registered_faces').get();
+                if (snap.empty) {
+                    userListEl.innerHTML = '<div style="text-align:center;color:#ef4444;padding:15px;">⚠️ Nenhum usuário cadastrado</div>';
+                    return;
+                }
+                userListEl.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'user-item';
+                    item.innerHTML = `
+                        <div class="avatar">👤</div>
+                        <div class="info">
+                            <div class="name">${d.name}</div>
+                            <div class="hash">🔑 ${d.faceHash}</div>
+                        </div>
+                    `;
+                    item.onclick = () => selectUser(doc.id, d);
+                    userListEl.appendChild(item);
+                });
+            } catch (e) {
+                userListEl.innerHTML = '<div style="text-align:center;color:#ef4444;padding:15px;">Erro: ' + e.message + '</div>';
+            }
+        }
+
+        async function selectUser(id, data) {
+            declaredUser = { id, ...data };
+            userModal.classList.remove('active');
+            setStatus(`🔍 Verificando ${data.name}...`, 'info');
+            speak(`verificando ${data.name}`);
+            await sleep(500);
+            await startFlow();
+        }
+
+        function cancelUserSelect() {
+            userModal.classList.remove('active');
+            resetFlow();
+        }
+
+        // ============================================================
+        // VERIFICAÇÃO
+        // ============================================================
+        function verifyUser() {
+            if (!declaredUser) {
+                showResult(false, null, {});
+                return;
+            }
+            
+            const saved = declaredUser.descriptor;
+            if (!saved || !saved.center) {
+                showResult(false, null, {});
+                return;
+            }
+            
+            const avgCenter = averageDescriptors(samples.center);
+            const avgRight = averageDescriptors(samples.right);
+            const avgLeft = averageDescriptors(samples.left);
+            
+            const results = {};
+            let passedCount = 0;
+            
+            ['center', 'right', 'left'].forEach(angle => {
+                const savedDesc = saved[angle];
+                const capturedDesc = angle === 'center' ? avgCenter : angle === 'right' ? avgRight : avgLeft;
+                
+                if (savedDesc && capturedDesc) {
+                    const { sim, dist } = compareDescriptors(capturedDesc, savedDesc);
+                    results[angle] = { sim, dist, ok: sim >= SIMILARITY_THRESHOLD };
+                    if (results[angle].ok) passedCount++;
+                } else {
+                    results[angle] = { sim: 0, dist: 1, ok: false };
+                }
+            });
+            
+            const allOk = passedCount === 3;
+            showResult(allOk, declaredUser, results);
+        }
+
+        function showResult(isOk, user, results) {
+            const box = document.getElementById('resultBox');
+            const avatar = document.getElementById('resultAvatar');
+            const nameEl = document.getElementById('resultName');
+            const detail = document.getElementById('resultDetail');
+            const anglesEl = document.getElementById('resultAngles');
+            
+            box.classList.remove('ok', 'fail');
+            box.classList.add(isOk ? 'ok' : 'fail');
+            
+            if (isOk) {
+                avatar.textContent = '✅';
+                nameEl.textContent = user.name;
+                detail.textContent = 'Identidade confirmada!';
+                speak(`confirmado. olá ${user.name}`);
+                vibrate([200, 100, 200]);
+            } else {
+                avatar.textContent = '❌';
+                nameEl.textContent = user ? `Você NÃO é ${user.name}` : 'Não identificado';
+                detail.textContent = 'A verificação falhou';
+                speak('verificação falhou');
+                vibrate([500]);
+            }
+            
+            const labels = { center: '⬆️ Centro', right: '⬅️ Esquerda', left: '➡️ Direita' };
+            anglesEl.innerHTML = '';
+            ['center', 'right', 'left'].forEach(angle => {
+                const r = results[angle];
+                const el = document.createElement('div');
+                el.className = 'result-angle ' + (r && r.ok ? 'ok' : 'fail');
+                el.innerHTML = `
+                    <div>${labels[angle]}</div>
+                    <div class="val">${r ? (r.sim * 100).toFixed(0) + '%' : '0%'}</div>
+                `;
+                anglesEl.appendChild(el);
+            });
+            
+            resultModal.classList.add('active');
+        }
+
+        function closeResult() {
+            resultModal.classList.remove('active');
+            resetFlow();
+        }
+
+        // ============================================================
+        // VISUALIZADOR 3D (THREE.JS via ES Module)
+        // ============================================================
+        let scene, camera3D, renderer3D, faceGroup;
+        let autoRotate = true;
+        let showWireframe = true;
+        let animationFrameId = null;
+        let currentViewerDoc = null;
+        let mouseDown = false;
+        let lastMouseX = 0, lastMouseY = 0;
+        let rotY = 0, rotX = 0;
+
+        const FACE_CONNECTIONS = [
+            [0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,13],[13,14],[14,15],[15,16],
+            [17,18],[18,19],[19,20],[20,21],
+            [22,23],[23,24],[24,25],[25,26],
+            [27,28],[28,29],[29,30],
+            [30,31],[31,32],[32,33],[33,34],[34,35],[30,35],
+            [36,37],[37,38],[38,39],[39,40],[40,41],[41,36],
+            [42,43],[43,44],[44,45],[45,46],[46,47],[47,42],
+            [48,49],[49,50],[50,51],[51,52],[52,53],[53,54],[54,55],[55,56],[56,57],[57,58],[58,59],[59,48],
+            [60,61],[61,62],[62,63],[63,64],[64,65],[65,66],[66,67],[67,60]
+        ];
+
+        const REGION_COLORS = {
+            contour: 0x6c5ce7,
+            eyebrow: 0xf59e0b,
+            nose: 0x10b981,
+            eye: 0x3b82f6,
+            mouth: 0xef4444
+        };
+
+        function getPointColor(index) {
+            if (index <= 16) return REGION_COLORS.contour;
+            if (index <= 26) return REGION_COLORS.eyebrow;
+            if (index <= 35) return REGION_COLORS.nose;
+            if (index <= 47) return REGION_COLORS.eye;
+            return REGION_COLORS.mouth;
+        }
+
+        function initThree() {
+            const canvas = document.getElementById('threeCanvas');
+            const container = viewerContainer;
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510);
+            
+            camera3D = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera3D.position.set(0, 0, 3);
+            
+            renderer3D = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+            renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            scene.add(ambientLight);
+            
+            faceGroup = new THREE.Group();
+            scene.add(faceGroup);
+            
+            // Rotação inicial
+            faceGroup.rotation.x = rotX;
+            faceGroup.rotation.y = rotY;
+            
+            // Drag com mouse/touch
+            canvas.addEventListener('mousedown', (e) => {
+                mouseDown = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                autoRotate = false;
+                document.getElementById('btnRotate').classList.remove('on');
+            });
+            canvas.addEventListener('mousemove', (e) => {
+                if (!mouseDown) return;
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                rotY += dx * 0.01;
+                rotX += dy * 0.01;
+                faceGroup.rotation.y = rotY;
+                faceGroup.rotation.x = rotX;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            });
+            canvas.addEventListener('mouseup', () => mouseDown = false);
+            canvas.addEventListener('mouseleave', () => mouseDown = false);
+            
+            // Touch
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    mouseDown = true;
+                    lastMouseX = e.touches[0].clientX;
+                    lastMouseY = e.touches[0].clientY;
+                    autoRotate = false;
+                    document.getElementById('btnRotate').classList.remove('on');
+                }
+            }, { passive: true });
+            canvas.addEventListener('touchmove', (e) => {
+                if (!mouseDown || e.touches.length !== 1) return;
+                const dx = e.touches[0].clientX - lastMouseX;
+                const dy = e.touches[0].clientY - lastMouseY;
+                rotY += dx * 0.01;
+                rotX += dy * 0.01;
+                faceGroup.rotation.y = rotY;
+                faceGroup.rotation.x = rotX;
+                lastMouseX = e.touches[0].clientX;
+                lastMouseY = e.touches[0].clientY;
+            }, { passive: true });
+            canvas.addEventListener('touchend', () => mouseDown = false);
+            
+            // Loop de render
+            const animate = () => {
+                animationFrameId = requestAnimationFrame(animate);
+                
+                if (autoRotate && faceGroup) {
+                    rotY += 0.008;
+                    faceGroup.rotation.y = rotY;
+                }
+                
+                renderer3D.render(scene, camera3D);
+            };
+            animate();
+            
+            // Resize
+            window.addEventListener('resize', () => {
+                if (!container.classList.contains('active')) return;
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                camera3D.aspect = w / h;
+                camera3D.updateProjectionMatrix();
+                renderer3D.setSize(w, h);
+            });
+        }
+
+        function clearFaceGroup() {
+            while (faceGroup.children.length > 0) {
+                const child = faceGroup.children[0];
+                faceGroup.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+            }
+        }
+
+        function renderLandmarks3D(landmarks, name) {
+            clearFaceGroup();
+            
+            if (!landmarks || landmarks.length === 0) {
+                document.getElementById('viewerEmpty').style.display = 'flex';
+                document.getElementById('viewerControls').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('viewerEmpty').style.display = 'none';
+            document.getElementById('viewerControls').style.display = 'flex';
+            document.getElementById('viewerOverlay').style.display = 'block';
+            document.getElementById('viewerName').textContent = name;
+            
+            const cx = 0.5, cy = 0.5;
+            const scale = 2.5;
+            
+            landmarks.forEach((p, i) => {
+                const zScaled = (p.z || 0) * 5;
+                
+                const x = (p.x - cx) * scale;
+                const y = -(p.y - cy) * scale;
+                const z = -zScaled;
+                
+                const geometry = new THREE.SphereGeometry(0.025, 8, 8);
+                const material = new THREE.MeshBasicMaterial({ color: getPointColor(i) });
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.set(x, y, z);
+                faceGroup.add(sphere);
+                
+                p._3d = { x, y, z };
+            });
+            
+            if (showWireframe) {
+                const lineMaterial = new THREE.LineBasicMaterial({ 
+                    color: 0xffffff, 
+                    transparent: true, 
+                    opacity: 0.35 
+                });
+                
+                FACE_CONNECTIONS.forEach(([a, b]) => {
+                    if (!landmarks[a] || !landmarks[b]) return;
+                    const pa = landmarks[a]._3d;
+                    const pb = landmarks[b]._3d;
+                    
+                    const points = [
+                        new THREE.Vector3(pa.x, pa.y, pa.z),
+                        new THREE.Vector3(pb.x, pb.y, pb.z)
+                    ];
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geometry, lineMaterial);
+                    faceGroup.add(line);
+                });
+            }
+            
+            rotY = 0;
+            rotX = 0;
+            faceGroup.rotation.y = 0;
+            faceGroup.rotation.x = 0;
+        }
+
+        function toggleViewerRotate() {
+            autoRotate = !autoRotate;
+            document.getElementById('btnRotate').classList.toggle('on', autoRotate);
+        }
+
+        function toggleViewerWireframe() {
+            showWireframe = !showWireframe;
+            document.getElementById('btnWireframe').classList.toggle('on', showWireframe);
+            
+            if (currentViewerDoc && currentViewerDoc.landmarks3D) {
+                const landmarks = currentViewerDoc.landmarks3D.center;
+                if (landmarks) renderLandmarks3D(landmarks, currentViewerDoc.name);
+            }
+        }
+
+        // ============================================================
+        // ESCOLHA DE USUÁRIO PARA O 3D
+        // ============================================================
+        async function openViewerSelect() {
+            viewerUserList.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:15px;">Carregando...</div>';
+            viewerUserModal.classList.add('active');
+            
+            try {
+                const snap = await db.collection('registered_faces').get();
+                if (snap.empty) {
+                    viewerUserList.innerHTML = '<div style="text-align:center;color:#ef4444;padding:15px;">⚠️ Nenhum usuário cadastrado</div>';
+                    return;
+                }
+                viewerUserList.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const has3D = d.landmarks3D && d.landmarks3D.center;
+                    const item = document.createElement('div');
+                    item.className = 'user-item';
+                    item.style.opacity = has3D ? '1' : '0.5';
+                    item.innerHTML = `
+                        <div class="avatar">${has3D ? '🧊' : '👤'}</div>
+                        <div class="info">
+                            <div class="name">${d.name} ${has3D ? '' : '(sem 3D)'}</div>
+                            <div class="hash">🔑 ${d.faceHash}</div>
+                        </div>
+                    `;
+                    if (has3D) {
+                        item.onclick = () => selectViewerUser(doc.id, d);
+                    }
+                    viewerUserList.appendChild(item);
+                });
+            } catch (e) {
+                viewerUserList.innerHTML = '<div style="text-align:center;color:#ef4444;padding:15px;">Erro: ' + e.message + '</div>';
+            }
+        }
+
+        function cancelViewerSelect() {
+            viewerUserModal.classList.remove('active');
+            setMode('register');
+        }
+
+        function selectViewerUser(id, data) {
+            currentViewerDoc = { id, ...data };
+            viewerUserModal.classList.remove('active');
+            
+            const landmarks = data.landmarks3D?.center;
+            
+            if (!landmarks) {
+                setStatus('⚠️ Este usuário não tem dados 3D', 'warn');
+                return;
+            }
+            
+            renderLandmarks3D(landmarks, data.name);
+            setStatus(`🧊 Mostrando ${data.name} em 3D — ${landmarks.length} pontos`, 'success');
+            speak(`${data.name} em 3D`);
+        }
+
+        // ============================================================
+        // BOTÃO INICIAR
+        // ============================================================
+        async function startCurrentFlow() {
+            if (flowActive) return;
+            
+            if (mode === 'register') {
+                speak('iniciando cadastro');
+                await sleep(300);
+                await startFlow();
+            } else if (mode === 'verify') {
+                speak('escolha seu nome');
+                showUserSelect();
+            }
+        }
+
+        // ============================================================
+        // EVENT LISTENERS (substituem os onclick)
+        // ============================================================
+        document.getElementById('ttsToggle').addEventListener('click', toggleTTS);
+        document.getElementById('btnRegister').addEventListener('click', () => setMode('register'));
+        document.getElementById('btnVerify').addEventListener('click', () => setMode('verify'));
+        document.getElementById('btnView3D').addEventListener('click', () => setMode('view3d'));
+        document.getElementById('startBtn').addEventListener('click', startCurrentFlow);
+        document.getElementById('btnCamera').addEventListener('click', switchCamera);
+        document.getElementById('btnList').addEventListener('click', listUsers);
+        document.getElementById('btnDelete').addEventListener('click', deleteAll);
+        document.getElementById('btnRotate').addEventListener('click', toggleViewerRotate);
+        document.getElementById('btnWireframe').addEventListener('click', toggleViewerWireframe);
+        document.getElementById('btnChangeUser').addEventListener('click', openViewerSelect);
+        document.getElementById('btnCancelName').addEventListener('click', cancelName);
+        document.getElementById('btnConfirmName').addEventListener('click', confirmName);
+        document.getElementById('btnCancelUser').addEventListener('click', cancelUserSelect);
+        document.getElementById('btnCancelViewer').addEventListener('click', cancelViewerSelect);
+        document.getElementById('btnCloseResult').addEventListener('click', closeResult);
+
+        // ============================================================
+        // INICIALIZAÇÃO
+        // ============================================================
+        initTTS();
+
+        (async () => {
+            const ok = await loadModels();
+            if (ok) {
+                await initCamera();
+                initThree();
+                resetFlow();
+            }
+        })();
+
+        window.addEventListener('beforeunload', () => {
+            loopRunning = false;
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            if (zoomSmoothInterval) clearInterval(zoomSmoothInterval);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if ('speechSynthesis' in window) speechSynthesis.cancel();
+        });
+    </script>
+</body>
+</html>
