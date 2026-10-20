@@ -24,19 +24,30 @@
     .form-group input, .form-group textarea { width: 100%; padding: 10px 14px; background: #0d1422; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; outline: none; font-family: inherit; transition: 0.2s; resize: vertical; }
     .form-group input:focus, .form-group textarea:focus { border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.15); }
     .form-group small { display: block; margin-top: 4px; font-size: 0.75rem; color: #4a5a7a; }
+    
     .btn { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 0.9rem; }
     .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(67,97,238,0.3); }
+    .btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
     .btn-block { width: 100%; }
+    
+    /* Spinner animado */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+
     .btn-danger { background: #f72585; }
     .btn-warning { background: #f8961e; }
     .btn-info { background: #4cc9f0; color: #0a0e17; }
     .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
-    .token-list { max-height: 600px; overflow-y: auto; padding-right: 5px; }
+    .token-list { max-height: 600px; overflow-y: auto; padding-right: 5px; position: relative; min-height: 200px; }
     .token-item { background: #0d1422; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: 0.2s; }
     .token-item:hover { border-color: rgba(67,97,238,0.3); }
-    .empty-state { text-align: center; padding: 40px; color: #4a5a7a; }
+    .empty-state { text-align: center; padding: 40px; color: #4a5a7a; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
     .empty-state svg { width: 48px; height: 48px; stroke: #4a5a7a; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 12px; }
+    
+    /* Loader centralizado na lista */
+    .list-loader { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: #8b9bb8; gap: 12px; position: absolute; inset: 0; background: #111927; z-index: 10; }
+    
     .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; z-index: 2000; animation: slideIn 0.3s; display: flex; align-items: center; gap: 10px; font-weight: 500; max-width: 400px; }
     .toast svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
     @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -104,11 +115,6 @@
 
     .expiry-info { margin-top: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.8rem; color: #8b9bb8; }
     .expiry-info b { color: #e8edf5; }
-    
-    .sse-status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #4a5a7a; margin-left: 10px; }
-    .sse-dot { width: 8px; height: 8px; border-radius: 50%; background: #4a5a7a; transition: 0.3s; }
-    .sse-dot.online { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
-    .sse-dot.offline { background: #f72585; }
   </style>
 </head>
 <body>
@@ -118,10 +124,6 @@
   <div class="dashboard">
     <header class="header">
       <div class="logo">Code<span style="color:#6b7a9f;">Hub</span></div>
-      <div class="sse-status">
-        <span class="sse-dot" id="sseDot"></span>
-        <span id="sseText">Conectando...</span>
-      </div>
     </header>
 
     <div class="main-grid">
@@ -139,9 +141,9 @@
             <label>Tamanho do Token</label>
             <input type="number" id="tokenSize" value="20" min="20" max="200" />
           </div>
-          <button type="submit" class="btn btn-block">
-            <svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-            Gerar Token
+          <button type="submit" class="btn btn-block" id="btnCreateToken">
+            <svg id="iconCreate" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+            <span id="textCreate">Gerar Token</span>
           </button>
         </form>
       </div>
@@ -155,10 +157,7 @@
           <span class="badge-count" id="tokenCount">0</span>
         </div>
         <div class="token-list" id="tokenList">
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
-            <h3>Nenhum token criado</h3>
-          </div>
+          <!-- O conteúdo vai ser injetado pelo JS -->
         </div>
       </div>
     </div>
@@ -294,7 +293,6 @@
     let userToken = null;
     let currentEditToken = null;
     let allTokens = [];
-    let sse = null;
 
     const tokenList = document.getElementById('tokenList');
     const tokenCount = document.getElementById('tokenCount');
@@ -308,8 +306,11 @@
     const expiryInfo = document.getElementById('expiryInfo');
     const modalTitle = document.getElementById('modalTitle');
     const scopeAppAuthCreateToken = document.getElementById('scopeAppAuthCreateToken');
-    const sseDot = document.getElementById('sseDot');
-    const sseText = document.getElementById('sseText');
+
+    // Elementos do botão de criar (para o spinner)
+    const btnCreateToken = document.getElementById('btnCreateToken');
+    const iconCreate = document.getElementById('iconCreate');
+    const textCreate = document.getElementById('textCreate');
 
     const ICONS = {
       success: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
@@ -345,16 +346,14 @@
       return await r.json();
     }
 
-    function setSseStatus(online) {
-      if (online) {
-        sseDot.className = "sse-dot online";
-        sseText.textContent = "Ao vivo";
-      } else {
-        sseDot.className = "sse-dot offline";
-        sseText.textContent = "Offline";
-      }
+    async function apiGet(path, params = {}) {
+      const qs = new URLSearchParams(params).toString();
+      const url = WORKER_URL + path + (qs ? "?" + qs : "");
+      const r = await fetch(url);
+      return await r.json();
     }
 
+    // ⭐ Renderiza a lista de tokens no HTML
     function renderTokens(tokens) {
       allTokens = tokens || [];
       tokenCount.textContent = allTokens.length;
@@ -432,53 +431,46 @@
       });
     }
 
-    function conectarSSE() {
-      if (sse) sse.close();
-      setSseStatus(false);
-      sseText.textContent = "Conectando...";
+    // ⭐ Mostra um loader na lista
+    function setListLoading(isLoading) {
+      if (isLoading) {
+        const loader = document.createElement('div');
+        loader.id = 'listLoader';
+        loader.className = 'list-loader';
+        loader.innerHTML = `<div class="spinner"></div><span>Buscando tokens...</span>`;
+        tokenList.appendChild(loader);
+      } else {
+        const loader = document.getElementById('listLoader');
+        if (loader) loader.remove();
+      }
+    }
 
-      sse = new EventSource(WORKER_URL + "/api/tokens/stream?tokenid=" + encodeURIComponent(userToken));
-
-      sse.addEventListener("connected", () => {
-        console.log("[SSE] conectado");
-        setSseStatus(true);
-      });
-
-      sse.addEventListener("tokens", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          console.log("[SSE] tokens atualizados:", data.total);
-          renderTokens(data.tokens);
-          if (data.apagados > 0) {
-            showToast(`${data.apagados} token(s) expirado(s) apagado(s)`, "info");
-          }
-        } catch (err) { console.error("[SSE] erro:", err); }
-      });
-
-      sse.addEventListener("ping", () => {
-        setSseStatus(true);
-      });
-
-      sse.addEventListener("error", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          showToast("Erro na stream: " + data.erro, "error");
-        } catch {}
-      });
-
-      sse.addEventListener("timeout", () => {
-        console.log("[SSE] timeout, reconectando...");
-        sse.close();
-        setSseStatus(false);
-        setTimeout(conectarSSE, 1000);
-      });
-
-      sse.onerror = () => {
-        console.warn("[SSE] conexão perdida, tentando reconectar...");
-        setSseStatus(false);
-        sse.close();
-        setTimeout(conectarSSE, 3000);
-      };
+    // ⭐ Busca os tokens no Worker
+    async function loadTokens() {
+      if (!userUID) return;
+      
+      setListLoading(true);
+      try {
+        // Pequeno delay artificial pra suavizar a transição do spinner
+        await new Promise(r => setTimeout(r, 400));
+        
+        const data = await apiGet("/api/tokens/list", { tokenid: userToken });
+        
+        if (!data.ok) {
+          showToast("Erro ao listar: " + (data.erro || "desconhecido"), "error");
+          return;
+        }
+        if (data.apagados > 0) {
+          showToast(`${data.apagados} token(s) expirado(s) apagado(s)`, 'info');
+        }
+        
+        renderTokens(data.tokens);
+      } catch (e) {
+        showToast('Erro ao carregar tokens: ' + e.message, 'error');
+        tokenList.innerHTML = `<div class="empty-state">${ICONS.error}<h3>Falha ao carregar</h3></div>`;
+      } finally {
+        setListLoading(false);
+      }
     }
 
     tokenList.addEventListener('click', (e) => {
@@ -594,6 +586,7 @@
 
         showToast('Configurações salvas', 'success');
         closeModal();
+        loadTokens();
       } catch (e) {
         showToast('Erro: ' + e.message, 'error');
       }
@@ -618,20 +611,28 @@
 
         showToast('Token apagado', 'success');
         closeModal();
+        loadTokens();
       } catch (e) {
         showToast('Erro: ' + e.message, 'error');
       }
     };
 
+    // ⭐ Lógica de criar o token com o spinner
     document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!userUID) return showToast('Faça login primeiro', 'error');
+      if (btnCreateToken.disabled) return; // Evita clique duplo
 
       const name = document.getElementById('appName').value.trim();
       const size = parseInt(document.getElementById('tokenSize').value);
 
       if (!name) return showToast('Digite um nome', 'error');
       if (size < 20 || size > 200) return showToast('Tamanho entre 20 e 200', 'error');
+
+      // Ativa o spinner no botão
+      btnCreateToken.disabled = true;
+      iconCreate.style.display = 'none';
+      textCreate.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px;"></div> Gerando...';
 
       try {
         const data = await apiPost("/api/tokens/create", {
@@ -640,12 +641,21 @@
           size
         });
 
-        if (!data.ok) return showToast('Erro: ' + (data.erro || 'falha'), 'error');
+        if (!data.ok) throw new Error(data.erro || 'falha');
 
         showToast('Token criado com sucesso', 'success');
         document.getElementById('appName').value = '';
+        
+        // Atualiza a lista (vai mostrar o spinner na lista também)
+        await loadTokens();
+
       } catch (e) {
         showToast('Erro: ' + e.message, 'error');
+      } finally {
+        // Restaura o botão
+        btnCreateToken.disabled = false;
+        iconCreate.style.display = 'block';
+        textCreate.textContent = 'Gerar Token';
       }
     });
 
@@ -684,7 +694,9 @@
         }
         userUID = user.uid;
         userToken = await user.getIdToken();
-        conectarSSE();
+        
+        // Carrega a lista inicial assim que logar
+        loadTokens();
       });
     })();
   </script>
