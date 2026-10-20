@@ -277,30 +277,15 @@
     }
   </script>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.appspot.com",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app);
-
+  <script>
+    const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
     const MAX_TOKENS = 10;
 
     let userUID = null;
+    let userToken = null;
     let currentEditToken = null;
     let allTokens = [];
+
     const tokenList = document.getElementById('tokenList');
     const tokenCount = document.getElementById('tokenCount');
     const editModal = document.getElementById('editModal');
@@ -339,92 +324,36 @@
       return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function generateToken(len) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let tok = '';
-      const arr = new Uint32Array(len);
-      crypto.getRandomValues(arr);
-      for (let i = 0; i < len; i++) tok += chars.charAt(arr[i] % chars.length);
-      return tok;
+    async function apiGet(path, params = {}) {
+      const qs = new URLSearchParams(params).toString();
+      const url = WORKER_URL + path + (qs ? "?" + qs : "");
+      const r = await fetch(url);
+      return await r.json();
     }
 
-    function normalizarDominios(input) {
-      const partes = String(input || "").split(",").map(s => s.trim()).filter(Boolean);
-      const validos = [];
-      const invalidos = [];
-      for (const p of partes) {
-        let lower = p.toLowerCase();
-        while (lower.startsWith("https://https://")) lower = lower.slice(8);
-        if (!lower.startsWith("https://")) { invalidos.push(p + " (precisa começar com https://)"); continue; }
-        let host = lower.slice(8);
-        host = host.split("/")[0].replace(/\/+$/, "");
-        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) { invalidos.push(p + " (domínio inválido)"); continue; }
-        validos.push(host);
-      }
-      return { validos, invalidos };
-    }
-
-    async function saveToken(token, data) {
-      const base = {
-        appName: data.appName,
-        ownerUID: userUID,
-        createdAt: new Date().toISOString(),
-        domains: data.domains || [],
-        blockedIPs: data.blockedIPs || [],
-        description: "",
-        photoUrl: "",
-        expiresAt: null,
-        scopes: {
-          AppAuthCreateToken: false
-        }
-      };
-      await set(ref(db, `tokens/${token}`), base);
-      await set(ref(db, `users/${userUID}/tokens/${token}`), {
-        token: token, appName: data.appName, createdAt: base.createdAt
+    async function apiPost(path, body) {
+      const r = await fetch(WORKER_URL + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
       });
-      showToast('Token criado com sucesso', 'success');
-      loadTokens();
-    }
-
-    async function checarExpirados() {
-      const agora = Date.now();
-      let apagados = 0;
-      for (const { token, val } of allTokens) {
-        if (val.expiresAt && val.expiresAt < agora) {
-          try {
-            await remove(ref(db, `tokens/${token}`));
-            await remove(ref(db, `users/${userUID}/tokens/${token}`));
-            apagados++;
-          } catch (e) { console.warn("Falha ao apagar expirado:", token, e); }
-        }
-      }
-      if (apagados > 0) {
-        showToast(`${apagados} token(s) expirado(s) apagado(s)`, 'info');
-        loadTokens();
-      }
+      return await r.json();
     }
 
     async function loadTokens() {
       if (!userUID) return;
       try {
-        const snap = await get(ref(db, `users/${userUID}/tokens`));
-        const meusTokens = snap.val() || {};
-        const ids = Object.keys(meusTokens);
+        const data = await apiGet("/api/tokens/list", { tokenid: userToken });
+        if (!data.ok) {
+          showToast("Erro ao listar: " + (data.erro || "desconhecido"), "error");
+          return;
+        }
 
-        allTokens = [];
+        if (data.apagados > 0) {
+          showToast(`${data.apagados} token(s) expirado(s) apagado(s)`, 'info');
+        }
 
-        const resultados = await Promise.all(
-          ids.map(async (id) => {
-            try {
-              const tSnap = await get(ref(db, `tokens/${id}`));
-              if (tSnap.exists()) return { token: id, val: tSnap.val() };
-            } catch (e) { console.warn("Falha ao ler token", id, e); }
-            return null;
-          })
-        );
-
-        allTokens = resultados.filter(Boolean);
-        await checarExpirados();
+        allTokens = data.tokens || [];
         tokenCount.textContent = allTokens.length;
 
         if (allTokens.length === 0) {
@@ -443,9 +372,7 @@
           const accountCount = accountIds.length;
 
           const appInitial = (val.appName || '?').charAt(0).toUpperCase();
-          const appLogoHTML = val.photoUrl
-            ? `<img src="${escapeHtml(val.photoUrl)}" alt="">`
-            : appInitial;
+          const appLogoHTML = val.photoUrl ? `<img src="${escapeHtml(val.photoUrl)}" alt="">` : appInitial;
 
           let expiryBadge = '';
           if (val.expiresAt) {
@@ -461,9 +388,7 @@
             accountIds.forEach(accId => {
               const acc = accounts[accId] || {};
               const initial = (acc.nome || acc.email || '?').charAt(0).toUpperCase();
-              const avatarHTML = acc.photoUrl
-                ? `<img src="${escapeHtml(acc.photoUrl)}" alt="">`
-                : `<div class="acc-avatar">${initial}</div>`;
+              const avatarHTML = acc.photoUrl ? `<img src="${escapeHtml(acc.photoUrl)}" alt="">` : `<div class="acc-avatar">${initial}</div>`;
               accountsHtml += `
                 <div class="account-row">
                   ${avatarHTML}
@@ -502,7 +427,6 @@
 
           tokenList.appendChild(div);
         });
-
       } catch (e) {
         showToast('Erro ao carregar tokens: ' + e.message, 'error');
       }
@@ -603,33 +527,22 @@
         } catch { return showToast('URL da foto inválida', 'error'); }
       }
 
-      let dominiosValidos = [];
-      if (domainsInput) {
-        const dom = normalizarDominios(domainsInput);
-        if (dom.invalidos.length > 0) {
-          return showToast('Domínios inválidos: ' + dom.invalidos.join(' | '), 'error');
-        }
-        dominiosValidos = dom.validos;
-      } else {
-        const item = allTokens.find(t => t.token === currentEditToken);
-        dominiosValidos = item?.val?.domains || [];
-      }
-
       const expiresAt = inputLocalParaTs(editExpiry.value);
-
-      const scopes = {
-        AppAuthCreateToken: scopeAppAuthCreateToken.checked
-      };
+      const scopes = { AppAuthCreateToken: scopeAppAuthCreateToken.checked };
 
       try {
-        await update(ref(db, `tokens/${currentEditToken}`), {
+        const data = await apiPost("/api/tokens/update", {
+          tokenid: userToken,
+          tokenId: currentEditToken,
           appName, description, photoUrl,
-          domains: dominiosValidos,
+          domainsInput,
           blockedIPs: ips,
           expiresAt,
           scopes
         });
-        await update(ref(db, `users/${userUID}/tokens/${currentEditToken}`), { appName });
+
+        if (!data.ok) return showToast('Erro: ' + (data.erro || 'falha'), 'error');
+
         showToast('Configurações salvas', 'success');
         closeModal();
         loadTokens();
@@ -646,9 +559,15 @@
     window.confirmarDeleteToken = async function() {
       if (!currentEditToken) return;
       if (!confirm('⚠️ Tem certeza que quer apagar esse token? Essa ação é permanente.')) return;
+
       try {
-        await remove(ref(db, `tokens/${currentEditToken}`));
-        await remove(ref(db, `users/${userUID}/tokens/${currentEditToken}`));
+        const data = await apiPost("/api/tokens/delete", {
+          tokenid: userToken,
+          tokenId: currentEditToken
+        });
+
+        if (!data.ok) return showToast('Erro: ' + (data.erro || 'falha'), 'error');
+
         showToast('Token apagado', 'success');
         closeModal();
         loadTokens();
@@ -660,7 +579,6 @@
     document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!userUID) return showToast('Faça login primeiro', 'error');
-      if (allTokens.length >= MAX_TOKENS) return showToast(`Limite de ${MAX_TOKENS} tokens atingido`, 'error');
 
       const name = document.getElementById('appName').value.trim();
       const size = parseInt(document.getElementById('tokenSize').value);
@@ -668,23 +586,54 @@
       if (!name) return showToast('Digite um nome', 'error');
       if (size < 20 || size > 200) return showToast('Tamanho entre 20 e 200', 'error');
 
-      const token = generateToken(size);
-      await saveToken(token, { appName: name });
-      document.getElementById('appName').value = '';
+      try {
+        const data = await apiPost("/api/tokens/create", {
+          tokenid: userToken,
+          appName: name,
+          size
+        });
+
+        if (!data.ok) return showToast('Erro: ' + (data.erro || 'falha'), 'error');
+
+        showToast('Token criado com sucesso', 'success');
+        document.getElementById('appName').value = '';
+        loadTokens();
+      } catch (e) {
+        showToast('Erro: ' + e.message, 'error');
+      }
     });
 
     editModal.addEventListener('click', (e) => {
       if (e.target === editModal) closeModal();
     });
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth';
-        return;
-      }
-      userUID = user.uid;
-      loadTokens();
-    });
+    (async () => {
+      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
+      const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+        authDomain: "html-15e80.firebaseapp.com",
+        databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+        projectId: "html-15e80",
+        storageBucket: "html-15e80.appspot.com",
+        messagingSenderId: "1068148640439",
+        appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          window.location.href = 'https://alexandre7888.github.io/CodeHUB/auth';
+          return;
+        }
+        userUID = user.uid;
+        userToken = await user.getIdToken();
+        loadTokens();
+      });
+    })();
   </script>
 </body>
 </html>
