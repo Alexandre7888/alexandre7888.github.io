@@ -481,7 +481,7 @@
     _onDropdownAction(action) {
       switch (action) {
         case "logout": {
-          const go = () => location.href = "/auth.html";
+          const go = () => location.href = "app.codehub.site.je/auth.html";
           if (confirm("Sair da conta?")) {
             document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
             if (this._auth) {
