@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CodeHUB · Plataforma</title>
-  <link rel="icon" type="image/png" href="https://alexandre7888.github.io/InShot_20250807_112151490.jpg">
+  <link rel="icon" type="image/png" href="/InShot_20250807_112151490.jpg">
 
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-X4VF1LWB0F')</script>
@@ -231,11 +231,21 @@
     window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
   </script>
 
-  <script src="https://alexandre7888.github.io/app-menu.js"></script>
-  <script src="https://alexandre7888.github.io/app-shell.js"></script>
+  <!-- Scripts na raiz (mesmo protocolo da página = HTTPS automático) -->
+  <script src="/app-menu.js"></script>
+  <script src="/app-shell.js"></script>
 
   <script>
-    const shell = new AppShell().mount();
+    // Verificação segura do AppShell (evita ReferenceError se o script falhar)
+    if (typeof AppShell !== "undefined") {
+      try {
+        const shell = new AppShell().mount();
+      } catch (e) {
+        console.error("[CodeHUB] AppShell.mount():", e.message);
+      }
+    } else {
+      console.warn("[CodeHUB] AppShell não definido — verifique se /app-shell.js carregou.");
+    }
 
     if (window.AppMenu && typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
       const root = ReactDOM.createRoot(document.getElementById('app-menu-root'));
