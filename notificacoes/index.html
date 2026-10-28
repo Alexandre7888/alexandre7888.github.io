@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Notificações · CodeHUB</title>
-  <link rel="icon" type="image/png" href="https://alexandre7888.github.io/InShot_20250807_112151490.jpg">
+  <link rel="icon" type="image/png" href="/InShot_20250807_112151490.jpg">
 
   <!-- ===== ONESIGNAL ===== -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -575,10 +575,18 @@
     });
   </script>
 
-  <!-- ===== APP-SHELL (menu lateral + perfil) ===== -->
-  <script src="https://alexandre7888.github.io/app-shell.js"></script>
+  <!-- ===== APP-SHELL (menu lateral + perfil) — caminho relativo na raiz ===== -->
+  <script src="/app-shell.js"></script>
   <script>
-    new AppShell().mount();
+    if (typeof AppShell !== "undefined") {
+      try {
+        new AppShell().mount();
+      } catch (e) {
+        console.error("[CodeHUB] AppShell.mount():", e.message);
+      }
+    } else {
+      console.warn("[CodeHUB] AppShell não definido — verifique se /app-shell.js carregou.");
+    }
   </script>
 
 </body>
