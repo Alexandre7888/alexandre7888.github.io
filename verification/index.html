@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verificação KYC</title>
+
   <style>
     html, body {
       margin: 0;
@@ -12,6 +13,7 @@
       height: 100%;
       overflow: hidden;
     }
+
     #kyc-frame {
       width: 100%;
       height: 100%;
@@ -22,18 +24,24 @@
 </head>
 <body>
 
-  <iframe 
-    id="kyc-frame" 
-    src="" 
+  <iframe
+    id="kyc-frame"
+    src=""
     allow="camera; microphone; fullscreen"
     sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation allow-camera allow-microphone"
   ></iframe>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      initializeApp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-    // ===== CONFIGURAÇÃO DO FIREBASE =====
+    import {
+      getAuth,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // CONFIGURAÇÃO DO FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
@@ -44,63 +52,84 @@
       appId: "1:1068148640439:web:1ac651348e624f6be41b32"
     };
 
-    // ===== URL DO WORKER =====
-    const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+    // WORKER KYC
+    const WORKER_URL =
+      "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
-    // ===== INICIALIZA O FIREBASE =====
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    // ===== ELEMENTOS =====
-    const iframe = document.getElementById('kyc-frame');
+    const iframe = document.getElementById("kyc-frame");
 
-    // ===== PARÂMETROS DA URL =====
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenIdUrl = urlParams.get('tokenid') || ''; // opcional
-    const tipo = urlParams.get('tipo') || '';           // opcional: 'face' ou 'doc'
+    // A URL DESTE HTML RECEBE SOMENTE ?id=
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
 
-    // ===== CARREGA O KYC NO IFRAME =====
-    function carregarKyc(tokenid) {
-      let url = WORKER_URL + '/kyc?tokenid=' + encodeURIComponent(tokenid);
-      if (tipo) url += '&tipo=' + encodeURIComponent(tipo);
-      iframe.src = url;
-      console.log('KYC carregado no iframe.');
+    // TIPO OPCIONAL: ?id=123&tipo=face
+    const tipo = params.get("tipo");
+
+    // CARREGA O KYC COM ID E TOKEN DO FIREBASE
+    function carregarKyc(token) {
+      const url = new URL(WORKER_URL + "/kyc");
+
+      url.searchParams.set("id", id);
+      url.searchParams.set("tokenid", token);
+
+      if (tipo) {
+        url.searchParams.set("tipo", tipo);
+      }
+
+      iframe.src = url.toString();
     }
 
-    // ===== BOOT =====
-    // Se veio token na URL do embed, usa ele direto (não precisa estar logado)
-    if (tokenIdUrl) {
-      carregarKyc(tokenIdUrl);
+    // VERIFICA O ID E A AUTENTICAÇÃO
+    if (!id) {
+      document.body.innerHTML = `
+        <div style="
+          font-family: Arial, sans-serif;
+          padding: 24px;
+          text-align: center;
+        ">
+          <h3>Verificação indisponível</h3>
+          <p>O parâmetro id não foi informado na URL.</p>
+        </div>
+      `;
     } else {
-      // Senão, espera o Firebase autenticar
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
-          console.warn('Usuário não está logado. O KYC não pode ser carregado.');
+          console.warn("Usuário não está autenticado no Firebase.");
           return;
         }
+
         try {
-          const tokenId = await user.getIdToken(true);
-          console.log('ID Token gerado com sucesso.');
-          carregarKyc(tokenId);
+          // O TOKEN É GERADO PELO FIREBASE, NÃO PELA URL
+          const token = await user.getIdToken();
+
+          // O WORKER RECEBE ?id=...&tokenid=...
+          carregarKyc(token);
+
         } catch (error) {
-          console.error('Erro ao obter o ID Token:', error);
+          console.error(
+            "Erro ao obter o token do Firebase:",
+            error
+          );
         }
       });
     }
 
-    // ===== ESCUTA MENSAGENS DO IFRAME =====
-    window.addEventListener('message', (event) => {
-      if (event.origin !== WORKER_URL) return;
+    // ESCUTA AS MENSAGENS DO IFRAME
+    window.addEventListener("message", (event) => {
+      if (event.origin !== new URL(WORKER_URL).origin) {
+        return;
+      }
 
       const data = event.data;
 
-      // Quando o KYC termina
-      if (data && data.type === 'kyc_result') {
-        console.log('KYC concluído:', data);
-        // Aqui você pode redirecionar, fechar, mostrar toast, etc.
-        // Exemplo: window.top.location.href = data.redirectUrl;
+      if (data && data.type === "kyc_result") {
+        console.log("Resultado da verificação KYC:", data);
       }
     });
   </script>
+
 </body>
 </html>
