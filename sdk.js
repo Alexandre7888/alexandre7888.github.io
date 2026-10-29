@@ -4,7 +4,7 @@ function _injectSpinCSS(){if(document.getElementById(SPIN_CSS_ID))return;const s
 const _s=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};const _r=k=>{try{return localStorage.getItem(k)}catch(e){return null}};const _d=k=>{try{localStorage.removeItem(k)}catch(e){}};
 const SPIN_ID="ch-spin",SPIN_CSS_ID="ch-spin-css";
 const VERSION="1.5";
-const DEF={worker:"https://proud-flower-677b.braatzjunioralexandre5.workers.dev",baseLogin:"https://app.codehub.site.je/API/v3/continuar-conta",storageKey:"ch_authid",appToken:""};
+const DEF={worker:"https://proud-flower-677b.braatzjunioralexandre5.workers.dev",baseLogin:"https://codehub.giize.com/API/v3/continuar-conta",storageKey:"ch_authid",appToken:""};
 export class CodeHub{
 constructor(o={}){const c={...DEF,...o};this.worker=c.worker;this.baseLogin=c.baseLogin;this.appToken=c.appToken;this.storageKey=c.storageKey;this.onPending=c.onPending||(()=>{});this.onConfirmed=c.onConfirmed||(()=>{});this.onError=c.onError||(()=>{});this.onReloaded=c.onReloaded||(()=>{});this.es=null;this.popup=null;this._ls={};window.addEventListener("message",e=>{if(!e.data||e.data.type!=="AUTH_DONE")return;try{const u=new URL(e.data.url);if(u.protocol!=="https:")return;if(e.data.url===location.href)return;location.href=e.data.url}catch(err){}})}
 get version(){return VERSION}
