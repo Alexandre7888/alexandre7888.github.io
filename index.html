@@ -63,7 +63,7 @@
     /* ===== ÁREA CENTRAL (FEED) ===== */
     .content-wrap{
       flex:1;display:flex;flex-direction:column;align-items:center;
-      padding:20px;margin-top:20px; /* Removido o margin-top grande */
+      padding:20px;margin-top:20px;
     }
 
     .feed-container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
@@ -103,6 +103,7 @@
     .action-btn:hover { color: var(--accent); }
     .action-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .action-btn.liked svg { fill: #ff4b4b; stroke: #ff4b4b; }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .comments-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; display: none; }
     .comment-item { font-size: 13px; margin-bottom: 8px; background: var(--surface-2); padding: 8px 12px; border-radius: 8px; }
@@ -148,7 +149,7 @@
     // --- Firebase Auth e Feed ---
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-    import { getDatabase, ref, query, limitToLast, onChildAdded } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+    import { getDatabase, ref, query, limitToLast, onChildAdded, onValue, set, remove } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 
     const cfg = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -172,9 +173,11 @@
     const feedDiv = document.getElementById('feed');
 
     let currentToken = null;
+    let userUid = null;
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
+        userUid = user.uid;
         currentToken = await user.getIdToken();
         createPostBox.style.display = 'block';
         carregarFeed();
@@ -190,6 +193,7 @@
     postText.addEventListener('input', checkFields);
     postFile.addEventListener('change', checkFields);
 
+    // Criar Post (Ainda passa pelo Worker, pois as regras bloqueiam a criação direta)
     btnPost.addEventListener('click', async () => {
       if (!currentToken) return;
       btnPost.disabled = true;
@@ -276,26 +280,51 @@
         </div>
       `;
       feedDiv.prepend(postEl);
+
+      // ⚡ A MÁGICA DA CURTIDA DIRETO DO FIREBASE
+      if (userUid) {
+        onValue(ref(db, `posts/${post.id}/likes`), (snapshot) => {
+          const likes = snapshot.val() || {};
+          const btn = document.getElementById(`btn-like-${post.id}`);
+          const countSpan = document.getElementById(`likes-${post.id}`);
+          
+          if (!btn || !countSpan) return;
+
+          const total = Object.keys(likes).length;
+          const jaCurtiu = !!likes[userUid];
+
+          countSpan.textContent = total;
+          if (jaCurtiu) btn.classList.add('liked');
+          else btn.classList.remove('liked');
+        });
+      }
     }
 
+    // =========================================
+    // CURTIR DIRETO NO FIREBASE
+    // =========================================
     window.curtir = async function(postId) {
-      if (!currentToken) return;
+      if (!userUid) return;
       const btn = document.getElementById(`btn-like-${postId}`);
-      btn.disabled = true;
-      
+      btn.disabled = true; // Evita cliques duplos
+
       try {
-        const res = await fetch(window.WORKER_URL + '/api/social/like', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, postId: postId })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          document.getElementById(`likes-${postId}`).textContent = data.total;
-          if (data.curtido) btn.classList.add('liked');
-          else btn.classList.remove('liked');
+        const likeRef = ref(db, `posts/${postId}/likes/${userUid}`);
+        
+        // Verifica se já curtiu
+        const snapshot = await new Promise(res => onValue(likeRef, res, { onlyOnce: true }));
+
+        if (snapshot.exists()) {
+          // Se já curtiu, remove (Unlike)
+          await remove(likeRef);
+        } else {
+          // Se não curtiu, adiciona
+          await set(likeRef, true);
         }
-      } catch (e) {}
+      } catch (e) {
+        alert("Erro ao curtir: " + e.message);
+      }
+      
       btn.disabled = false;
     };
 
@@ -304,6 +333,9 @@
       el.style.display = el.style.display === 'block' ? 'none' : 'block';
     };
 
+    // =========================================
+    // COMENTAR (Ainda via Worker para o Anti-Spam)
+    // =========================================
     window.comentar = async function(postId) {
       const input = document.getElementById(`input-comment-${postId}`);
       const btn = document.getElementById(`btn-comment-${postId}`);
