@@ -22,7 +22,7 @@
 </head>
 <body>
 <div class="card">
-  <div id="status" class="status">Conectando…</div>
+  <div id="status" class="status">Aguardando...</div>
   <img id="capa" class="album hidden" alt="">
   <div id="titulo" class="titulo"></div>
   <div id="artista" class="artista"></div>
@@ -33,7 +33,6 @@
 
 <script>
 (function () {
-  const API_BASE = 'https://proud-flower-677b.braatzjunioralexandre5.workers.dev';
   const status = document.getElementById('status');
   const capa = document.getElementById('capa');
   const titulo = document.getElementById('titulo');
@@ -42,55 +41,72 @@
   const link = document.getElementById('link');
   const btnConectar = document.getElementById('btnConectar');
 
-  const es = new EventSource(API_BASE + '/spotify/sse');
+  // Pega o token da URL (o Worker acabou de mandar)
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('access_token');
 
-  es.addEventListener('connected', () => {
-    status.textContent = 'Buscando...';
-  });
+  if (!token) {
+    status.textContent = 'Spotify não conectado.';
+    btnConectar.classList.remove('hidden');
+    return;
+  }
 
-  es.addEventListener('tocando', function (e) {
-    let d;
-    try { d = JSON.parse(e.data); } catch (err) { return; }
+  status.textContent = 'Buscando música...';
 
-    if (!d.tocando || !d.track) {
-      status.textContent = 'Nada tocando agora';
-      capa.classList.add('hidden');
-      link.classList.add('hidden');
-      titulo.textContent = '';
-      artista.textContent = '';
-      barra.style.width = '0%';
-      return;
-    }
+  function buscarMusica() {
+    fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(response => {
+      if (response.status === 204) {
+        return null; // Nada tocando
+      }
+      if (response.status === 401) {
+        // Token expirou (dura 1 hora)
+        status.textContent = 'Sessão expirada. Conecte novamente.';
+        btnConectar.classList.remove('hidden');
+        clearInterval(loop);
+        return null;
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (!data || !data.item) {
+        status.textContent = 'Nada tocando agora';
+        capa.classList.add('hidden');
+        link.classList.add('hidden');
+        titulo.textContent = '';
+        artista.textContent = '';
+        barra.style.width = '0%';
+        return;
+      }
 
-    status.textContent = '';
-    if (d.track.imagem) {
-      capa.src = d.track.imagem;
-      capa.classList.remove('hidden');
-    } else {
-      capa.classList.add('hidden');
-    }
-    titulo.textContent = d.track.nome;
-    artista.textContent = d.track.artistas;
+      status.textContent = '';
+      if (data.item.album.images && data.item.album.images.length > 0) {
+        capa.src = data.item.album.images[0].url;
+        capa.classList.remove('hidden');
+      } else {
+        capa.classList.add('hidden');
+      }
+      
+      titulo.textContent = data.item.name;
+      artista.textContent = data.item.artists.map(a => a.name).join(', ');
+      
+      const pct = (data.progress_ms / data.item.duration_ms) * 100;
+      barra.style.width = pct + '%';
 
-    const pct = d.track.duracao_ms ? (d.progress_ms / d.track.duracao_ms) * 100 : 0;
-    barra.style.width = pct + '%';
+      if (data.item.external_urls && data.item.external_urls.spotify) {
+        link.href = data.item.external_urls.spotify;
+        link.classList.remove('hidden');
+      }
+    })
+    .catch(err => console.error(err));
+  }
 
-    if (d.track.url) {
-      link.href = d.track.url;
-      link.classList.remove('hidden');
-    } else {
-      link.classList.add('hidden');
-    }
-  });
+  // Busca agora, e depois a cada 2 segundos
+  buscarMusica();
+  const loop = setInterval(buscarMusica, 2000);
 
-  es.addEventListener('error', function (e) {
-    let d = {};
-    try { d = JSON.parse(e.data || '{}'); } catch (err) {}
-    if (d.erro === 'spotify_not_connected') {
-      status.textContent = 'Spotify não conectado.';
-      btnConectar.classList.remove('hidden');
-    }
-  });
 })();
 </script>
 </body>
