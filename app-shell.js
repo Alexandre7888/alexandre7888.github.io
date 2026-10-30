@@ -1,4 +1,4 @@
-// app-shell.js v2.4.1 - Widget de Perfil (Clean)
+// app-shell.js v2.5.0 - Widget de Perfil (Canto Inferior Esquerdo, sem música)
 (function () {
   "use strict";
 
@@ -79,55 +79,54 @@
     .app-shell-footer{padding:18px 22px;border-top:1px solid #1f2a44;color:#8fa0bd;font-size:.72rem;text-align:center;letter-spacing:.3px}
 
     /* =========================================
-       WIDGET DE PERFIL (Canto Superior Direito)
+       WIDGET DE PERFIL (Canto Inferior Esquerdo)
        ========================================= */
     .app-shell-profile-widget {
       position: fixed;
-      top: 14px;
-      right: 16px;
+      bottom: 20px;  /* Posicionado na parte de baixo */
+      left: 20px;    /* Posicionado na esquerda */
       z-index: 1200;
       display: none;
       align-items: center;
-      gap: 12px;
-      /* Visual limpo, sem fundo pesado, combina com o site */
+      gap: 10px;
       background: rgba(10,15,28,0.9);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border: 1px solid #1f2a44;
-      border-radius: 16px; /* Bordas arredondadas estilo pílula */
-      padding: 6px 16px 6px 6px; /* Padding ajustado para a foto */
+      border-radius: 50px; /* Formato de pílula */
+      padding: 6px 16px 6px 6px;
       cursor: pointer;
       box-shadow: 0 8px 22px rgba(0,0,0,0.55);
       transition: all .2s ease;
       user-select: none;
       font-family: inherit;
-      max-width: 280px;
+      max-width: 250px;
     }
     .app-shell-profile-widget.show { display: flex; }
     .app-shell-profile-widget:hover { 
       border-color: #4f8cff; 
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(79,140,255,.25);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(79,140,255,.25);
     }
 
     /* Foto do Perfil */
     .app-shell-profile-avatar {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px; /* Quadrado arredondado (estilo app moderno) */
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
       background: linear-gradient(135deg,#4f8cff,#7aa8ff);
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
       font-weight: 700;
-      font-size: 18px;
+      font-size: 16px;
       overflow: hidden;
       flex-shrink: 0;
     }
     .app-shell-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-    /* Informações (Nome e Música) */
+    /* Informações (Apenas Nome) */
     .app-shell-profile-info {
       display: flex;
       flex-direction: column;
@@ -143,31 +142,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    
-    /* Linha da Música/Status - Apenas texto e ícone, sem fundo */
-    .app-shell-profile-activity {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: #8fa0bd;
-      font-size: 0.75rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 2px;
-    }
-    
-    /* Ícone da notinha musical */
-    .app-shell-profile-activity svg {
-      width: 12px; 
-      height: 12px; 
-      fill: #4f8cff; /* Azul do seu tema */
-      flex-shrink: 0;
-    }
 
     /* Spinner de loading */
     .app-shell-spinner{
-      width:20px;height:20px;
+      width:18px;height:18px;
       border:2.5px solid rgba(255,255,255,.25);
       border-top-color:#fff;
       border-radius:50%;
@@ -175,9 +153,12 @@
     }
     @keyframes appShellSpin{to{transform:rotate(360deg)}}
 
-    /* Dropdown do Menu do Usuário (Notificações/Sair) */
+    /* Dropdown do Menu do Usuário (Abre para cima) */
     .app-shell-dropdown{
-      position:fixed;top:76px;right:16px;z-index:1230;
+      position:fixed;
+      bottom: 75px; /* Acima do widget */
+      left: 20px;   /* Alinhado à esquerda */
+      z-index:1230;
       min-width:220px;
       background:rgba(10,15,28,0.95);
       backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
@@ -185,10 +166,10 @@
       padding:8px;
       box-shadow:0 20px 50px rgba(0,0,0,.6);
       display:none;
-      animation:appShellFade .2s ease;
+      animation:appShellFadeUp .2s ease;
     }
     .app-shell-dropdown.active{display:block}
-    @keyframes appShellFade{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes appShellFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
     .app-shell-dropdown-header{padding:12px 14px;border-bottom:1px solid #1f2a44;margin-bottom:6px}
     .app-shell-dropdown-header .name{color:#e8eef8;font-weight:600;font-size:.9rem}
@@ -216,8 +197,7 @@
     home: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
     dev:  '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
     bell: '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
-    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
-    music:'<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'
+    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
   };
 
   const ROUTES = {
@@ -312,7 +292,7 @@
       this._renderMenuButton();
       this._renderOverlay();
       this._renderSideMenu();
-      this._renderProfileWidget(); // Novo renderizador
+      this._renderProfileWidget();
       this._renderDropdown();
       this._attachEvents();
       this._applyView(this.currentView);
@@ -461,7 +441,7 @@
       this._menu = menu;
     }
 
-    // NOVO: Renderiza o Widget no canto superior direito
+    // Widget renderizado sem música e no canto inferior esquerdo
     _renderProfileWidget() {
       let p = document.getElementById('appShellProfileWidget');
       if (!p){
@@ -474,10 +454,6 @@
           </div>
           <div class="app-shell-profile-info">
             <div class="app-shell-profile-name" id="appShellName">Carregando...</div>
-            <div class="app-shell-profile-activity">
-              ${ICONS.music}
-              <span id="appShellActivity">Sem atividade</span>
-            </div>
           </div>
         `;
         document.body.appendChild(p);
@@ -485,7 +461,6 @@
       this._profileWidget = p;
       this._avatarEl = document.getElementById('appShellAvatar');
       this._nameEl = document.getElementById('appShellName');
-      this._activityEl = document.getElementById('appShellActivity');
     }
 
     _renderDropdown() {
@@ -526,7 +501,6 @@
         });
       });
 
-      // Eventos no Widget de Perfil
       this._profileWidget.addEventListener("click", (e) => {
         e.stopPropagation();
         if (this._profileWidget.classList.contains("loading")) return;
@@ -596,7 +570,6 @@
       this._profileWidget.classList.add("loading");
       this._avatarEl.innerHTML = `<div class="app-shell-spinner"></div>`;
       this._nameEl.textContent = "Carregando...";
-      this._activityEl.textContent = "Buscando dados...";
     }
 
     _showProfilePlaceholder(letter){
@@ -604,7 +577,6 @@
       this._profileWidget.classList.remove("loading");
       this._avatarEl.innerHTML = `<span>${letter}</span>`;
       this._nameEl.textContent = "Visitante";
-      this._activityEl.textContent = "Faça login";
     }
 
     setUser(user) {
@@ -619,7 +591,6 @@
       this._profileWidget.classList.add("show");
       this._profileWidget.classList.remove("loading");
 
-      // Atualiza Avatar
       if (user.photoUrl && typeof user.photoUrl === "string" && user.photoUrl.trim() !== ""){
         this._avatarEl.innerHTML = `<img src="${user.photoUrl}" alt="" referrerpolicy="no-referrer">`;
       } else {
@@ -627,20 +598,9 @@
         this._avatarEl.innerHTML = `<span>${initial}</span>`;
       }
 
-      // Atualiza Nome
       const displayName = user.name || user.username || "Usuário";
       this._nameEl.textContent = displayName;
 
-      // Atualiza a "Música" / Status (Aqui você pode conectar a uma API no futuro)
-      // Exemplo: se o usuário tiver um status definido, usa ele. Senão, deixa vazio.
-      if (user.status) {
-        this._activityEl.textContent = user.status;
-      } else {
-        // Texto padrão ou vazio (remova o texto se quiser só a notinha)
-        this._activityEl.textContent = "Ouvindo CodeHUB"; 
-      }
-
-      // Atualiza o dropdown (menu que abre ao clicar)
       const header = this._dropdown.querySelector(".app-shell-dropdown-header");
       if (header) {
         header.querySelector(".name").textContent  = displayName;
