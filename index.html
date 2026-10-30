@@ -116,11 +116,51 @@
     .profile-dropdown-item.danger{color:#ef4444}
     .profile-dropdown-item.danger svg{stroke:#ef4444}
 
-    /* ===== ÁREA CENTRAL ===== */
+    /* ===== ÁREA CENTRAL (FEED) ===== */
     .content-wrap{
-      flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      flex:1;display:flex;flex-direction:column;align-items:center;
       padding:20px;margin-top:90px;
     }
+
+    .feed-container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
+
+    .create-post {
+      background: var(--surface); border-radius: 16px; padding: 16px;
+      box-shadow: 0 8px 24px var(--shadow); border: 1px solid var(--border);
+    }
+    .create-post textarea {
+      width: 100%; border: none; resize: none; outline: none; font-size: 15px;
+      background: transparent; color: var(--text); min-height: 60px; font-family: inherit;
+    }
+    .create-post textarea::placeholder { color: var(--text-2); }
+    .create-post .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+    
+    .btn-post {
+      background: var(--accent); color: white; border: none; padding: 8px 24px;
+      border-radius: 20px; font-weight: 600; cursor: pointer; transition: 0.2s; font-family: inherit;
+    }
+    .btn-post:disabled { background: var(--surface-2); color: var(--text-2); cursor: not-allowed; }
+    .btn-post:not(:disabled):hover { background: var(--accent-2); }
+
+    .post {
+      background: var(--surface); border-radius: 16px; padding: 16px;
+      box-shadow: 0 8px 24px var(--shadow); border: 1px solid var(--border);
+    }
+    .post-header { display: flex; align-items: center; margin-bottom: 12px; }
+    .post-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--surface-2); margin-right: 12px; object-fit: cover; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-2); }
+    .post-user-info { display: flex; flex-direction: column; }
+    .post-user-name { font-weight: 600; font-size: 15px; color: var(--text); }
+    .post-time { color: var(--text-2); font-size: 12px; }
+    .post-content { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; color: var(--text); }
+    .post-image { width: 100%; border-radius: 12px; margin-top: 12px; object-fit: cover; max-height: 500px; }
+    
+    .post-actions { display: flex; gap: 16px; margin-top: 16px; color: var(--text-2); font-size: 14px; }
+    .post-actions span { cursor: pointer; display: flex; align-items: center; gap: 4px; transition: color .2s; }
+    .post-actions span:hover { color: var(--accent); }
+
+    .comments-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; display: none; }
+    .comment-item { font-size: 13px; margin-bottom: 8px; background: var(--surface-2); padding: 8px 12px; border-radius: 8px; }
+    .input-comment { width: 100%; background: var(--bg-1); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px; margin-top: 8px; outline: none; }
 
     /* ===== PAINEL DE TEMAS ===== */
     .theme-panel{position:fixed;bottom:24px;right:24px;z-index:1050;background:var(--menu-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:48px;padding:6px;display:flex;gap:6px;border:1px solid var(--border);box-shadow:0 8px 20px var(--shadow)}
@@ -158,22 +198,35 @@
     </button>
   </div>
 
-  <!-- Área central onde o AppShell vai agir -->
+  <!-- Área central onde vai o Feed -->
   <div class="content-wrap">
+    <div class="feed-container">
+      
+      <!-- Caixa de postagem -->
+      <div class="create-post" id="createPostBox" style="display:none;">
+        <textarea id="postText" placeholder="O que está acontecendo?"></textarea>
+        <input type="file" id="postFile" accept="image/*" style="margin-top: 10px; font-size: 12px; color: var(--text-2);">
+        <div class="actions">
+          <span id="statusPost" style="font-size: 12px; color: var(--text-2);"></span>
+          <button class="btn-post" id="btnPost" disabled>Publicar</button>
+        </div>
+      </div>
+
+      <!-- Feed de posts -->
+      <div id="feed"></div>
+
+    </div>
   </div>
 
   <div class="theme-panel">
     <button id="themeDark" class="theme-btn active" data-set-theme="dark">
-      <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-      Dark
+      <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg> Dark
     </button>
     <button id="themeLight" class="theme-btn" data-set-theme="light">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-      Light
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg> Light
     </button>
     <button id="themeSystem" class="theme-btn" data-set-theme="system">
-      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-      Sistema
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Sistema
     </button>
   </div>
 
@@ -181,19 +234,12 @@
     window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
   </script>
 
-  <!-- Carrega apenas o AppShell -->
   <script src="/app-shell.js"></script>
 
-  <script>
-    // Inicializa o AppShell
+  <script type="module">
+    // --- Inicializa o AppShell ---
     if (typeof AppShell !== "undefined") {
-      try {
-        const shell = new AppShell().mount();
-      } catch (e) {
-        console.error("[CodeHUB] AppShell.mount():", e.message);
-      }
-    } else {
-      console.warn("[CodeHUB] AppShell não definido — verifique se /app-shell.js carregou.");
+      try { new AppShell().mount(); } catch (e) { console.error("[CodeHUB] AppShell.mount():", e.message); }
     }
 
     // --- Controle de Temas ---
@@ -255,52 +301,203 @@
       });
     });
 
-    // --- Firebase Auth (para puxar foto e nome do perfil) ---
-    (async function(){
+    // --- Firebase Auth e Feed ---
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { getDatabase, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+    const cfg = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+    };
+
+    const app = initializeApp(cfg);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const WORKER_URL = window.WORKER_URL;
+
+    const createPostBox = document.getElementById('createPostBox');
+    const postText = document.getElementById('postText');
+    const postFile = document.getElementById('postFile');
+    const btnPost = document.getElementById('btnPost');
+    const statusPost = document.getElementById('statusPost');
+    const feedDiv = document.getElementById('feed');
+
+    let currentUser = null;
+    let currentToken = null;
+
+    // Verifica se o usuário está logado
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        profileBtn.classList.remove('loading');
+        profileBtn.innerHTML = user.photoURL 
+          ? `<img src="${user.photoURL}" alt="Perfil">` 
+          : (user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U');
+        pdName.textContent = user.displayName || 'Usuário';
+        pdEmail.textContent = user.email || '—';
+        createPostBox.style.display = 'block';
+        
+        try { currentToken = await user.getIdToken(); } catch(e) {}
+        carregarFeed();
+      } else {
+        document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
+        profileBtn.style.display = 'none';
+        createPostBox.style.display = 'none';
+        feedDiv.innerHTML = '<p style="text-align:center;color:var(--text-2);">Faça login para ver o feed.</p>';
+      }
+    });
+
+    // Habilita o botão de postar
+    function checkFields() {
+      btnPost.disabled = postText.value.trim() === "" && postFile.files.length === 0;
+    }
+    postText.addEventListener('input', checkFields);
+    postFile.addEventListener('change', checkFields);
+
+    // --- Criar Post ---
+    btnPost.addEventListener('click', async () => {
+      if (!currentUser) return;
+      btnPost.disabled = true;
+      btnPost.textContent = 'Enviando...';
+      statusPost.textContent = "Fazendo upload e analisando imagem...";
+
+      const formData = new FormData();
+      formData.append("tokenid", currentToken);
+      formData.append("text", postText.value);
+      if (postFile.files.length > 0) formData.append("file", postFile.files[0]);
+
       try {
-        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-        const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-
-        const cfg = {
-          apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-          authDomain: "html-15e80.firebaseapp.com",
-          databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-          projectId: "html-15e80",
-          storageBucket: "html-15e80.firebasestorage.app",
-          messagingSenderId: "1068148640439",
-          appId: "1:1068148640439:web:1ac651348e624f6be41b32"
-        };
-
-        const app = initializeApp(cfg);
-        const auth = getAuth(app);
-
-        async function refresh(user) {
-          if (!user) return;
-          try {
-            const t = await user.getIdToken(true);
-            document.cookie = "firebaseToken=" + t + "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
-          } catch (e) { console.error("[CodeHUB] token:", e.message); }
-        }
-
-        onAuthStateChanged(auth, async (user) => {
-          if (user) {
-            await refresh(user);
-            profileBtn.classList.remove('loading');
-            profileBtn.innerHTML = user.photoURL 
-              ? `<img src="${user.photoURL}" alt="Perfil">` 
-              : (user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U');
-            pdName.textContent = user.displayName || 'Usuário';
-            pdEmail.textContent = user.email || '—';
-          } else {
-            document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-            profileBtn.style.display = 'none';
-          }
+        const res = await fetch(WORKER_URL + '/api/social/post', {
+          method: 'POST',
+          body: formData
         });
+        const data = await res.json();
 
-        setInterval(() => { if (auth.currentUser) refresh(auth.currentUser); }, 60000);
+        if (data.ok) {
+          statusPost.textContent = "✅ Post criado!";
+          postText.value = '';
+          postFile.value = '';
+          renderPost(data.post);
+        } else {
+          throw new Error(data.erro);
+        }
+      } catch (e) {
+        statusPost.textContent = "❌ Erro: " + e.message;
+      }
 
-      } catch (e) { console.error("[CodeHUB] init:", e.message); }
-    })();
+      btnPost.textContent = 'Publicar';
+      btnPost.disabled = false;
+    });
+
+    // --- Carregar Feed do Firebase ---
+    function carregarFeed() {
+      // Pega os últimos 20 posts do banco
+      const feedQuery = query(ref(db, 'posts'), limitToLast(20));
+      onChildAdded(feedQuery, (snapshot) => {
+        const post = snapshot.val();
+        renderPost(post);
+      });
+    }
+
+    // --- Renderizar Post na Tela ---
+    function renderPost(post) {
+      // Evita duplicar o post na tela se ele já foi renderizado
+      if (document.getElementById(`post-${post.id}`)) return;
+
+      const postEl = document.createElement('div');
+      postEl.className = 'post';
+      postEl.id = `post-${post.id}`;
+
+      const date = new Date(post.createdAt).toLocaleString('pt-BR');
+      const tagsHtml = post.hashtags && post.hashtags.length 
+        ? `<div style="margin-top: 8px; font-size: 14px; color: var(--accent);">${post.hashtags.map(t => `#${t}`).join(' ')}</div>` 
+        : '';
+
+      // ⚠️ A imagem agora exige o token na URL
+      const imgSrc = post.mediaUrl && currentToken 
+        ? `${post.mediaUrl}?tokenid=${encodeURIComponent(currentToken)}` 
+        : null;
+
+      postEl.innerHTML = `
+        <div class="post-header">
+          <div class="post-avatar">${post.uid ? post.uid.charAt(0).toUpperCase() : 'U'}</div>
+          <div class="post-user-info">
+            <span class="post-user-name">${post.uid}</span>
+            <span class="post-time">${date}</span>
+          </div>
+        </div>
+        <div class="post-content">${escapeHTML(post.text)}</div>
+        ${tagsHtml}
+        ${imgSrc ? `<img src="${imgSrc}" class="post-image" alt="Mídia do post">` : ''}
+        
+        <div class="post-actions">
+          <span onclick="curtir('${post.id}')">❤️ <span id="likes-${post.id}">0</span></span>
+          <span onclick="toggleComments('${post.id}')">💬 <span id="comments-count-${post.id}">0</span></span>
+        </div>
+
+        <div class="comments-section" id="comments-${post.id}">
+          <div id="comments-list-${post.id}"></div>
+          <input type="text" class="input-comment" placeholder="Escreva um comentário..." onkeypress="if(event.key === 'Enter') comentar('${post.id}', this.value, this)">
+        </div>
+      `;
+      feedDiv.prepend(postEl);
+    }
+
+    // --- Funções de Curtir e Comentar ---
+    window.curtir = async function(postId) {
+      if (!currentToken) return;
+      try {
+        await fetch(WORKER_URL + '/api/social/like', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenid: currentToken, postId: postId, action: 'like' })
+        });
+        const el = document.getElementById(`likes-${postId}`);
+        if (el) el.textContent = parseInt(el.textContent) + 1;
+      } catch(e) {}
+    };
+
+    window.toggleComments = function(postId) {
+      const el = document.getElementById(`comments-${postId}`);
+      el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    };
+
+    window.comentar = async function(postId, text, inputEl) {
+      if (!currentToken || !text.trim()) return;
+      try {
+        await fetch(WORKER_URL + '/api/social/comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenid: currentToken, postId: postId, text: text })
+        });
+        const list = document.getElementById(`comments-list-${postId}`);
+        const div = document.createElement('div');
+        div.className = 'comment-item';
+        div.textContent = text;
+        list.appendChild(div);
+        inputEl.value = '';
+      } catch(e) {}
+    };
+
+    function escapeHTML(str) {
+      return String(str || '').replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    // Atualiza o token a cada 1 minuto (Firebase expira em 1h)
+    setInterval(async () => {
+      if (auth.currentUser) {
+        try { currentToken = await auth.currentUser.getIdToken(true); } catch(e) {}
+      }
+    }, 60000);
+
   </script>
 </body>
 </html>
