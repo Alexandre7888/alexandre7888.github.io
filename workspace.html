@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>CodeHUB · Workspace</title>
+
+  <style>
+    :root, html[data-theme="dark"]{
+      --bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;
+      --border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--shadow:rgba(0,0,0,0.55);
+    }
+    html[data-theme="light"]{
+      --bg-1:#f7f9fc;--bg-2:#eef2f8;--surface:#ffffff;--surface-2:#f5f8fd;
+      --border:#e2e8f2;--text:#0f172a;--text-2:#5b6b85;--accent:#2563eb;--shadow:rgba(15,23,42,0.08);
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
+      font-family:'Segoe UI',sans-serif; color:var(--text); min-height:100vh;
+      display:flex; flex-direction:column; padding:20px; align-items:center;
+    }
+    .ws-container { width: 100%; max-width: 900px; margin-top: 40px; }
+    
+    .ws-header {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface); padding: 20px; border-radius: 16px;
+      border: 1px solid var(--border); box-shadow: 0 8px 24px var(--shadow); margin-bottom: 24px;
+    }
+    .ws-header h1 { font-size: 1.5rem; }
+    .btn-upload {
+      background: var(--accent); color: white; border: none; padding: 10px 20px;
+      border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: 0.2s;
+    }
+    .btn-upload:hover { transform: scale(1.05); }
+    .btn-upload svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .files-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;
+    }
+    .file-card {
+      background: var(--surface); border-radius: 12px; padding: 16px;
+      border: 1px solid var(--border); text-align: center; position: relative;
+      box-shadow: 0 4px 12px var(--shadow); transition: 0.2s; overflow: hidden;
+    }
+    .file-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+    .file-card img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
+    
+    /* Ícone de placeholder para arquivos que não são imagem */
+    .icon-placeholder { 
+      width: 100%; height: 120px; background: var(--surface-2); border-radius: 8px; 
+      display: flex; align-items: center; justify-content: center; margin-bottom: 10px; 
+    }
+    .icon-placeholder svg { width: 48px; height: 48px; stroke: var(--text-2); fill: none; stroke-width: 1.5; }
+
+    .file-name { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-date { font-size: 0.75rem; color: var(--text-2); margin-top: 4px; }
+    
+    .btn-delete-file {
+      position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.9);
+      color: white; border: none; width: 32px; height: 32px; border-radius: 50%;
+      cursor: pointer; display: none; align-items: center; justify-content: center;
+    }
+    .btn-delete-file svg { width: 16px; height: 16px; stroke: white; fill: none; stroke-width: 2; }
+    .file-card:hover .btn-delete-file { display: flex; }
+    
+    #wsFileInput { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="ws-container">
+    <div class="ws-header">
+      <div>
+        <h1>Meus Arquivos</h1>
+        <p style="color: var(--text-2); font-size: 0.9rem;">Armazenamento na nuvem</p>
+      </div>
+      <button class="btn-upload" onclick="document.getElementById('wsFileInput').click()">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload
+      </button>
+      <input type="file" id="wsFileInput" accept="image/*,application/pdf,text/plain" onchange="fazerUpload(this)">
+    </div>
+
+    <div id="filesGrid" class="files-grid">
+      <p style="color: var(--text-2); grid-column: 1/-1; text-align: center;">Carregando arquivos...</p>
+    </div>
+  </div>
+
+  <script>
+    window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+  </script>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+    const cfg = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+    };
+
+    const app = initializeApp(cfg);
+    const auth = getAuth(app);
+
+    let currentToken = null;
+    const filesGrid = document.getElementById('filesGrid');
+
+    // Ícones SVG
+    const SVG_IMG = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+    const SVG_PDF = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+    const SVG_TXT = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+    const SVG_TRASH = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
+
+    // Verifica o login e puxa os arquivos
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentToken = await user.getIdToken();
+        carregarArquivosAPI();
+      } else {
+        filesGrid.innerHTML = '<p style="color: var(--text-2); grid-column: 1/-1; text-align: center;">Faça login para ver seus arquivos.</p>';
+      }
+    });
+
+    // 1. Puxa a lista de arquivos do Worker
+    async function carregarArquivosAPI() {
+      filesGrid.innerHTML = '<p style="color: var(--text-2); grid-column: 1/-1; text-align: center;">Carregando...</p>';
+      
+      try {
+        const res = await fetch(`${window.WORKER_URL}/api/workspace/list?tokenid=${encodeURIComponent(currentToken)}`);
+        const data = await res.json();
+
+        if (!data.ok) throw new Error(data.erro);
+
+        filesGrid.innerHTML = '';
+        
+        if (data.files.length === 0) {
+          filesGrid.innerHTML = '<p style="color: var(--text-2); grid-column: 1/-1; text-align: center;">Nenhum arquivo encontrado.</p>';
+          return;
+        }
+
+        data.files.forEach(file => renderizarArquivo(file));
+
+      } catch (e) {
+        filesGrid.innerHTML = `<p style="color: #ff4b4b; grid-column: 1/-1; text-align: center;">Erro ao carregar: ${e.message}</p>`;
+      }
+    }
+
+    // 2. Renderiza o card do arquivo na tela
+    function renderizarArquivo(file) {
+      const el = document.createElement('div');
+      el.className = 'file-card';
+      el.id = `file-${file.id}`;
+
+      const isImage = file.type && file.type.startsWith('image/');
+      const isPdf = file.type && file.type.includes('pdf');
+      
+      let innerVisual = '';
+
+      if (isImage) {
+        innerVisual = `<img src="${file.url}" alt="${file.name}">`;
+      } else if (isPdf) {
+        innerVisual = `<div class="icon-placeholder">${SVG_PDF}</div>`;
+      } else {
+        innerVisual = `<div class="icon-placeholder">${SVG_TXT}</div>`;
+      }
+
+      el.innerHTML = `
+        ${innerVisual}
+        <div class="file-name" title="${file.name}">${file.name}</div>
+        <div class="file-date">${new Date(file.createdAt).toLocaleDateString('pt-BR')}</div>
+        <button class="btn-delete-file" onclick="deletarArquivo('${file.id}', '${file.fileId}')" title="Apagar">
+          ${SVG_TRASH}
+        </button>
+      `;
+      filesGrid.prepend(el);
+    }
+
+    // 3. Faz o upload enviando pro Worker
+    window.fazerUpload = async function(input) {
+      if (!input.files || input.files.length === 0) return;
+      if (!currentToken) return alert("Faça login primeiro.");
+
+      const file = input.files[0];
+      input.value = '';
+
+      // Card temporário
+      const tempId = `temp_${Date.now()}`;
+      const tempEl = document.createElement('div');
+      tempEl.className = 'file-card';
+      tempEl.id = `file-${tempId}`;
+      tempEl.innerHTML = `<div class="icon-placeholder"><div class="spinner"></div></div><div class="file-name">Enviando...</div>`;
+      filesGrid.prepend(tempEl);
+
+      const formData = new FormData();
+      formData.append('tokenid', currentToken);
+      formData.append('file', file);
+      formData.append('filename', file.name);
+      formData.append('filetype', file.type);
+
+      try {
+        const res = await fetch(window.WORKER_URL + '/api/workspace/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        
+        if (!data.ok) throw new Error(data.erro);
+        
+        // Remove o temporário e adiciona o arquivo real
+        tempEl.remove();
+        renderizarArquivo(data.file);
+
+      } catch (e) {
+        alert("Erro no upload: " + e.message);
+        tempEl.remove();
+      }
+    };
+
+    // 4. Deleta o arquivo via Worker
+    window.deletarArquivo = async function(fileId, ikFileId) {
+      if (!confirm("Tem certeza que deseja apagar este arquivo?")) return;
+      
+      try {
+        const res = await fetch(window.WORKER_URL + '/api/workspace/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenid: currentToken, fileId: fileId, ikFileId: ikFileId })
+        });
+        const data = await res.json();
+        
+        if (!data.ok) throw new Error(data.erro);
+        
+        // Remove o card da tela
+        const el = document.getElementById(`file-${fileId}`);
+        if (el) el.remove();
+
+      } catch (e) {
+        alert("Erro ao deletar: " + e.message);
+      }
+    };
+  </script>
+</body>
+</html>
