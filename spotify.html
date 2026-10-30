@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spotify — Tocando agora</title>
+
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
 <style>
   :root {
     --bg: #121212; --card: #181818; --text: #fff; --muted: #b3b3b3;
@@ -56,7 +61,7 @@
 </head>
 <body>
 <div class="card">
-  <div id="status" class="status">Conectando…</div>
+  <div id="status" class="status">Verificando login…</div>
   <img id="capa" class="album hidden" alt="">
   <div id="titulo" class="titulo"></div>
   <div id="artista" class="artista"></div>
@@ -72,6 +77,18 @@
   // ⬇️ Worker (API) da Cloudflare
   const API_BASE = 'https://proud-flower-677b.braatzjunioralexandre5.workers.dev';
 
+  // ⬇️ Firebase (mesmo projeto do app)
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+    authDomain: "html-15e80.firebaseapp.com",
+    databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+    projectId: "html-15e80",
+    storageBucket: "html-15e80.firebasestorage.app",
+    messagingSenderId: "1068148640439",
+    appId: "1:1068148640439:web:1ac651348e624f6be41b32",
+    measurementId: "G-7E1VWN07GM"
+  };
+
   const status   = document.getElementById('status');
   const capa     = document.getElementById('capa');
   const titulo   = document.getElementById('titulo');
@@ -80,22 +97,17 @@
   const link     = document.getElementById('link');
   const btnConectar = document.getElementById('btnConectar');
 
-  // ⚠️ Ajuste para onde seu app guarda o tokenid (JWT Firebase)
-  const params = new URLSearchParams(location.search);
-  const tokenid = params.get('tokenid')
-               || localStorage.getItem('firebaseIdToken')
-               || null;
-
-  if (!tokenid) {
-    status.textContent = 'Faça login no app para ver o Spotify.';
-    return;
-  }
+  // Inicializa Firebase
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  const auth = firebase.auth();
 
   let es = null;
+  let tokenidAtual = null;
 
-  function conectar() {
-    if (es) { try { es.close(); } catch (e) {} }
+  function conectar(tokenid) {
+    if (es) { try { es.close(); } catch (e) {} es = null; }
     status.textContent = 'Conectando…';
+    btnConectar.classList.add('hidden');
 
     es = new EventSource(API_BASE + '/spotify/sse?tokenid=' + encodeURIComponent(tokenid));
 
@@ -148,7 +160,7 @@
         status.textContent = d.erro === 'spotify_reauth_needed'
           ? 'Sessão do Spotify expirou. Reconecte.'
           : 'Spotify não conectado.';
-        btnConectar.href = API_BASE + '/spotify/login?tokenid=' + encodeURIComponent(tokenid);
+        btnConectar.href = API_BASE + '/spotify/login?tokenid=' + encodeURIComponent(tokenidAtual);
         btnConectar.classList.remove('hidden');
         if (es) { try { es.close(); } catch (err) {} es = null; }
       }
@@ -157,12 +169,29 @@
     es.onerror = function () {
       if (es && es.readyState === EventSource.CLOSED) {
         status.textContent = 'Conexão perdida. Tentando novamente…';
-        setTimeout(conectar, 3000);
+        setTimeout(function () {
+          if (tokenidAtual) conectar(tokenidAtual);
+        }, 3000);
       }
     };
   }
 
-  conectar();
+  // Espera o Firebase dizer quem está logado
+  auth.onAuthStateChanged(async function (user) {
+    if (!user) {
+      status.textContent = 'Faça login no app para ver o Spotify.';
+      btnConectar.classList.add('hidden');
+      if (es) { try { es.close(); } catch (e) {} es = null; }
+      return;
+    }
+
+    try {
+      tokenidAtual = await user.getIdToken();
+      conectar(tokenidAtual);
+    } catch (e) {
+      status.textContent = 'Erro ao pegar o token: ' + (e.message || e);
+    }
+  });
 })();
 </script>
 </body>
