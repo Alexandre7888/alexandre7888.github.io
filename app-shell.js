@@ -1,4 +1,4 @@
-// app-shell.js v2.8.0 - Gavetas (Hover no Desktop, Clique no Mobile)
+// app-shell.js v3.0.0 - Gavetas laterais com controle de tema
 (function () {
   "use strict";
 
@@ -6,29 +6,31 @@
 
   const STYLES = `
     /* =========================================
-       GAVETAS LATERAIS
+       GAVETAS LATERAIS (ESQUERDA E DIREITA)
        ========================================= */
-    
-    /* Gaveta Esquerda */
-    .app-shell-tab-left {
+    .app-shell-tab-left, .app-shell-tab-right {
       position: fixed;
       top: 50%;
-      left: 0;
-      transform: translateY(-50%) translateX(-100%);
+      transform: translateY(-50%);
       width: 260px;
       background: rgba(10, 15, 28, 0.95);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid #1f2a44;
-      border-left: none;
-      border-radius: 0 16px 16px 0;
       padding: 20px 12px;
       z-index: 2000;
       transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    /* --- Gaveta Esquerda (Menu) --- */
+    .app-shell-tab-left {
+      left: 0;
+      transform: translateY(-50%) translateX(-100%);
+      border-left: none;
+      border-radius: 0 16px 16px 0;
     }
     .app-shell-tab-left::after {
       content: '>';
@@ -49,27 +51,15 @@
       font-weight: 900;
       font-size: 14px;
       cursor: pointer;
+      transition: 0.2s;
     }
 
-    /* Gaveta Direita */
+    /* --- Gaveta Direita (Perfil) --- */
     .app-shell-tab-right {
-      position: fixed;
-      top: 50%;
       right: 0;
       transform: translateY(-50%) translateX(100%);
-      width: 260px;
-      background: rgba(10, 15, 28, 0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid #1f2a44;
       border-right: none;
       border-radius: 16px 0 0 16px;
-      padding: 20px 12px;
-      z-index: 2000;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: -4px 0 30px rgba(0, 0, 0, 0.5);
-      display: flex;
-      flex-direction: column;
       align-items: center;
     }
     .app-shell-tab-right::before {
@@ -91,20 +81,22 @@
       font-weight: 900;
       font-size: 14px;
       cursor: pointer;
+      transition: 0.2s;
     }
 
-    /* Desktop: Abre no Hover */
+    /* --- Comportamento Desktop (Hover) --- */
     @media (hover: hover) {
       .app-shell-tab-left:hover { transform: translateY(-50%) translateX(0); }
       .app-shell-tab-right:hover { transform: translateY(-50%) translateX(0); }
+      .app-shell-tab-left:hover::after, .app-shell-tab-right:hover::before { background: #4f8cff; color: #fff; border-color: #4f8cff; }
     }
 
-    /* Mobile: Abre com Clique (Classe .mobile-open) */
+    /* --- Comportamento Mobile (Clique) --- */
     @media (hover: none) {
       .app-shell-tab-left.mobile-open { transform: translateY(-50%) translateX(0); }
       .app-shell-tab-right.mobile-open { transform: translateY(-50%) translateX(0); }
       
-      /* Muda o ícone quando está aberto no mobile */
+      /* Inverte o ícone quando aberto */
       .app-shell-tab-left.mobile-open::after { content: '<'; }
       .app-shell-tab-right.mobile-open::before { content: '>'; }
     }
@@ -114,17 +106,31 @@
        ========================================= */
     .app-shell-menu-header { border-bottom: 1px solid #1f2a44; padding-bottom: 12px; margin-bottom: 12px; text-align: center; }
     .app-shell-menu-header h2 { color: #e8eef8; font-size: 1.2rem; font-weight: 700; }
-    .app-shell-menu-header p { color: #8fa0bd; font-size: 0.7rem; }
+    .app-shell-menu-header p { color: #8fa0bd; font-size: 0.7rem; letter-spacing: 1px; }
     
     .app-shell-item {
       display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px;
       border-radius: 12px; background: transparent; border: none; color: #e8eef8;
       font-size: 0.95rem; font-weight: 500; cursor: pointer; text-align: left; font-family: inherit;
+      transition: background 0.2s;
     }
     .app-shell-item:hover { background: rgba(79, 140, 255, 0.1); }
     .app-shell-item.active { background: rgba(79, 140, 255, 0.15); border-left: 3px solid #4f8cff; }
     .app-shell-item .icon svg { width: 20px; height: 20px; stroke: #4f8cff; fill: none; stroke-width: 2; }
 
+    /* TEMAS (Dentro do Menu) */
+    .app-shell-themes { display: flex; gap: 6px; margin-top: auto; padding-top: 16px; border-top: 1px solid #1f2a44; }
+    .app-theme-btn {
+      flex: 1; padding: 8px 0; border-radius: 8px; background: rgba(255,255,255,0.05);
+      border: 1px solid transparent; color: #8fa0bd; cursor: pointer; font-size: 0.75rem;
+      display: flex; align-items: center; justify-content: center; gap: 4px; transition: 0.2s;
+      font-family: inherit;
+    }
+    .app-theme-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .app-theme-btn:hover { background: rgba(79, 140, 255, 0.15); color: #e8eef8; }
+    .app-theme-btn.active { background: #4f8cff; color: #fff; border-color: #4f8cff; }
+
+    /* PERFIL (Gaveta Direita) */
     .app-shell-profile-avatar {
       width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4f8cff, #7aa8ff);
       display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold;
@@ -135,11 +141,13 @@
     .app-shell-profile-email { color: #8fa0bd; font-size: 0.8rem; text-align: center; margin-bottom: 20px; word-break: break-all; }
     
     .app-shell-btn-logout {
-      width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444;
+      width: 100%; max-width: 200px; padding: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444;
       border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; font-weight: 600; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+      display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem;
+      transition: 0.2s; font-family: inherit;
     }
     .app-shell-btn-logout:hover { background: rgba(239, 68, 68, 0.2); }
+    .app-shell-btn-logout svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
 
     .app-shell-spinner {
       width: 24px; height: 24px; border: 3px solid rgba(255, 255, 255, 0.25);
@@ -151,11 +159,15 @@
   const ICONS = {
     home: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
     dev:  '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
+    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+    dark: '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
+    light:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+    sys:  '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
   };
 
   const ROUTES = { home: "/", developer: "/developer/" };
   const DETECT = { home: ["/", "/index.html", "/home"], developer: ["/developer", "/developer/", "/developer/index.html", "/dev"] };
+  
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
     authDomain: "html-15e80.firebaseapp.com",
@@ -179,6 +191,7 @@
     if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
     return id;
   }
+
   function detectDeviceName() {
     const ua = navigator.userAgent;
     return ua.includes("Windows") ? "Windows" : ua.includes("Mac") ? "Mac" : ua.includes("Android") ? "Android" : "Dispositivo";
@@ -210,10 +223,45 @@
       this._renderLeftTab();
       this._renderRightTab();
       this._applyView(this.currentView);
+      this._initThemeController();
       if (this.autoFirebase) this._initFirebaseAuth();
       return this;
     }
 
+    // =========================================
+    // CONTROLE DE TEMA
+    // =========================================
+    _initThemeController() {
+      const html = document.documentElement;
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+      const applyTheme = (mode) => {
+        let effective = mode === 'system' ? (mq.matches ? 'dark' : 'light') : mode;
+        html.setAttribute('data-theme', effective);
+        this._menu.querySelectorAll('.app-theme-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.setTheme === mode);
+        });
+      };
+
+      const setTheme = (mode) => {
+        localStorage.setItem('codehub-theme', mode);
+        applyTheme(mode);
+      };
+
+      this._menu.querySelectorAll('[data-set-theme]').forEach(btn => {
+        btn.addEventListener('click', () => setTheme(btn.dataset.setTheme));
+      });
+
+      mq.addEventListener('change', () => {
+        if (localStorage.getItem('codehub-theme') === 'system') applyTheme('system');
+      });
+
+      applyTheme(localStorage.getItem('codehub-theme') || 'dark');
+    }
+
+    // =========================================
+    // FIREBASE AUTH
+    // =========================================
     async _initFirebaseAuth() {
       try {
         const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
@@ -249,7 +297,7 @@
     }
 
     // =========================================
-    // GAVETAS E CLIQUES
+    // GAVETA ESQUERDA (MENU E TEMAS)
     // =========================================
     _renderLeftTab() {
       const menu = document.createElement("aside");
@@ -261,24 +309,31 @@
           <button class="app-shell-item" data-view="home"><span class="icon">${ICONS.home}</span><span class="label">Home</span></button>
           <button class="app-shell-item" data-view="developer"><span class="icon">${ICONS.dev}</span><span class="label">Desenvolvedor</span></button>
         </nav>
+        <div class="app-shell-themes">
+          <button class="app-theme-btn" data-set-theme="dark">${ICONS.dark} Dark</button>
+          <button class="app-theme-btn" data-set-theme="light">${ICONS.light} Light</button>
+          <button class="app-theme-btn" data-set-theme="system">${ICONS.sys} Auto</button>
+        </div>
       `;
       document.body.appendChild(menu);
       this._menu = menu;
 
-      // Lógica para Mobile (Clique na aba lateral)
       menu.addEventListener("click", (e) => {
-        if (e.target === menu || e.target.closest('.app-shell-item')) return; // Ignora cliques nos itens
+        if (e.target === menu || e.target.closest('.app-shell-item')) return;
         if (window.matchMedia("(hover: none)").matches) menu.classList.toggle("mobile-open");
       });
 
       menu.querySelectorAll(".app-shell-item").forEach(item => {
         item.addEventListener("click", () => {
-          menu.classList.remove("mobile-open"); // Fecha no mobile ao clicar
+          menu.classList.remove("mobile-open");
           this._navigateToView(item.dataset.view);
         });
       });
     }
 
+    // =========================================
+    // GAVETA DIREITA (PERFIL)
+    // =========================================
     _renderRightTab() {
       const profile = document.createElement("aside");
       profile.className = "app-shell-tab-right";
@@ -295,10 +350,9 @@
       this._nameEl = document.getElementById('appShellName');
       this._emailEl = document.getElementById('appShellEmail');
 
-      // Lógica para Mobile (Clique na aba lateral)
       profile.addEventListener("click", (e) => {
-        if (e.target === profile) {
-          if (window.matchMedia("(hover: none)").matches) profile.classList.toggle("mobile-open");
+        if (e.target === profile && window.matchMedia("(hover: none)").matches) {
+          profile.classList.toggle("mobile-open");
         }
       });
 
