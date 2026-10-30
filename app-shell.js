@@ -1,10 +1,11 @@
-// app-shell.js v2.3.0
+// app-shell.js v2.4.1 - Widget de Perfil (Clean)
 (function () {
   "use strict";
 
   const WORKER_URL = window.WORKER_URL || "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
   const STYLES = `
+    /* Botão do Menu (Esquerda) */
     .app-shell-menu-btn{
       position:fixed;top:14px;left:16px;z-index:1200;
       width:52px;height:52px;border-radius:16px;
@@ -22,6 +23,7 @@
     .app-shell-menu-btn.open span:nth-child(2){opacity:0;transform:scaleX(0)}
     .app-shell-menu-btn.open span:nth-child(3){transform:translateY(-7.5px) rotate(-45deg);background:#4f8cff}
 
+    /* Overlay do Menu Lateral */
     .app-shell-overlay{
       position:fixed;inset:0;background:rgba(0,0,0,.55);
       backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
@@ -30,6 +32,7 @@
     }
     .app-shell-overlay.active{opacity:1;pointer-events:auto}
 
+    /* Menu Lateral */
     .app-shell-menu{
       position:fixed;top:0;left:0;height:100vh;
       width:300px;max-width:85vw;
@@ -75,25 +78,96 @@
 
     .app-shell-footer{padding:18px 22px;border-top:1px solid #1f2a44;color:#8fa0bd;font-size:.72rem;text-align:center;letter-spacing:.3px}
 
-    .app-shell-profile{
-      position:fixed;top:14px;right:16px;z-index:1200;
-      width:52px;height:52px;border-radius:50%;
-      background:linear-gradient(135deg,#4f8cff,#7aa8ff);
-      display:none;align-items:center;justify-content:center;
-      color:#fff;font-weight:700;font-size:20px;
-      cursor:pointer;overflow:hidden;
-      border:2px solid rgba(255,255,255,.1);
-      box-shadow:0 8px 22px rgba(0,0,0,.55);
-      transition:transform .2s;
-      user-select:none;
+    /* =========================================
+       WIDGET DE PERFIL (Canto Superior Direito)
+       ========================================= */
+    .app-shell-profile-widget {
+      position: fixed;
+      top: 14px;
+      right: 16px;
+      z-index: 1200;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      /* Visual limpo, sem fundo pesado, combina com o site */
+      background: rgba(10,15,28,0.9);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid #1f2a44;
+      border-radius: 16px; /* Bordas arredondadas estilo pílula */
+      padding: 6px 16px 6px 6px; /* Padding ajustado para a foto */
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.55);
+      transition: all .2s ease;
+      user-select: none;
+      font-family: inherit;
+      max-width: 280px;
     }
-    .app-shell-profile.show{display:flex}
-    .app-shell-profile:hover{transform:scale(1.08)}
-    .app-shell-profile img{width:100%;height:100%;object-fit:cover;display:block}
-    .app-shell-profile span{pointer-events:none}
+    .app-shell-profile-widget.show { display: flex; }
+    .app-shell-profile-widget:hover { 
+      border-color: #4f8cff; 
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(79,140,255,.25);
+    }
 
+    /* Foto do Perfil */
+    .app-shell-profile-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px; /* Quadrado arredondado (estilo app moderno) */
+      background: linear-gradient(135deg,#4f8cff,#7aa8ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 18px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .app-shell-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Informações (Nome e Música) */
+    .app-shell-profile-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+    
+    .app-shell-profile-name {
+      color: #e8eef8;
+      font-size: 0.9rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Linha da Música/Status - Apenas texto e ícone, sem fundo */
+    .app-shell-profile-activity {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #8fa0bd;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    
+    /* Ícone da notinha musical */
+    .app-shell-profile-activity svg {
+      width: 12px; 
+      height: 12px; 
+      fill: #4f8cff; /* Azul do seu tema */
+      flex-shrink: 0;
+    }
+
+    /* Spinner de loading */
     .app-shell-spinner{
-      width:22px;height:22px;
+      width:20px;height:20px;
       border:2.5px solid rgba(255,255,255,.25);
       border-top-color:#fff;
       border-radius:50%;
@@ -101,6 +175,7 @@
     }
     @keyframes appShellSpin{to{transform:rotate(360deg)}}
 
+    /* Dropdown do Menu do Usuário (Notificações/Sair) */
     .app-shell-dropdown{
       position:fixed;top:76px;right:16px;z-index:1230;
       min-width:220px;
@@ -141,7 +216,8 @@
     home: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
     dev:  '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
     bell: '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
-    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
+    out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+    music:'<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'
   };
 
   const ROUTES = {
@@ -236,7 +312,7 @@
       this._renderMenuButton();
       this._renderOverlay();
       this._renderSideMenu();
-      this._renderProfile();
+      this._renderProfileWidget(); // Novo renderizador
       this._renderDropdown();
       this._attachEvents();
       this._applyView(this.currentView);
@@ -385,16 +461,31 @@
       this._menu = menu;
     }
 
-    _renderProfile() {
-      let p = document.getElementById('appShellProfile');
+    // NOVO: Renderiza o Widget no canto superior direito
+    _renderProfileWidget() {
+      let p = document.getElementById('appShellProfileWidget');
       if (!p){
         p = document.createElement("div");
-        p.className = "app-shell-profile";
-        p.id = "appShellProfile";
-        p.innerHTML = `<span>?</span>`;
+        p.className = "app-shell-profile-widget";
+        p.id = "appShellProfileWidget";
+        p.innerHTML = `
+          <div class="app-shell-profile-avatar" id="appShellAvatar">
+            <span>?</span>
+          </div>
+          <div class="app-shell-profile-info">
+            <div class="app-shell-profile-name" id="appShellName">Carregando...</div>
+            <div class="app-shell-profile-activity">
+              ${ICONS.music}
+              <span id="appShellActivity">Sem atividade</span>
+            </div>
+          </div>
+        `;
         document.body.appendChild(p);
       }
-      this._profile = p;
+      this._profileWidget = p;
+      this._avatarEl = document.getElementById('appShellAvatar');
+      this._nameEl = document.getElementById('appShellName');
+      this._activityEl = document.getElementById('appShellActivity');
     }
 
     _renderDropdown() {
@@ -435,16 +526,17 @@
         });
       });
 
-      this._profile.addEventListener("click", (e) => {
+      // Eventos no Widget de Perfil
+      this._profileWidget.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (this._profile.classList.contains("loading")) return;
+        if (this._profileWidget.classList.contains("loading")) return;
         this._toggleDropdown();
       });
 
       document.addEventListener("click", (e) => {
         if (!this._dropdownOpen) return;
         if (e.target.closest("#appShellDropdown")) return;
-        if (e.target.closest("#appShellProfile")) return;
+        if (e.target.closest("#appShellProfileWidget")) return;
         this._closeDropdown();
       });
 
@@ -500,45 +592,64 @@
     }
 
     _showProfileLoading(){
-      this._profile.classList.add("show");
-      this._profile.classList.add("loading");
-      this._profile.innerHTML = `<div class="app-shell-spinner"></div>`;
+      this._profileWidget.classList.add("show");
+      this._profileWidget.classList.add("loading");
+      this._avatarEl.innerHTML = `<div class="app-shell-spinner"></div>`;
+      this._nameEl.textContent = "Carregando...";
+      this._activityEl.textContent = "Buscando dados...";
     }
 
     _showProfilePlaceholder(letter){
-      this._profile.classList.add("show");
-      this._profile.classList.remove("loading");
-      this._profile.innerHTML = `<span>${letter}</span>`;
+      this._profileWidget.classList.add("show");
+      this._profileWidget.classList.remove("loading");
+      this._avatarEl.innerHTML = `<span>${letter}</span>`;
+      this._nameEl.textContent = "Visitante";
+      this._activityEl.textContent = "Faça login";
     }
 
     setUser(user) {
       this.user = user;
 
       if (!user) {
-        this._profile.classList.remove("show");
-        this._profile.classList.remove("loading");
+        this._profileWidget.classList.remove("show");
+        this._profileWidget.classList.remove("loading");
         return;
       }
 
-      this._profile.classList.add("show");
-      this._profile.classList.remove("loading");
+      this._profileWidget.classList.add("show");
+      this._profileWidget.classList.remove("loading");
 
+      // Atualiza Avatar
       if (user.photoUrl && typeof user.photoUrl === "string" && user.photoUrl.trim() !== ""){
-        this._profile.innerHTML = `<img src="${user.photoUrl}" alt="" referrerpolicy="no-referrer">`;
+        this._avatarEl.innerHTML = `<img src="${user.photoUrl}" alt="" referrerpolicy="no-referrer">`;
       } else {
         const initial = (user.name || user.username || user.email || "?").charAt(0).toUpperCase();
-        this._profile.innerHTML = `<span>${initial}</span>`;
+        this._avatarEl.innerHTML = `<span>${initial}</span>`;
       }
 
+      // Atualiza Nome
+      const displayName = user.name || user.username || "Usuário";
+      this._nameEl.textContent = displayName;
+
+      // Atualiza a "Música" / Status (Aqui você pode conectar a uma API no futuro)
+      // Exemplo: se o usuário tiver um status definido, usa ele. Senão, deixa vazio.
+      if (user.status) {
+        this._activityEl.textContent = user.status;
+      } else {
+        // Texto padrão ou vazio (remova o texto se quiser só a notinha)
+        this._activityEl.textContent = "Ouvindo CodeHUB"; 
+      }
+
+      // Atualiza o dropdown (menu que abre ao clicar)
       const header = this._dropdown.querySelector(".app-shell-dropdown-header");
       if (header) {
-        header.querySelector(".name").textContent  = user.name || user.username || "Usuário";
+        header.querySelector(".name").textContent  = displayName;
         header.querySelector(".email").textContent = user.email || "";
       }
     }
 
-    showProfile() { this._profile.classList.add("show"); }
-    hideProfile() { this._profile.classList.remove("show"); }
+    showProfile() { this._profileWidget.classList.add("show"); }
+    hideProfile() { this._profileWidget.classList.remove("show"); }
 
     _applyView(view) {
       this._menu.querySelectorAll(".app-shell-item").forEach(item => {
