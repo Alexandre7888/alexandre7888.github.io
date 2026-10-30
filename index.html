@@ -28,29 +28,13 @@
     *{margin:0;padding:0;box-sizing:border-box}
 
     :root, html[data-theme="dark"]{
-      --bg-1:#0a0e1a;--bg-2:#05070f;--canvas-bg:#0f1424;
-      --surface:#101626;--surface-2:#151c30;
-      --border:#1f2a44;--border-strong:#2d3b5c;
-      --text:#e8eef8;--text-2:#8fa0bd;
-      --accent:#4f8cff;--accent-2:#7aa8ff;
-      --accent-glow:rgba(79,140,255,0.35);
-      --accent-soft:rgba(79,140,255,0.1);
-      --shadow:rgba(0,0,0,0.55);
-      --menu-bg:rgba(10,15,28,0.9);
-      --toggle-bg:#151c30;--toggle-border:#2d3b5c;
+      --bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;
+      --border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--shadow:rgba(0,0,0,0.55);
     }
 
     html[data-theme="light"]{
-      --bg-1:#f7f9fc;--bg-2:#eef2f8;--canvas-bg:#ffffff;
-      --surface:#ffffff;--surface-2:#f5f8fd;
-      --border:#e2e8f2;--border-strong:#c8d3e5;
-      --text:#0f172a;--text-2:#5b6b85;
-      --accent:#2563eb;--accent-2:#3b82f6;
-      --accent-glow:rgba(37,99,235,0.25);
-      --accent-soft:rgba(37,99,235,0.07);
-      --shadow:rgba(15,23,42,0.08);
-      --menu-bg:rgba(255,255,255,0.92);
-      --toggle-bg:#f1f5fb;--toggle-border:#d6e0ee;
+      --bg-1:#f7f9fc;--bg-2:#eef2f8;--surface:#ffffff;--surface-2:#f5f8fd;
+      --border:#e2e8f2;--text:#0f172a;--text-2:#5b6b85;--accent:#2563eb;--shadow:rgba(15,23,42,0.08);
     }
 
     body{
@@ -60,75 +44,116 @@
       transition:background .4s ease,color .3s ease;
     }
 
-    /* ===== ÁREA CENTRAL (FEED) ===== */
+    /* ===== ÁREA CENTRAL (HUB DE APPS) ===== */
     .content-wrap{
       flex:1;display:flex;flex-direction:column;align-items:center;
-      padding:20px;margin-top:20px;
+      padding:20px;margin-top:20px;width:100%;
     }
 
-    .feed-container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
+    .apps-container { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 24px; }
 
-    .create-post {
-      background: var(--surface); border-radius: 16px; padding: 16px;
-      box-shadow: 0 8px 24px var(--shadow); border: 1px solid var(--border);
-    }
-    .create-post textarea {
-      width: 100%; border: none; resize: none; outline: none; font-size: 15px;
-      background: transparent; color: var(--text); min-height: 60px; font-family: inherit;
-    }
-    .create-post textarea::placeholder { color: var(--text-2); }
-    .create-post .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
-    
-    .btn-post {
-      background: var(--accent); color: white; border: none; padding: 8px 24px;
-      border-radius: 20px; font-weight: 600; cursor: pointer; transition: 0.2s; font-family: inherit;
-    }
-    .btn-post:disabled { background: var(--surface-2); color: var(--text-2); cursor: not-allowed; }
-    .btn-post:not(:disabled):hover { background: var(--accent-2); }
+    .apps-header { text-align: center; margin-bottom: 10px; }
+    .apps-header h1 { font-size: 2rem; color: var(--text); margin-bottom: 8px; }
+    .apps-header p { color: var(--text-2); font-size: 1rem; margin-bottom: 20px; }
 
-    .post {
-      background: var(--surface); border-radius: 16px; padding: 16px;
-      box-shadow: 0 8px 24px var(--shadow); border: 1px solid var(--border);
+    .search-bar { width: 100%; max-width: 500px; margin: 0 auto; position: relative; }
+    .search-bar input {
+      width: 100%; padding: 14px 20px 14px 48px; border-radius: 30px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      font-size: 1rem; outline: none; transition: 0.2s; box-shadow: 0 4px 12px var(--shadow);
     }
-    .post-header { display: flex; align-items: center; margin-bottom: 12px; }
-    .post-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--surface-2); margin-right: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-2); }
-    .post-user-info { display: flex; flex-direction: column; }
-    .post-user-name { font-weight: 600; font-size: 15px; color: var(--text); }
-    .post-time { color: var(--text-2); font-size: 12px; }
-    .post-content { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; color: var(--text); }
-    .post-image { width: 100%; border-radius: 12px; margin-top: 12px; object-fit: cover; max-height: 500px; }
-    
-    .post-actions { display: flex; gap: 16px; margin-top: 16px; color: var(--text-2); font-size: 14px; align-items: center; }
-    .action-btn { display: flex; align-items: center; gap: 6px; cursor: pointer; transition: color 0.2s; background: none; border: none; color: inherit; font-family: inherit; font-size: 14px; padding: 0; }
-    .action-btn:hover { color: var(--accent); }
-    .action-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .action-btn.liked svg { fill: #ff4b4b; stroke: #ff4b4b; }
-    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .search-bar input:focus { border-color: var(--accent); box-shadow: 0 4px 20px rgba(79,140,255,0.2); }
+    .search-bar svg {
+      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+      width: 20px; height: 20px; stroke: var(--text-2); fill: none; stroke-width: 2;
+    }
 
-    .comments-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; display: none; }
-    .comment-item { font-size: 13px; margin-bottom: 8px; background: var(--surface-2); padding: 8px 12px; border-radius: 8px; }
-    .input-comment { width: 100%; background: var(--bg-1); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px; margin-top: 8px; outline: none; }
+    /* Grid de Aplicativos */
+    .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+
+    .app-card {
+      background: var(--surface); border-radius: 20px; padding: 24px;
+      border: 1px solid var(--border); text-align: center;
+      box-shadow: 0 8px 24px var(--shadow); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      cursor: pointer; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .app-card:hover {
+      transform: translateY(-6px); border-color: var(--accent);
+      box-shadow: 0 12px 30px rgba(79, 140, 255, 0.15);
+    }
+
+    .app-icon {
+      width: 64px; height: 64px; border-radius: 16px;
+      background: rgba(79, 140, 255, 0.1); display: flex; align-items: center; justify-content: center;
+      color: var(--accent); transition: 0.3s;
+    }
+    .app-card:hover .app-icon { background: var(--accent); color: #fff; transform: scale(1.1) rotate(-5deg); }
+    .app-icon svg { width: 32px; height: 32px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .app-title { font-size: 1.1rem; font-weight: 600; color: var(--text); }
+    .app-desc { font-size: 0.8rem; color: var(--text-2); line-height: 1.4; }
+
+    .empty-state { text-align: center; color: var(--text-2); grid-column: 1/-1; padding: 40px; display: none; }
 
   </style>
 </head>
 <body>
 
-  <!-- Área central onde vai o Feed -->
+  <!-- Área central -->
   <div class="content-wrap">
-    <div class="feed-container">
+    <div class="apps-container">
       
-      <!-- Caixa de postagem -->
-      <div class="create-post" id="createPostBox" style="display:none;">
-        <textarea id="postText" placeholder="O que está acontecendo?"></textarea>
-        <input type="file" id="postFile" accept="image/*" style="margin-top: 10px; font-size: 12px; color: var(--text-2);">
-        <div class="actions">
-          <span id="statusPost" style="font-size: 12px; color: var(--text-2);"></span>
-          <button class="btn-post" id="btnPost" disabled>Publicar</button>
+      <div class="apps-header">
+        <h1>Meus Aplicativos</h1>
+        <p>Escolha uma ferramenta para começar a trabalhar.</p>
+        
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Pesquisar aplicativo..." onkeyup="filtrarApps()">
         </div>
       </div>
 
-      <!-- Feed de posts -->
-      <div id="feed"></div>
+      <div class="apps-grid" id="appsGrid">
+        
+        <!-- Workspace -->
+        <a href="/workspace.html" class="app-card" data-name="workspace arquivos drive upload nuvem">
+          <div class="app-icon">
+            <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="app-title">Workspace</div>
+          <div class="app-desc">Armazene e gerencie seus arquivos e fotos na nuvem.</div>
+        </a>
+
+        <!-- API e Tokens -->
+        <a href="/developer/" class="app-card" data-name="api tokens desenvolvedor chaves">
+          <div class="app-icon">
+            <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <div class="app-title">API & Tokens</div>
+          <div class="app-desc">Crie e gerencie chaves de acesso para suas integrações.</div>
+        </a>
+
+        <!-- Verificação KYC -->
+        <a href="/kyc" class="app-card" data-name="kyc identidade verificacao documentos">
+          <div class="app-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2"/><path d="M15 12h2"/><path d="M7 16h10"/></svg>
+          </div>
+          <div class="app-title">Verificação KYC</div>
+          <div class="app-desc">Valide documentos de identidade com Inteligência Artificial.</div>
+        </a>
+
+        <!-- Notificações -->
+        <a href="/notificacoes" class="app-card" data-name="notificacoes push alertas">
+          <div class="app-icon">
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </div>
+          <div class="app-title">Notificações</div>
+          <div class="app-desc">Gerencie seus alertas e envios push.</div>
+        </a>
+
+        <div class="empty-state" id="emptyState">Nenhum aplicativo encontrado.</div>
+
+      </div>
 
     </div>
   </div>
@@ -140,281 +165,30 @@
   <!-- Carrega o AppShell -->
   <script src="/app-shell.js"></script>
 
-  <script type="module">
+  <script>
     // --- Inicializa o AppShell ---
     if (typeof AppShell !== "undefined") {
       try { new AppShell().mount(); } catch (e) { console.error("[CodeHUB] AppShell.mount():", e.message); }
     }
 
-    // --- Firebase Auth e Feed ---
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-    import { getDatabase, ref, query, limitToLast, onChildAdded, onValue, set, remove } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+    // --- Função de Busca ---
+    function filtrarApps() {
+      const termo = document.getElementById('searchInput').value.toLowerCase();
+      const cards = document.querySelectorAll('.app-card');
+      let encontrou = 0;
 
-    const cfg = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.firebasestorage.app",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
-    };
-
-    const app = initializeApp(cfg);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    const createPostBox = document.getElementById('createPostBox');
-    const postText = document.getElementById('postText');
-    const postFile = document.getElementById('postFile');
-    const btnPost = document.getElementById('btnPost');
-    const statusPost = document.getElementById('statusPost');
-    const feedDiv = document.getElementById('feed');
-
-    let currentToken = null;
-    let userUid = null;
-
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        userUid = user.uid;
-        currentToken = await user.getIdToken();
-        createPostBox.style.display = 'block';
-        carregarFeed();
-      } else {
-        createPostBox.style.display = 'none';
-        feedDiv.innerHTML = '<p style="text-align:center;color:var(--text-2);">Faça login para ver o feed.</p>';
-      }
-    });
-
-    function checkFields() {
-      btnPost.disabled = postText.value.trim() === "" && postFile.files.length === 0;
-    }
-    postText.addEventListener('input', checkFields);
-    postFile.addEventListener('change', checkFields);
-
-    // Criar Post (Via Worker)
-    btnPost.addEventListener('click', async () => {
-      if (!currentToken) return;
-      btnPost.disabled = true;
-      btnPost.textContent = 'Enviando...';
-      statusPost.textContent = "Fazendo upload...";
-
-      const formData = new FormData();
-      formData.append("tokenid", currentToken);
-      formData.append("text", postText.value);
-      if (postFile.files.length > 0) formData.append("file", postFile.files[0]);
-
-      try {
-        const res = await fetch(window.WORKER_URL + '/api/social/post', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-
-        if (data.ok) {
-          statusPost.textContent = "✅ Post criado!";
-          postText.value = '';
-          postFile.value = '';
-          renderPost(data.post);
+      cards.forEach(card => {
+        const texto = (card.getAttribute('data-name') + ' ' + card.innerText).toLowerCase();
+        if (texto.includes(termo)) {
+          card.style.display = 'flex';
+          encontrou++;
         } else {
-          throw new Error(data.erro);
+          card.style.display = 'none';
         }
-      } catch (e) {
-        statusPost.textContent = "❌ Erro: " + e.message;
-      }
-
-      btnPost.textContent = 'Publicar';
-      btnPost.disabled = false;
-    });
-
-    function carregarFeed() {
-      const feedQuery = query(ref(db, 'posts'), limitToLast(20));
-      onChildAdded(feedQuery, (snapshot) => {
-        renderPost(snapshot.val());
-      });
-    }
-
-    function renderPost(post) {
-      if (document.getElementById(`post-${post.id}`)) return;
-
-      const postEl = document.createElement('div');
-      postEl.className = 'post';
-      postEl.id = `post-${post.id}`;
-
-      const date = new Date(post.createdAt).toLocaleString('pt-BR');
-      const imgSrc = post.mediaUrl && currentToken 
-        ? `${post.mediaUrl}?tokenid=${encodeURIComponent(currentToken)}` 
-        : null;
-
-      const svgHeart = `<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
-      const svgComment = `<svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
-      const svgTrash = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
-
-      const btnDelete = (post.uid === userUid) 
-        ? `<button class="action-btn" style="color: #ff4b4b; margin-left: auto;" onclick="deletarPost('${post.id}')">${svgTrash}</button>` 
-        : '';
-
-      postEl.innerHTML = `
-        <div class="post-header">
-          <div class="post-avatar">${post.uid.charAt(0).toUpperCase()}</div>
-          <div class="post-user-info">
-            <span class="post-user-name">${post.uid}</span>
-            <span class="post-time">${date}</span>
-          </div>
-        </div>
-        <div class="post-content">${post.text}</div>
-        ${imgSrc ? `<img src="${imgSrc}" class="post-image" alt="Mídia do post">` : ''}
-        
-        <div class="post-actions">
-          <button class="action-btn" id="btn-like-${post.id}" onclick="curtir('${post.id}')">
-            ${svgHeart} <span id="likes-${post.id}">${post.likesCount || 0}</span>
-          </button>
-          <button class="action-btn" onclick="toggleComments('${post.id}')">
-            ${svgComment} <span id="comments-count-${post.id}">${post.commentsCount || 0}</span>
-          </button>
-          ${btnDelete}
-        </div>
-
-        <div class="comments-section" id="comments-${post.id}">
-          <div id="comments-list-${post.id}"></div>
-          <div style="display: flex; gap: 8px; margin-top: 8px;">
-            <input type="text" class="input-comment" id="input-comment-${post.id}" placeholder="Escreva um comentário..." onkeypress="if(event.key === 'Enter') comentar('${post.id}')">
-            <button class="btn-post" id="btn-comment-${post.id}" onclick="comentar('${post.id}')">Enviar</button>
-          </div>
-          <p id="error-comment-${post.id}" style="color:#ff4b4b; font-size:12px; margin-top:4px; display:none;"></p>
-        </div>
-      `;
-      feedDiv.prepend(postEl);
-
-      // ⚡ CURTIDAS EM TEMPO REAL
-      onValue(ref(db, `posts/${post.id}/likes`), (snapshot) => {
-        const likes = snapshot.val() || {};
-        const btn = document.getElementById(`btn-like-${post.id}`);
-        const countSpan = document.getElementById(`likes-${post.id}`);
-        if (!btn || !countSpan) return;
-
-        countSpan.textContent = Object.keys(likes).length;
-        if (likes[userUid]) btn.classList.add('liked');
-        else btn.classList.remove('liked');
       });
 
-      // ⚡ COMENTÁRIOS EM TEMPO REAL (Puxa do Firebase SDK)
-      onValue(ref(db, `posts/${post.id}/comments`), (snapshot) => {
-        const comments = snapshot.val() || {};
-        const list = document.getElementById(`comments-list-${post.id}`);
-        const countSpan = document.getElementById(`comments-count-${post.id}`);
-        
-        if (!list || !countSpan) return;
-
-        // Atualiza o contador no botão de comentário
-        countSpan.textContent = Object.keys(comments).length;
-
-        // Limpa a lista e renderiza os comentários ordenados por data
-        list.innerHTML = '';
-        Object.values(comments).sort((a, b) => a.createdAt - b.createdAt).forEach(c => {
-          const div = document.createElement('div');
-          div.className = 'comment-item';
-          div.innerHTML = `<strong>${c.uid}</strong>: ${c.text}`;
-          list.appendChild(div);
-        });
-      });
+      document.getElementById('emptyState').style.display = encontrou === 0 ? 'block' : 'none';
     }
-
-    // =========================================
-    // CURTIR DIRETO NO FIREBASE
-    // =========================================
-    window.curtir = async function(postId) {
-      if (!userUid) return;
-      const btn = document.getElementById(`btn-like-${postId}`);
-      btn.disabled = true;
-      
-      try {
-        const likeRef = ref(db, `posts/${postId}/likes/${userUid}`);
-        const snapshot = await new Promise(res => onValue(likeRef, res, { onlyOnce: true }));
-
-        if (snapshot.exists()) {
-          await remove(likeRef);
-        } else {
-          await set(likeRef, true);
-        }
-      } catch (e) {
-        alert("Erro ao curtir: " + e.message);
-      }
-      
-      btn.disabled = false;
-    };
-
-    window.toggleComments = function(postId) {
-      const el = document.getElementById(`comments-${postId}`);
-      el.style.display = el.style.display === 'block' ? 'none' : 'block';
-    };
-
-    // =========================================
-    // COMENTAR (Envia via Worker)
-    // =========================================
-    window.comentar = async function(postId) {
-      const input = document.getElementById(`input-comment-${postId}`);
-      const btn = document.getElementById(`btn-comment-${postId}`);
-      const errorEl = document.getElementById(`error-comment-${postId}`);
-      const text = input.value.trim();
-      
-      if (!text || !currentToken) return;
-
-      btn.disabled = true;
-      btn.textContent = '...';
-      errorEl.style.display = 'none';
-
-      try {
-        const res = await fetch(window.WORKER_URL + '/api/social/comment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, postId: postId, text: text })
-        });
-        const data = await res.json();
-        
-        if (data.ok) {
-          input.value = ''; // Limpa o campo. A lista atualiza sozinha pelo onValue.
-        } else {
-          errorEl.textContent = data.erro || "Erro ao comentar.";
-          errorEl.style.display = 'block';
-        }
-      } catch (e) {
-        errorEl.textContent = "Erro de conexão.";
-        errorEl.style.display = 'block';
-      }
-
-      btn.disabled = false;
-      btn.textContent = 'Enviar';
-    };
-
-    // =========================================
-    // DELETAR POST (Envia via Worker)
-    // =========================================
-    window.deletarPost = async function(postId) {
-      if (!currentToken) return;
-      
-      if (!confirm("Tem certeza que deseja apagar este post? Isso não pode ser desfeito.")) return;
-
-      try {
-        const res = await fetch(window.WORKER_URL + '/api/social/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, postId: postId })
-        });
-        
-        const data = await res.json();
-        
-        if (data.ok) {
-          const postEl = document.getElementById(`post-${postId}`);
-          if (postEl) postEl.remove();
-        } else {
-          alert("Erro ao deletar: " + data.erro);
-        }
-      } catch (e) {
-        alert("Erro de conexão ao deletar.");
-      }
-    };
   </script>
 </body>
 </html>
