@@ -13,454 +13,160 @@
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({
-        appId: "5475922c-e999-4b42-b743-c7cde90db378",
-        safari_web_id: "web.onesignal.auto.3a869b75-1942-4792-8237-9de8041a4c17",
-        notifyButton: { enable: false },
-        allowLocalhostAsSecureOrigin: true
-      });
+      await OneSignal.init({ appId: "5475922c-e999-4b42-b743-c7cde90db378", allowLocalhostAsSecureOrigin: true });
       window.__OneSignal = OneSignal;
-      window.dispatchEvent(new Event("onesignal-ready"));
     });
   </script>
 
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-
-    :root, html[data-theme="dark"]{
-      --bg-1:#0a0e1a;--bg-2:#05070f;--canvas-bg:#0f1424;
-      --surface:#101626;--surface-2:#151c30;
-      --border:#1f2a44;--border-strong:#2d3b5c;
-      --text:#e8eef8;--text-2:#8fa0bd;
-      --accent:#4f8cff;--accent-2:#7aa8ff;
-      --accent-glow:rgba(79,140,255,0.35);
-      --accent-soft:rgba(79,140,255,0.1);
-      --shadow:rgba(0,0,0,0.55);
-      --menu-bg:rgba(10,15,28,0.9);
-      --toggle-bg:#151c30;--toggle-border:#2d3b5c;
-    }
-
-    html[data-theme="light"]{
-      --bg-1:#f7f9fc;--bg-2:#eef2f8;--canvas-bg:#ffffff;
-      --surface:#ffffff;--surface-2:#f5f8fd;
-      --border:#e2e8f2;--border-strong:#c8d3e5;
-      --text:#0f172a;--text-2:#5b6b85;
-      --accent:#2563eb;--accent-2:#3b82f6;
-      --accent-glow:rgba(37,99,235,0.25);
-      --accent-soft:rgba(37,99,235,0.07);
-      --shadow:rgba(15,23,42,0.08);
-      --menu-bg:rgba(255,255,255,0.92);
-      --toggle-bg:#f1f5fb;--toggle-border:#d6e0ee;
-    }
-
-    body{
-      background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
-      font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;
-      color:var(--text);min-height:100vh;display:flex;flex-direction:column;
-      transition:background .4s ease,color .3s ease;
-    }
-
-    /* ===== PERFIL ===== */
-    .profile-btn{
-      position:fixed;top:14px;right:16px;z-index:1100;
-      width:52px;height:52px;border-radius:50%;
-      background:linear-gradient(135deg,var(--accent),var(--accent-2));
-      display:flex;align-items:center;justify-content:center;
-      color:#fff;font-weight:700;font-size:20px;
-      cursor:pointer;overflow:hidden;
-      border:2px solid rgba(255,255,255,.1);
-      box-shadow:0 8px 22px var(--shadow);
-      transition:transform .2s;
-      user-select:none;
-    }
-    .profile-btn:hover{transform:scale(1.08)}
-    .profile-btn img{width:100%;height:100%;object-fit:cover}
-    .profile-btn.loading{cursor:default}
-
-    .profile-spinner{
-      width:22px;height:22px;
-      border:2.5px solid rgba(255,255,255,.25);
-      border-top-color:#fff;
-      border-radius:50%;
-      animation:spin .8s linear infinite;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    .profile-dropdown{
-      position:fixed;top:76px;right:16px;z-index:1120;
-      min-width:220px;
-      background:var(--menu-bg);
-      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      border:1px solid var(--border);border-radius:16px;
-      padding:8px;
-      box-shadow:0 20px 50px var(--shadow);
-      display:none;
-      animation:appShellFade .2s ease;
-    }
-    .profile-dropdown.active{display:block}
-    @keyframes appShellFade{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-
-    .profile-dropdown-header{padding:12px 14px;border-bottom:1px solid var(--border);margin-bottom:6px}
-    .profile-dropdown-header .name{color:var(--text);font-weight:600;font-size:.9rem}
-    .profile-dropdown-header .email{color:var(--text-2);font-size:.75rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-    .profile-dropdown-item{
-      display:flex;align-items:center;gap:10px;
-      width:100%;padding:10px 12px;border-radius:10px;
-      background:transparent;border:none;color:var(--text);
-      font-size:.85rem;cursor:pointer;font-family:inherit;
-      text-align:left;transition:background .15s;
-    }
-    .profile-dropdown-item:hover{background:var(--accent-soft)}
-    .profile-dropdown-item svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    .profile-dropdown-item.danger{color:#ef4444}
-    .profile-dropdown-item.danger svg{stroke:#ef4444}
-
-    /* ===== ÁREA CENTRAL (FEED) ===== */
-    .content-wrap{
-      flex:1;display:flex;flex-direction:column;align-items:center;
-      padding:20px;margin-top:90px;
-    }
-
-    .feed-container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
-
-    .create-post {
-      background: var(--surface); border-radius: 16px; padding: 16px;
-      box-shadow: 0 8px 24px var(--shadow); border: 1px solid var(--border);
-    }
-    .create-post textarea {
-      width: 100%; border: none; resize: none; outline: none; font-size: 15px;
-      background: transparent; color: var(--text); min-height: 60px; font-family: inherit;
-    }
-    .create-post textarea::placeholder { color: var(--text-2); }
-    .create-post .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+    :root, html[data-theme="dark"]{--bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;--border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--accent-2:#7aa8ff;--shadow:rgba(0,0,0,0.55);--menu-bg:rgba(10,15,28,0.9);}
+    html[data-theme="light"]{--bg-1:#f7f9fc;--bg-2:#eef2f8;--surface:#ffffff;--surface-2:#f5f8fd;--border:#e2e8f2;--text:#0f172a;--text-2:#5b6b85;--accent:#2563eb;--accent-2:#3b82f6;--shadow:rgba(15,23,42,0.08);--menu-bg:rgba(255,255,255,0.92);}
+    body{background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));font-family:'Segoe UI',sans-serif;color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
     
-    .btn-post {
-      background: var(--accent); color: white; border: none; padding: 8px 24px;
-      border-radius: 20px; font-weight: 600; cursor: pointer; transition: 0.2s; font-family: inherit;
-    }
-    .btn-post:disabled { background: var(--surface-2); color: var(--text-2); cursor: not-allowed; }
-    .btn-post:not(:disabled):hover { background: var(--accent-2); }
-
-    .post {
-      background: var(--surface); border-radius: 16px; padding: 16px;
-      box-shadow: 0 8px 24px var(--shadow); border: 1px solid var(--border);
-    }
-    .post-header { display: flex; align-items: center; margin-bottom: 12px; }
-    .post-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--surface-2); margin-right: 12px; object-fit: cover; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-2); }
-    .post-user-info { display: flex; flex-direction: column; }
-    .post-user-name { font-weight: 600; font-size: 15px; color: var(--text); }
-    .post-time { color: var(--text-2); font-size: 12px; }
-    .post-content { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; color: var(--text); }
-    .post-image { width: 100%; border-radius: 12px; margin-top: 12px; object-fit: cover; max-height: 500px; }
+    .profile-btn{position:fixed;top:14px;right:16px;z-index:1100;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:20px;cursor:pointer;overflow:hidden;box-shadow:0 8px 22px var(--shadow);}
+    .profile-btn img{width:100%;height:100%;object-fit:cover;}
+    .content-wrap{flex:1;display:flex;flex-direction:column;align-items:center;padding:20px;margin-top:90px;}
     
-    .post-actions { display: flex; gap: 16px; margin-top: 16px; color: var(--text-2); font-size: 14px; }
-    .post-actions span { cursor: pointer; display: flex; align-items: center; gap: 4px; transition: color .2s; }
-    .post-actions span:hover { color: var(--accent); }
+    .feed-container{width:100%;max-width:600px;display:flex;flex-direction:column;gap:16px;}
+    .create-post{background:var(--surface);border-radius:16px;padding:16px;box-shadow:0 8px 24px var(--shadow);border:1px solid var(--border);}
+    .create-post textarea{width:100%;border:none;resize:none;outline:none;font-size:15px;background:transparent;color:var(--text);min-height:60px;font-family:inherit;}
+    .create-post .actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;}
+    .btn-post{background:var(--accent);color:white;border:none;padding:8px 24px;border-radius:20px;font-weight:600;cursor:pointer;}
+    .btn-post:disabled{background:var(--surface-2);color:var(--text-2);cursor:not-allowed;}
 
-    .comments-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; display: none; }
-    .comment-item { font-size: 13px; margin-bottom: 8px; background: var(--surface-2); padding: 8px 12px; border-radius: 8px; }
-    .input-comment { width: 100%; background: var(--bg-1); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px; margin-top: 8px; outline: none; }
+    .post{background:var(--surface);border-radius:16px;padding:16px;box-shadow:0 8px 24px var(--shadow);border:1px solid var(--border);}
+    .post-header{display:flex;align-items:center;margin-bottom:12px;}
+    .post-avatar{width:42px;height:42px;border-radius:50%;background:var(--surface-2);margin-right:12px;display:flex;align-items:center;justify-content:center;font-weight:bold;}
+    .post-content{font-size:15px;line-height:1.5;white-space:pre-wrap;}
+    .post-image{width:100%;border-radius:12px;margin-top:12px;max-height:500px;object-fit:cover;}
+    
+    .post-actions{display:flex;gap:16px;margin-top:16px;color:var(--text-2);font-size:14px;align-items:center;}
+    .action-btn{display:flex;align-items:center;gap:6px;cursor:pointer;transition:color 0.2s;background:none;border:none;color:inherit;font-family:inherit;font-size:14px;padding:0;}
+    .action-btn:hover{color:var(--accent);}
+    .action-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+    .action-btn.liked svg{fill:#ff4b4b;stroke:#ff4b4b;}
 
-    /* ===== PAINEL DE TEMAS ===== */
-    .theme-panel{position:fixed;bottom:24px;right:24px;z-index:1050;background:var(--menu-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:48px;padding:6px;display:flex;gap:6px;border:1px solid var(--border);box-shadow:0 8px 20px var(--shadow)}
-    .theme-btn{background:transparent;border:none;border-radius:40px;padding:8px 14px;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-2);display:flex;align-items:center;gap:6px;transition:.2s;font-family:inherit}
-    .theme-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:.2s}
-    .theme-btn:hover{color:var(--text);background:var(--accent-soft)}
-    .theme-btn.active{background:var(--accent);color:#fff;box-shadow:0 0 12px var(--accent-glow)}
-    .theme-btn.active svg{stroke:#fff}
-
-    @media(max-width:550px){.theme-btn{font-size:.7rem;padding:6px 10px}.theme-btn svg{width:14px;height:14px}}
+    .comments-section{margin-top:12px;border-top:1px solid var(--border);padding-top:12px;display:none;}
+    .comment-item{font-size:13px;margin-bottom:8px;background:var(--surface-2);padding:8px 12px;border-radius:8px;}
+    .input-comment{width:100%;background:var(--bg-1);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;margin-top:8px;}
   </style>
 </head>
 <body>
 
-  <div class="profile-btn loading" id="profileBtn">
-    <div class="profile-spinner"></div>
-  </div>
+  <div class="profile-btn" id="profileBtn">U</div>
 
-  <div class="profile-dropdown" id="profileDropdown">
-    <div class="profile-dropdown-header">
-      <div class="name" id="pdName">Usuário</div>
-      <div class="email" id="pdEmail">—</div>
-    </div>
-    <button class="profile-dropdown-item" data-action="profile">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Meu perfil</span>
-    </button>
-    <button class="profile-dropdown-item" data-action="settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      <span>Configurações</span>
-    </button>
-    <button class="profile-dropdown-item danger" data-action="logout">
-      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span>Sair</span>
-    </button>
-  </div>
-
-  <!-- Área central onde vai o Feed -->
   <div class="content-wrap">
     <div class="feed-container">
-      
-      <!-- Caixa de postagem -->
       <div class="create-post" id="createPostBox" style="display:none;">
         <textarea id="postText" placeholder="O que está acontecendo?"></textarea>
-        <input type="file" id="postFile" accept="image/*" style="margin-top: 10px; font-size: 12px; color: var(--text-2);">
+        <input type="file" id="postFile" accept="image/*" style="margin-top: 10px; font-size: 12px;">
         <div class="actions">
           <span id="statusPost" style="font-size: 12px; color: var(--text-2);"></span>
           <button class="btn-post" id="btnPost" disabled>Publicar</button>
         </div>
       </div>
-
-      <!-- Feed de posts -->
       <div id="feed"></div>
-
     </div>
-  </div>
-
-  <div class="theme-panel">
-    <button id="themeDark" class="theme-btn active" data-set-theme="dark">
-      <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg> Dark
-    </button>
-    <button id="themeLight" class="theme-btn" data-set-theme="light">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg> Light
-    </button>
-    <button id="themeSystem" class="theme-btn" data-set-theme="system">
-      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Sistema
-    </button>
   </div>
 
   <script>
     window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
   </script>
 
-  <script src="/app-shell.js"></script>
-
   <script type="module">
-    // --- Inicializa o AppShell ---
-    if (typeof AppShell !== "undefined") {
-      try { new AppShell().mount(); } catch (e) { console.error("[CodeHUB] AppShell.mount():", e.message); }
-    }
-
-    // --- Controle de Temas ---
-    const html = document.documentElement;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-
-    function applyTheme(mode){
-      let effective = mode;
-      if (mode === 'system') effective = mq.matches ? 'dark' : 'light';
-      html.setAttribute('data-theme', effective);
-      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-      const btn = document.querySelector('[data-set-theme="' + mode + '"]');
-      if (btn) btn.classList.add('active');
-    }
-
-    function setTheme(mode){
-      localStorage.setItem('codehub-theme', mode);
-      applyTheme(mode);
-    }
-
-    document.querySelectorAll('[data-set-theme]').forEach(btn => {
-      btn.addEventListener('click', () => setTheme(btn.dataset.setTheme));
-    });
-
-    mq.addEventListener('change', () => {
-      if (localStorage.getItem('codehub-theme') === 'system') applyTheme('system');
-    });
-
-    setTheme(localStorage.getItem('codehub-theme') || 'dark');
-
-    // --- Menu do Perfil ---
-    const profileBtn = document.getElementById('profileBtn');
-    const profileDropdown = document.getElementById('profileDropdown');
-    const pdName = document.getElementById('pdName');
-    const pdEmail = document.getElementById('pdEmail');
-
-    profileBtn.addEventListener('click', (e) => {
-      if (profileBtn.classList.contains('loading')) return;
-      e.stopPropagation();
-      profileDropdown.classList.toggle('active');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#profileDropdown') && !e.target.closest('#profileBtn')) {
-        profileDropdown.classList.remove('active');
-      }
-    });
-
-    profileDropdown.querySelectorAll('.profile-dropdown-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const action = item.dataset.action;
-        profileDropdown.classList.remove('active');
-        if (action === 'logout') {
-          if (confirm('Sair da conta?')) {
-            document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-            location.reload();
-          }
-        }
-      });
-    });
-
-    // --- Firebase Auth e Feed ---
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-    import { getDatabase, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { getDatabase, ref, query, limitToLast, onChildAdded } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 
-    const cfg = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.firebasestorage.app",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
-    };
-
+    const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", databaseURL: "https://html-15e80-default-rtdb.firebaseio.com", projectId: "html-15e80", storageBucket: "html-15e80.firebasestorage.app", messagingSenderId: "1068148640439", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
     const app = initializeApp(cfg);
     const auth = getAuth(app);
     const db = getDatabase(app);
-    const WORKER_URL = window.WORKER_URL;
 
-    const createPostBox = document.getElementById('createPostBox');
-    const postText = document.getElementById('postText');
-    const postFile = document.getElementById('postFile');
-    const btnPost = document.getElementById('btnPost');
-    const statusPost = document.getElementById('statusPost');
-    const feedDiv = document.getElementById('feed');
-
-    let currentUser = null;
     let currentToken = null;
+    let userUid = null;
 
-    // Verifica se o usuário está logado
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        currentUser = user;
-        profileBtn.classList.remove('loading');
-        profileBtn.innerHTML = user.photoURL 
-          ? `<img src="${user.photoURL}" alt="Perfil">` 
-          : (user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U');
-        pdName.textContent = user.displayName || 'Usuário';
-        pdEmail.textContent = user.email || '—';
-        createPostBox.style.display = 'block';
-        
-        try { currentToken = await user.getIdToken(); } catch(e) {}
+        userUid = user.uid;
+        currentToken = await user.getIdToken();
+        document.getElementById('createPostBox').style.display = 'block';
+        document.getElementById('profileBtn').innerText = user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U';
         carregarFeed();
       } else {
-        document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-        profileBtn.style.display = 'none';
-        createPostBox.style.display = 'none';
-        feedDiv.innerHTML = '<p style="text-align:center;color:var(--text-2);">Faça login para ver o feed.</p>';
+        document.getElementById('createPostBox').style.display = 'none';
       }
     });
 
-    // Habilita o botão de postar
-    function checkFields() {
-      btnPost.disabled = postText.value.trim() === "" && postFile.files.length === 0;
-    }
-    postText.addEventListener('input', checkFields);
-    postFile.addEventListener('change', checkFields);
-
-    // --- Criar Post ---
-    btnPost.addEventListener('click', async () => {
-      if (!currentUser) return;
-      btnPost.disabled = true;
-      btnPost.textContent = 'Enviando...';
-      statusPost.textContent = "Fazendo upload e analisando imagem...";
-
-      const formData = new FormData();
-      formData.append("tokenid", currentToken);
-      formData.append("text", postText.value);
-      if (postFile.files.length > 0) formData.append("file", postFile.files[0]);
-
-      try {
-        const res = await fetch(WORKER_URL + '/api/social/post', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-
-        if (data.ok) {
-          statusPost.textContent = "✅ Post criado!";
-          postText.value = '';
-          postFile.value = '';
-          renderPost(data.post);
-        } else {
-          throw new Error(data.erro);
-        }
-      } catch (e) {
-        statusPost.textContent = "❌ Erro: " + e.message;
-      }
-
-      btnPost.textContent = 'Publicar';
-      btnPost.disabled = false;
-    });
-
-    // --- Carregar Feed do Firebase ---
     function carregarFeed() {
-      // Pega os últimos 20 posts do banco
       const feedQuery = query(ref(db, 'posts'), limitToLast(20));
       onChildAdded(feedQuery, (snapshot) => {
-        const post = snapshot.val();
-        renderPost(post);
+        renderPost(snapshot.val());
       });
     }
 
-    // --- Renderizar Post na Tela ---
     function renderPost(post) {
-      // Evita duplicar o post na tela se ele já foi renderizado
       if (document.getElementById(`post-${post.id}`)) return;
-
+      
       const postEl = document.createElement('div');
       postEl.className = 'post';
       postEl.id = `post-${post.id}`;
 
-      const date = new Date(post.createdAt).toLocaleString('pt-BR');
-      const tagsHtml = post.hashtags && post.hashtags.length 
-        ? `<div style="margin-top: 8px; font-size: 14px; color: var(--accent);">${post.hashtags.map(t => `#${t}`).join(' ')}</div>` 
-        : '';
+      const imgSrc = post.mediaUrl && currentToken ? `${post.mediaUrl}?tokenid=${encodeURIComponent(currentToken)}` : null;
 
-      // ⚠️ A imagem agora exige o token na URL
-      const imgSrc = post.mediaUrl && currentToken 
-        ? `${post.mediaUrl}?tokenid=${encodeURIComponent(currentToken)}` 
-        : null;
+      // SVGs
+      const svgHeart = `<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+      const svgComment = `<svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
 
       postEl.innerHTML = `
         <div class="post-header">
-          <div class="post-avatar">${post.uid ? post.uid.charAt(0).toUpperCase() : 'U'}</div>
-          <div class="post-user-info">
-            <span class="post-user-name">${post.uid}</span>
-            <span class="post-time">${date}</span>
-          </div>
+          <div class="post-avatar">${post.uid.charAt(0).toUpperCase()}</div>
+          <div style="font-weight: bold;">${post.uid}</div>
         </div>
-        <div class="post-content">${escapeHTML(post.text)}</div>
-        ${tagsHtml}
-        ${imgSrc ? `<img src="${imgSrc}" class="post-image" alt="Mídia do post">` : ''}
+        <div class="post-content">${post.text}</div>
+        ${imgSrc ? `<img src="${imgSrc}" class="post-image">` : ''}
         
         <div class="post-actions">
-          <span onclick="curtir('${post.id}')">❤️ <span id="likes-${post.id}">0</span></span>
-          <span onclick="toggleComments('${post.id}')">💬 <span id="comments-count-${post.id}">0</span></span>
+          <button class="action-btn" id="btn-like-${post.id}" onclick="curtir('${post.id}')">
+            ${svgHeart} <span id="likes-${post.id}">${post.likesCount || 0}</span>
+          </button>
+          <button class="action-btn" onclick="toggleComments('${post.id}')">
+            ${svgComment} <span id="comments-count-${post.id}">0</span>
+          </button>
         </div>
 
         <div class="comments-section" id="comments-${post.id}">
           <div id="comments-list-${post.id}"></div>
-          <input type="text" class="input-comment" placeholder="Escreva um comentário..." onkeypress="if(event.key === 'Enter') comentar('${post.id}', this.value, this)">
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <input type="text" class="input-comment" id="input-comment-${post.id}" placeholder="Escreva um comentário..." onkeypress="if(event.key === 'Enter') comentar('${post.id}')">
+            <button class="btn-post" id="btn-comment-${post.id}" onclick="comentar('${post.id}')">Enviar</button>
+          </div>
+          <p id="error-comment-${post.id}" style="color:#ff4b4b; font-size:12px; margin-top:4px; display:none;"></p>
         </div>
       `;
-      feedDiv.prepend(postEl);
+      document.getElementById('feed').prepend(postEl);
     }
 
-    // --- Funções de Curtir e Comentar ---
     window.curtir = async function(postId) {
       if (!currentToken) return;
+      const btn = document.getElementById(`btn-like-${postId}`);
+      btn.disabled = true;
+      
       try {
-        await fetch(WORKER_URL + '/api/social/like', {
+        const res = await fetch(WORKER_URL + '/api/social/like', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, postId: postId, action: 'like' })
+          body: JSON.stringify({ tokenid: currentToken, postId: postId })
         });
-        const el = document.getElementById(`likes-${postId}`);
-        if (el) el.textContent = parseInt(el.textContent) + 1;
-      } catch(e) {}
+        const data = await res.json();
+        if (data.ok) {
+          document.getElementById(`likes-${postId}`).textContent = data.total;
+          if (data.curtido) btn.classList.add('liked');
+          else btn.classList.remove('liked');
+        }
+      } catch (e) {}
+      btn.disabled = false;
     };
 
     window.toggleComments = function(postId) {
@@ -468,36 +174,46 @@
       el.style.display = el.style.display === 'block' ? 'none' : 'block';
     };
 
-    window.comentar = async function(postId, text, inputEl) {
-      if (!currentToken || !text.trim()) return;
+    window.comentar = async function(postId) {
+      const input = document.getElementById(`input-comment-${postId}`);
+      const btn = document.getElementById(`btn-comment-${postId}`);
+      const errorEl = document.getElementById(`error-comment-${postId}`);
+      const text = input.value.trim();
+      
+      if (!text || !currentToken) return;
+
+      btn.disabled = true;
+      btn.textContent = '...';
+      errorEl.style.display = 'none';
+
       try {
-        await fetch(WORKER_URL + '/api/social/comment', {
+        const res = await fetch(WORKER_URL + '/api/social/comment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tokenid: currentToken, postId: postId, text: text })
         });
-        const list = document.getElementById(`comments-list-${postId}`);
-        const div = document.createElement('div');
-        div.className = 'comment-item';
-        div.textContent = text;
-        list.appendChild(div);
-        inputEl.value = '';
-      } catch(e) {}
-    };
-
-    function escapeHTML(str) {
-      return String(str || '').replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-      );
-    }
-
-    // Atualiza o token a cada 1 minuto (Firebase expira em 1h)
-    setInterval(async () => {
-      if (auth.currentUser) {
-        try { currentToken = await auth.currentUser.getIdToken(true); } catch(e) {}
+        const data = await res.json();
+        
+        if (data.ok) {
+          input.value = '';
+          document.getElementById(`comments-count-${postId}`).textContent = data.total;
+          const list = document.getElementById(`comments-list-${postId}`);
+          const div = document.createElement('div');
+          div.className = 'comment-item';
+          div.textContent = text;
+          list.appendChild(div);
+        } else {
+          errorEl.textContent = data.erro || "Erro ao comentar.";
+          errorEl.style.display = 'block';
+        }
+      } catch (e) {
+        errorEl.textContent = "Erro de conexão.";
+        errorEl.style.display = 'block';
       }
-    }, 60000);
 
+      btn.disabled = false;
+      btn.textContent = 'Enviar';
+    };
   </script>
 </body>
 </html>
