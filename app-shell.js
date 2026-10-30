@@ -1,11 +1,13 @@
-// app-shell.js v2.5.0 - Widget de Perfil (Canto Inferior Esquerdo, sem música)
+// app-shell.js v2.6.0 - Responsivo (Desktop: Widget Inferior Esq / Mobile: Bolinha Superior Dir)
 (function () {
   "use strict";
 
   const WORKER_URL = window.WORKER_URL || "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
   const STYLES = `
-    /* Botão do Menu (Esquerda) */
+    /* =========================================
+       ESTILOS GERAIS (MENU LATERAL E BOTÃO ESQUERDO)
+       ========================================= */
     .app-shell-menu-btn{
       position:fixed;top:14px;left:16px;z-index:1200;
       width:52px;height:52px;border-radius:16px;
@@ -23,27 +25,19 @@
     .app-shell-menu-btn.open span:nth-child(2){opacity:0;transform:scaleX(0)}
     .app-shell-menu-btn.open span:nth-child(3){transform:translateY(-7.5px) rotate(-45deg);background:#4f8cff}
 
-    /* Overlay do Menu Lateral */
     .app-shell-overlay{
       position:fixed;inset:0;background:rgba(0,0,0,.55);
       backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-      opacity:0;pointer-events:none;transition:opacity .35s ease;
-      z-index:1210;
+      opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:1210;
     }
     .app-shell-overlay.active{opacity:1;pointer-events:auto}
 
-    /* Menu Lateral */
     .app-shell-menu{
-      position:fixed;top:0;left:0;height:100vh;
-      width:300px;max-width:85vw;
-      background:rgba(10,15,28,0.9);
-      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-      border-right:1px solid #1f2a44;
-      z-index:1220;
-      transform:translateX(-105%);
+      position:fixed;top:0;left:0;height:100vh;width:300px;max-width:85vw;
+      background:rgba(10,15,28,0.9);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border-right:1px solid #1f2a44;z-index:1220;transform:translateX(-105%);
       transition:transform .42s cubic-bezier(.34,1.2,.64,1);
-      display:flex;flex-direction:column;
-      box-shadow:8px 0 40px rgba(0,0,0,.55);
+      display:flex;flex-direction:column;box-shadow:8px 0 40px rgba(0,0,0,.55);
     }
     .app-shell-menu.active{transform:translateX(0)}
 
@@ -55,20 +49,16 @@
     .app-shell-nav{padding:16px 12px;flex:1;overflow-y:auto}
 
     .app-shell-item{
-      display:flex;align-items:center;gap:14px;
-      width:100%;padding:14px 16px;border-radius:14px;
-      background:transparent;border:none;color:#e8eef8;
-      font-size:.95rem;font-weight:500;cursor:pointer;text-align:left;
-      transition:all .2s ease;font-family:inherit;margin-bottom:4px;
+      display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:14px;
+      background:transparent;border:none;color:#e8eef8;font-size:.95rem;font-weight:500;
+      cursor:pointer;text-align:left;transition:all .2s ease;font-family:inherit;margin-bottom:4px;
     }
     .app-shell-item:hover{background:rgba(79,140,255,.1);transform:translateX(4px)}
     .app-shell-item:active{transform:translateX(2px) scale(.98)}
     .app-shell-item.active{background:rgba(79,140,255,.15);border-left:3px solid #4f8cff}
     .app-shell-item .icon{
-      width:38px;height:38px;border-radius:11px;
-      background:rgba(79,140,255,.1);
-      display:flex;align-items:center;justify-content:center;
-      flex-shrink:0;transition:all .25s;
+      width:38px;height:38px;border-radius:11px;background:rgba(79,140,255,.1);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s;
     }
     .app-shell-item .icon svg{width:20px;height:20px;stroke:#4f8cff;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
     .app-shell-item:hover .icon{background:#4f8cff;transform:rotate(-6deg) scale(1.05);box-shadow:0 0 15px rgba(79,140,255,.35)}
@@ -78,109 +68,20 @@
 
     .app-shell-footer{padding:18px 22px;border-top:1px solid #1f2a44;color:#8fa0bd;font-size:.72rem;text-align:center;letter-spacing:.3px}
 
-    /* =========================================
-       WIDGET DE PERFIL (Canto Inferior Esquerdo)
-       ========================================= */
-    .app-shell-profile-widget {
-      position: fixed;
-      bottom: 20px;  /* Posicionado na parte de baixo */
-      left: 20px;    /* Posicionado na esquerda */
-      z-index: 1200;
-      display: none;
-      align-items: center;
-      gap: 10px;
-      background: rgba(10,15,28,0.9);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid #1f2a44;
-      border-radius: 50px; /* Formato de pílula */
-      padding: 6px 16px 6px 6px;
-      cursor: pointer;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.55);
-      transition: all .2s ease;
-      user-select: none;
-      font-family: inherit;
-      max-width: 250px;
-    }
-    .app-shell-profile-widget.show { display: flex; }
-    .app-shell-profile-widget:hover { 
-      border-color: #4f8cff; 
-      transform: translateY(-3px);
-      box-shadow: 0 10px 25px rgba(79,140,255,.25);
-    }
-
-    /* Foto do Perfil */
-    .app-shell-profile-avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: linear-gradient(135deg,#4f8cff,#7aa8ff);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-weight: 700;
-      font-size: 16px;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-    .app-shell-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-    /* Informações (Apenas Nome) */
-    .app-shell-profile-info {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      overflow: hidden;
-    }
-    
-    .app-shell-profile-name {
-      color: #e8eef8;
-      font-size: 0.9rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Spinner de loading */
     .app-shell-spinner{
-      width:18px;height:18px;
-      border:2.5px solid rgba(255,255,255,.25);
-      border-top-color:#fff;
-      border-radius:50%;
-      animation:appShellSpin .8s linear infinite;
+      width:18px;height:18px;border:2.5px solid rgba(255,255,255,.25);
+      border-top-color:#fff;border-radius:50%;animation:appShellSpin .8s linear infinite;
     }
     @keyframes appShellSpin{to{transform:rotate(360deg)}}
-
-    /* Dropdown do Menu do Usuário (Abre para cima) */
-    .app-shell-dropdown{
-      position:fixed;
-      bottom: 75px; /* Acima do widget */
-      left: 20px;   /* Alinhado à esquerda */
-      z-index:1230;
-      min-width:220px;
-      background:rgba(10,15,28,0.95);
-      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      border:1px solid #1f2a44;border-radius:16px;
-      padding:8px;
-      box-shadow:0 20px 50px rgba(0,0,0,.6);
-      display:none;
-      animation:appShellFadeUp .2s ease;
-    }
-    .app-shell-dropdown.active{display:block}
-    @keyframes appShellFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
     .app-shell-dropdown-header{padding:12px 14px;border-bottom:1px solid #1f2a44;margin-bottom:6px}
     .app-shell-dropdown-header .name{color:#e8eef8;font-weight:600;font-size:.9rem}
     .app-shell-dropdown-header .email{color:#8fa0bd;font-size:.75rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
     .app-shell-dropdown-item{
-      display:flex;align-items:center;gap:10px;
-      width:100%;padding:10px 12px;border-radius:10px;
-      background:transparent;border:none;color:#e8eef8;
-      font-size:.85rem;cursor:pointer;font-family:inherit;
-      text-align:left;transition:background .15s;
+      display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;
+      background:transparent;border:none;color:#e8eef8;font-size:.85rem;cursor:pointer;
+      font-family:inherit;text-align:left;transition:background .15s;
     }
     .app-shell-dropdown-item:hover{background:rgba(79,140,255,.15)}
     .app-shell-dropdown-item svg{width:16px;height:16px;stroke:#4f8cff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -188,8 +89,120 @@
     .app-shell-dropdown-item.danger svg{stroke:#ef4444}
     .app-shell-dropdown-item .beta{
       margin-left:auto;font-size:.65rem;font-weight:700;
-      background:rgba(79,140,255,.2);color:#7aa8ff;
-      padding:2px 6px;border-radius:6px;letter-spacing:.4px;
+      background:rgba(79,140,255,.2);color:#7aa8ff;padding:2px 6px;border-radius:6px;letter-spacing:.4px;
+    }
+
+    /* =========================================
+       ESTILO MOBILE (PADRÃO): Bolinha no Canto Superior Direito
+       ========================================= */
+    .app-shell-profile-widget {
+      position: fixed;
+      top: 14px;
+      right: 16px;
+      z-index: 1200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg,#4f8cff,#7aa8ff);
+      border: 2px solid rgba(255,255,255,.1);
+      box-shadow: 0 8px 22px rgba(0,0,0,.55);
+      cursor: pointer;
+      transition: transform .2s;
+      user-select: none;
+      overflow: hidden;
+    }
+    .app-shell-profile-widget.show { display: flex; }
+    .app-shell-profile-widget:hover { transform: scale(1.08); }
+
+    .app-shell-profile-avatar {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 20px;
+    }
+    .app-shell-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* No mobile, o nome fica escondido */
+    .app-shell-profile-info { display: none; }
+
+    .app-shell-dropdown{
+      position:fixed;top:76px;right:16px;z-index:1230;min-width:220px;
+      background:rgba(10,15,28,0.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      border:1px solid #1f2a44;border-radius:16px;padding:8px;
+      box-shadow:0 20px 50px rgba(0,0,0,.6);display:none;animation:appShellFadeDown .2s ease;
+    }
+    .app-shell-dropdown.active{display:block}
+    @keyframes appShellFadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+
+    /* =========================================
+       ESTILO DESKTOP (Telas a partir de 768px):
+       Widget Retangular no Canto Inferior Esquerdo
+       ========================================= */
+    @media (min-width: 768px) {
+      .app-shell-profile-widget {
+        top: auto;
+        bottom: 20px; /* Canto inferior */
+        right: auto;
+        left: 20px;   /* Canto esquerdo */
+        width: auto;
+        height: auto;
+        justify-content: flex-start;
+        border-radius: 50px;
+        background: rgba(10,15,28,0.9);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid #1f2a44;
+        padding: 6px 16px 6px 6px;
+        gap: 10px;
+        max-width: 250px;
+      }
+      .app-shell-profile-widget:hover { 
+        border-color: #4f8cff; 
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(79,140,255,.25);
+      }
+
+      .app-shell-profile-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+
+      /* No desktop, o nome aparece */
+      .app-shell-profile-info {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .app-shell-profile-name {
+        color: #e8eef8;
+        font-size: 0.9rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Menu dropdown abre para cima no desktop */
+      .app-shell-dropdown {
+        top: auto;
+        bottom: 75px;
+        right: auto;
+        left: 20px;
+        animation: appShellFadeUp .2s ease;
+      }
+      @keyframes appShellFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     }
   `;
 
@@ -441,7 +454,6 @@
       this._menu = menu;
     }
 
-    // Widget renderizado sem música e no canto inferior esquerdo
     _renderProfileWidget() {
       let p = document.getElementById('appShellProfileWidget');
       if (!p){
