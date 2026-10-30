@@ -5,34 +5,105 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spotify — Tocando agora</title>
 <style>
-  :root { --bg: #121212; --card: #181818; --text: #fff; --muted: #b3b3b3; --green: #1db954; --border: #282828; }
+  :root { 
+    --bg: #121212; 
+    --card: #181818; 
+    --text: #fff; 
+    --muted: #b3b3b3; 
+    --green: #1db954; 
+    --border: #282828; 
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-  .card { background: var(--card); border: 1px solid var(--border); padding: 24px; border-radius: 16px; width: 100%; max-width: 340px; text-align: center; }
-  .album { width: 100%; aspect-ratio: 1/1; border-radius: 10px; margin-bottom: 16px; background: #282828; object-fit: cover; }
+  body { 
+    font-family: system-ui, -apple-system, sans-serif; 
+    background: var(--bg); 
+    color: var(--text); 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 100vh; 
+    padding: 20px; 
+  }
+  .card { 
+    background: var(--card); 
+    border: 1px solid var(--border); 
+    padding: 24px; 
+    border-radius: 16px; 
+    width: 100%; 
+    max-width: 340px; 
+    text-align: center; 
+  }
+  .album { 
+    width: 100%; 
+    aspect-ratio: 1/1; 
+    border-radius: 10px; 
+    margin-bottom: 16px; 
+    background: #282828; 
+    object-fit: cover; 
+  }
   .titulo { font-size: 1.15rem; font-weight: 700; line-height: 1.3; }
   .artista { color: var(--muted); margin-top: 4px; font-size: .9rem; }
-  .progresso { height: 4px; background: #333; border-radius: 2px; margin-top: 16px; overflow: hidden; }
-  .barra { height: 100%; background: var(--green); width: 0%; transition: width .3s linear; }
-  a.link { color: var(--green); display: inline-block; margin-top: 16px; font-size: .9rem; text-decoration: none; }
-  a.btn { display: inline-block; padding: 12px 24px; background: var(--green); color: #000; border: none; border-radius: 24px; font-weight: 700; cursor: pointer; text-decoration: none; margin-top: 16px; }
-  .status { color: var(--muted); font-size: .9rem; min-height: 20px; margin-bottom: 8px; }
+  .progresso { 
+    height: 4px; 
+    background: #333; 
+    border-radius: 2px; 
+    margin-top: 16px; 
+    overflow: hidden; 
+  }
+  .barra { 
+    height: 100%; 
+    background: var(--green); 
+    width: 0%; 
+    transition: width .3s linear; 
+  }
+  a.link { 
+    color: var(--green); 
+    display: inline-block; 
+    margin-top: 16px; 
+    font-size: .9rem; 
+    text-decoration: none; 
+  }
+  a.btn { 
+    display: inline-block; 
+    padding: 12px 24px; 
+    background: var(--green); 
+    color: #000; 
+    border: none; 
+    border-radius: 24px; 
+    font-weight: 700; 
+    cursor: pointer; 
+    text-decoration: none; 
+    margin-top: 16px; 
+  }
+  .status { 
+    color: var(--muted); 
+    font-size: .9rem; 
+    min-height: 20px; 
+    margin-bottom: 8px; 
+  }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <div class="card">
-  <div id="status" class="status">Aguardando...</div>
-  <img id="capa" class="album hidden" alt="">
+  <div id="status" class="status">Verificando...</div>
+  <img id="capa" class="album hidden" alt="Capa do álbum">
   <div id="titulo" class="titulo"></div>
   <div id="artista" class="artista"></div>
   <div class="progresso"><div id="barra" class="barra"></div></div>
   <a id="link" class="link hidden" target="_blank" rel="noopener">Abrir no Spotify</a>
-  <a id="btnConectar" class="btn hidden" href="https://proud-flower-677b.braatzjunioralexandre5.workers.dev/spotify/login">Conectar Spotify</a>
+  <a id="btnConectar" class="btn hidden" href="#">Conectar Spotify</a>
 </div>
 
 <script>
 (function () {
+  // ⚠️ URL DO SEU WORKER NA CLOUDFLARE
+  const API_BASE = 'https://proud-flower-677b.braatzjunioralexandre5.workers.dev';
+  
+  // ⚠️ CREDENCIAIS DO SPOTIFY
+  const SPOTIFY_CLIENT_ID = '35cd8fd37f5b455b8957151a7e43c694';
+  const REDIRECT_URI = 'https://codehub.giize.com/spotify.html';
+
   const status = document.getElementById('status');
   const capa = document.getElementById('capa');
   const titulo = document.getElementById('titulo');
@@ -41,72 +112,114 @@
   const link = document.getElementById('link');
   const btnConectar = document.getElementById('btnConectar');
 
-  // Pega o token da URL (o Worker acabou de mandar)
+  // Monta o link de autorização do Spotify
+  btnConectar.href = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=user-read-currently-playing%20user-read-playback-state`;
+
   const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('access_token');
+  const code = urlParams.get('code');
 
-  if (!token) {
-    status.textContent = 'Spotify não conectado.';
-    btnConectar.classList.remove('hidden');
-    return;
-  }
+  if (code) {
+    status.textContent = 'Autenticando com o Spotify...';
+    
+    // Limpa o ?code= da URL para ficar bonito e não vazar
+    window.history.replaceState({}, document.title, window.location.pathname);
 
-  status.textContent = 'Buscando música...';
-
-  function buscarMusica() {
-    fetch('https://api.spotify.com/v1/me/player/currently-playing', {
-      headers: { 'Authorization': 'Bearer ' + token }
+    // Manda o código para o Worker trocar pelo token
+    fetch(API_BASE + '/api/spotify/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
     })
-    .then(response => {
-      if (response.status === 204) {
-        return null; // Nada tocando
-      }
-      if (response.status === 401) {
-        // Token expirou (dura 1 hora)
-        status.textContent = 'Sessão expirada. Conecte novamente.';
-        btnConectar.classList.remove('hidden');
-        clearInterval(loop);
-        return null;
-      }
-      return response.json();
-    })
+    .then(res => res.json())
     .then(data => {
-      if (!data || !data.item) {
-        status.textContent = 'Nada tocando agora';
-        capa.classList.add('hidden');
-        link.classList.add('hidden');
-        titulo.textContent = '';
-        artista.textContent = '';
-        barra.style.width = '0%';
-        return;
-      }
-
-      status.textContent = '';
-      if (data.item.album.images && data.item.album.images.length > 0) {
-        capa.src = data.item.album.images[0].url;
-        capa.classList.remove('hidden');
-      } else {
-        capa.classList.add('hidden');
+      if (data.erro_spotify) {
+        throw new Error(JSON.stringify(data.erro_spotify));
       }
       
-      titulo.textContent = data.item.name;
-      artista.textContent = data.item.artists.map(a => a.name).join(', ');
+      // Salva o token no navegador (dura 1 hora)
+      localStorage.setItem('spotify_token', data.access_token);
+      localStorage.setItem('spotify_token_time', Date.now());
       
-      const pct = (data.progress_ms / data.item.duration_ms) * 100;
-      barra.style.width = pct + '%';
-
-      if (data.item.external_urls && data.item.external_urls.spotify) {
-        link.href = data.item.external_urls.spotify;
-        link.classList.remove('hidden');
-      }
+      iniciarPlayer(data.access_token);
     })
-    .catch(err => console.error(err));
+    .catch(err => {
+      status.textContent = 'Erro ao conectar. Tente novamente.';
+      btnConectar.classList.remove('hidden');
+      console.error('Erro de Autenticação:', err);
+    });
+
+  } else {
+    // Tenta pegar o token salvo no navegador
+    const tokenSalvo = localStorage.getItem('spotify_token');
+    const tempoSalvo = localStorage.getItem('spotify_token_time');
+    
+    // Verifica se o token ainda é válido (menos de 55 minutos)
+    if (tokenSalvo && tempoSalvo && (Date.now() - tempoSalvo < 3300000)) {
+      iniciarPlayer(tokenSalvo);
+    } else {
+      status.textContent = 'Spotify não conectado.';
+      btnConectar.classList.remove('hidden');
+    }
   }
 
-  // Busca agora, e depois a cada 2 segundos
-  buscarMusica();
-  const loop = setInterval(buscarMusica, 2000);
+  function iniciarPlayer(token) {
+    status.textContent = 'Buscando música...';
+    btnConectar.classList.add('hidden');
 
+    function buscarMusica() {
+      fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(response => {
+        if (response.status === 204) return null; // Nada tocando
+        if (response.status === 401) {
+          // Token expirou
+          status.textContent = 'Sessão expirada. Conecte novamente.';
+          btnConectar.classList.remove('hidden');
+          localStorage.removeItem('spotify_token');
+          clearInterval(loop);
+          return null;
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (!data || !data.item) {
+          status.textContent = 'Nada tocando agora';
+          capa.classList.add('hidden');
+          link.classList.add('hidden');
+          titulo.textContent = '';
+          artista.textContent = '';
+          barra.style.width = '0%';
+          return;
+        }
+
+        status.textContent = '';
+        if (data.item.album.images && data.item.album.images.length > 0) {
+          capa.src = data.item.album.images[0].url;
+          capa.classList.remove('hidden');
+        } else {
+          capa.classList.add('hidden');
+        }
+        
+        titulo.textContent = data.item.name;
+        artista.textContent = data.item.artists.map(a => a.name).join(', ');
+        
+        // Calcula a porcentagem da barra de progresso
+        const pct = (data.progress_ms / data.item.duration_ms) * 100;
+        barra.style.width = pct + '%';
+
+        if (data.item.external_urls && data.item.external_urls.spotify) {
+          link.href = data.item.external_urls.spotify;
+          link.classList.remove('hidden');
+        }
+      })
+      .catch(err => console.error('Erro ao buscar música:', err));
+    }
+
+    // Busca a música agora e agenda para atualizar a cada 2 segundos
+    buscarMusica();
+    const loop = setInterval(buscarMusica, 2000);
+  }
 })();
 </script>
 </body>
