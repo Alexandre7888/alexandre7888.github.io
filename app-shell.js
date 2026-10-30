@@ -1,4 +1,4 @@
-// app-shell.js v2.6.0 - Responsivo (Desktop: Widget Inferior Esq / Mobile: Bolinha Superior Dir)
+// app-shell.js v2.8.0 - Gavetas (Hover no Desktop, Clique no Mobile)
 (function () {
   "use strict";
 
@@ -6,225 +6,156 @@
 
   const STYLES = `
     /* =========================================
-       ESTILOS GERAIS (MENU LATERAL E BOTÃO ESQUERDO)
+       GAVETAS LATERAIS
        ========================================= */
-    .app-shell-menu-btn{
-      position:fixed;top:14px;left:16px;z-index:1200;
-      width:52px;height:52px;border-radius:16px;
-      background:rgba(10,15,28,0.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-      border:1px solid #1f2a44;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-      cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,0.55);
-      transition:all .3s cubic-bezier(.34,1.56,.64,1);
-      font-family:inherit;
-    }
-    .app-shell-menu-btn:hover{transform:scale(1.06);border-color:#4f8cff;box-shadow:0 8px 25px rgba(79,140,255,.35)}
-    .app-shell-menu-btn:active{transform:scale(.95)}
-    .app-shell-menu-btn span{display:block;width:22px;height:2.5px;border-radius:3px;background:#e8eef8;transition:all .35s cubic-bezier(.68,-.55,.27,1.55)}
-    .app-shell-menu-btn.open span:nth-child(1){transform:translateY(7.5px) rotate(45deg);background:#4f8cff}
-    .app-shell-menu-btn.open span:nth-child(2){opacity:0;transform:scaleX(0)}
-    .app-shell-menu-btn.open span:nth-child(3){transform:translateY(-7.5px) rotate(-45deg);background:#4f8cff}
-
-    .app-shell-overlay{
-      position:fixed;inset:0;background:rgba(0,0,0,.55);
-      backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-      opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:1210;
-    }
-    .app-shell-overlay.active{opacity:1;pointer-events:auto}
-
-    .app-shell-menu{
-      position:fixed;top:0;left:0;height:100vh;width:300px;max-width:85vw;
-      background:rgba(10,15,28,0.9);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-      border-right:1px solid #1f2a44;z-index:1220;transform:translateX(-105%);
-      transition:transform .42s cubic-bezier(.34,1.2,.64,1);
-      display:flex;flex-direction:column;box-shadow:8px 0 40px rgba(0,0,0,.55);
-    }
-    .app-shell-menu.active{transform:translateX(0)}
-
-    .app-shell-menu-header{padding:28px 24px 20px;border-bottom:1px solid #1f2a44}
-    .app-shell-menu-header h2{color:#e8eef8;font-size:1.35rem;font-weight:700;letter-spacing:-.5px;display:flex;align-items:center;gap:10px}
-    .app-shell-menu-header h2::before{content:'';width:10px;height:10px;border-radius:50%;background:#4f8cff;box-shadow:0 0 12px #4f8cff}
-    .app-shell-menu-header p{color:#8fa0bd;font-size:.78rem;margin-top:6px;letter-spacing:.4px}
-
-    .app-shell-nav{padding:16px 12px;flex:1;overflow-y:auto}
-
-    .app-shell-item{
-      display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:14px;
-      background:transparent;border:none;color:#e8eef8;font-size:.95rem;font-weight:500;
-      cursor:pointer;text-align:left;transition:all .2s ease;font-family:inherit;margin-bottom:4px;
-    }
-    .app-shell-item:hover{background:rgba(79,140,255,.1);transform:translateX(4px)}
-    .app-shell-item:active{transform:translateX(2px) scale(.98)}
-    .app-shell-item.active{background:rgba(79,140,255,.15);border-left:3px solid #4f8cff}
-    .app-shell-item .icon{
-      width:38px;height:38px;border-radius:11px;background:rgba(79,140,255,.1);
-      display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s;
-    }
-    .app-shell-item .icon svg{width:20px;height:20px;stroke:#4f8cff;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-    .app-shell-item:hover .icon{background:#4f8cff;transform:rotate(-6deg) scale(1.05);box-shadow:0 0 15px rgba(79,140,255,.35)}
-    .app-shell-item:hover .icon svg{stroke:#fff}
-    .app-shell-item .label{display:flex;flex-direction:column;gap:2px}
-    .app-shell-item .label small{color:#8fa0bd;font-size:.72rem;font-weight:400}
-
-    .app-shell-footer{padding:18px 22px;border-top:1px solid #1f2a44;color:#8fa0bd;font-size:.72rem;text-align:center;letter-spacing:.3px}
-
-    .app-shell-spinner{
-      width:18px;height:18px;border:2.5px solid rgba(255,255,255,.25);
-      border-top-color:#fff;border-radius:50%;animation:appShellSpin .8s linear infinite;
-    }
-    @keyframes appShellSpin{to{transform:rotate(360deg)}}
-
-    .app-shell-dropdown-header{padding:12px 14px;border-bottom:1px solid #1f2a44;margin-bottom:6px}
-    .app-shell-dropdown-header .name{color:#e8eef8;font-weight:600;font-size:.9rem}
-    .app-shell-dropdown-header .email{color:#8fa0bd;font-size:.75rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-    .app-shell-dropdown-item{
-      display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;
-      background:transparent;border:none;color:#e8eef8;font-size:.85rem;cursor:pointer;
-      font-family:inherit;text-align:left;transition:background .15s;
-    }
-    .app-shell-dropdown-item:hover{background:rgba(79,140,255,.15)}
-    .app-shell-dropdown-item svg{width:16px;height:16px;stroke:#4f8cff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    .app-shell-dropdown-item.danger{color:#ef4444}
-    .app-shell-dropdown-item.danger svg{stroke:#ef4444}
-    .app-shell-dropdown-item .beta{
-      margin-left:auto;font-size:.65rem;font-weight:700;
-      background:rgba(79,140,255,.2);color:#7aa8ff;padding:2px 6px;border-radius:6px;letter-spacing:.4px;
-    }
-
-    /* =========================================
-       ESTILO MOBILE (PADRÃO): Bolinha no Canto Superior Direito
-       ========================================= */
-    .app-shell-profile-widget {
+    
+    /* Gaveta Esquerda */
+    .app-shell-tab-left {
       position: fixed;
-      top: 14px;
-      right: 16px;
-      z-index: 1200;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: linear-gradient(135deg,#4f8cff,#7aa8ff);
-      border: 2px solid rgba(255,255,255,.1);
-      box-shadow: 0 8px 22px rgba(0,0,0,.55);
-      cursor: pointer;
-      transition: transform .2s;
-      user-select: none;
-      overflow: hidden;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%) translateX(-100%);
+      width: 260px;
+      background: rgba(10, 15, 28, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid #1f2a44;
+      border-left: none;
+      border-radius: 0 16px 16px 0;
+      padding: 20px 12px;
+      z-index: 2000;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .app-shell-profile-widget.show { display: flex; }
-    .app-shell-profile-widget:hover { transform: scale(1.08); }
-
-    .app-shell-profile-avatar {
-      width: 100%;
-      height: 100%;
+    .app-shell-tab-left::after {
+      content: '>';
+      position: absolute;
+      right: -28px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+      height: 60px;
+      background: rgba(10, 15, 28, 0.95);
+      border: 1px solid #1f2a44;
+      border-left: none;
+      border-radius: 0 12px 12px 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
-      font-weight: 700;
-      font-size: 20px;
+      color: #4f8cff;
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
     }
-    .app-shell-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-    /* No mobile, o nome fica escondido */
-    .app-shell-profile-info { display: none; }
-
-    .app-shell-dropdown{
-      position:fixed;top:76px;right:16px;z-index:1230;min-width:220px;
-      background:rgba(10,15,28,0.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      border:1px solid #1f2a44;border-radius:16px;padding:8px;
-      box-shadow:0 20px 50px rgba(0,0,0,.6);display:none;animation:appShellFadeDown .2s ease;
+    /* Gaveta Direita */
+    .app-shell-tab-right {
+      position: fixed;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%) translateX(100%);
+      width: 260px;
+      background: rgba(10, 15, 28, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid #1f2a44;
+      border-right: none;
+      border-radius: 16px 0 0 16px;
+      padding: 20px 12px;
+      z-index: 2000;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -4px 0 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    .app-shell-dropdown.active{display:block}
-    @keyframes appShellFadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    .app-shell-tab-right::before {
+      content: '<';
+      position: absolute;
+      left: -28px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+      height: 60px;
+      background: rgba(10, 15, 28, 0.95);
+      border: 1px solid #1f2a44;
+      border-right: none;
+      border-radius: 12px 0 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4f8cff;
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
+    }
 
+    /* Desktop: Abre no Hover */
+    @media (hover: hover) {
+      .app-shell-tab-left:hover { transform: translateY(-50%) translateX(0); }
+      .app-shell-tab-right:hover { transform: translateY(-50%) translateX(0); }
+    }
+
+    /* Mobile: Abre com Clique (Classe .mobile-open) */
+    @media (hover: none) {
+      .app-shell-tab-left.mobile-open { transform: translateY(-50%) translateX(0); }
+      .app-shell-tab-right.mobile-open { transform: translateY(-50%) translateX(0); }
+      
+      /* Muda o ícone quando está aberto no mobile */
+      .app-shell-tab-left.mobile-open::after { content: '<'; }
+      .app-shell-tab-right.mobile-open::before { content: '>'; }
+    }
 
     /* =========================================
-       ESTILO DESKTOP (Telas a partir de 768px):
-       Widget Retangular no Canto Inferior Esquerdo
+       CONTEÚDO INTERNO
        ========================================= */
-    @media (min-width: 768px) {
-      .app-shell-profile-widget {
-        top: auto;
-        bottom: 20px; /* Canto inferior */
-        right: auto;
-        left: 20px;   /* Canto esquerdo */
-        width: auto;
-        height: auto;
-        justify-content: flex-start;
-        border-radius: 50px;
-        background: rgba(10,15,28,0.9);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border: 1px solid #1f2a44;
-        padding: 6px 16px 6px 6px;
-        gap: 10px;
-        max-width: 250px;
-      }
-      .app-shell-profile-widget:hover { 
-        border-color: #4f8cff; 
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(79,140,255,.25);
-      }
-
-      .app-shell-profile-avatar {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        font-size: 16px;
-        flex-shrink: 0;
-      }
-
-      /* No desktop, o nome aparece */
-      .app-shell-profile-info {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        overflow: hidden;
-      }
-      .app-shell-profile-name {
-        color: #e8eef8;
-        font-size: 0.9rem;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      /* Menu dropdown abre para cima no desktop */
-      .app-shell-dropdown {
-        top: auto;
-        bottom: 75px;
-        right: auto;
-        left: 20px;
-        animation: appShellFadeUp .2s ease;
-      }
-      @keyframes appShellFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .app-shell-menu-header { border-bottom: 1px solid #1f2a44; padding-bottom: 12px; margin-bottom: 12px; text-align: center; }
+    .app-shell-menu-header h2 { color: #e8eef8; font-size: 1.2rem; font-weight: 700; }
+    .app-shell-menu-header p { color: #8fa0bd; font-size: 0.7rem; }
+    
+    .app-shell-item {
+      display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px;
+      border-radius: 12px; background: transparent; border: none; color: #e8eef8;
+      font-size: 0.95rem; font-weight: 500; cursor: pointer; text-align: left; font-family: inherit;
     }
+    .app-shell-item:hover { background: rgba(79, 140, 255, 0.1); }
+    .app-shell-item.active { background: rgba(79, 140, 255, 0.15); border-left: 3px solid #4f8cff; }
+    .app-shell-item .icon svg { width: 20px; height: 20px; stroke: #4f8cff; fill: none; stroke-width: 2; }
+
+    .app-shell-profile-avatar {
+      width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4f8cff, #7aa8ff);
+      display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold;
+      font-size: 32px; margin-bottom: 12px; overflow: hidden; border: 3px solid #1f2a44;
+    }
+    .app-shell-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .app-shell-profile-name { color: #e8eef8; font-size: 1.1rem; font-weight: 600; text-align: center; margin-bottom: 4px; }
+    .app-shell-profile-email { color: #8fa0bd; font-size: 0.8rem; text-align: center; margin-bottom: 20px; word-break: break-all; }
+    
+    .app-shell-btn-logout {
+      width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .app-shell-btn-logout:hover { background: rgba(239, 68, 68, 0.2); }
+
+    .app-shell-spinner {
+      width: 24px; height: 24px; border: 3px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #fff; border-radius: 50%; animation: appShellSpin 0.8s linear infinite;
+    }
+    @keyframes appShellSpin { to { transform: rotate(360deg); } }
   `;
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
     dev:  '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-    bell: '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
     out:  '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
   };
 
-  const ROUTES = {
-    home:          "/",
-    developer:     "/developer/",
-    notifications: "/notificacoes"
-  };
-
-  const DETECT = {
-    home:          ["/", "/index.html", "/home"],
-    developer:     ["/developer", "/developer/", "/developer/index.html", "/dev"],
-    notifications: ["/notificacoes", "/notificacoes/", "/notificacoes.html", "/notifications.html", "/notifications"]
-  };
-
+  const ROUTES = { home: "/", developer: "/developer/" };
+  const DETECT = { home: ["/", "/index.html", "/home"], developer: ["/developer", "/developer/", "/developer/index.html", "/dev"] };
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
     authDomain: "html-15e80.firebaseapp.com",
@@ -243,77 +174,43 @@
     document.head.appendChild(style);
   }
 
-  function getDeviceId(){
+  function getDeviceId() {
     let id = localStorage.getItem('codehub_deviceId');
-    if (!id){
-      id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('codehub_deviceId', id);
-    }
+    if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
     return id;
   }
-
-  function detectDeviceName(){
+  function detectDeviceName() {
     const ua = navigator.userAgent;
-    let browser = "Navegador", os = "Dispositivo";
-    if (ua.includes("Firefox")) browser = "Firefox";
-    else if (ua.includes("Edg")) browser = "Edge";
-    else if (ua.includes("Chrome")) browser = "Chrome";
-    else if (ua.includes("Safari")) browser = "Safari";
-    else if (ua.includes("Opera")) browser = "Opera";
-    if (ua.includes("Windows")) os = "Windows";
-    else if (ua.includes("Mac")) os = "Mac";
-    else if (ua.includes("Android")) os = "Android";
-    else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
-    else if (ua.includes("Linux")) os = "Linux";
-    return `${browser} no ${os}`;
+    return ua.includes("Windows") ? "Windows" : ua.includes("Mac") ? "Mac" : ua.includes("Android") ? "Android" : "Dispositivo";
   }
 
   class AppShell {
-
     constructor(options = {}) {
-      this.user           = options.user || null;
-      this.autoFirebase   = options.autoFirebase !== false;
-      this.currentView    = this._detectView();
-      this.isOpen         = false;
-      this._dropdownOpen  = false;
+      this.user = options.user || null;
+      this.autoFirebase = options.autoFirebase !== false;
+      this.currentView = this._detectView();
       this._firebaseReady = false;
     }
 
     _detectView() {
       const path = window.location.pathname.replace(/\/+$/, "") || "/";
       for (const [view, paths] of Object.entries(DETECT)) {
-        for (const p of paths) {
-          const norm = p.replace(/\/+$/, "") || "/";
-          if (path === norm) return view;
-        }
+        for (const p of paths) { if (path === (p.replace(/\/+$/, "") || "/")) return view; }
       }
-      if (path.toLowerCase().includes("notificacoes")) return "notifications";
-      if (path.toLowerCase().includes("developer")) return "developer";
       return "home";
     }
 
     _navigateToView(view) {
       if (view === this.currentView) return;
-      const target = ROUTES[view];
-      if (!target) return;
-      if (target === "/" && window.location.pathname === "/") return;
-      window.location.href = target;
+      window.location.href = ROUTES[view] || "/";
     }
 
     mount() {
       injectStyles();
-      this._renderMenuButton();
-      this._renderOverlay();
-      this._renderSideMenu();
-      this._renderProfileWidget();
-      this._renderDropdown();
-      this._attachEvents();
+      this._renderLeftTab();
+      this._renderRightTab();
       this._applyView(this.currentView);
-
-      if (this.autoFirebase) {
-        this._initFirebaseAuth();
-      }
-
+      if (this.autoFirebase) this._initFirebaseAuth();
       return this;
     }
 
@@ -321,307 +218,118 @@
       try {
         const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
         const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
-
-        let app;
-        if (getApps && getApps().length) {
-          app = getApps()[0];
-        } else {
-          app = initializeApp(FIREBASE_CONFIG);
-        }
-
+        const app = getApps && getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
         const auth = getAuth(app);
         this._auth = auth;
 
         onAuthStateChanged(auth, async (user) => {
-          if (!user) {
-            this.setUser(null);
-            this._showProfilePlaceholder('?');
-            return;
-          }
-
+          if (!user) { this.setUser(null); return; }
           this._showProfileLoading();
-
           const userData = await this._fetchFromWorker(user);
-
-          if (userData){
-            this.setUser({
-              uid: userData.uid || user.uid,
-              name: userData.displayName || userData.username || null,
-              username: userData.username || null,
-              email: userData.email || null,
-              photoUrl: userData.photoURL || null,
-              city: userData.city || null,
-              state: userData.state || null,
-              status: userData.status || null
-            });
+          if (userData) {
+            this.setUser({ name: userData.displayName || userData.username, email: userData.email, photoUrl: userData.photoURL });
           } else {
-            this.setUser({
-              uid: user.uid,
-              name: user.email || 'Usuário',
-              email: user.email || '',
-              photoUrl: null
-            });
+            this.setUser({ name: user.displayName || user.email, email: user.email, photoUrl: user.photoURL });
           }
         });
-
-        this._firebaseReady = true;
-        window.shell = this;
-
-      } catch (e) {
-        console.warn("[AppShell] init:", e.message);
-      }
+      } catch (e) { console.warn("[AppShell] init:", e.message); }
     }
 
-    async _fetchFromWorker(user){
+    async _fetchFromWorker(user) {
       try {
         const token = await user.getIdToken(true);
-
-        let currentSubId = null;
-        try {
-          currentSubId = window.__OneSignal?.User?.PushSubscription?.id || null;
-        } catch {}
-
         const r = await fetch(`${WORKER_URL}/GetUserData?tokenid=${encodeURIComponent(token)}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Device-Id": getDeviceId()
-          },
-          body: JSON.stringify({
-            device_id: getDeviceId(),
-            device_name: detectDeviceName(),
-            platform: navigator.platform || "Desconhecido",
-            language: navigator.language || "Desconhecido",
-            user_agent: navigator.userAgent,
-            current_subscription_id: currentSubId
-          })
+          headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+          body: JSON.stringify({ device_id: getDeviceId(), device_name: detectDeviceName(), user_agent: navigator.userAgent })
         });
-
         const data = await r.json();
-        if (!data.ok) {
-          console.warn("[AppShell] Worker erro:", data);
-          return null;
-        }
-
-        return data.user;
-
-      } catch (e){
-        console.warn("[AppShell] fetch:", e.message);
-        return null;
-      }
+        return data.ok ? data.user : null;
+      } catch (e) { return null; }
     }
 
-    _renderMenuButton() {
-      const btn = document.createElement("button");
-      btn.className = "app-shell-menu-btn";
-      btn.id = "appShellMenuBtn";
-      btn.setAttribute("aria-label", "Abrir menu");
-      btn.innerHTML = "<span></span><span></span><span></span>";
-      document.body.appendChild(btn);
-      this._btn = btn;
-    }
-
-    _renderOverlay() {
-      const ov = document.createElement("div");
-      ov.className = "app-shell-overlay";
-      ov.id = "appShellOverlay";
-      document.body.appendChild(ov);
-      this._overlay = ov;
-    }
-
-    _renderSideMenu() {
+    // =========================================
+    // GAVETAS E CLIQUES
+    // =========================================
+    _renderLeftTab() {
       const menu = document.createElement("aside");
-      menu.className = "app-shell-menu";
+      menu.className = "app-shell-tab-left";
       menu.id = "appShellMenu";
       menu.innerHTML = `
-        <div class="app-shell-menu-header">
-          <h2>CodeHUB</h2>
-          <p>PLATAFORMA · v2.0</p>
-        </div>
-        <nav class="app-shell-nav">
-          <button class="app-shell-item" data-view="home">
-            <span class="icon">${ICONS.home}</span>
-            <span class="label">Home<small>Página inicial</small></span>
-          </button>
-          <button class="app-shell-item" data-view="developer">
-            <span class="icon">${ICONS.dev}</span>
-            <span class="label">Desenvolvedor<small>Criar tokens de API</small></span>
-          </button>
+        <div class="app-shell-menu-header"><h2>CodeHUB</h2><p>MENU</p></div>
+        <nav style="display:flex; flex-direction:column; gap:4px;">
+          <button class="app-shell-item" data-view="home"><span class="icon">${ICONS.home}</span><span class="label">Home</span></button>
+          <button class="app-shell-item" data-view="developer"><span class="icon">${ICONS.dev}</span><span class="label">Desenvolvedor</span></button>
         </nav>
-        <div class="app-shell-footer">© 2026 CodeHUB · Todos os direitos reservados</div>
       `;
       document.body.appendChild(menu);
       this._menu = menu;
+
+      // Lógica para Mobile (Clique na aba lateral)
+      menu.addEventListener("click", (e) => {
+        if (e.target === menu || e.target.closest('.app-shell-item')) return; // Ignora cliques nos itens
+        if (window.matchMedia("(hover: none)").matches) menu.classList.toggle("mobile-open");
+      });
+
+      menu.querySelectorAll(".app-shell-item").forEach(item => {
+        item.addEventListener("click", () => {
+          menu.classList.remove("mobile-open"); // Fecha no mobile ao clicar
+          this._navigateToView(item.dataset.view);
+        });
+      });
     }
 
-    _renderProfileWidget() {
-      let p = document.getElementById('appShellProfileWidget');
-      if (!p){
-        p = document.createElement("div");
-        p.className = "app-shell-profile-widget";
-        p.id = "appShellProfileWidget";
-        p.innerHTML = `
-          <div class="app-shell-profile-avatar" id="appShellAvatar">
-            <span>?</span>
-          </div>
-          <div class="app-shell-profile-info">
-            <div class="app-shell-profile-name" id="appShellName">Carregando...</div>
-          </div>
-        `;
-        document.body.appendChild(p);
-      }
-      this._profileWidget = p;
+    _renderRightTab() {
+      const profile = document.createElement("aside");
+      profile.className = "app-shell-tab-right";
+      profile.id = "appShellProfile";
+      profile.innerHTML = `
+        <div class="app-shell-profile-avatar" id="appShellAvatar"><div class="app-shell-spinner"></div></div>
+        <div class="app-shell-profile-name" id="appShellName">Carregando...</div>
+        <div class="app-shell-profile-email" id="appShellEmail"></div>
+        <button class="app-shell-btn-logout" id="appShellBtnLogout">${ICONS.out} Sair</button>
+      `;
+      document.body.appendChild(profile);
+
       this._avatarEl = document.getElementById('appShellAvatar');
       this._nameEl = document.getElementById('appShellName');
-    }
+      this._emailEl = document.getElementById('appShellEmail');
 
-    _renderDropdown() {
-      const dd = document.createElement("div");
-      dd.className = "app-shell-dropdown";
-      dd.id = "appShellDropdown";
-
-      dd.innerHTML = `
-        <div class="app-shell-dropdown-header">
-          <div class="name">Usuário</div>
-          <div class="email">—</div>
-        </div>
-        <button class="app-shell-dropdown-item" data-action="notifications">
-          ${ICONS.bell}<span>Notificações</span>
-          <span class="beta">BETA</span>
-        </button>
-        <button class="app-shell-dropdown-item danger" data-action="logout">
-          ${ICONS.out}<span>Sair</span>
-        </button>
-      `;
-      document.body.appendChild(dd);
-      this._dropdown = dd;
-    }
-
-    _attachEvents() {
-      this._btn.addEventListener("click", () => this.toggleMenu());
-      this._overlay.addEventListener("click", () => this.closeMenu());
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") { this.closeMenu(); this._closeDropdown(); }
+      // Lógica para Mobile (Clique na aba lateral)
+      profile.addEventListener("click", (e) => {
+        if (e.target === profile) {
+          if (window.matchMedia("(hover: none)").matches) profile.classList.toggle("mobile-open");
+        }
       });
 
-      this._menu.querySelectorAll(".app-shell-item").forEach(item => {
-        item.addEventListener("click", () => {
-          const view = item.dataset.view;
-          this.closeMenu();
-          this._navigateToView(view);
-        });
-      });
-
-      this._profileWidget.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (this._profileWidget.classList.contains("loading")) return;
-        this._toggleDropdown();
-      });
-
-      document.addEventListener("click", (e) => {
-        if (!this._dropdownOpen) return;
-        if (e.target.closest("#appShellDropdown")) return;
-        if (e.target.closest("#appShellProfileWidget")) return;
-        this._closeDropdown();
-      });
-
-      this._dropdown.querySelectorAll(".app-shell-dropdown-item").forEach(item => {
-        item.addEventListener("click", () => {
-          this._onDropdownAction(item.dataset.action);
-          this._closeDropdown();
-        });
-      });
-    }
-
-    toggleMenu() { this.isOpen ? this.closeMenu() : this.openMenu(); }
-
-    openMenu() {
-      this.isOpen = true;
-      this._btn.classList.add("open");
-      this._menu.classList.add("active");
-      this._overlay.classList.add("active");
-      document.body.style.overflow = "hidden";
-    }
-
-    closeMenu() {
-      this.isOpen = false;
-      this._btn.classList.remove("open");
-      this._menu.classList.remove("active");
-      this._overlay.classList.remove("active");
-      document.body.style.overflow = "";
-    }
-
-    _toggleDropdown() { this._dropdownOpen ? this._closeDropdown() : this._openDropdown(); }
-    _openDropdown() { this._dropdownOpen = true; this._dropdown.classList.add("active"); }
-    _closeDropdown() { this._dropdownOpen = false; this._dropdown.classList.remove("active"); }
-
-    _onDropdownAction(action) {
-      switch (action) {
-        case "logout": {
-          const go = () => location.href = "alexandre7888.github.io/auth.html";
-          if (confirm("Sair da conta?")) {
+      document.getElementById('appShellBtnLogout').addEventListener('click', () => {
+        if (confirm("Sair da conta?")) {
+          if (this._auth) this._auth.signOut().then(() => {
             document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-            if (this._auth) {
-              this._auth.signOut().then(go).catch(go);
-            } else {
-              go();
-            }
-          }
-          break;
+            location.href = "https://alexandre7888.github.io/auth.html";
+          });
         }
-        case "notifications": {
-          window.location.href = "/notificacoes";
-          break;
-        }
-      }
+      });
     }
 
-    _showProfileLoading(){
-      this._profileWidget.classList.add("show");
-      this._profileWidget.classList.add("loading");
+    _showProfileLoading() {
       this._avatarEl.innerHTML = `<div class="app-shell-spinner"></div>`;
       this._nameEl.textContent = "Carregando...";
-    }
-
-    _showProfilePlaceholder(letter){
-      this._profileWidget.classList.add("show");
-      this._profileWidget.classList.remove("loading");
-      this._avatarEl.innerHTML = `<span>${letter}</span>`;
-      this._nameEl.textContent = "Visitante";
+      this._emailEl.textContent = "";
     }
 
     setUser(user) {
       this.user = user;
-
       if (!user) {
-        this._profileWidget.classList.remove("show");
-        this._profileWidget.classList.remove("loading");
+        this._avatarEl.innerHTML = `<span>?</span>`;
+        this._nameEl.textContent = "Visitante";
+        this._emailEl.textContent = "Faça login";
         return;
       }
-
-      this._profileWidget.classList.add("show");
-      this._profileWidget.classList.remove("loading");
-
-      if (user.photoUrl && typeof user.photoUrl === "string" && user.photoUrl.trim() !== ""){
-        this._avatarEl.innerHTML = `<img src="${user.photoUrl}" alt="" referrerpolicy="no-referrer">`;
-      } else {
-        const initial = (user.name || user.username || user.email || "?").charAt(0).toUpperCase();
-        this._avatarEl.innerHTML = `<span>${initial}</span>`;
-      }
-
-      const displayName = user.name || user.username || "Usuário";
-      this._nameEl.textContent = displayName;
-
-      const header = this._dropdown.querySelector(".app-shell-dropdown-header");
-      if (header) {
-        header.querySelector(".name").textContent  = displayName;
-        header.querySelector(".email").textContent = user.email || "";
-      }
+      this._avatarEl.innerHTML = user.photoUrl ? `<img src="${user.photoUrl}" alt="Avatar">` : `<span>${(user.name || "U").charAt(0).toUpperCase()}</span>`;
+      this._nameEl.textContent = user.name || "Usuário";
+      this._emailEl.textContent = user.email || "";
     }
-
-    showProfile() { this._profileWidget.classList.add("show"); }
-    hideProfile() { this._profileWidget.classList.remove("show"); }
 
     _applyView(view) {
       this._menu.querySelectorAll(".app-shell-item").forEach(item => {
@@ -632,30 +340,4 @@
 
   window.AppShell = AppShell;
 
-})();
-
-(function () {
-  function renderAppMenu() {
-    const root = document.getElementById("app-menu-root");
-    if (!root) return;
-
-    if (typeof window.AppMenu === "undefined") return;
-
-    if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
-      try {
-        ReactDOM.createRoot(root).render(React.createElement(window.AppMenu));
-        return;
-      } catch (e) {}
-    }
-
-    if (typeof window.AppMenu === "function") {
-      try { root.innerHTML = window.AppMenu(); } catch (e) {}
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", renderAppMenu);
-  } else {
-    renderAppMenu();
-  }
 })();
