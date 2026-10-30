@@ -60,66 +60,10 @@
       transition:background .4s ease,color .3s ease;
     }
 
-    /* ===== PERFIL ===== */
-    .profile-btn{
-      position:fixed;top:14px;right:16px;z-index:1100;
-      width:52px;height:52px;border-radius:50%;
-      background:linear-gradient(135deg,var(--accent),var(--accent-2));
-      display:flex;align-items:center;justify-content:center;
-      color:#fff;font-weight:700;font-size:20px;
-      cursor:pointer;overflow:hidden;
-      border:2px solid rgba(255,255,255,.1);
-      box-shadow:0 8px 22px var(--shadow);
-      transition:transform .2s;
-      user-select:none;
-    }
-    .profile-btn:hover{transform:scale(1.08)}
-    .profile-btn img{width:100%;height:100%;object-fit:cover}
-    .profile-btn.loading{cursor:default}
-
-    .profile-spinner{
-      width:22px;height:22px;
-      border:2.5px solid rgba(255,255,255,.25);
-      border-top-color:#fff;
-      border-radius:50%;
-      animation:spin .8s linear infinite;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    .profile-dropdown{
-      position:fixed;top:76px;right:16px;z-index:1120;
-      min-width:220px;
-      background:var(--menu-bg);
-      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      border:1px solid var(--border);border-radius:16px;
-      padding:8px;
-      box-shadow:0 20px 50px var(--shadow);
-      display:none;
-      animation:appShellFade .2s ease;
-    }
-    .profile-dropdown.active{display:block}
-    @keyframes appShellFade{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-
-    .profile-dropdown-header{padding:12px 14px;border-bottom:1px solid var(--border);margin-bottom:6px}
-    .profile-dropdown-header .name{color:var(--text);font-weight:600;font-size:.9rem}
-    .profile-dropdown-header .email{color:var(--text-2);font-size:.75rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-    .profile-dropdown-item{
-      display:flex;align-items:center;gap:10px;
-      width:100%;padding:10px 12px;border-radius:10px;
-      background:transparent;border:none;color:var(--text);
-      font-size:.85rem;cursor:pointer;font-family:inherit;
-      text-align:left;transition:background .15s;
-    }
-    .profile-dropdown-item:hover{background:var(--accent-soft)}
-    .profile-dropdown-item svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    .profile-dropdown-item.danger{color:#ef4444}
-    .profile-dropdown-item.danger svg{stroke:#ef4444}
-
     /* ===== ÁREA CENTRAL (FEED) ===== */
     .content-wrap{
       flex:1;display:flex;flex-direction:column;align-items:center;
-      padding:20px;margin-top:90px;
+      padding:20px;margin-top:20px; /* Removido o margin-top grande */
     }
 
     .feed-container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
@@ -164,41 +108,9 @@
     .comment-item { font-size: 13px; margin-bottom: 8px; background: var(--surface-2); padding: 8px 12px; border-radius: 8px; }
     .input-comment { width: 100%; background: var(--bg-1); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px; margin-top: 8px; outline: none; }
 
-    /* ===== PAINEL DE TEMAS ===== */
-    .theme-panel{position:fixed;bottom:24px;right:24px;z-index:1050;background:var(--menu-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:48px;padding:6px;display:flex;gap:6px;border:1px solid var(--border);box-shadow:0 8px 20px var(--shadow)}
-    .theme-btn{background:transparent;border:none;border-radius:40px;padding:8px 14px;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-2);display:flex;align-items:center;gap:6px;transition:.2s;font-family:inherit}
-    .theme-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:.2s}
-    .theme-btn:hover{color:var(--text);background:var(--accent-soft)}
-    .theme-btn.active{background:var(--accent);color:#fff;box-shadow:0 0 12px var(--accent-glow)}
-    .theme-btn.active svg{stroke:#fff}
-
-    @media(max-width:550px){.theme-btn{font-size:.7rem;padding:6px 10px}.theme-btn svg{width:14px;height:14px}}
   </style>
 </head>
 <body>
-
-  <div class="profile-btn loading" id="profileBtn">
-    <div class="profile-spinner"></div>
-  </div>
-
-  <div class="profile-dropdown" id="profileDropdown">
-    <div class="profile-dropdown-header">
-      <div class="name" id="pdName">Usuário</div>
-      <div class="email" id="pdEmail">—</div>
-    </div>
-    <button class="profile-dropdown-item" data-action="profile">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Meu perfil</span>
-    </button>
-    <button class="profile-dropdown-item" data-action="settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      <span>Configurações</span>
-    </button>
-    <button class="profile-dropdown-item danger" data-action="logout">
-      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span>Sair</span>
-    </button>
-  </div>
 
   <!-- Área central onde vai o Feed -->
   <div class="content-wrap">
@@ -220,18 +132,6 @@
     </div>
   </div>
 
-  <div class="theme-panel">
-    <button id="themeDark" class="theme-btn active" data-set-theme="dark">
-      <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg> Dark
-    </button>
-    <button id="themeLight" class="theme-btn" data-set-theme="light">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg> Light
-    </button>
-    <button id="themeSystem" class="theme-btn" data-set-theme="system">
-      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Sistema
-    </button>
-  </div>
-
   <script>
     window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
   </script>
@@ -243,68 +143,7 @@
     // --- Inicializa o AppShell ---
     if (typeof AppShell !== "undefined") {
       try { new AppShell().mount(); } catch (e) { console.error("[CodeHUB] AppShell.mount():", e.message); }
-    } else {
-      console.warn("[CodeHUB] AppShell não definido — verifique se /app-shell.js carregou.");
     }
-
-    // --- Controle de Temas ---
-    const html = document.documentElement;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-
-    function applyTheme(mode){
-      let effective = mode;
-      if (mode === 'system') effective = mq.matches ? 'dark' : 'light';
-      html.setAttribute('data-theme', effective);
-      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-      const btn = document.querySelector('[data-set-theme="' + mode + '"]');
-      if (btn) btn.classList.add('active');
-    }
-
-    function setTheme(mode){
-      localStorage.setItem('codehub-theme', mode);
-      applyTheme(mode);
-    }
-
-    document.querySelectorAll('[data-set-theme]').forEach(btn => {
-      btn.addEventListener('click', () => setTheme(btn.dataset.setTheme));
-    });
-
-    mq.addEventListener('change', () => {
-      if (localStorage.getItem('codehub-theme') === 'system') applyTheme('system');
-    });
-
-    setTheme(localStorage.getItem('codehub-theme') || 'dark');
-
-    // --- Menu do Perfil ---
-    const profileBtn = document.getElementById('profileBtn');
-    const profileDropdown = document.getElementById('profileDropdown');
-    const pdName = document.getElementById('pdName');
-    const pdEmail = document.getElementById('pdEmail');
-
-    profileBtn.addEventListener('click', (e) => {
-      if (profileBtn.classList.contains('loading')) return;
-      e.stopPropagation();
-      profileDropdown.classList.toggle('active');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#profileDropdown') && !e.target.closest('#profileBtn')) {
-        profileDropdown.classList.remove('active');
-      }
-    });
-
-    profileDropdown.querySelectorAll('.profile-dropdown-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const action = item.dataset.action;
-        profileDropdown.classList.remove('active');
-        if (action === 'logout') {
-          if (confirm('Sair da conta?')) {
-            document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-            location.reload();
-          }
-        }
-      });
-    });
 
     // --- Firebase Auth e Feed ---
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
@@ -337,17 +176,9 @@
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentToken = await user.getIdToken();
-        profileBtn.classList.remove('loading');
-        profileBtn.innerHTML = user.photoURL 
-          ? `<img src="${user.photoURL}" alt="Perfil">` 
-          : (user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U');
-        pdName.textContent = user.displayName || 'Usuário';
-        pdEmail.textContent = user.email || '—';
         createPostBox.style.display = 'block';
         carregarFeed();
       } else {
-        document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
-        profileBtn.style.display = 'none';
         createPostBox.style.display = 'none';
         feedDiv.innerHTML = '<p style="text-align:center;color:var(--text-2);">Faça login para ver o feed.</p>';
       }
