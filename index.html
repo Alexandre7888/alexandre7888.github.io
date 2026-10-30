@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="pt-br" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -193,7 +193,7 @@
     postText.addEventListener('input', checkFields);
     postFile.addEventListener('change', checkFields);
 
-    // Criar Post (Ainda passa pelo Worker, pois as regras bloqueiam a criação direta)
+    // Criar Post (Via Worker)
     btnPost.addEventListener('click', async () => {
       if (!currentToken) return;
       btnPost.disabled = true;
@@ -249,6 +249,11 @@
 
       const svgHeart = `<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
       const svgComment = `<svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
+      const svgTrash = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
+
+      const btnDelete = (post.uid === userUid) 
+        ? `<button class="action-btn" style="color: #ff4b4b; margin-left: auto;" onclick="deletarPost('${post.id}')">${svgTrash}</button>` 
+        : '';
 
       postEl.innerHTML = `
         <div class="post-header">
@@ -268,6 +273,7 @@
           <button class="action-btn" onclick="toggleComments('${post.id}')">
             ${svgComment} <span id="comments-count-${post.id}">${post.commentsCount || 0}</span>
           </button>
+          ${btnDelete}
         </div>
 
         <div class="comments-section" id="comments-${post.id}">
@@ -281,23 +287,38 @@
       `;
       feedDiv.prepend(postEl);
 
-      // ⚡ A MÁGICA DA CURTIDA DIRETO DO FIREBASE
-      if (userUid) {
-        onValue(ref(db, `posts/${post.id}/likes`), (snapshot) => {
-          const likes = snapshot.val() || {};
-          const btn = document.getElementById(`btn-like-${post.id}`);
-          const countSpan = document.getElementById(`likes-${post.id}`);
-          
-          if (!btn || !countSpan) return;
+      // ⚡ CURTIDAS EM TEMPO REAL
+      onValue(ref(db, `posts/${post.id}/likes`), (snapshot) => {
+        const likes = snapshot.val() || {};
+        const btn = document.getElementById(`btn-like-${post.id}`);
+        const countSpan = document.getElementById(`likes-${post.id}`);
+        if (!btn || !countSpan) return;
 
-          const total = Object.keys(likes).length;
-          const jaCurtiu = !!likes[userUid];
+        countSpan.textContent = Object.keys(likes).length;
+        if (likes[userUid]) btn.classList.add('liked');
+        else btn.classList.remove('liked');
+      });
 
-          countSpan.textContent = total;
-          if (jaCurtiu) btn.classList.add('liked');
-          else btn.classList.remove('liked');
+      // ⚡ COMENTÁRIOS EM TEMPO REAL (Puxa do Firebase SDK)
+      onValue(ref(db, `posts/${post.id}/comments`), (snapshot) => {
+        const comments = snapshot.val() || {};
+        const list = document.getElementById(`comments-list-${post.id}`);
+        const countSpan = document.getElementById(`comments-count-${post.id}`);
+        
+        if (!list || !countSpan) return;
+
+        // Atualiza o contador no botão de comentário
+        countSpan.textContent = Object.keys(comments).length;
+
+        // Limpa a lista e renderiza os comentários ordenados por data
+        list.innerHTML = '';
+        Object.values(comments).sort((a, b) => a.createdAt - b.createdAt).forEach(c => {
+          const div = document.createElement('div');
+          div.className = 'comment-item';
+          div.innerHTML = `<strong>${c.uid}</strong>: ${c.text}`;
+          list.appendChild(div);
         });
-      }
+      });
     }
 
     // =========================================
@@ -306,19 +327,15 @@
     window.curtir = async function(postId) {
       if (!userUid) return;
       const btn = document.getElementById(`btn-like-${postId}`);
-      btn.disabled = true; // Evita cliques duplos
-
+      btn.disabled = true;
+      
       try {
         const likeRef = ref(db, `posts/${postId}/likes/${userUid}`);
-        
-        // Verifica se já curtiu
         const snapshot = await new Promise(res => onValue(likeRef, res, { onlyOnce: true }));
 
         if (snapshot.exists()) {
-          // Se já curtiu, remove (Unlike)
           await remove(likeRef);
         } else {
-          // Se não curtiu, adiciona
           await set(likeRef, true);
         }
       } catch (e) {
@@ -334,7 +351,7 @@
     };
 
     // =========================================
-    // COMENTAR (Ainda via Worker para o Anti-Spam)
+    // COMENTAR (Envia via Worker)
     // =========================================
     window.comentar = async function(postId) {
       const input = document.getElementById(`input-comment-${postId}`);
@@ -357,13 +374,7 @@
         const data = await res.json();
         
         if (data.ok) {
-          input.value = '';
-          document.getElementById(`comments-count-${postId}`).textContent = data.total;
-          const list = document.getElementById(`comments-list-${postId}`);
-          const div = document.createElement('div');
-          div.className = 'comment-item';
-          div.textContent = text;
-          list.appendChild(div);
+          input.value = ''; // Limpa o campo. A lista atualiza sozinha pelo onValue.
         } else {
           errorEl.textContent = data.erro || "Erro ao comentar.";
           errorEl.style.display = 'block';
@@ -375,6 +386,34 @@
 
       btn.disabled = false;
       btn.textContent = 'Enviar';
+    };
+
+    // =========================================
+    // DELETAR POST (Envia via Worker)
+    // =========================================
+    window.deletarPost = async function(postId) {
+      if (!currentToken) return;
+      
+      if (!confirm("Tem certeza que deseja apagar este post? Isso não pode ser desfeito.")) return;
+
+      try {
+        const res = await fetch(window.WORKER_URL + '/api/social/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenid: currentToken, postId: postId })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+          const postEl = document.getElementById(`post-${postId}`);
+          if (postEl) postEl.remove();
+        } else {
+          alert("Erro ao deletar: " + data.erro);
+        }
+      } catch (e) {
+        alert("Erro de conexão ao deletar.");
+      }
     };
   </script>
 </body>
