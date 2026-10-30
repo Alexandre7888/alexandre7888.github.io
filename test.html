@@ -2,173 +2,134 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compartilhador de Token Firebase</title>
+  <title>Teste de Upload Social</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    body {
-      background-color: #f4f7fe;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    .card {
-      background: #ffffff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-      max-width: 480px;
-      width: 100%;
-    }
-
-    h1 {
-      font-size: 1.5rem;
-      color: #1b2559;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-
-    .status-box {
-      padding: 15px;
-      border-radius: 8px;
-      background-color: #f8f9fa;
-      border: 1px solid #e9ecef;
-      margin-bottom: 20px;
-    }
-
-    .status-title {
-      font-weight: 600;
-      font-size: 0.9rem;
-      color: #a3ed20;
-      color: #707ebe;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-    }
-
-    .status-value {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #2b3674;
-    }
-
-    .user-info {
-      display: none;
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 1px dashed #e0e0e0;
-    }
-
-    .user-info p {
-      font-size: 0.9rem;
-      color: #4a5568;
-      margin-bottom: 8px;
-      word-break: break-all;
-    }
-
-    .log-box {
-      background-color: #1b2559;
-      color: #4318ff;
-      color: #6ad2ff;
-      font-family: monospace;
-      padding: 12px;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      max-height: 120px;
-      overflow-y: auto;
-      margin-top: 15px;
-    }
+    body { font-family: sans-serif; background: #121212; color: #fff; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    .box { background: #1e1e1e; padding: 20px; border-radius: 8px; width: 100%; max-width: 400px; }
+    textarea, input { width: 100%; margin-bottom: 10px; padding: 10px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 6px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background: #4f8cff; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    button:disabled { background: #333; color: #888; }
+    #status { margin-top: 15px; font-size: 14px; text-align: center; }
+    #preview { max-width: 100%; border-radius: 8px; margin-top: 10px; display: none; }
+    .user-info { font-size: 12px; color: #888; text-align: center; margin-bottom: 15px; }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h1>Firebase Auth Sync</h1>
+<div class="box">
+  <h3>Testar Post</h3>
+  
+  <!-- Aviso de login -->
+  <div class="user-info" id="userInfo">Verificando login...</div>
+  
+  <label>Texto do Post:</label>
+  <textarea id="text" placeholder="Escreva algo..."></textarea>
+  
+  <label>Foto:</label>
+  <input type="file" id="file" accept="image/*">
+  
+  <button id="btnPost" disabled>Publicar Post</button>
+  
+  <div id="status"></div>
+  <img id="preview">
+</div>
 
-    <div class="status-box">
-      <div class="status-title">Status da Sessão</div>
-      <div id="status" class="status-value">Verificando autenticação...</div>
+<!-- SDK do Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
-      <div id="userInfo" class="user-info">
-        <p><strong>Usuário:</strong> <span id="userEmail">-</span></p>
-        <p><strong>Cookie Definido:</strong> <span style="color: #05cd99;">Domain=.codehub.site.je</span></p>
-      </div>
-    </div>
+<script>
+  const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+  
+  const firebaseConfig = {
+    apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+    authDomain: "html-15e80.firebaseapp.com",
+    databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+    projectId: "html-15e80",
+    storageBucket: "html-15e80.firebasestorage.app",
+    messagingSenderId: "1068148640439",
+    appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+  };
 
-    <div class="status-title">Log de Eventos</div>
-    <div id="log" class="log-box">> Inicializando script...</div>
-  </div>
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { 
-      getAuth, 
-      onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  let currentUser = null;
 
-    const statusEl = document.getElementById("status");
-    const userInfoEl = document.getElementById("userInfo");
-    const userEmailEl = document.getElementById("userEmail");
-    const logEl = document.getElementById("log");
+  const btnPost = document.getElementById('btnPost');
+  const textInput = document.getElementById('text');
+  const fileInput = document.getElementById('file');
+  const status = document.getElementById('status');
+  const preview = document.getElementById('preview');
+  const userInfo = document.getElementById('userInfo');
 
-    function addLog(message) {
-      logEl.innerHTML += `<br>> ${message}`;
-      logEl.scrollTop = logEl.scrollHeight;
+  // Habilita o botão se tiver texto ou foto
+  function checkFields() {
+    btnPost.disabled = textInput.value.trim() === "" && fileInput.files.length === 0;
+  }
+  textInput.addEventListener('input', checkFields);
+  fileInput.addEventListener('change', checkFields);
+
+  // Verifica se o usuário está logado
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      currentUser = user;
+      userInfo.innerHTML = `Logado como: <strong>${user.email || user.uid}</strong>`;
+      checkFields();
+    } else {
+      currentUser = null;
+      userInfo.innerHTML = `<span style="color: #ff4444;">Você não está logado. Faça login no app principal primeiro.</span>`;
+      btnPost.disabled = true;
+    }
+  });
+
+  btnPost.addEventListener('click', async () => {
+    if (!currentUser) return;
+
+    btnPost.disabled = true;
+    status.textContent = "Gerando token e enviando...";
+
+    try {
+      // Pega o token automaticamente do Firebase
+      const tokenid = await currentUser.getIdToken();
+
+      const formData = new FormData();
+      formData.append("tokenid", tokenid);
+      formData.append("text", textInput.value);
+      if (fileInput.files.length > 0) {
+        formData.append("file", fileInput.files[0]);
+      }
+
+      const res = await fetch(WORKER_URL + '/api/social/post', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.ok) {
+        status.textContent = "✅ Post criado com sucesso!";
+        status.style.color = "#1db954";
+        if (data.post.mediaUrl) {
+          preview.src = data.post.mediaUrl;
+          preview.style.display = 'block';
+        }
+        console.log("Post gerado:", data.post);
+        
+        // Limpa o formulário após o sucesso
+        textInput.value = "";
+        fileInput.value = "";
+      } else {
+        throw new Error(data.erro);
+      }
+    } catch (e) {
+      status.textContent = "❌ Erro: " + e.message;
+      status.style.color = "#ff4444";
     }
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-      projectId: "html-15e80",
-      storageBucket: "html-15e80.firebasestorage.app",
-      messagingSenderId: "1068148640439",
-      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
-    };
+    btnPost.disabled = false;
+  });
+</script>
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-
-    addLog("Firebase inicializado com sucesso.");
-
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        addLog("Usuário detectado. Gerando ID Token...");
-        
-        const token = await user.getIdToken();
-
-        // Configuração do cookie compartilhado entre subdomínios
-        document.cookie =
-          "firebaseToken=" + token +
-          "; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure";
-
-        addLog("Token enviado para o cookie (.codehub.site.je)!");
-        console.log("Token enviado para cookie");
-
-        // Atualiza a Interface
-        statusEl.innerText = "Conectado ✅";
-        statusEl.style.color = "#05cd99";
-        userEmailEl.innerText = user.email || user.uid;
-        userInfoEl.style.display = "block";
-
-      } else {
-        addLog("Nenhum usuário conectado.");
-        console.log("Nenhum usuário conectado");
-
-        // Atualiza a Interface
-        statusEl.innerText = "Desconectado ❌";
-        statusEl.style.color = "#ee5d50";
-        userInfoEl.style.display = "none";
-      }
-    });
-  </script>
 </body>
 </html>
