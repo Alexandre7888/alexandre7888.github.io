@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verificação de Segurança</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+  .card { background: #1e1e1e; padding: 24px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+  h2 { margin-top: 0; text-align: center; }
+  .section { border-bottom: 1px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+  .section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  label { display: block; margin-bottom: 8px; font-size: 14px; color: #aaa; }
+  input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #2a2a2a; color: #fff; margin-bottom: 12px; box-sizing: border-box; }
+  input:focus { outline: none; border-color: #1db954; }
+  button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: #1db954; color: #000; transition: 0.2s; }
+  button:hover { background: #1ed760; }
+  button:disabled { background: #555; color: #888; cursor: not-allowed; }
+  .status { font-size: 13px; margin-top: 10px; text-align: center; min-height: 20px; }
+  .success { color: #1db954; }
+  .error { color: #ff4444; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- SDK do Firebase para o Frontend -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<div class="card">
+  <h2>Verificação de Conta</h2>
+  
+  <div id="loading">Carregando dados do usuário...</div>
+
+  <div id="painel" class="hidden">
+    <!-- SEÇÃO DE E-MAIL -->
+    <div class="section">
+      <h3>📧 Verificar E-mail</h3>
+      <label>Seu e-mail atual:</label>
+      <input type="email" id="userEmail" readonly />
+      <button onclick="verificarEmail()" id="btnEmail">Enviar E-mail de Verificação</button>
+      <p id="statusEmail" class="status"></p>
+    </div>
+
+    <!-- SEÇÃO DE TELEFONE -->
+    <div class="section">
+      <h3>📱 Verificar Telefone (SMS)</h3>
+      <div id="divEnviarSMS">
+        <label>Número de telefone (com +55):</label>
+        <input type="tel" id="phoneNumber" placeholder="+5511999999999" />
+        <button onclick="enviarSMS()" id="btnEnviarSMS">Enviar SMS</button>
+      </div>
+      
+      <div id="divValidarSMS" class="hidden">
+        <label>Código SMS recebido:</label>
+        <input type="text" id="smsCode" placeholder="123456" maxlength="6" />
+        <button onclick="validarSMS()" id="btnValidarSMS">Validar Código</button>
+      </div>
+      <p id="statusSMS" class="status"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ 1. COLOQUE A URL DO SEU WORKER AQUI
+  const API_BASE = 'https://proud-flower-677b.braatzjunioralexandre5.workers.dev';
+
+  // ⚠️ 2. COLOQUE O SEU FIREBASE CONFIG AQUI
+  const firebaseConfig = {
+    apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+    authDomain: "html-15e80.firebaseapp.com",
+    databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+    projectId: "html-15e80",
+    storageBucket: "html-15e80.firebasestorage.app",
+    messagingSenderId: "1068148640439",
+    appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+  };
+
+  // Inicializa o Firebase
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  
+  let confirmationResult = null; // Guarda a sessão do SMS
+
+  // Verifica se o usuário está logado
+  auth.onAuthStateChanged(async (user) => {
+    document.getElementById('loading').classList.add('hidden');
+    
+    if (!user) {
+      alert("Você precisa estar logado para acessar esta página.");
+      return;
+    }
+
+    // Mostra o painel e preenche o e-mail
+    document.getElementById('painel').classList.remove('hidden');
+    document.getElementById('userEmail').value = user.email || "E-mail não cadastrado";
+    
+    if (user.emailVerified) {
+      const st = document.getElementById('statusEmail');
+      st.textContent = "✅ Seu e-mail já está verificado.";
+      st.className = "status success";
+      document.getElementById('btnEmail').disabled = true;
+    }
+  });
+
+  // ============================================
+  // 1. VERIFICAR E-MAIL (Chama o Worker)
+  // ============================================
+  async function verificarEmail() {
+    const btn = document.getElementById('btnEmail');
+    const st = document.getElementById('statusEmail');
+    
+    btn.disabled = true;
+    st.textContent = "Enviando...";
+    st.className = "status";
+
+    try {
+      const user = auth.currentUser;
+      const tokenid = await user.getIdToken();
+
+      const res = await fetch(API_BASE + '/api/email/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenid: tokenid })
+      });
+
+      const data = await res.json();
+
+      if (data.ok) {
+        st.textContent = "✅ " + data.mensagem;
+        st.className = "status success";
+      } else {
+        throw new Error(data.erro || "Erro ao enviar e-mail.");
+      }
+    } catch (e) {
+      st.textContent = "❌ " + e.message;
+      st.className = "status error";
+      btn.disabled = false;
+    }
+  }
+
+  // ============================================
+  // 2. ENVIAR SMS (Obrigatório no Frontend)
+  // ============================================
+  function enviarSMS() {
+    const phone = document.getElementById('phoneNumber').value;
+    const btn = document.getElementById('btnEnviarSMS');
+    const st = document.getElementById('statusSMS');
+
+    if (!phone) return alert("Digite o número com DDD e o +55.");
+
+    btn.disabled = true;
+    st.textContent = "Solicitando SMS ao Firebase...";
+    st.className = "status";
+
+    // O Firebase exige o reCAPTCHA invisível no frontend
+    const appVerifier = new firebase.auth.RecaptchaVerifier('btnEnviarSMS', {
+      'size': 'invisible'
+    });
+
+    auth.signInWithPhoneNumber(phone, appVerifier)
+      .then((result) => {
+        confirmationResult = result;
+        document.getElementById('divEnviarSMS').classList.add('hidden');
+        document.getElementById('divValidarSMS').classList.remove('hidden');
+        st.textContent = "✅ SMS enviado! Digite o código abaixo.";
+        st.className = "status success";
+      })
+      .catch((error) => {
+        st.textContent = "❌ Erro ao enviar SMS: " + error.message;
+        st.className = "status error";
+        btn.disabled = false;
+      });
+  }
+
+  // ============================================
+  // 3. VALIDAR SMS (Chama o Worker)
+  // ============================================
+  async function validarSMS() {
+    const code = document.getElementById('smsCode').value;
+    const btn = document.getElementById('btnValidarSMS');
+    const st = document.getElementById('statusSMS');
+
+    if (!code || code.length < 6) return alert("Digite o código de 6 dígitos.");
+
+    btn.disabled = true;
+    st.textContent = "Validando código...";
+    st.className = "status";
+
+    try {
+      // Pega o sessionInfo do Firebase SDK
+      const sessionInfo = confirmationResult.verificationId;
+
+      // Manda para o Worker validar
+      const res = await fetch(API_BASE + '/api/phone/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          sessionInfo: sessionInfo, 
+          code: code 
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.ok) {
+        st.textContent = "✅ Telefone verificado com sucesso!";
+        st.className = "status success";
+        document.getElementById('divValidarSMS').classList.add('hidden');
+        
+        // Opcional: Salvar no banco de dados que o usuário tem telefone verificado
+        // fetch(API_BASE + '/api/salvar-telefone', { ... })
+      } else {
+        throw new Error(data.erro || "Código incorreto.");
+      }
+    } catch (e) {
+      st.textContent = "❌ " + e.message;
+      st.className = "status error";
+      btn.disabled = false;
+    }
+  }
+</script>
+
+</body>
+</html>
