@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spotify — Tocando agora</title>
+<style>
+  :root {
+    --bg: #121212; --card: #181818; --text: #fff; --muted: #b3b3b3;
+    --green: #1db954; --border: #282828;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    padding: 24px; border-radius: 16px;
+    width: 100%; max-width: 340px; text-align: center;
+  }
+  .album {
+    width: 100%; aspect-ratio: 1/1;
+    border-radius: 10px; margin-bottom: 16px;
+    background: #282828; object-fit: cover;
+  }
+  .titulo { font-size: 1.15rem; font-weight: 700; line-height: 1.3; }
+  .artista { color: var(--muted); margin-top: 4px; font-size: .9rem; }
+  .progresso {
+    height: 4px; background: #333; border-radius: 2px;
+    margin-top: 16px; overflow: hidden;
+  }
+  .barra {
+    height: 100%; background: var(--green); width: 0%;
+    transition: width .3s linear;
+  }
+  a.link {
+    color: var(--green); display: inline-block;
+    margin-top: 16px; font-size: .9rem; text-decoration: none;
+  }
+  a.btn {
+    display: inline-block; padding: 12px 24px;
+    background: var(--green); color: #000;
+    border: none; border-radius: 24px;
+    font-weight: 700; cursor: pointer;
+    text-decoration: none; margin-top: 16px;
+  }
+  .status {
+    color: var(--muted); font-size: .9rem;
+    min-height: 20px; margin-bottom: 8px;
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="status" class="status">Conectando…</div>
+  <img id="capa" class="album hidden" alt="">
+  <div id="titulo" class="titulo"></div>
+  <div id="artista" class="artista"></div>
+  <div class="progresso"><div id="barra" class="barra"></div></div>
+  <a id="link" class="link hidden" target="_blank" rel="noopener">Abrir no Spotify</a>
+  <a id="btnConectar" class="btn hidden">Conectar Spotify</a>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ⬇️ Worker (API) da Cloudflare
+  const API_BASE = 'https://proud-flower-677b.braatzjunioralexandre5.workers.dev';
+
+  const status   = document.getElementById('status');
+  const capa     = document.getElementById('capa');
+  const titulo   = document.getElementById('titulo');
+  const artista  = document.getElementById('artista');
+  const barra    = document.getElementById('barra');
+  const link     = document.getElementById('link');
+  const btnConectar = document.getElementById('btnConectar');
+
+  // ⚠️ Ajuste para onde seu app guarda o tokenid (JWT Firebase)
+  const params = new URLSearchParams(location.search);
+  const tokenid = params.get('tokenid')
+               || localStorage.getItem('firebaseIdToken')
+               || null;
+
+  if (!tokenid) {
+    status.textContent = 'Faça login no app para ver o Spotify.';
+    return;
+  }
+
+  let es = null;
+
+  function conectar() {
+    if (es) { try { es.close(); } catch (e) {} }
+    status.textContent = 'Conectando…';
+
+    es = new EventSource(API_BASE + '/spotify/sse?tokenid=' + encodeURIComponent(tokenid));
+
+    es.addEventListener('connected', function () {
+      status.textContent = 'Conectado.';
+    });
+
+    es.addEventListener('tocando', function (e) {
+      let d;
+      try { d = JSON.parse(e.data); } catch (err) { return; }
+
+      if (!d.tocando || !d.track) {
+        status.textContent = 'Nada tocando agora';
+        capa.classList.add('hidden');
+        link.classList.add('hidden');
+        titulo.textContent = '';
+        artista.textContent = '';
+        barra.style.width = '0%';
+        return;
+      }
+
+      status.textContent = '';
+      if (d.track.imagem) {
+        capa.src = d.track.imagem;
+        capa.classList.remove('hidden');
+      } else {
+        capa.classList.add('hidden');
+      }
+      titulo.textContent = d.track.nome || '';
+      artista.textContent = d.track.artistas || '';
+
+      const pct = d.track.duracao_ms
+        ? Math.min(100, (d.progress_ms / d.track.duracao_ms) * 100)
+        : 0;
+      barra.style.width = pct + '%';
+
+      if (d.track.url) {
+        link.href = d.track.url;
+        link.classList.remove('hidden');
+      } else {
+        link.classList.add('hidden');
+      }
+    });
+
+    es.addEventListener('error', function (e) {
+      let d = {};
+      try { d = JSON.parse(e.data || '{}'); } catch (err) {}
+
+      if (d.erro === 'spotify_not_connected' || d.erro === 'spotify_reauth_needed') {
+        status.textContent = d.erro === 'spotify_reauth_needed'
+          ? 'Sessão do Spotify expirou. Reconecte.'
+          : 'Spotify não conectado.';
+        btnConectar.href = API_BASE + '/spotify/login?tokenid=' + encodeURIComponent(tokenid);
+        btnConectar.classList.remove('hidden');
+        if (es) { try { es.close(); } catch (err) {} es = null; }
+      }
+    });
+
+    es.onerror = function () {
+      if (es && es.readyState === EventSource.CLOSED) {
+        status.textContent = 'Conexão perdida. Tentando novamente…';
+        setTimeout(conectar, 3000);
+      }
+    };
+  }
+
+  conectar();
+})();
+</script>
+</body>
+</html>
