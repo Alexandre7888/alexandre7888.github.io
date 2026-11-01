@@ -12,7 +12,7 @@
     body{ background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2)); font-family:'Segoe UI',sans-serif; color:var(--text); min-height:100vh; display:flex; flex-direction:column; padding:20px; align-items:center; }
     .ws-container { width: 100%; max-width: 900px; margin-top: 20px; }
     
-    .ws-header { display: flex; flex-direction: column; gap: 15px; background: var(--surface); padding: 20px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 8px 24px var(--shadow); margin-bottom: 24px; }
+    .ws-header { display: flex; flex-direction: column; gap: 15px; background: var(--surface); padding: 20px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 8px 24px var(--shadow); margin-bottom: 24px; position: relative; }
     .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     .ws-header h1 { font-size: 1.5rem; }
     
@@ -20,10 +20,19 @@
     .search-bar input { width: 100%; padding: 12px 16px 12px 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-1); color: var(--text); outline: none; }
     .search-bar svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: var(--text-2); fill: none; stroke-width: 2; }
 
-    .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .btn-upload, .btn-folder { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+    .header-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn-upload, .btn-folder, .btn-notif { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; position: relative; }
     .btn-folder { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
-    .btn-upload svg, .btn-folder svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .btn-notif { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 10px; }
+    .btn-notif svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .badge-notif { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; display: none; }
+
+    /* DRAG & DROP */
+    .drop-zone-overlay { position: fixed; inset: 0; background: rgba(10, 15, 28, 0.85); backdrop-filter: blur(8px); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; border: 4px dashed var(--accent); pointer-events: none; }
+    .drop-zone-overlay.active { display: flex; }
+    .drop-zone-overlay svg { width: 80px; height: 80px; stroke: var(--accent); fill: none; stroke-width: 1.5; margin-bottom: 20px; animation: bounce 1s infinite; }
+    .drop-zone-overlay h2 { color: white; font-size: 2rem; }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
 
     .files-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
     .file-card, .folder-card { background: var(--surface); border-radius: 12px; padding: 16px; border: 1px solid var(--border); text-align: center; position: relative; box-shadow: 0 4px 12px var(--shadow); transition: 0.2s; overflow: hidden; }
@@ -38,12 +47,14 @@
     .file-name { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .file-date { font-size: 0.75rem; color: var(--text-2); margin-top: 4px; }
     
-    .btn-delete-file { position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.9); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 10; padding: 0; }
-    .btn-delete-file svg { width: 14px; height: 14px; stroke: white; fill: none; stroke-width: 2; }
+    .privacy-badge { position: absolute; top: 8px; right: 8px; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.6); z-index: 2; display: flex; align-items: center; justify-content: center; }
+    .privacy-badge svg { width: 14px; height: 14px; stroke: white; fill: none; stroke-width: 2; }
+
+    .btn-delete-file { position: absolute; top: 8px; left: 8px; background: rgba(239, 68, 68, 0.9); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 10; padding: 0; }
     .file-card:hover .btn-delete-file { display: flex; }
     #wsFileInput { display: none; }
 
-    .context-menu { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 1000; display: none; min-width: 180px; }
+    .context-menu { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 1000; display: none; min-width: 190px; }
     .context-menu.active { display: block; }
     .context-menu-item { padding: 10px 16px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
     .context-menu-item:hover { background: var(--accent); color: white; }
@@ -53,12 +64,26 @@
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 2000; }
     .modal-overlay.active { display: flex; }
     .modal-box { background: var(--surface); padding: 24px; border-radius: 16px; width: 100%; max-width: 400px; border: 1px solid var(--border); }
-    .modal-box input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-1); color: var(--text); margin-bottom: 12px; }
+    .modal-box input, .modal-box select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-1); color: var(--text); margin-bottom: 12px; }
     .modal-box button { width: 100%; padding: 10px; border-radius: 8px; border: none; background: var(--accent); color: white; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
     .modal-box button.secondary { background: transparent; color: var(--text-2); }
+
+    /* NOTIFICAÇÕES DROPDOWN */
+    .notif-dropdown { position: absolute; top: 70px; right: 20px; width: 300px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 100; display: none; flex-direction: column; max-height: 400px; overflow-y: auto; }
+    .notif-dropdown.active { display: flex; }
+    .notif-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: bold; }
+    .notif-item { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-time { font-size: 0.7rem; color: var(--text-2); margin-top: 4px; }
   </style>
 </head>
 <body>
+
+  <!-- Overlay Drag & Drop -->
+  <div class="drop-zone-overlay" id="dropZone">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <h2>Solte os arquivos aqui</h2>
+  </div>
 
   <div class="ws-container">
     <div class="ws-header">
@@ -68,6 +93,10 @@
           <p id="folderPath" style="color: var(--text-2); font-size: 0.9rem;">/</p>
         </div>
         <div class="header-actions">
+          <button class="btn-notif" onclick="toggleNotif()">
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="badge-notif" id="notifBadge">0</span>
+          </button>
           <button class="btn-folder" onclick="criarPasta()">
             <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
             Nova Pasta
@@ -85,38 +114,58 @@
       <input type="file" id="wsFileInput" accept="image/*,video/*,application/pdf,text/plain" onchange="fazerUpload(this)">
     </div>
 
+    <!-- Dropdown Notificações -->
+    <div class="notif-dropdown" id="notifDropdown">
+      <div class="notif-header">Notificações</div>
+      <div id="notifList"></div>
+    </div>
+
     <div id="filesGrid" class="files-grid">
       <p style="color: var(--text-2); grid-column: 1/-1; text-align: center;">Carregando...</p>
     </div>
   </div>
 
+  <!-- Menu de Contexto -->
   <div class="context-menu" id="contextMenu">
     <div class="context-menu-item" id="ctxView" onclick="abrirVisualizador()">Visualizar</div>
     <div class="context-menu-item" id="ctxDownload" onclick="baixarArquivo()">Baixar</div>
     <div class="context-menu-item" id="ctxRename" onclick="renomearItem()">Renomear</div>
-    <div class="context-menu-item" id="ctxShare" onclick="abrirModalCompartilhar()">Link Público</div>
-    <div class="context-menu-item" id="ctxShareEmail" onclick="abrirModalEmail()">Compartilhar via E-mail</div>
+    <div class="context-menu-item" id="ctxPrivacy" onclick="abrirModalPrivacidade()">Privacidade</div>
+    <div class="context-menu-item" id="ctxShare" onclick="abrirModalCompartilhar()">Copiar Link Público</div>
+    <div class="context-menu-item" id="ctxShareEmail" onclick="abrirModalEmail()">Compartilhar via Conta CodeHUB</div>
     <div class="context-menu-item danger" id="ctxDelete" onclick="deletarItem()">Excluir</div>
   </div>
 
-  <!-- Modal Link Público -->
+  <!-- Modais -->
   <div class="modal-overlay" id="shareModal">
     <div class="modal-box">
       <h3>Link de Compartilhamento</h3>
-      <p style="font-size:0.85rem; color:var(--text-2); margin-bottom:12px;">Qualquer pessoa com este link poderá ver o arquivo (somente leitura).</p>
-      <input type="text" id="publicUrl" readonly style="font-size:12px;">
+      <input type="text" id="publicUrl" readonly>
       <button onclick="copiarLink()">Copiar Link</button>
-      <button class="secondary" onclick="fecharModal()">Fechar</button>
+      <button class="secondary" onclick="fecharModal('shareModal')">Fechar</button>
     </div>
   </div>
 
-  <!-- Modal Email -->
   <div class="modal-overlay" id="shareEmailModal">
     <div class="modal-box">
-      <h3>Compartilhar via E-mail</h3>
+      <h3>Compartilhar via CodeHUB</h3>
+      <p style="font-size:0.85rem; color:var(--text-2); margin-bottom:12px;">Digite o e-mail da conta. A pessoa receberá uma notificação.</p>
       <input type="email" id="shareEmail" placeholder="email@exemplo.com">
-      <button onclick="compartilharPorEmail()">Enviar Convite</button>
-      <button class="secondary" onclick="fecharEmailModal()">Cancelar</button>
+      <button onclick="compartilharPorEmail()">Enviar</button>
+      <button class="secondary" onclick="fecharModal('shareEmailModal')">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="privacyModal">
+    <div class="modal-box">
+      <h3>Configurações de Privacidade</h3>
+      <select id="privacySelect">
+        <option value="private">Privado (Apenas eu)</option>
+        <option value="restricted">Restrito (Pessoas compartilhadas)</option>
+        <option value="public">Público (Qualquer um com o link)</option>
+      </select>
+      <button onclick="salvarPrivacidade()">Salvar</button>
+      <button class="secondary" onclick="fecharModal('privacyModal')">Cancelar</button>
     </div>
   </div>
 
@@ -139,6 +188,9 @@
     const SVG_FOLDER = `<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
     const SVG_PDF = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>`;
     const SVG_TRASH = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
+    const SVG_LOCK = `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    const SVG_GLOBE = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
+    const SVG_USERS = `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
 
     function getPastaAtual() { return window.location.hash.replace('#', '').replace('/', '') || "root"; }
 
@@ -146,6 +198,7 @@
       if (user) {
         currentToken = await user.getIdToken();
         carregarArquivosAPI();
+        carregarNotificacoes();
         window.addEventListener('hashchange', carregarArquivosAPI);
       } else {
         filesGrid.innerHTML = '<p style="color: var(--text-2); grid-column: 1/-1; text-align: center;">Faça login para ver seus arquivos.</p>';
@@ -183,15 +236,24 @@
         menu.style.top = `${e.pageY}px`; menu.style.left = `${e.pageX}px`;
         menu.classList.add('active');
         
-        // Mostra ou esconde opções com base no tipo
         document.getElementById('ctxView').style.display = item.isFolder ? 'none' : 'flex';
         document.getElementById('ctxDownload').style.display = item.isFolder ? 'none' : 'flex';
         document.getElementById('ctxShareEmail').style.display = item.isFolder ? 'none' : 'flex';
-        document.getElementById('ctxShare').style.display = 'flex'; // Link público serve para os dois
       });
     }
 
-    document.addEventListener('click', () => document.getElementById('contextMenu').classList.remove('active'));
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#notifDropdown') && !e.target.closest('.btn-notif')) {
+        document.getElementById('notifDropdown').classList.remove('active');
+      }
+      document.getElementById('contextMenu').classList.remove('active');
+    });
+
+    function getPrivacyIcon(privacy) {
+      if (privacy === 'public') return SVG_GLOBE;
+      if (privacy === 'restricted') return SVG_USERS;
+      return SVG_LOCK;
+    }
 
     function renderizarPasta(folder) {
       const el = document.createElement('div');
@@ -199,7 +261,12 @@
       el.id = `folder-${folder.id}`;
       el.ondblclick = () => { window.location.hash = `${folder.name}/`; };
       configurarCliqueDireito(el, { ...folder, isFolder: true });
-      el.innerHTML = `<div class="icon-placeholder">${SVG_FOLDER}</div><div class="file-name">${folder.name}</div>`;
+
+      el.innerHTML = `
+        <div class="privacy-badge" title="${folder.privacy || 'private'}">${getPrivacyIcon(folder.privacy)}</div>
+        <div class="icon-placeholder">${SVG_FOLDER}</div>
+        <div class="file-name">${folder.name}</div>
+      `;
       filesGrid.prepend(el);
     }
 
@@ -213,10 +280,11 @@
       let innerVisual = isImage ? `<img src="${file.url}" style="${file.needsAccept ? 'filter: blur(4px);' : ''}">` : `<div class="icon-placeholder">${SVG_PDF}</div>`;
 
       const overlayAccept = file.needsAccept ? `<div style="position:absolute; inset:0; background:rgba(0,0,0,0.6); display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:12px; z-index:2;"><p style="font-size:0.75rem; color:white;">Recebido</p><button onclick="event.stopPropagation(); aceitarCompartilhamento('${file.id}')" style="background:var(--accent); color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:bold;">Aceitar</button></div>` : '';
-      const badge = file.isReceived && !file.needsAccept ? `<div style="position:absolute; top:8px; left:8px; background:var(--accent); color:white; font-size:0.65rem; font-weight:bold; padding:2px 6px; border-radius:4px; z-index:2;">Recebido</div>` : '';
+      const badgeReceived = file.isReceived && !file.needsAccept ? `<div style="position:absolute; top:8px; left:8px; background:var(--accent); color:white; font-size:0.65rem; font-weight:bold; padding:2px 6px; border-radius:4px; z-index:2;">Recebido</div>` : '';
 
       el.innerHTML = `
-        <div style="position:relative;">${innerVisual}${overlayAccept}${badge}</div>
+        <div class="privacy-badge" title="${file.privacy || 'private'}">${getPrivacyIcon(file.privacy)}</div>
+        <div style="position:relative;">${innerVisual}${overlayAccept}${badgeReceived}</div>
         <div class="file-name" title="${file.name}">${file.name}</div>
         <div class="file-date">${new Date(file.createdAt).toLocaleDateString('pt-BR')}</div>
         ${!file.isReceived ? `<button class="btn-delete-file" onclick="event.stopPropagation(); deletarItemDireto('${file.id}', '${file.ikFileId}')">${SVG_TRASH}</button>` : ''}
@@ -224,7 +292,57 @@
       filesGrid.prepend(el);
     }
 
-    // ---- FUNÇÕES DE AÇÃO ----
+    // --- DRAG AND DROP ---
+    const dropZone = document.getElementById('dropZone');
+    document.body.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('active'); });
+    dropZone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('active');
+      if (e.dataTransfer.files.length > 0) {
+        await uploadMultiplosArquivos(e.dataTransfer.files);
+      }
+    });
+
+    async function uploadMultiplosArquivos(files) {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('tokenid', currentToken); formData.append('file', file);
+        formData.append('filename', file.name); formData.append('filetype', file.type); formData.append('folder', getPastaAtual());
+        try {
+          await fetch(window.WORKER_URL + '/api/workspace/upload', { method: 'POST', body: formData });
+        } catch (e) { console.error(e); }
+      }
+      carregarArquivosAPI();
+    }
+
+    // --- NOTIFICAÇÕES ---
+    async function carregarNotificacoes() {
+      try {
+        const res = await fetch(`${window.WORKER_URL}/api/workspace/notifications?tokenid=${encodeURIComponent(currentToken)}`);
+        const data = await res.json();
+        const badge = document.getElementById('notifBadge');
+        const list = document.getElementById('notifList');
+        
+        if (data.ok && data.notifications.length > 0) {
+          const naoLidas = data.notifications.filter(n => !n.read).length;
+          if (naoLidas > 0) { badge.style.display = 'flex'; badge.textContent = naoLidas; } else { badge.style.display = 'none'; }
+          
+          list.innerHTML = data.notifications.map(n => `
+            <div class="notif-item">
+              <strong>${n.title}</strong><br>${n.message}
+              <div class="notif-time">${new Date(n.timestamp).toLocaleString('pt-BR')}</div>
+            </div>
+          `).join('');
+        } else {
+          list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-2);">Nenhuma notificação.</div>';
+        }
+      } catch (e) {}
+    }
+
+    window.toggleNotif = function() { document.getElementById('notifDropdown').classList.toggle('active'); };
+
+    // --- AÇÕES DO MENU ---
     window.filtrarItens = function() {
       const termo = document.getElementById('searchInput').value.toLowerCase();
       document.querySelectorAll('.file-card, .folder-card').forEach(card => {
@@ -234,17 +352,12 @@
     };
 
     window.abrirVisualizador = function() { if (itemSelecionado) window.open(`/visualizar.html?id=${itemSelecionado.id}&token=${currentToken}`, '_blank'); };
-
-    window.baixarArquivo = function() { 
-      if (itemSelecionado) window.open(`${itemSelecionado.url}&download=true`, '_blank'); 
-    };
-
+    window.baixarArquivo = function() { if (itemSelecionado) window.open(`${itemSelecionado.url}&download=true`, '_blank'); };
+    
     window.abrirModalCompartilhar = async function() {
-      if (!itemSelecionado) return;
       try {
         const res = await fetch(window.WORKER_URL + '/api/workspace/public-share', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file' })
         });
         const data = await res.json();
@@ -254,29 +367,36 @@
       } catch (e) { alert("Erro: " + e.message); }
     };
 
-    window.copiarLink = function() {
-      const input = document.getElementById('publicUrl');
-      input.select(); document.execCommand("copy");
-      alert("Link copiado!");
-    };
-
+    window.copiarLink = function() { const input = document.getElementById('publicUrl'); input.select(); document.execCommand("copy"); alert("Link copiado!"); };
+    
     window.abrirModalEmail = function() { document.getElementById('shareEmailModal').classList.add('active'); };
-    window.fecharModal = function() { document.getElementById('shareModal').classList.remove('active'); };
-    window.fecharEmailModal = function() { document.getElementById('shareEmailModal').classList.remove('active'); };
+    window.fecharModal = function(id) { document.getElementById(id).classList.remove('active'); };
 
     window.compartilharPorEmail = async function() {
       const email = document.getElementById('shareEmail').value.trim();
       if (!itemSelecionado || !email) return;
       try {
         const res = await fetch(window.WORKER_URL + '/api/workspace/share', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tokenid: currentToken, fileId: itemSelecionado.id, email })
         });
         const data = await res.json();
         if (!data.ok) throw new Error(data.erro);
-        alert("Compartilhado com sucesso!"); fecharEmailModal();
+        alert("Compartilhado com sucesso!"); fecharModal('shareEmailModal');
       } catch (e) { alert("Erro: " + e.message); }
+    };
+
+    window.abrirModalPrivacidade = function() { document.getElementById('privacySelect').value = itemSelecionado.privacy || 'private'; document.getElementById('privacyModal').classList.add('active'); };
+
+    window.salvarPrivacidade = async function() {
+      const privacy = document.getElementById('privacySelect').value;
+      try {
+        await fetch(window.WORKER_URL + '/api/workspace/privacy', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy })
+        });
+        fecharModal('privacyModal'); carregarArquivosAPI();
+      } catch (e) { alert("Erro ao salvar."); }
     };
 
     window.aceitarCompartilhamento = async function(fileId) {
@@ -285,57 +405,39 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tokenid: currentToken, fileId })
         });
-        carregarArquivosAPI();
+        carregarArquivosAPI(); carregarNotificacoes();
       } catch (e) { alert("Erro ao aceitar."); }
     };
 
     window.renomearItem = async function() {
       const novoNome = prompt("Novo nome:", itemSelecionado.name);
       if (!novoNome || novoNome === itemSelecionado.name) return;
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/rename', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, id: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', newName: novoNome })
-        });
-        carregarArquivosAPI();
-      } catch (e) { alert("Erro ao renomear."); }
+      await fetch(window.WORKER_URL + '/api/workspace/rename', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenid: currentToken, id: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', newName: novoNome })
+      });
+      carregarArquivosAPI();
     };
 
     window.deletarItem = function() { if (!itemSelecionado.isFolder) deletarItemDireto(itemSelecionado.id, itemSelecionado.ikFileId); };
-    
     window.deletarItemDireto = async function(fileId, ikFileId) {
       if (!confirm("Apagar este item?")) return;
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/delete', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, fileId: fileId, ikFileId: ikFileId })
-        });
-        carregarArquivosAPI();
-      } catch (e) { alert("Erro ao deletar."); }
+      await fetch(window.WORKER_URL + '/api/workspace/delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenid: currentToken, fileId: fileId, ikFileId: ikFileId })
+      });
+      carregarArquivosAPI();
     };
 
-    window.fazerUpload = async function(input) {
-      if (!input.files || input.files.length === 0) return;
-      const file = input.files[0]; input.value = '';
-      const formData = new FormData();
-      formData.append('tokenid', currentToken); formData.append('file', file);
-      formData.append('filename', file.name); formData.append('filetype', file.type); formData.append('folder', getPastaAtual());
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/upload', { method: 'POST', body: formData });
-        carregarArquivosAPI();
-      } catch (e) { alert("Erro no upload."); }
-    };
-
+    window.fazerUpload = function(input) { if (input.files.length > 0) uploadMultiplosArquivos(input.files); input.value = ''; };
     window.criarPasta = async function() {
       const nome = prompt("Nome da pasta:");
       if (!nome) return;
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/folder/create', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() })
-        });
-        carregarArquivosAPI();
-      } catch (e) { alert("Erro ao criar pasta."); }
+      await fetch(window.WORKER_URL + '/api/workspace/folder/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() })
+      });
+      carregarArquivosAPI();
     };
   </script>
 </body>
