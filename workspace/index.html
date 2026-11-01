@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeHUB · Workspace</title>
+  
+  <!-- App Shell -->
+  <script src="/app-shell.js" defer></script>
+  
+  <!-- Estilos Separados -->
+  <link rel="stylesheet" href="/workspace/style.css">
+</head>
+<body>
+
+  <!-- Zona de Upload (Drag and Drop) -->
+  <div class="drop-zone-overlay" id="dropZone">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <h2>Solte os arquivos para fazer upload</h2>
+  </div>
+
+  <!-- Spinner de Upload -->
+  <div class="upload-spinner" id="uploadSpinner">
+    <div class="spinner"></div>
+    <p id="uploadFileName">Enviando...</p>
+  </div>
+
+  <!-- Container de Notificações Toast -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Cabeçalho do Workspace -->
+  <div class="ws-header">
+    <div class="header-top">
+      <div>
+        <h1 id="folderTitle">Meus Arquivos</h1>
+        <p id="folderPath" style="color:var(--text-2);font-size:.9rem">/</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <!-- Botão Notificações -->
+        <button onclick="toggleNotif(event)" style="background:transparent;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;cursor:pointer;position:relative" class="btn-notif">
+          <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="badge-notif" id="notifBadge">0</span>
+        </button>
+        
+        <!-- Botão Nova Pasta -->
+        <button onclick="abrirModalNovaPasta()" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px" class="btn-folder">
+          <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          Nova Pasta
+        </button>
+        
+        <!-- Botão Upload -->
+        <button onclick="document.getElementById('wsFileInput').click()" style="background:var(--accent);border:none;color:#fff;padding:10px 20px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px" class="btn-upload">
+          <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload
+        </button>
+      </div>
+    </div>
+    
+    <!-- Barra de Pesquisa -->
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Pesquisar..." oninput="filtrarItens()">
+    </div>
+    
+    <!-- Input de Arquivo Escondido -->
+    <input type="file" id="wsFileInput" multiple onchange="fazerUpload(this)" style="display:none">
+  </div>
+
+  <!-- Dropdown de Notificações -->
+  <div class="notif-dropdown" id="notifDropdown">
+    <div class="notif-header">Notificações</div>
+    <div id="notifList"></div>
+  </div>
+
+  <!-- Grid onde os arquivos aparecem -->
+  <div id="filesGrid" class="files-grid"></div>
+
+  <!-- Menu de Contexto (Botão Direito) -->
+  <div class="context-menu" id="contextMenu">
+    <div class="context-menu-item" onclick="abrirVisualizador()">Visualizar</div>
+    <div class="context-menu-item" onclick="baixarArquivo()">Baixar</div>
+    <div class="context-menu-item" onclick="abrirModalMover()">Mover para...</div>
+    <div class="context-menu-item" onclick="abrirModalRename()">Renomear</div>
+    <div class="context-menu-item" onclick="abrirModalPrivacidade()">Privacidade</div>
+    <div class="context-menu-item" onclick="abrirModalCompartilhar()">Link Público</div>
+    <div class="context-menu-item" onclick="abrirModalEmail()">Compartilhar via CodeHUB</div>
+    <div class="context-menu-item danger" onclick="deletarItem()">Excluir</div>
+  </div>
+
+  <!-- ===== MODAIS ===== -->
+  
+  <!-- Modal Mover -->
+  <div class="modal-overlay" id="moveModal">
+    <div class="modal-box">
+      <h3>Mover Item</h3>
+      <select id="targetFolderSelect"></select>
+      <button class="btn-modal" onclick="confirmarMover()">Mover</button>
+      <button class="btn-modal secondary" onclick="fecharModal('moveModal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Nova Pasta -->
+  <div class="modal-overlay" id="newFolderModal">
+    <div class="modal-box">
+      <h3>Nova Pasta</h3>
+      <input type="text" id="newFolderName" placeholder="Nome da pasta..." autocomplete="off">
+      <button class="btn-modal" onclick="salvarNovaPasta()">Criar</button>
+      <button class="btn-modal secondary" onclick="fecharModal('newFolderModal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Renomear -->
+  <div class="modal-overlay" id="renameModal">
+    <div class="modal-box">
+      <h3>Renomear Item</h3>
+      <input type="text" id="renameInput" placeholder="Novo nome..." autocomplete="off">
+      <button class="btn-modal" onclick="salvarRename()">Salvar</button>
+      <button class="btn-modal secondary" onclick="fecharModal('renameModal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Privacidade -->
+  <div class="modal-overlay" id="privacyModal">
+    <div class="modal-box">
+      <h3>Privacidade</h3>
+      <div class="privacy-options">
+        <div class="privacy-option" id="optPrivate" onclick="selecionarPrivacidade('private')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <div><h4>Privado</h4><p>Apenas você pode acessar e compartilhar via e-mail</p></div>
+        </div>
+        <div class="privacy-option" id="optRestricted" onclick="selecionarPrivacidade('restricted')">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <div><h4>Restrito</h4><p>Apenas contas autorizadas via e-mail</p></div>
+        </div>
+        <div class="privacy-option" id="optPublic" onclick="selecionarPrivacidade('public')">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <div><h4>Público</h4><p>Qualquer pessoa com o link (gera link público)</p></div>
+        </div>
+      </div>
+      <button class="btn-modal secondary" onclick="fecharModal('privacyModal')">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Modal Link Público -->
+  <div class="modal-overlay" id="shareModal">
+    <div class="modal-box">
+      <h3>Link Público</h3>
+      <input type="text" id="publicUrl" readonly style="font-size:12px">
+      <button class="btn-modal" onclick="copiarLink()">Copiar Link</button>
+      <button class="btn-modal secondary" onclick="fecharModal('shareModal')">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Modal Compartilhar E-mail -->
+  <div class="modal-overlay" id="shareEmailModal">
+    <div class="modal-box">
+      <h3>Compartilhar via CodeHUB</h3>
+      <input type="email" id="shareEmail" placeholder="email@codehub.com">
+      <button class="btn-modal" onclick="compartilharEmail()">Enviar</button>
+      <button class="btn-modal secondary" onclick="fecharModal('shareEmailModal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Script Separado -->
+  <script type="module" src="/workspace/script.js"></script>
+</body>
+</html>
