@@ -3,13 +3,11 @@ const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev
 export default async function handler(req, res) {
   const { action, id, token, share, download, owner } = req.query;
 
-  if (!action) return res.status(400).send("Ação não especificada. Use ?action=view, ?action=stream ou ?action=add-to-workspace.");
+  if (!action) return res.status(400).send("Ação não especificada.");
 
-  // ==========================================
-  // 1. VISUALIZADOR (/api?action=view)
-  // ==========================================
+  // 1. VISUALIZADOR
   if (action === 'view') {
-    if (!id) return res.status(400).send("ID do arquivo obrigatório.");
+    if (!id) return res.status(400).send("ID obrigatório.");
     
     const workerUrl = share 
       ? `${WORKER_URL}/api/workspace/public/${share}`
@@ -17,12 +15,11 @@ export default async function handler(req, res) {
 
     try {
       const fileRes = await fetch(workerUrl);
-      if (!fileRes.ok) return res.status(fileRes.status).send("Acesso negado ou arquivo não encontrado.");
+      if (!fileRes.ok) return res.status(fileRes.status).send("Acesso negado.");
 
       const contentType = fileRes.headers.get("content-type") || "application/octet-stream";
       let mediaHtml = "";
 
-      // Usa ?action=stream no player
       if (contentType.includes("image")) {
         mediaHtml = `<img src="/api?action=stream&id=${id}&token=${token}&share=${share || ''}" />`;
       } else if (contentType.includes("pdf")) {
@@ -30,10 +27,9 @@ export default async function handler(req, res) {
       } else if (contentType.includes("video")) {
         mediaHtml = `<video controls><source src="/api?action=stream&id=${id}&token=${token}&share=${share || ''}" type="${contentType}"></video>`;
       } else {
-        mediaHtml = `<p>Formato não suportado. <a href="/api?action=stream&id=${id}&token=${token}&download=true" class="btn">Baixar Arquivo</a></p>`;
+        mediaHtml = `<p>Formato não suportado. <a href="/api?action=stream&id=${id}&token=${token}&download=true" class="btn">Baixar</a></p>`;
       }
 
-      // Botão de salvar workspace
       const html = `
         <!DOCTYPE html>
         <html lang="pt-br" style="background:#0a0e1a;color:#e8eef8;font-family:sans-serif;height:100vh;margin:0;display:flex;flex-direction:column;">
@@ -51,7 +47,7 @@ export default async function handler(req, res) {
           <div class="header">
             <h3 style="margin:0;">Visualizador CodeHUB</h3>
             <div>
-              <a href="/api?action=add-to-workspace&id=${id}&token=${token}&owner=${owner || ''}" class="btn">Salvar no Workspace</a>
+              <a href="https://codehub.giize.com/workspace.html?id=${id}" class="btn">Salvar no Workspace</a>
               <a href="/api?action=stream&id=${id}&token=${token}&download=true" class="btn btn-sec">Baixar</a>
             </div>
           </div>
@@ -61,14 +57,10 @@ export default async function handler(req, res) {
       `;
       res.setHeader("Content-Type", "text/html");
       return res.send(html);
-    } catch (e) {
-      return res.status(500).send("Erro ao carregar arquivo.");
-    }
+    } catch (e) { return res.status(500).send("Erro."); }
   }
 
-  // ==========================================
-  // 2. STREAM/DOWNLOAD (/api?action=stream)
-  // ==========================================
+  // 2. STREAM/DOWNLOAD
   if (action === 'stream') {
     const workerUrl = share 
       ? `${WORKER_URL}/api/workspace/public/${share}`
@@ -76,41 +68,14 @@ export default async function handler(req, res) {
 
     try {
       const response = await fetch(workerUrl);
-      if (!response.ok) return res.status(response.status).send("Erro no acesso.");
+      if (!response.ok) return res.status(response.status).send("Erro.");
 
       res.setHeader("Content-Type", response.headers.get("content-type"));
       if (download === 'true') res.setHeader("Content-Disposition", `attachment; filename="arquivo"`);
       
       const buffer = await response.arrayBuffer();
       return res.send(Buffer.from(buffer));
-    } catch (e) {
-      return res.status(500).send("Erro interno no stream.");
-    }
-  }
-
-  // ==========================================
-  // 3. ADICIONAR AO WORKSPACE (/api?action=add-to-workspace)
-  // ==========================================
-  if (action === 'add-to-workspace') {
-    try {
-      const response = await fetch(`${WORKER_URL}/api/workspace/add-reference`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tokenid: token, fileId: id, ownerUid: owner || "root" })
-      });
-
-      const data = await response.json();
-      // Redireciona de volta ao Workspace passando o ID
-      const redirectUrl = `https://codehub.giize.com/workspace?id=${id}`;
-      
-      if (data.ok) {
-        res.setHeader("Content-Type", "text/html");
-        return res.send(`<script>alert('${data.mensagem}'); window.location.href='${redirectUrl}';</script>`);
-      }
-      return res.status(400).send(data.erro);
-    } catch (e) {
-      return res.status(500).send("Erro ao adicionar.");
-    }
+    } catch (e) { return res.status(500).send("Erro."); }
   }
 
   return res.status(404).send("Ação não encontrada.");
