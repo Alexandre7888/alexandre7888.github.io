@@ -1,14 +1,12 @@
-// api/[...path].js
 const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
 export default async function handler(req, res) {
-  const { path, id, token, share, download, owner } = req.query;
-  const action = path ? path[0] : null;
+  const { action, id, token, share, download, owner } = req.query;
 
-  if (!action) return res.status(404).send("Rota não encontrada.");
+  if (!action) return res.status(400).send("Ação não especificada. Use ?action=view, ?action=stream ou ?action=add-to-workspace.");
 
   // ==========================================
-  // 1. VISUALIZADOR (/api/view)
+  // 1. VISUALIZADOR (/api?action=view)
   // ==========================================
   if (action === 'view') {
     if (!id) return res.status(400).send("ID do arquivo obrigatório.");
@@ -24,16 +22,18 @@ export default async function handler(req, res) {
       const contentType = fileRes.headers.get("content-type") || "application/octet-stream";
       let mediaHtml = "";
 
+      // Usa ?action=stream no player
       if (contentType.includes("image")) {
-        mediaHtml = `<img src="/api/stream?id=${id}&token=${token}&share=${share || ''}" />`;
+        mediaHtml = `<img src="/api?action=stream&id=${id}&token=${token}&share=${share || ''}" />`;
       } else if (contentType.includes("pdf")) {
-        mediaHtml = `<iframe src="/api/stream?id=${id}&token=${token}&share=${share || ''}"></iframe>`;
+        mediaHtml = `<iframe src="/api?action=stream&id=${id}&token=${token}&share=${share || ''}"></iframe>`;
       } else if (contentType.includes("video")) {
-        mediaHtml = `<video controls><source src="/api/stream?id=${id}&token=${token}&share=${share || ''}" type="${contentType}"></video>`;
+        mediaHtml = `<video controls><source src="/api?action=stream&id=${id}&token=${token}&share=${share || ''}" type="${contentType}"></video>`;
       } else {
-        mediaHtml = `<p>Formato não suportado para visualização. <a href="/api/stream?id=${id}&token=${token}&download=true" class="btn">Baixar Arquivo</a></p>`;
+        mediaHtml = `<p>Formato não suportado. <a href="/api?action=stream&id=${id}&token=${token}&download=true" class="btn">Baixar Arquivo</a></p>`;
       }
 
+      // Botão de salvar workspace
       const html = `
         <!DOCTYPE html>
         <html lang="pt-br" style="background:#0a0e1a;color:#e8eef8;font-family:sans-serif;height:100vh;margin:0;display:flex;flex-direction:column;">
@@ -51,8 +51,8 @@ export default async function handler(req, res) {
           <div class="header">
             <h3 style="margin:0;">Visualizador CodeHUB</h3>
             <div>
-              <a href="/api/add-to-workspace?id=${id}&token=${token}&owner=${owner || ''}" class="btn">Salvar no Workspace</a>
-              <a href="/api/stream?id=${id}&token=${token}&download=true" class="btn btn-sec">Baixar</a>
+              <a href="/api?action=add-to-workspace&id=${id}&token=${token}&owner=${owner || ''}" class="btn">Salvar no Workspace</a>
+              <a href="/api?action=stream&id=${id}&token=${token}&download=true" class="btn btn-sec">Baixar</a>
             </div>
           </div>
           <div class="content">${mediaHtml}</div>
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
   }
 
   // ==========================================
-  // 2. STREAM/DOWNLOAD (/api/stream)
+  // 2. STREAM/DOWNLOAD (/api?action=stream)
   // ==========================================
   if (action === 'stream') {
     const workerUrl = share 
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
   }
 
   // ==========================================
-  // 3. ADICIONAR AO WORKSPACE (/api/add-to-workspace)
+  // 3. ADICIONAR AO WORKSPACE (/api?action=add-to-workspace)
   // ==========================================
   if (action === 'add-to-workspace') {
     try {
@@ -100,8 +100,7 @@ export default async function handler(req, res) {
       });
 
       const data = await response.json();
-      
-      // Redireciona para a página do Workspace com o ID do arquivo
+      // Redireciona de volta ao Workspace passando o ID
       const redirectUrl = `https://codehub.giize.com/workspace?id=${id}`;
       
       if (data.ok) {
