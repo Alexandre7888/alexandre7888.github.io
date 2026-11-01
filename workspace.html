@@ -1,629 +1,397 @@
-<!DOCTYPE html>
-<html lang="pt-br" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeHUB · Workspace</title>
-  <script src="/app-shell.js" defer></script>
+<!DOCTYPE html><html lang="pt-br" data-theme="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>CodeHUB · Workspace</title><script src="/app-shell.js" defer></script><style>:root{--bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;--border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--shadow:rgba(0,0,0,.55)}*{margin:0;padding:0;box-sizing:border-box}body{background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));font-family:'Segoe UI',sans-serif;color:var(--text);min-height:100vh;display:flex;flex-direction:column;padding:20px;align-items:center}.btn-upload svg,.btn-folder svg,.btn-notif svg{width:18px!important;height:18px!important;flex-shrink:0}.btn-delete-file{position:absolute;top:8px;right:8px;width:28px;height:28px;padding:0;display:none;align-items:center;justify-content:center;background:rgba(239,68,68,.9);border:none;border-radius:50%;cursor:pointer;z-index:10}.btn-delete-file svg{width:14px!important;height:14px!important;stroke:#fff}.file-card:hover .btn-delete-file{display:flex}.privacy-badge{position:absolute;top:8px;left:8px;padding:4px;border-radius:6px;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:5;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.1)}.privacy-badge svg{width:14px;height:14px;fill:none;stroke-width:2}.privacy-badge.public svg{stroke:#10b981}.privacy-badge.restricted svg{stroke:#f59e0b}.privacy-badge.private svg{stroke:#ef4444}.drop-zone-overlay{position:fixed;inset:0;background:rgba(10,15,28,.85);backdrop-filter:blur(8px);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;border:4px dashed var(--accent);pointer-events:none}.drop-zone-overlay.active{display:flex}.drop-zone-overlay svg{width:80px;height:80px;stroke:var(--accent);fill:none;stroke-width:1.5;margin-bottom:20px;animation:bounce 1s infinite}@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}.toast-container{position:fixed;bottom:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:10px}.toast{background:var(--surface);color:var(--text);padding:12px 20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;font-size:.9rem;opacity:0;transform:translateY(20px);transition:all .3s ease;border-left:4px solid var(--accent)}.toast.show{opacity:1;transform:translateY(0)}.toast.success{border-left-color:#10b981}.toast.error{border-left-color:#ef4444}.ws-header{display:flex;flex-direction:column;gap:15px;background:var(--surface);padding:20px;border-radius:16px;border:1px solid var(--border);width:100%;max-width:900px;position:relative}.header-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}.search-bar{position:relative;width:100%}.search-bar input{width:100%;padding:12px 16px 12px 40px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);color:var(--text);outline:none}.search-bar svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--text-2);fill:none;stroke-width:2}.files-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;width:100%;max-width:900px;margin-top:20px}.file-card,.folder-card{background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border);text-align:center;position:relative;box-shadow:0 4px 12px var(--shadow);transition:.2s;overflow:hidden}.file-card:hover,.folder-card:hover{transform:translateY(-4px);border-color:var(--accent)}.folder-card{cursor:pointer}.file-card img{width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:10px}.icon-placeholder{width:100%;height:100px;background:var(--surface-2);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}.icon-placeholder svg{width:40px;height:40px;stroke:var(--text-2);fill:none;stroke-width:1.5}.context-menu{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 0;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:1000;display:none;min-width:190px}.context-menu.active{display:block}.context-menu-item{padding:10px 16px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;gap:10px}.context-menu-item:hover{background:var(--accent);color:#fff}.context-menu-item.danger{color:#ef4444}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);display:none;justify-content:center;align-items:center;z-index:2000}.modal-overlay.active{display:flex}.modal-box{background:var(--surface);padding:24px;border-radius:16px;width:100%;max-width:420px;border:1px solid var(--border);box-shadow:0 10px 40px rgba(0,0,0,.6)}.modal-box h3{margin-bottom:15px;font-size:1.2rem}.modal-box input,.modal-box select{width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);color:var(--text);margin-bottom:16px;font-family:inherit;outline:none}.btn-modal{width:100%;padding:12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;margin-bottom:8px;font-family:inherit}.btn-modal.secondary{background:transparent;color:var(--text-2)}.privacy-options{display:flex;flex-direction:column;gap:10px;margin-bottom:15px}.privacy-option{display:flex;align-items:center;gap:15px;padding:15px;background:var(--surface-2);border:2px solid transparent;border-radius:12px;cursor:pointer;transition:.2s}.privacy-option:hover{background:rgba(79,140,255,.1)}.privacy-option.active{border-color:var(--accent);background:rgba(79,140,255,.15)}.privacy-option svg{width:24px;height:24px;fill:none;stroke-width:2;flex-shrink:0;stroke:var(--text-2)}.privacy-option.active svg{stroke:var(--accent)}.notif-dropdown{position:absolute;top:70px;right:20px;width:300px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:100;display:none;flex-direction:column;max-height:400px;overflow-y:auto}.notif-dropdown.active{display:flex}.notif-header{padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700}.notif-item{padding:12px 16px;border-bottom:1px solid var(--border);font-size:.85rem}.notif-time{font-size:.7rem;color:var(--text-2);margin-top:4px}.badge-notif{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;display:none}.upload-spinner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);padding:20px 30px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:10001;display:none;flex-direction:column;align-items:center;gap:10px;border:1px solid var(--border)}.upload-spinner.active{display:flex}.spinner{width:30px;height:30px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div class="drop-zone-overlay" id="dropZone"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><h2>Solte os arquivos para fazer upload</h2></div><div class="upload-spinner" id="uploadSpinner"><div class="spinner"></div><p id="uploadFileName">Enviando...</p></div><div class="toast-container" id="toastContainer"></div><div class="ws-header"><div class="header-top"><div><h1 id="folderTitle">Meus Arquivos</h1><p id="folderPath" style="color:var(--text-2);font-size:.9rem">/</p></div><div style="display:flex;gap:10px;align-items:center"><button onclick="toggleNotif(event)" style="background:transparent;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;cursor:pointer;position:relative" class="btn-notif"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="badge-notif" id="notifBadge">0</span></button><button onclick="abrirModalNovaPasta()" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px" class="btn-folder"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>Nova Pasta</button><button onclick="document.getElementById('wsFileInput').click()" style="background:var(--accent);border:none;color:#fff;padding:10px 20px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px" class="btn-upload"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload</button></div></div><div class="search-bar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="searchInput" placeholder="Pesquisar..." oninput="filtrarItens()"></div><input type="file" id="wsFileInput" multiple onchange="fazerUpload(this)" style="display:none"></div><div class="notif-dropdown" id="notifDropdown"><div class="notif-header">Notificações</div><div id="notifList"></div></div><div id="filesGrid" class="files-grid"></div><div class="context-menu" id="contextMenu"><div class="context-menu-item" onclick="abrirVisualizador()">Visualizar</div><div class="context-menu-item" onclick="baixarArquivo()">Baixar</div><div class="context-menu-item" onclick="abrirModalMover()">Mover para...</div><div class="context-menu-item" onclick="abrirModalRename()">Renomear</div><div class="context-menu-item" onclick="abrirModalPrivacidade()">Privacidade</div><div class="context-menu-item" onclick="abrirModalCompartilhar()">Link Público</div><div class="context-menu-item" onclick="abrirModalEmail()">Compartilhar via CodeHUB</div><div class="context-menu-item danger" onclick="deletarItem()">Excluir</div></div><div class="modal-overlay" id="moveModal"><div class="modal-box"><h3>Mover Item</h3><select id="targetFolderSelect"></select><button class="btn-modal" onclick="confirmarMover()">Mover</button><button class="btn-modal secondary" onclick="fecharModal('moveModal')">Cancelar</button></div></div><div class="modal-overlay" id="newFolderModal"><div class="modal-box"><h3>Nova Pasta</h3><input type="text" id="newFolderName" placeholder="Nome da pasta..." autocomplete="off"><button class="btn-modal" onclick="salvarNovaPasta()">Criar</button><button class="btn-modal secondary" onclick="fecharModal('newFolderModal')">Cancelar</button></div></div><div class="modal-overlay" id="renameModal"><div class="modal-box"><h3>Renomear Item</h3><input type="text" id="renameInput" placeholder="Novo nome..." autocomplete="off"><button class="btn-modal" onclick="salvarRename()">Salvar</button><button class="btn-modal secondary" onclick="fecharModal('renameModal')">Cancelar</button></div></div><div class="modal-overlay" id="privacyModal"><div class="modal-box"><h3>Privacidade</h3><div class="privacy-options"><div class="privacy-option" id="optPrivate" onclick="selecionarPrivacidade('private')"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><div><h4>Privado</h4><p>Apenas você pode acessar e compartilhar via e-mail</p></div></div><div class="privacy-option" id="optRestricted" onclick="selecionarPrivacidade('restricted')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><div><h4>Restrito</h4><p>Apenas contas autorizadas via e-mail</p></div></div><div class="privacy-option" id="optPublic" onclick="selecionarPrivacidade('public')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><div><h4>Público</h4><p>Qualquer pessoa com o link (gera link público)</p></div></div></div><button class="btn-modal secondary" onclick="fecharModal('privacyModal')">Fechar</button></div></div><div class="modal-overlay" id="shareModal"><div class="modal-box"><h3>Link Público</h3><input type="text" id="publicUrl" readonly style="font-size:12px"><button class="btn-modal" onclick="copiarLink()">Copiar Link</button><button class="btn-modal secondary" onclick="fecharModal('shareModal')">Fechar</button></div></div><div class="modal-overlay" id="shareEmailModal"><div class="modal-box"><h3>Compartilhar via CodeHUB</h3><input type="email" id="shareEmail" placeholder="email@codehub.com"><button class="btn-modal" onclick="compartilharEmail()">Enviar</button><button class="btn-modal secondary" onclick="fecharModal('shareEmailModal')">Cancelar</button></div></div><script>window.WORKER_URL="https://proud-flower-677b.braatzjunioralexandre5.workers.dev";window.VERCEL_URL="https://api.codehub.giize.com";let itemSelecionado=null;function showToast(e,t="info"){const n=document.getElementById("toastContainer"),o=document.createElement("div");o.className=`toast ${t}`,o.textContent=e,n.appendChild(o),void o.offsetWidth,o.classList.add("show"),setTimeout(()=>{o.classList.remove("show"),setTimeout(()=>o.remove(),300)},3e3)}window.toggleNotif=function(e){e.stopPropagation(),document.getElementById("notifDropdown").classList.toggle("active")},document.addEventListener("click",e=>{e.target.closest("#notifDropdown")||e.target.closest(".btn-notif")||document.getElementById("notifDropdown").classList.remove("active"),document.getElementById("contextMenu").classList.remove("active")}),window.fecharModal=function(e){document.getElementById(e).classList.remove("active")}</script><script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-  <style>
-    :root { --bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;--border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--shadow:rgba(0,0,0,0.55); }
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{ background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2)); font-family:'Segoe UI',sans-serif; color:var(--text); min-height:100vh; display:flex; flex-direction:column; padding:20px; align-items:center; }
+const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", projectId: "html-15e80", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
+const app = initializeApp(cfg);
+const auth = getAuth(app);
+
+let currentToken = null;
+let pastasGlobais = [];
+const filesGrid = document.getElementById('filesGrid');
+
+if (typeof AppShell !== "undefined") { try { new AppShell().mount(); } catch (e) {} }
+
+const SVG_FOLDER = `<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+const SVG_PDF = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>`;
+const SVG_TRASH = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
+const SVG_LOCK = `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+const SVG_GLOBE = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
+const SVG_USERS = `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+
+function getPastaAtual() { return window.location.hash.replace('#', '').replace('/', '') || "root"; }
+
+const urlParams = new URLSearchParams(window.location.search);
+const targetFileId = urlParams.get('id');
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentToken = await user.getIdToken();
+    await carregarArquivosAPI();
+    carregarNotificacoes();
+    window.addEventListener('hashchange', carregarArquivosAPI);
     
-    /* Ícones */
-    .btn-upload svg, .btn-folder svg, .btn-notif svg { width: 18px !important; height: 18px !important; flex-shrink: 0; }
-    .btn-delete-file { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; display: none; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.9); border: none; border-radius: 50%; cursor: pointer; z-index: 10;}
-    .btn-delete-file svg { width: 14px !important; height: 14px !important; stroke: white; }
-    .file-card:hover .btn-delete-file { display: flex; }
-
-    /* Privacy Badges */
-    .privacy-badge { position: absolute; top: 8px; left: 8px; padding: 4px; border-radius: 6px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 5; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); }
-    .privacy-badge svg { width: 14px; height: 14px; fill: none; stroke-width: 2; }
-    .privacy-badge.public svg { stroke: #10b981; }
-    .privacy-badge.restricted svg { stroke: #f59e0b; }
-    .privacy-badge.private svg { stroke: #ef4444; }
-
-    /* Drop Zone */
-    .drop-zone-overlay { position: fixed; inset: 0; background: rgba(10, 15, 28, 0.85); backdrop-filter: blur(8px); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; border: 4px dashed var(--accent); pointer-events: none; }
-    .drop-zone-overlay.active { display: flex; }
-    .drop-zone-overlay svg { width: 80px; height: 80px; stroke: var(--accent); fill: none; stroke-width: 1.5; margin-bottom: 20px; animation: bounce 1s infinite; }
-    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-
-    /* Toasts */
-    .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
-    .toast { background: var(--surface); color: var(--text); padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; font-size: 0.9rem; opacity: 0; transform: translateY(20px); transition: all 0.3s ease; border-left: 4px solid var(--accent); }
-    .toast.show { opacity: 1; transform: translateY(0); }
-    .toast.success { border-left-color: #10b981; }
-    .toast.error { border-left-color: #ef4444; }
-
-    /* Layout */
-    .ws-header { display: flex; flex-direction: column; gap: 15px; background: var(--surface); padding: 20px; border-radius: 16px; border: 1px solid var(--border); width: 100%; max-width: 900px; position: relative; }
-    .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .search-bar { position: relative; width: 100%; }
-    .search-bar input { width: 100%; padding: 12px 16px 12px 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-1); color: var(--text); outline: none; }
-    .search-bar svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: var(--text-2); fill: none; stroke-width: 2; }
-
-    .files-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; width: 100%; max-width: 900px; margin-top: 20px; }
-    .file-card, .folder-card { background: var(--surface); border-radius: 12px; padding: 16px; border: 1px solid var(--border); text-align: center; position: relative; box-shadow: 0 4px 12px var(--shadow); transition: 0.2s; overflow: hidden; }
-    .file-card:hover, .folder-card:hover { transform: translateY(-4px); border-color: var(--accent); }
-    .folder-card { cursor: pointer; }
-    .file-card img { width: 100%; height: 100px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
-    .icon-placeholder { width: 100%; height: 100px; background: var(--surface-2); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-    .icon-placeholder svg { width: 40px; height: 40px; stroke: var(--text-2); fill: none; stroke-width: 1.5; }
-
-    /* Menus e Modais */
-    .context-menu { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 1000; display: none; min-width: 190px; }
-    .context-menu.active { display: block; }
-    .context-menu-item { padding: 10px 16px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
-    .context-menu-item:hover { background: var(--accent); color: white; }
-    .context-menu-item.danger { color: #ef4444; }
-    
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 2000; }
-    .modal-overlay.active { display: flex; }
-    .modal-box { background: var(--surface); padding: 24px; border-radius: 16px; width: 100%; max-width: 420px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-    .modal-box h3 { margin-bottom: 15px; font-size: 1.2rem; }
-    .modal-box input, .modal-box select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-1); color: var(--text); margin-bottom: 16px; font-family: inherit; outline: none; }
-    .btn-modal { width: 100%; padding: 12px; border-radius: 8px; border: none; background: var(--accent); color: white; font-weight: bold; cursor: pointer; margin-bottom: 8px; font-family: inherit; }
-    .btn-modal.secondary { background: transparent; color: var(--text-2); }
-
-    /* Modal Privacidade */
-    .privacy-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
-    .privacy-option { display: flex; align-items: center; gap: 15px; padding: 15px; background: var(--surface-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: 0.2s; }
-    .privacy-option:hover { background: rgba(79, 140, 255, 0.1); }
-    .privacy-option.active { border-color: var(--accent); background: rgba(79, 140, 255, 0.15); }
-    .privacy-option svg { width: 24px; height: 24px; fill: none; stroke-width: 2; flex-shrink: 0; stroke: var(--text-2); }
-    .privacy-option.active svg { stroke: var(--accent); }
-
-    /* Notificações */
-    .notif-dropdown { position: absolute; top: 70px; right: 20px; width: 300px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 100; display: none; flex-direction: column; max-height: 400px; overflow-y: auto; }
-    .notif-dropdown.active { display: flex; }
-    .notif-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: bold; }
-    .notif-item { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
-    .notif-time { font-size: 0.7rem; color: var(--text-2); margin-top: 4px; }
-    .badge-notif { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; display: none; }
-
-    /* Spinner */
-    .upload-spinner { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--surface); padding: 20px 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 10001; display: none; flex-direction: column; align-items: center; gap: 10px; border: 1px solid var(--border); }
-    .upload-spinner.active { display: flex; }
-    .spinner { width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
-</head>
-<body>
-  <div class="drop-zone-overlay" id="dropZone">
-    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <h2>Solte os arquivos para fazer upload</h2>
-  </div>
-
-  <div class="upload-spinner" id="uploadSpinner">
-    <div class="spinner"></div>
-    <p id="uploadFileName">Enviando...</p>
-  </div>
-
-  <div class="toast-container" id="toastContainer"></div>
-
-  <div class="ws-header">
-    <div class="header-top">
-      <div>
-        <h1 id="folderTitle">Meus Arquivos</h1>
-        <p id="folderPath" style="color: var(--text-2); font-size: 0.9rem;">/</p>
-      </div>
-      <div style="display: flex; gap: 10px; align-items: center;">
-        <button onclick="toggleNotif(event)" style="background: transparent; border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 8px; cursor: pointer; position: relative;" class="btn-notif">
-          <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span class="badge-notif" id="notifBadge">0</span>
-        </button>
-
-        <button onclick="abrirModalNovaPasta()" style="background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 10px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;" class="btn-folder">
-          <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-          Nova Pasta
-        </button>
-        <button onclick="document.getElementById('wsFileInput').click()" style="background: var(--accent); border: none; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;" class="btn-upload">
-          <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload
-        </button>
-      </div>
-    </div>
-    <div class="search-bar">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="searchInput" placeholder="Pesquisar..." oninput="filtrarItens()">
-    </div>
-    <input type="file" id="wsFileInput" multiple onchange="fazerUpload(this)" style="display: none;">
-  </div>
-
-  <div class="notif-dropdown" id="notifDropdown">
-    <div class="notif-header">Notificações</div>
-    <div id="notifList"></div>
-  </div>
-
-  <div id="filesGrid" class="files-grid"></div>
-
-  <!-- Menu de Contexto -->
-  <div class="context-menu" id="contextMenu">
-    <div class="context-menu-item" onclick="abrirVisualizador()">Visualizar</div>
-    <div class="context-menu-item" onclick="baixarArquivo()">Baixar</div>
-    <div class="context-menu-item" onclick="abrirModalMover()">Mover para...</div>
-    <div class="context-menu-item" onclick="abrirModalRename()">Renomear</div>
-    <div class="context-menu-item" onclick="abrirModalPrivacidade()">Privacidade</div>
-    <div class="context-menu-item" onclick="abrirModalCompartilhar()">Link Público</div>
-    <div class="context-menu-item" onclick="abrirModalEmail()">Compartilhar via CodeHUB</div>
-    <div class="context-menu-item danger" onclick="deletarItem()">Excluir</div>
-  </div>
-
-  <!-- Modais -->
-  <div class="modal-overlay" id="moveModal">
-    <div class="modal-box">
-      <h3>Mover Item</h3>
-      <select id="targetFolderSelect"></select>
-      <button class="btn-modal" onclick="confirmarMover()">Mover</button>
-      <button class="btn-modal secondary" onclick="fecharModal('moveModal')">Cancelar</button>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="newFolderModal">
-    <div class="modal-box">
-      <h3>Nova Pasta</h3>
-      <input type="text" id="newFolderName" placeholder="Nome da pasta..." autocomplete="off">
-      <button class="btn-modal" onclick="salvarNovaPasta()">Criar</button>
-      <button class="btn-modal secondary" onclick="fecharModal('newFolderModal')">Cancelar</button>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="renameModal">
-    <div class="modal-box">
-      <h3>Renomear Item</h3>
-      <input type="text" id="renameInput" placeholder="Novo nome..." autocomplete="off">
-      <button class="btn-modal" onclick="salvarRename()">Salvar</button>
-      <button class="btn-modal secondary" onclick="fecharModal('renameModal')">Cancelar</button>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="privacyModal">
-    <div class="modal-box">
-      <h3>Privacidade</h3>
-      <div class="privacy-options">
-        <div class="privacy-option" id="optPrivate" onclick="selecionarPrivacidade('private')">
-          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <div><h4>Privado</h4><p>Apenas você pode acessar</p></div>
-        </div>
-        <div class="privacy-option" id="optRestricted" onclick="selecionarPrivacidade('restricted')">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <div><h4>Restrito</h4><p>Apenas contas autorizadas</p></div>
-        </div>
-        <div class="privacy-option" id="optPublic" onclick="selecionarPrivacidade('public')">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          <div><h4>Público</h4><p>Qualquer pessoa com o link</p></div>
-        </div>
-      </div>
-      <button class="btn-modal secondary" onclick="fecharModal('privacyModal')">Fechar</button>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="shareModal">
-    <div class="modal-box">
-      <h3>Link Público</h3>
-      <input type="text" id="publicUrl" readonly style="font-size:12px;">
-      <button class="btn-modal" onclick="copiarLink()">Copiar Link</button>
-      <button class="btn-modal secondary" onclick="fecharModal('shareModal')">Fechar</button>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="shareEmailModal">
-    <div class="modal-box">
-      <h3>Compartilhar via CodeHUB</h3>
-      <input type="email" id="shareEmail" placeholder="email@codehub.com">
-      <button class="btn-modal" onclick="compartilharEmail()">Enviar</button>
-      <button class="btn-modal secondary" onclick="fecharModal('shareEmailModal')">Cancelar</button>
-    </div>
-  </div>
-
-  <script>
-    window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-    window.VERCEL_URL = "https://api.codehub.giize.com";
-    let itemSelecionado = null;
-
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.textContent = message;
-      container.appendChild(toast);
-      void toast.offsetWidth;
-      toast.classList.add('show');
-      setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
-    }
-
-    window.toggleNotif = function(e) {
-      e.stopPropagation();
-      document.getElementById('notifDropdown').classList.toggle('active');
-    };
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#notifDropdown') && !e.target.closest('.btn-notif')) {
-        document.getElementById('notifDropdown').classList.remove('active');
-      }
-      document.getElementById('contextMenu').classList.remove('active');
-    });
-
-    window.fecharModal = function(id) { document.getElementById(id).classList.remove('active'); };
-  </script>
-
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-
-    const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", projectId: "html-15e80", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
-    const app = initializeApp(cfg);
-    const auth = getAuth(app);
-
-    let currentToken = null;
-    let pastasGlobais = [];
-    const filesGrid = document.getElementById('filesGrid');
-
-    if (typeof AppShell !== "undefined") { try { new AppShell().mount(); } catch (e) {} }
-
-    const SVG_FOLDER = `<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
-    const SVG_PDF = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>`;
-    const SVG_TRASH = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
-    const SVG_LOCK = `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
-    const SVG_GLOBE = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
-    const SVG_USERS = `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
-
-    function getPastaAtual() { return window.location.hash.replace('#', '').replace('/', '') || "root"; }
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetFileId = urlParams.get('id');
-
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentToken = await user.getIdToken();
-        carregarArquivosAPI();
-        carregarNotificacoes();
-        window.addEventListener('hashchange', carregarArquivosAPI);
-        
-        if (targetFileId) {
+    if (targetFileId) {
+      showToast("Salvando arquivo no seu Workspace...", "info");
+      try {
+        const res = await fetch(`${window.WORKER_URL}/api/workspace/add-reference`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenid: currentToken, fileId: targetFileId, ownerUid: 'root' })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast("Arquivo salvo com sucesso!", "success");
+          await carregarArquivosAPI();
           setTimeout(() => {
-            const el = document.getElementById(`file-${targetFileId}`);
+            const el = document.getElementById(`file-${targetFileId}`) || document.querySelector(`[data-original-id="${targetFileId}"]`);
             if (el) {
               el.scrollIntoView({ behavior: 'smooth', block: 'center' });
               el.style.border = '2px solid var(--accent)';
               el.style.boxShadow = '0 0 15px rgba(79, 140, 255, 0.5)';
             }
-          }, 1000);
-        }
-      }
-    });
-
-    async function carregarArquivosAPI() {
-      const pasta = getPastaAtual();
-      document.getElementById('folderTitle').textContent = pasta === "root" ? "Meus Arquivos" : pasta;
-      
-      try {
-        const res = await fetch(`${window.WORKER_URL}/api/workspace/list?tokenid=${currentToken}&folder=${pasta}`);
-        const data = await res.json();
-        filesGrid.innerHTML = '';
-        pastasGlobais = data.folders || [];
-        
-        if (data.files.length === 0 && data.folders.length === 0) {
-          filesGrid.innerHTML = '<p style="color: var(--text-2); text-align: center; grid-column: 1/-1;">Pasta vazia.</p>';
-          return;
-        }
-        data.folders.forEach(f => renderizarPasta(f));
-        data.files.forEach(f => renderizarArquivo(f));
-      } catch (e) { showToast("Erro ao carregar arquivos.", "error"); }
-    }
-
-    async function carregarNotificacoes() {
-      try {
-        const res = await fetch(`${window.WORKER_URL}/api/workspace/notifications?tokenid=${currentToken}`);
-        const data = await res.json();
-        const badge = document.getElementById('notifBadge');
-        const list = document.getElementById('notifList');
-        
-        if (data.ok && data.notifications.length > 0) {
-          const naoLidas = data.notifications.filter(n => !n.read).length;
-          if (naoLidas > 0) { badge.style.display = 'flex'; badge.textContent = naoLidas; } else { badge.style.display = 'none'; }
-          
-          list.innerHTML = data.notifications.map(n => `
-            <div class="notif-item">
-              <strong>${n.title}</strong><br>${n.message}
-              <div class="notif-time">${new Date(n.timestamp).toLocaleString('pt-BR')}</div>
-            </div>
-          `).join('');
+          }, 500);
         } else {
-          list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-2);">Nenhuma notificação.</div>';
+          showToast("Erro ao salvar: " + data.erro, "error");
         }
-      } catch (e) {}
+      } catch (err) {
+        showToast("Erro de conexão ao salvar arquivo.", "error");
+      }
     }
+  }
+});
 
-    window.addEventListener("dragover", (e) => e.preventDefault());
-    window.addEventListener("drop", (e) => e.preventDefault());
+async function carregarArquivosAPI() {
+  const pasta = getPastaAtual();
+  document.getElementById('folderTitle').textContent = pasta === "root" ? "Meus Arquivos" : pasta;
+  
+  try {
+    const res = await fetch(`${window.WORKER_URL}/api/workspace/list?tokenid=${currentToken}&folder=${pasta}`);
+    const data = await res.json();
+    filesGrid.innerHTML = '';
+    pastasGlobais = data.folders || [];
+    
+    if (data.files.length === 0 && data.folders.length === 0) {
+      filesGrid.innerHTML = '<p style="color: var(--text-2); text-align: center; grid-column: 1/-1;">Pasta vazia.</p>';
+      return;
+    }
+    data.folders.forEach(f => renderizarPasta(f));
+    data.files.forEach(f => renderizarArquivo(f));
+  } catch (e) { showToast("Erro ao carregar arquivos.", "error"); }
+}
 
-    const dropZone = document.getElementById('dropZone');
-    window.addEventListener('dragenter', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
-    dropZone.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      if (e.relatedTarget === null) dropZone.classList.remove('active');
+async function carregarNotificacoes() {
+  try {
+    const res = await fetch(`${window.WORKER_URL}/api/workspace/notifications?tokenid=${currentToken}`);
+    const data = await res.json();
+    const badge = document.getElementById('notifBadge');
+    const list = document.getElementById('notifList');
+    
+    if (data.ok && data.notifications.length > 0) {
+      const naoLidas = data.notifications.filter(n => !n.read).length;
+      if (naoLidas > 0) { badge.style.display = 'flex'; badge.textContent = naoLidas; } else { badge.style.display = 'none'; }
+      
+      list.innerHTML = data.notifications.map(n => `
+        <div class="notif-item">
+          <strong>${n.title}</strong><br>${n.message}
+          <div class="notif-time">${new Date(n.timestamp).toLocaleString('pt-BR')}</div>
+        </div>
+      `).join('');
+    } else {
+      list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-2);">Nenhuma notificação.</div>';
+    }
+  } catch (e) {}
+}
+
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => e.preventDefault());
+
+const dropZone = document.getElementById('dropZone');
+window.addEventListener('dragenter', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
+dropZone.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  if (e.relatedTarget === null) dropZone.classList.remove('active');
+});
+dropZone.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('active');
+  if (e.dataTransfer.files.length > 0) await uploadMultiplosArquivos(e.dataTransfer.files);
+});
+
+async function uploadMultiplosArquivos(files) {
+  const spinner = document.getElementById('uploadSpinner');
+  const spinnerText = document.getElementById('uploadFileName');
+  spinner.classList.add('active');
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    spinnerText.textContent = `Enviando ${i + 1} de ${files.length}: ${file.name}`;
+    
+    const formData = new FormData();
+    formData.append('tokenid', currentToken);
+    formData.append('file', file);
+    formData.append('filename', file.name);
+    formData.append('filetype', file.type);
+    formData.append('folder', getPastaAtual());
+
+    try {
+      const res = await fetch(window.WORKER_URL + '/api/workspace/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.erro);
+      showToast(`"${file.name}" enviado com sucesso!`, "success");
+    } catch (e) {
+      showToast(`Erro ao enviar "${file.name}": ${e.message}`, "error");
+    }
+  }
+  spinner.classList.remove('active');
+  carregarArquivosAPI();
+}
+
+function configurarCliqueDireito(el, item) {
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    itemSelecionado = item;
+    const menu = document.getElementById('contextMenu');
+    menu.style.top = `${e.pageY}px`; menu.style.left = `${e.pageX}px`;
+    menu.classList.add('active');
+  });
+}
+
+function renderizarPasta(folder) {
+  const el = document.createElement('div');
+  el.className = 'folder-card';
+  el.id = `folder-${folder.id}`;
+  el.ondblclick = () => { window.location.hash = `${folder.name}/`; };
+  configurarCliqueDireito(el, { ...folder, isFolder: true });
+  
+  let pClass = folder.privacy || 'private';
+  let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
+
+  el.innerHTML = `
+    <div class="privacy-badge ${pClass}" title="${pClass}">${pIcon}</div>
+    <div class="icon-placeholder">${SVG_FOLDER}</div>
+    <div class="file-name">${folder.name}</div>
+  `;
+  filesGrid.prepend(el);
+}
+
+function renderizarArquivo(file) {
+  const el = document.createElement('div');
+  el.className = 'file-card';
+  el.id = `file-${file.id}`;
+  el.dataset.originalId = file.originalId || '';
+  configurarCliqueDireito(el, { ...file, isFolder: false });
+  
+  const isImg = file.type && file.type.startsWith('image/');
+  let visual = isImg ? `<img src="${file.url}" style="${file.needsAccept ? 'filter: blur(4px);' : ''}">` : `<div class="icon-placeholder">${SVG_PDF}</div>`;
+  
+  let pClass = file.privacy || 'private';
+  let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
+
+  const overlayAccept = file.needsAccept ? `
+    <div style="position:absolute; inset:0; background:rgba(0,0,0,0.6); display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:12px; z-index:2;">
+      <p style="font-size:0.75rem; color:white; margin-bottom:5px;">Recebido</p>
+      <button onclick="event.stopPropagation(); aceitarCompartilhamento('${file.id}')" style="background:var(--accent); color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Aceitar</button>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="privacy-badge ${pClass}" title="${pClass}">${pIcon}</div>
+    <div style="position:relative;">${visual}${overlayAccept}</div>
+    <div class="file-name">${file.name}</div>
+    <button class="btn-delete-file" onclick="event.stopPropagation(); deletarItemDireto('${file.id}', '${file.ikFileId}')">${SVG_TRASH}</button>
+  `;
+  filesGrid.prepend(el);
+}
+
+window.filtrarItens = function() {
+  const termo = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.file-card, .folder-card').forEach(card => {
+    card.style.display = card.querySelector('.file-name').textContent.toLowerCase().includes(termo) ? 'block' : 'none';
+  });
+};
+
+window.aceitarCompartilhamento = async function(fileId) {
+  try {
+    showToast("Aceitando arquivo...", "info");
+    const res = await fetch(window.WORKER_URL + '/api/workspace/share/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, fileId: fileId })
     });
-    dropZone.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('active');
-      if (e.dataTransfer.files.length > 0) await uploadMultiplosArquivos(e.dataTransfer.files);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    
+    showToast("Arquivo aceito! Ele agora está na sua lista.", "success");
+    carregarArquivosAPI();
+  } catch (e) {
+    showToast("Erro ao aceitar: " + e.message, "error");
+  }
+};
+
+window.abrirVisualizador = function() {
+  if (itemSelecionado && !itemSelecionado.isFolder) {
+    window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.id}&token=${currentToken}`, '_blank');
+  }
+};
+
+window.baixarArquivo = function() {
+  if (itemSelecionado && !itemSelecionado.isFolder) {
+    window.open(`https://api.codehub.giize.com/api?action=stream&id=${itemSelecionado.id}&token=${currentToken}&download=true`, '_blank');
+  }
+};
+
+window.abrirModalNovaPasta = function() {
+  document.getElementById('newFolderName').value = '';
+  document.getElementById('newFolderModal').classList.add('active');
+  document.getElementById('newFolderName').focus();
+};
+
+window.salvarNovaPasta = async function() {
+  const nome = document.getElementById('newFolderName').value.trim();
+  if (!nome) return showToast("Digite um nome.", "error");
+  
+  try {
+    await fetch(window.WORKER_URL + '/api/workspace/folder/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() })
     });
+    showToast("Pasta criada!", "success");
+    fecharModal('newFolderModal'); carregarArquivosAPI();
+  } catch (e) { showToast("Erro ao criar pasta.", "error"); }
+};
 
-    async function uploadMultiplosArquivos(files) {
-      const spinner = document.getElementById('uploadSpinner');
-      const spinnerText = document.getElementById('uploadFileName');
-      spinner.classList.add('active');
+window.abrirModalRename = function() {
+  document.getElementById('renameInput').value = itemSelecionado.name;
+  document.getElementById('renameModal').classList.add('active');
+  document.getElementById('renameInput').focus();
+};
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        spinnerText.textContent = `Enviando ${i + 1} de ${files.length}: ${file.name}`;
-        
-        const formData = new FormData();
-        formData.append('tokenid', currentToken);
-        formData.append('file', file);
-        formData.append('filename', file.name);
-        formData.append('filetype', file.type);
-        formData.append('folder', getPastaAtual());
+window.salvarRename = async function() {
+  const novo = document.getElementById('renameInput').value.trim();
+  if (!novo || novo === itemSelecionado.name) return fecharModal('renameModal');
+  
+  try {
+    await fetch(window.WORKER_URL + '/api/workspace/rename', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, id: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', newName: novo })
+    });
+    showToast("Renomeado!", "success");
+    fecharModal('renameModal'); carregarArquivosAPI();
+  } catch (e) { showToast("Erro ao renomear.", "error"); }
+};
 
-        try {
-          const res = await fetch(window.WORKER_URL + '/api/workspace/upload', { method: 'POST', body: formData });
-          const data = await res.json();
-          if (!data.ok) throw new Error(data.erro);
-          showToast(`"${file.name}" enviado com sucesso!`, "success");
-        } catch (e) {
-          showToast(`Erro ao enviar "${file.name}": ${e.message}`, "error");
-        }
-      }
-      spinner.classList.remove('active');
-      carregarArquivosAPI();
-    }
+window.abrirModalPrivacidade = function() {
+  const p = itemSelecionado.privacy || 'private';
+  document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active'));
+  document.getElementById(`opt${p.charAt(0).toUpperCase() + p.slice(1)}`).classList.add('active');
+  document.getElementById('privacyModal').classList.add('active');
+};
 
-    function configurarCliqueDireito(el, item) {
-      el.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        itemSelecionado = item;
-        const menu = document.getElementById('contextMenu');
-        menu.style.top = `${e.pageY}px`; menu.style.left = `${e.pageX}px`;
-        menu.classList.add('active');
-      });
-    }
+window.selecionarPrivacidade = async function(novaPrivacidade) {
+  document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active'));
+  document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`).classList.add('active');
+  
+  try {
+    await fetch(window.WORKER_URL + '/api/workspace/privacy', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy: novaPrivacidade })
+    });
+    showToast("Privacidade atualizada!", "success");
+    itemSelecionado.privacy = novaPrivacidade;
+    setTimeout(() => { fecharModal('privacyModal'); carregarArquivosAPI(); }, 500);
+  } catch (e) { showToast("Erro ao atualizar.", "error"); }
+};
 
-    function renderizarPasta(folder) {
-      const el = document.createElement('div');
-      el.className = 'folder-card';
-      el.id = `folder-${folder.id}`;
-      el.ondblclick = () => { window.location.hash = `${folder.name}/`; };
-      configurarCliqueDireito(el, { ...folder, isFolder: true });
-      
-      let pClass = folder.privacy || 'private';
-      let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
+window.abrirModalMover = function() {
+  const select = document.getElementById('targetFolderSelect');
+  select.innerHTML = '<option value="root">/ (Raiz)</option>';
+  pastasGlobais.forEach(p => { if (p.id !== itemSelecionado.id) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+  document.getElementById('moveModal').classList.add('active');
+};
 
-      el.innerHTML = `
-        <div class="privacy-badge ${pClass}" title="${pClass}">${pIcon}</div>
-        <div class="icon-placeholder">${SVG_FOLDER}</div>
-        <div class="file-name">${folder.name}</div>
-      `;
-      filesGrid.prepend(el);
-    }
+window.confirmarMover = async function() {
+  const target = document.getElementById('targetFolderSelect').value;
+  try {
+    await fetch(window.WORKER_URL + '/api/workspace/move', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, itemType: itemSelecionado.isFolder ? 'folder' : 'file', targetFolderId: target })
+    });
+    showToast("Item movido!", "success");
+    fecharModal('moveModal'); carregarArquivosAPI();
+  } catch (e) { showToast("Erro ao mover.", "error"); }
+};
 
-    function renderizarArquivo(file) {
-      const el = document.createElement('div');
-      el.className = 'file-card';
-      el.id = `file-${file.id}`;
-      configurarCliqueDireito(el, { ...file, isFolder: false });
-      
-      const isImg = file.type && file.type.startsWith('image/');
-      let visual = isImg ? `<img src="${file.url}" style="${file.needsAccept ? 'filter: blur(4px);' : ''}">` : `<div class="icon-placeholder">${SVG_PDF}</div>`;
-      
-      let pClass = file.privacy || 'private';
-      let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
+window.abrirModalCompartilhar = async function() {
+  if (!itemSelecionado) return;
+  if (itemSelecionado.privacy !== 'public') {
+    showToast("Mude a privacidade para 'Público' primeiro!", "error");
+    return;
+  }
 
-      const overlayAccept = file.needsAccept ? `
-        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.6); display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:12px; z-index:2;">
-          <p style="font-size:0.75rem; color:white; margin-bottom:5px;">Recebido</p>
-          <button onclick="event.stopPropagation(); aceitarCompartilhamento('${file.id}')" style="background:var(--accent); color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Aceitar</button>
-        </div>` : '';
+  try {
+    const res = await fetch(window.WORKER_URL + '/api/workspace/public-share', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file' })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    
+    document.getElementById('publicUrl').value = data.shareUrl;
+    document.getElementById('shareModal').classList.add('active');
+  } catch (e) { showToast(e.message, "error"); }
+};
 
-      el.innerHTML = `
-        <div class="privacy-badge ${pClass}" title="${pClass}">${pIcon}</div>
-        <div style="position:relative;">${visual}${overlayAccept}</div>
-        <div class="file-name">${file.name}</div>
-        <button class="btn-delete-file" onclick="event.stopPropagation(); deletarItemDireto('${file.id}', '${file.ikFileId}')">${SVG_TRASH}</button>
-      `;
-      filesGrid.prepend(el);
-    }
+window.copiarLink = function() {
+  const input = document.getElementById('publicUrl');
+  input.select(); document.execCommand("copy");
+  showToast("Link copiado!", "success");
+};
 
-    window.filtrarItens = function() {
-      const termo = document.getElementById('searchInput').value.toLowerCase();
-      document.querySelectorAll('.file-card, .folder-card').forEach(card => {
-        card.style.display = card.querySelector('.file-name').textContent.toLowerCase().includes(termo) ? 'block' : 'none';
-      });
-    };
+window.abrirModalEmail = function() {
+  if (!itemSelecionado) return;
+  if (itemSelecionado.privacy !== 'private') {
+    showToast("Mude a privacidade para 'Privado' primeiro!", "error");
+    return;
+  }
 
-    window.aceitarCompartilhamento = async function(fileId) {
-      try {
-        showToast("Aceitando arquivo...", "info");
-        const res = await fetch(window.WORKER_URL + '/api/workspace/share/accept', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, fileId: fileId })
-        });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.erro);
-        
-        showToast("Arquivo aceito! Ele agora está na sua lista.", "success");
-        carregarArquivosAPI();
-      } catch (e) {
-        showToast("Erro ao aceitar: " + e.message, "error");
-      }
-    };
+  document.getElementById('shareEmail').value = '';
+  document.getElementById('shareEmailModal').classList.add('active');
+};
 
-    window.abrirVisualizador = function() {
-      if (itemSelecionado && !itemSelecionado.isFolder) {
-        window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.id}&token=${currentToken}`, '_blank');
-      }
-    };
+window.compartilharEmail = async function() {
+  const email = document.getElementById('shareEmail').value.trim();
+  if (!email) return;
+  
+  try {
+    const res = await fetch(window.WORKER_URL + '/api/workspace/share', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, fileId: itemSelecionado.id, email })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    
+    showToast("Compartilhado com sucesso!", "success");
+    fecharModal('shareEmailModal');
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+};
 
-    window.baixarArquivo = function() {
-      if (itemSelecionado && !itemSelecionado.isFolder) {
-        window.open(`https://api.codehub.giize.com/api?action=stream&id=${itemSelecionado.id}&token=${currentToken}&download=true`, '_blank');
-      }
-    };
+window.deletarItem = function() {
+  if (!itemSelecionado.isFolder) deletarItemDireto(itemSelecionado.id, itemSelecionado.ikFileId);
+};
 
-    window.abrirModalNovaPasta = function() {
-      document.getElementById('newFolderName').value = '';
-      document.getElementById('newFolderModal').classList.add('active');
-      document.getElementById('newFolderName').focus();
-    };
+window.deletarItemDireto = async function(fileId, ikFileId) {
+  if (!confirm("Tem certeza que deseja apagar este item?")) return;
+  try {
+    await fetch(window.WORKER_URL + '/api/workspace/delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, fileId, ikFileId })
+    });
+    showToast("Item apagado.", "success");
+    carregarArquivosAPI();
+  } catch (e) { showToast("Erro ao apagar.", "error"); }
+};
 
-    window.salvarNovaPasta = async function() {
-      const nome = document.getElementById('newFolderName').value.trim();
-      if (!nome) return showToast("Digite um nome.", "error");
-      
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/folder/create', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() })
-        });
-        showToast("Pasta criada!", "success");
-        fecharModal('newFolderModal'); carregarArquivosAPI();
-      } catch (e) { showToast("Erro ao criar pasta.", "error"); }
-    };
-
-    window.abrirModalRename = function() {
-      document.getElementById('renameInput').value = itemSelecionado.name;
-      document.getElementById('renameModal').classList.add('active');
-      document.getElementById('renameInput').focus();
-    };
-
-    window.salvarRename = async function() {
-      const novo = document.getElementById('renameInput').value.trim();
-      if (!novo || novo === itemSelecionado.name) return fecharModal('renameModal');
-      
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/rename', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, id: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', newName: novo })
-        });
-        showToast("Renomeado!", "success");
-        fecharModal('renameModal'); carregarArquivosAPI();
-      } catch (e) { showToast("Erro ao renomear.", "error"); }
-    };
-
-    window.abrirModalPrivacidade = function() {
-      const p = itemSelecionado.privacy || 'private';
-      document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active'));
-      document.getElementById(`opt${p.charAt(0).toUpperCase() + p.slice(1)}`).classList.add('active');
-      document.getElementById('privacyModal').classList.add('active');
-    };
-
-    window.selecionarPrivacidade = async function(novaPrivacidade) {
-      document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active'));
-      document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`).classList.add('active');
-      
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/privacy', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy: novaPrivacidade })
-        });
-        showToast("Privacidade atualizada!", "success");
-        itemSelecionado.privacy = novaPrivacidade;
-        setTimeout(() => { fecharModal('privacyModal'); carregarArquivosAPI(); }, 500);
-      } catch (e) { showToast("Erro ao atualizar.", "error"); }
-    };
-
-    window.abrirModalMover = function() {
-      const select = document.getElementById('targetFolderSelect');
-      select.innerHTML = '<option value="root">/ (Raiz)</option>';
-      pastasGlobais.forEach(p => { if (p.id !== itemSelecionado.id) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
-      document.getElementById('moveModal').classList.add('active');
-    };
-
-    window.confirmarMover = async function() {
-      const target = document.getElementById('targetFolderSelect').value;
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/move', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, itemType: itemSelecionado.isFolder ? 'folder' : 'file', targetFolderId: target })
-        });
-        showToast("Item movido!", "success");
-        fecharModal('moveModal'); carregarArquivosAPI();
-      } catch (e) { showToast("Erro ao mover.", "error"); }
-    };
-
-    window.abrirModalCompartilhar = async function() {
-      if (!itemSelecionado) return;
-      if (itemSelecionado.privacy !== 'private') {
-        showToast("Mude a privacidade para 'Privado' primeiro!", "error");
-        return;
-      }
-
-      try {
-        const res = await fetch(window.WORKER_URL + '/api/workspace/public-share', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file' })
-        });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.erro);
-        
-        document.getElementById('publicUrl').value = data.shareUrl;
-        document.getElementById('shareModal').classList.add('active');
-      } catch (e) { showToast(e.message, "error"); }
-    };
-
-    window.copiarLink = function() {
-      const input = document.getElementById('publicUrl');
-      input.select(); document.execCommand("copy");
-      showToast("Link copiado!", "success");
-    };
-
-    window.abrirModalEmail = function() {
-      if (!itemSelecionado) return;
-      if (itemSelecionado.privacy !== 'private') {
-        showToast("Mude a privacidade para 'Privado' primeiro!", "error");
-        return;
-      }
-
-      document.getElementById('shareEmail').value = '';
-      document.getElementById('shareEmailModal').classList.add('active');
-    };
-
-    window.compartilharEmail = async function() {
-      const email = document.getElementById('shareEmail').value.trim();
-      if (!email) return;
-      
-      try {
-        const res = await fetch(window.WORKER_URL + '/api/workspace/share', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, fileId: itemSelecionado.id, email })
-        });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.erro);
-        
-        showToast("Compartilhado com sucesso!", "success");
-        fecharModal('shareEmailModal');
-      } catch (e) { showToast("Erro: " + e.message, "error"); }
-    };
-
-    window.deletarItem = function() {
-      if (!itemSelecionado.isFolder) deletarItemDireto(itemSelecionado.id, itemSelecionado.ikFileId);
-    };
-
-    window.deletarItemDireto = async function(fileId, ikFileId) {
-      if (!confirm("Tem certeza que deseja apagar este item?")) return;
-      try {
-        await fetch(window.WORKER_URL + '/api/workspace/delete', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, fileId, ikFileId })
-        });
-        showToast("Item apagado.", "success");
-        carregarArquivosAPI();
-      } catch (e) { showToast("Erro ao apagar.", "error"); }
-    };
-
-    window.fazerUpload = function(input) { if (input.files.length > 0) uploadMultiplosArquivos(input.files); input.value = ''; };
-  </script>
+window.fazerUpload = function(input) { if (input.files.length > 0) uploadMultiplosArquivos(input.files); input.value = ''; };
+</script>
 </body>
 </html>
