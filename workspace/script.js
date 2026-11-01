@@ -27,7 +27,6 @@ document.addEventListener('click', (e) => {
 
 window.fecharModal = function(id) { document.getElementById(id).classList.remove('active'); };
 
-// ===== FIREBASE E LÓGICA =====
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
@@ -58,6 +57,7 @@ function getPastaAtual() { return window.location.hash.replace('#', '').replace(
 const urlParams = new URLSearchParams(window.location.search);
 const targetFileId = urlParams.get('id');
 const targetOwner = urlParams.get('owner');
+const targetType = urlParams.get('type') || 'file';
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
@@ -67,19 +67,24 @@ onAuthStateChanged(auth, async (user) => {
     window.addEventListener('hashchange', carregarArquivosAPI);
     
     if (targetFileId) {
-      showToast("Salvando arquivo...", "info");
+      showToast("Salvando no Workspace...", "info");
       try {
         const res = await fetch(`${window.WORKER_URL}/api/workspace/add-reference`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, fileId: targetFileId, ownerUid: targetOwner || 'root' })
+          body: JSON.stringify({ 
+            tokenid: currentToken, 
+            fileId: targetFileId, 
+            ownerUid: targetOwner || 'root',
+            itemType: targetType 
+          })
         });
         const data = await res.json();
         if (data.ok) {
-          showToast("Salvo com sucesso!", "success");
+          showToast(data.mensagem, "success");
           await carregarArquivosAPI();
           setTimeout(() => {
-            const el = document.getElementById(`file-${targetFileId}`) || document.querySelector(`[data-original-id="${targetFileId}"]`);
+            const el = document.getElementById(`${targetType === 'folder' ? 'folder' : 'file'}-${targetFileId}`) || document.querySelector(`[data-original-id="${targetFileId}"]`);
             if (el) {
               el.scrollIntoView({ behavior: 'smooth', block: 'center' });
               el.style.border = '2px solid var(--accent)';
@@ -193,6 +198,7 @@ function renderizarPasta(folder) {
   const el = document.createElement('div');
   el.className = 'folder-card';
   el.id = `folder-${folder.id}`;
+  el.dataset.originalId = folder.originalId || '';
   el.ondblclick = () => { window.location.hash = `${folder.name}/`; };
   configurarCliqueDireito(el, { ...folder, isFolder: true });
   
@@ -258,8 +264,8 @@ window.aceitarCompartilhamento = async function(fileId) {
 };
 
 window.abrirVisualizador = function() {
-  if (itemSelecionado && !itemSelecionado.isFolder) {
-    window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}`, '_blank');
+  if (itemSelecionado) {
+    window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}&type=${itemSelecionado.isFolder ? 'folder' : 'file'}`, '_blank');
   }
 };
 
