@@ -31,7 +31,12 @@ window.fecharModal = function(id) { document.getElementById(id).classList.remove
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", projectId: "html-15e80", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
+const cfg = { 
+  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", 
+  authDomain: "html-15e80.firebaseapp.com", 
+  projectId: "html-15e80", 
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32" 
+};
 const app = initializeApp(cfg);
 const auth = getAuth(app);
 
@@ -93,6 +98,8 @@ async function carregarArquivosAPI() {
   const pasta = getPastaAtual();
   document.getElementById('folderTitle').textContent = pasta === "root" ? "Meus Arquivos" : pasta;
   
+  filesGrid.innerHTML = '<div style="grid-column: 1/-1; display: flex; justify-content: center; padding: 40px;"><div class="spinner" style="width: 40px; height: 40px;"></div></div>';
+  
   try {
     const res = await fetch(`${window.WORKER_URL}/api/workspace/list?tokenid=${currentToken}&folder=${pasta}`);
     const data = await res.json();
@@ -105,7 +112,7 @@ async function carregarArquivosAPI() {
     }
     data.folders.forEach(f => renderizarPasta(f));
     data.files.forEach(f => renderizarArquivo(f));
-  } catch (e) { showToast("Erro ao carregar.", "error"); }
+  } catch (e) { filesGrid.innerHTML = '<p style="color: red; text-align: center; grid-column: 1/-1;">Erro ao carregar.</p>'; }
 }
 
 async function carregarNotificacoes() {
@@ -208,7 +215,7 @@ function renderizarArquivo(file) {
   configurarCliqueDireito(el, { ...file, isFolder: false });
   
   const isImg = file.type && file.type.startsWith('image/');
-  let visual = isImg ? `<img src="${file.url}" style="${file.needsAccept ? 'filter: blur(4px);' : ''}">` : `<div class="icon-placeholder">${SVG_PDF}</div>`;
+  let visual = isImg ? `<img src="${file.url}" loading="lazy" style="${file.needsAccept ? 'filter: blur(4px);' : ''}">` : `<div class="icon-placeholder">${SVG_PDF}</div>`;
   
   let pClass = file.privacy || 'private';
   let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
@@ -252,7 +259,7 @@ window.aceitarCompartilhamento = async function(fileId) {
 
 window.abrirVisualizador = function() {
   if (itemSelecionado && !itemSelecionado.isFolder) {
-    window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.id}&token=${currentToken}`, '_blank');
+    window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}`, '_blank');
   }
 };
 
@@ -411,4 +418,7 @@ window.deletarItemDireto = async function(fileId, ikFileId) {
   } catch (e) { showToast("Erro ao apagar.", "error"); }
 };
 
-window.fazerUpload = function(input) { if (input.files.length > 0) uploadMultiplosArquivos(input.files); input.value = ''; };
+window.fazerUpload = function(input) { 
+  if (input.files.length > 0) uploadMultiplosArquivos(input.files); 
+  input.value = ''; 
+};
