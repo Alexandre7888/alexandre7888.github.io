@@ -21,7 +21,7 @@ document.addEventListener('click', (e) => {
 window.fecharModal = function(id) { document.getElementById(id).classList.remove('active'); };
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/auth.js';
 
 const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", projectId: "html-15e80", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
 const app = initializeApp(cfg);
@@ -29,6 +29,7 @@ const auth = getAuth(app);
 
 let currentToken = null;
 let pastasGlobais = [];
+let pastasGlobaisCompletas = []; // ⭐ lista com chaves (key) para mover/renomear
 const filesGrid = document.getElementById('filesGrid');
 
 if (typeof AppShell !== "undefined") { try { new AppShell().mount(); } catch (e) {} }
@@ -53,7 +54,7 @@ onAuthStateChanged(auth, async (user) => {
     await carregarArquivosAPI();
     carregarNotificacoes();
     window.addEventListener('hashchange', carregarArquivosAPI);
-    
+
     if (targetFileId) {
       showToast("Salvando no Workspace...", "info");
       try {
@@ -83,16 +84,17 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 async function carregarArquivosAPI() {
-  const pasta = getPastaAtual();
-  document.getElementById('folderTitle').textContent = pasta === "root" ? "Meus Arquivos" : pasta;
+  const pasta = getPastaAtual(); // ⭐ agora é a KEY (nome sanitizado) ou "root"
+  document.getElementById('folderTitle').textContent = pasta === "root" ? "Meus Arquivos" : pasta.replace(/_/g, ' '); // ⭐ troca _ por espaço no título
+  document.getElementById('folderPath').textContent = pasta === "root" ? "/" : `/${pasta.replace(/_/g, ' ')}`;
   filesGrid.innerHTML = '<div style="grid-column: 1/-1; display: flex; justify-content: center; padding: 40px;"><div class="spinner" style="width: 40px; height: 40px;"></div></div>';
-  
+
   try {
-    const res = await fetch(`${window.WORKER_URL}/api/workspace/list?tokenid=${currentToken}&folder=${pasta}`);
+    const res = await fetch(`${window.WORKER_URL}/api/workspace/list?tokenid=${currentToken}&folder=${encodeURIComponent(pasta)}`);
     const data = await res.json();
     filesGrid.innerHTML = '';
     pastasGlobais = data.folders || [];
-    
+    pastasGlobaisCompletas = data.folders || [];
     if (data.files.length === 0 && data.folders.length === 0) {
       filesGrid.innerHTML = '<p style="color: var(--text-2); text-align: center; grid-column: 1/-1;">Pasta vazia.</p>';
       return;
@@ -108,7 +110,7 @@ async function carregarNotificacoes() {
     const data = await res.json();
     const badge = document.getElementById('notifBadge');
     const list = document.getElementById('notifList');
-    
+
     if (data.ok && data.notifications.length > 0) {
       const naoLidas = data.notifications.filter(n => !n.read).length;
       if (naoLidas > 0) { badge.style.display = 'flex'; badge.textContent = naoLidas; } else { badge.style.display = 'none'; }
@@ -137,7 +139,8 @@ async function uploadMultiplosArquivos(files) {
     spinnerText.textContent = `Enviando ${i + 1} de ${files.length}: ${file.name}`;
     const formData = new FormData();
     formData.append('tokenid', currentToken); formData.append('file', file);
-    formData.append('filename', file.name); formData.append('filetype', file.type); formData.append('folder', getPastaAtual());
+    formData.append('filename', file.name); formData.append('filetype', file.type);
+    formData.append('folder', getPastaAtual()); // ⭐ agora é a KEY (nome sanitizado)
     try {
       const res = await fetch(window.WORKER_URL + '/api/workspace/upload', { method: 'POST', body: formData });
       const data = await res.json();
@@ -159,10 +162,14 @@ function configurarCliqueDireito(el, item) {
 
 function renderizarPasta(folder) {
   const el = document.createElement('div');
-  el.className = 'folder-card'; el.id = `folder-${folder.id}`; el.dataset.originalId = folder.originalId || '';
-  el.ondblclick = () => { window.location.hash = `${folder.name}/`; };
+  el.className = 'folder-card';
+  // ⭐ ID DOM usa a KEY (nome sanitizado), pois é a chave real no banco
+  el.id = `folder-${folder.key || folder.id}`;
+  el.dataset.originalId = folder.originalId || '';
+  // ⭐ dblclick navega pela KEY (que é o nome sanitizado)
+  el.ondblclick = () => { window.location.hash = `${folder.key}/`; };
   configurarCliqueDireito(el, { ...folder, isFolder: true });
-  
+
   let pClass = folder.privacy || 'private';
   let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
 
@@ -174,10 +181,10 @@ function renderizarArquivo(file) {
   const el = document.createElement('div');
   el.className = 'file-card'; el.id = `file-${file.id}`; el.dataset.originalId = file.originalId || '';
   configurarCliqueDireito(el, { ...file, isFolder: false });
-  
+
   const isImg = file.type && file.type.startsWith('image/');
   let visual = isImg ? `<img src="${file.url}" loading="lazy" style="${file.needsAccept ? 'filter: blur(4px);' : ''}">` : `<div class="icon-placeholder">${SVG_PDF}</div>`;
-  
+
   let pClass = file.privacy || 'private';
   let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
 
@@ -202,20 +209,134 @@ window.aceitarCompartilhamento = async function(fileId) {
   } catch (e) { showToast("Erro ao aceitar: " + e.message, "error"); }
 };
 
-window.abrirVisualizador = function() { if (itemSelecionado) window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}&type=${itemSelecionado.isFolder ? 'folder' : 'file'}`, '_blank'); };
+window.abrirVisualizador = function() {
+  if (itemSelecionado) {
+    const id = itemSelecionado.isFolder ? (itemSelecionado.key || itemSelecionado.id) : itemSelecionado.id;
+    const type = itemSelecionado.isFolder ? 'folder' : 'file';
+    window.open(`https://api.codehub.giize.com/api?action=view&id=${id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}&type=${type}`, '_blank');
+  }
+};
 window.baixarArquivo = function() { if (itemSelecionado && !itemSelecionado.isFolder) window.open(`https://api.codehub.giize.com/api?action=stream&id=${itemSelecionado.id}&token=${currentToken}&download=true`, '_blank'); };
 window.abrirModalNovaPasta = function() { document.getElementById('newFolderName').value = ''; document.getElementById('newFolderModal').classList.add('active'); document.getElementById('newFolderName').focus(); };
-window.salvarNovaPasta = async function() { const nome = document.getElementById('newFolderName').value.trim(); if (!nome) return showToast("Digite um nome.", "error"); try { await fetch(window.WORKER_URL + '/api/workspace/folder/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() }) }); showToast("Pasta criada!", "success"); fecharModal('newFolderModal'); carregarArquivosAPI(); } catch (e) { showToast("Erro ao criar pasta.", "error"); } };
+
+// ⭐ salvar pasta agora manda parent como KEY
+window.salvarNovaPasta = async function() {
+  const nome = document.getElementById('newFolderName').value.trim();
+  if (!nome) return showToast("Digite um nome.", "error");
+  try {
+    const res = await fetch(window.WORKER_URL + '/api/workspace/folder/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    showToast("Pasta criada!", "success"); fecharModal('newFolderModal'); carregarArquivosAPI();
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+};
+
 window.abrirModalRename = function() { document.getElementById('renameInput').value = itemSelecionado.name; document.getElementById('renameModal').classList.add('active'); document.getElementById('renameInput').focus(); };
-window.salvarRename = async function() { const novo = document.getElementById('renameInput').value.trim(); if (!novo || novo === itemSelecionado.name) return fecharModal('renameModal'); try { await fetch(window.WORKER_URL + '/api/workspace/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, id: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', newName: novo }) }); showToast("Renomeado!", "success"); fecharModal('renameModal'); carregarArquivosAPI(); } catch (e) { showToast("Erro ao renomear.", "error"); } };
+
+// ⭐ rename envia folderKey/parent quando for pasta
+window.salvarRename = async function() {
+  const novo = document.getElementById('renameInput').value.trim();
+  if (!novo || novo === itemSelecionado.name) return fecharModal('renameModal');
+  try {
+    const body = {
+      tokenid: currentToken,
+      id: itemSelecionado.id,
+      type: itemSelecionado.isFolder ? 'folder' : 'file',
+      newName: novo
+    };
+    if (itemSelecionado.isFolder) {
+      body.folderKey = itemSelecionado.key;              // ⭐ chave atual
+      body.parent = itemSelecionado.parent || getPastaAtual(); // ⭐ pai
+    } else {
+      body.folderKey = itemSelecionado.folder; // ⭐ pasta onde o arquivo está
+    }
+    const res = await fetch(window.WORKER_URL + '/api/workspace/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    showToast("Renomeado!", "success"); fecharModal('renameModal'); carregarArquivosAPI();
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+};
+
 window.abrirModalPrivacidade = function() { const p = itemSelecionado.privacy || 'private'; document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); document.getElementById(`opt${p.charAt(0).toUpperCase() + p.slice(1)}`).classList.add('active'); document.getElementById('privacyModal').classList.add('active'); };
-window.selecionarPrivacidade = async function(novaPrivacidade) { document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`).classList.add('active'); try { await fetch(window.WORKER_URL + '/api/workspace/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy: novaPrivacidade }) }); showToast("Privacidade atualizada!", "success"); itemSelecionado.privacy = novaPrivacidade; setTimeout(() => { fecharModal('privacyModal'); carregarArquivosAPI(); }, 500); } catch (e) { showToast("Erro ao atualizar.", "error"); } };
-window.abrirModalMover = function() { const select = document.getElementById('targetFolderSelect'); select.innerHTML = '<option value="root">/ (Raiz)</option>'; pastasGlobais.forEach(p => { if (p.id !== itemSelecionado.id) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; }); document.getElementById('moveModal').classList.add('active'); };
-window.confirmarMover = async function() { const target = document.getElementById('targetFolderSelect').value; try { await fetch(window.WORKER_URL + '/api/workspace/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, itemType: itemSelecionado.isFolder ? 'folder' : 'file', targetFolderId: target }) }); showToast("Item movido!", "success"); fecharModal('moveModal'); carregarArquivosAPI(); } catch (e) { showToast("Erro ao mover.", "error"); } };
-window.abrirModalCompartilhar = async function() { if (!itemSelecionado) return; if (itemSelecionado.privacy !== 'public') { showToast("Mude a privacidade para 'Público' primeiro!", "error"); return; } try { const res = await fetch(window.WORKER_URL + '/api/workspace/public-share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file' }) }); const data = await res.json(); if (!data.ok) throw new Error(data.erro); document.getElementById('publicUrl').value = data.shareUrl; document.getElementById('shareModal').classList.add('active'); } catch (e) { showToast(e.message, "error"); } };
+
+// ⭐ privacy envia folderKey quando for arquivo
+window.selecionarPrivacidade = async function(novaPrivacidade) {
+  document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active'));
+  document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`).classList.add('active');
+  try {
+    const body = { tokenid: currentToken, itemId: itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy: novaPrivacidade };
+    if (!itemSelecionado.isFolder) body.folderKey = itemSelecionado.folder;
+    const res = await fetch(window.WORKER_URL + '/api/workspace/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    showToast("Privacidade atualizada!", "success");
+    itemSelecionado.privacy = novaPrivacidade;
+    setTimeout(() => { fecharModal('privacyModal'); carregarArquivosAPI(); }, 500);
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+};
+
+window.abrirModalMover = function() {
+  const select = document.getElementById('targetFolderSelect');
+  select.innerHTML = '<option value="root">/ (Raiz)</option>';
+  pastasGlobais.forEach(p => {
+    // ⭐ não permite mover pasta para dentro dela mesma
+    const pKey = p.key || p.id;
+    const selKey = itemSelecionado.isFolder ? (itemSelecionado.key || itemSelecionado.id) : null;
+    if (pKey !== selKey) select.innerHTML += `<option value="${pKey}">${p.name}</option>`;
+  });
+  document.getElementById('moveModal').classList.add('active');
+};
+
+// ⭐ mover agora usa KEY no target
+window.confirmarMover = async function() {
+  const target = document.getElementById('targetFolderSelect').value; // ⭐ KEY ou "root"
+  try {
+    const body = {
+      tokenid: currentToken,
+      itemId: itemSelecionado.isFolder ? (itemSelecionado.key || itemSelecionado.id) : itemSelecionado.id,
+      itemType: itemSelecionado.isFolder ? 'folder' : 'file',
+      targetFolderId: target
+    };
+    const res = await fetch(window.WORKER_URL + '/api/workspace/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    showToast("Item movido!", "success"); fecharModal('moveModal'); carregarArquivosAPI();
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+};
+
+window.abrirModalCompartilhar = async function() {
+  if (!itemSelecionado) return;
+  if (itemSelecionado.privacy !== 'public') { showToast("Mude a privacidade para 'Público' primeiro!", "error"); return; }
+  try {
+    const id = itemSelecionado.isFolder ? (itemSelecionado.key || itemSelecionado.id) : itemSelecionado.id;
+    const res = await fetch(window.WORKER_URL + '/api/workspace/public-share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: id, type: itemSelecionado.isFolder ? 'folder' : 'file' }) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    document.getElementById('publicUrl').value = data.shareUrl;
+    document.getElementById('shareModal').classList.add('active');
+  } catch (e) { showToast(e.message, "error"); }
+};
 window.copiarLink = function() { const input = document.getElementById('publicUrl'); input.select(); document.execCommand("copy"); showToast("Link copiado!", "success"); };
 window.abrirModalEmail = function() { if (!itemSelecionado) return; if (itemSelecionado.privacy !== 'private') { showToast("Mude a privacidade para 'Privado' primeiro!", "error"); return; } document.getElementById('shareEmail').value = ''; document.getElementById('shareEmailModal').classList.add('active'); };
-window.compartilharEmail = async function() { const email = document.getElementById('shareEmail').value.trim(); if (!email) return; try { const res = await fetch(window.WORKER_URL + '/api/workspace/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId: itemSelecionado.id, email }) }); const data = await res.json(); if (!data.ok) throw new Error(data.erro); showToast("Compartilhado com sucesso!", "success"); fecharModal('shareEmailModal'); } catch (e) { showToast("Erro: " + e.message, "error"); } };
+window.compartilharEmail = async function() {
+  const email = document.getElementById('shareEmail').value.trim();
+  if (!email) return;
+  try {
+    const res = await fetch(window.WORKER_URL + '/api/workspace/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId: itemSelecionado.id, email }) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+    showToast("Compartilhado com sucesso!", "success"); fecharModal('shareEmailModal');
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+};
 window.deletarItem = function() { if (!itemSelecionado.isFolder) deletarItemDireto(itemSelecionado.id, itemSelecionado.ikFileId); };
-window.deletarItemDireto = async function(fileId, ikFileId) { if (!confirm("Tem certeza que deseja apagar este item?")) return; try { await fetch(window.WORKER_URL + '/api/workspace/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId, ikFileId }) }); showToast("Item apagado.", "success"); carregarArquivosAPI(); } catch (e) { showToast("Erro ao apagar.", "error"); } };
+window.deletarItemDireto = async function(fileId, ikFileId) {
+  if (!confirm("Tem certeza que deseja apagar este item?")) return;
+  try {
+    await fetch(window.WORKER_URL + '/api/workspace/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId, ikFileId }) });
+    showToast("Item apagado.", "success"); carregarArquivosAPI();
+  } catch (e) { showToast("Erro ao apagar.", "error"); }
+};
 window.fazerUpload = function(input) { if (input.files.length > 0) uploadMultiplosArquivos(input.files); input.value = ''; };
