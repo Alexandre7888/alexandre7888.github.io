@@ -6,9 +6,9 @@ export default async function handler(req, res) {
 
   if (action === 'view') {
     if (!id) return res.status(400).send("ID obrigatório.");
-    const workerUrl = share 
+    const workerUrl = share
       ? `${WORKER_URL}/api/workspace/public/${share}`
-      : `${WORKER_URL}/api/workspace/view/${id}?tokenid=${token}`;
+      : `${WORKER_URL}/api/workspace/view/${id}?tokenid=${token}&type=${type || 'file'}`;
 
     try {
       const fileRes = await fetch(workerUrl);
@@ -17,19 +17,18 @@ export default async function handler(req, res) {
       const contentType = fileRes.headers.get("content-type") || "application/octet-stream";
       let mediaHtml = "";
 
-      if (contentType.includes("image")) {
-        mediaHtml = `<img src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}" style="max-width:100%;max-height:80vh;border-radius:8px;" />`;
-      } else if (contentType.includes("pdf")) {
-        mediaHtml = `<iframe src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}" style="width:100%;height:80vh;border:none;"></iframe>`;
-      } else if (contentType.includes("video")) {
-        mediaHtml = `<video controls style="max-width:100%;max-height:80vh;border-radius:8px;"><source src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}" type="${contentType}"></video>`;
-      } else if (contentType.includes("application/json")) {
-        // Se for uma pasta pública, o Worker devolve JSON com os arquivos
+      if (contentType.includes("application/json")) {
         const data = await fileRes.json();
-        let list = data.files ? data.files.map(f => `<li>📄 <a href="/api?action=view&id=${f.id}&share=${share}&owner=${owner}">${f.name}</a></li>`).join('') : '';
-        mediaHtml = `<div style="text-align:center;width:100%;"><h3>Conteúdo da Pasta</h3><ul style="list-style:none;padding:0;">${list || 'Vazia'}</ul></div>`;
+        let list = data.files ? data.files.map(f => `<li style="margin-bottom:10px;">📄 <a href="/api?action=view&id=${f.id}&token=${token || ''}&share=${share || ''}&owner=${owner || ''}&type=file" style="color:#4f8cff;text-decoration:none;">${f.name}</a></li>`).join('') : '';
+        mediaHtml = `<div style="text-align:left;width:100%;max-width:600px;"><h3>Conteúdo da Pasta</h3><ul style="list-style:none;padding:0;">${list || 'Vazia'}</ul></div>`;
+      } else if (contentType.includes("image")) {
+        mediaHtml = `<img src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&type=file" style="max-width:100%;max-height:80vh;border-radius:8px;" />`;
+      } else if (contentType.includes("pdf")) {
+        mediaHtml = `<iframe src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&type=file" style="width:100%;height:80vh;border:none;"></iframe>`;
+      } else if (contentType.includes("video")) {
+        mediaHtml = `<video controls style="max-width:100%;max-height:80vh;border-radius:8px;"><source src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&type=file" type="${contentType}"></video>`;
       } else {
-        mediaHtml = `<p>Formato não suportado. <a href="/api?action=stream&id=${id}&token=${token || ''}&download=true">Baixar Arquivo</a></p>`;
+        mediaHtml = `<p>Formato não suportado. <a href="/api?action=stream&id=${id}&token=${token || ''}&download=true&type=file">Baixar Arquivo</a></p>`;
       }
 
       const html = `
@@ -40,9 +39,8 @@ export default async function handler(req, res) {
           <div style="padding:15px 20px;background:#101626;border-bottom:1px solid #1f2a44;display:flex;justify-content:space-between;align-items:center;">
             <h3 style="margin:0;font-size:1.1rem;">Visualizador CodeHUB</h3>
             <div>
-              <!-- AQUI PASSA O TYPE (folder ou file) -->
               <a href="https://codehub.giize.com/workspace/?id=${id}&owner=${owner || ''}&type=${type || 'file'}" style="background:#4f8cff;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;">Salvar no Workspace</a>
-              <a href="/api?action=stream&id=${id}&token=${token || ''}&download=true" style="background:#2d3b5c;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;margin-left:10px;">Baixar</a>
+              <a href="/api?action=stream&id=${id}&token=${token || ''}&download=true&type=${type || 'file'}" style="background:#2d3b5c;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;margin-left:10px;">Baixar</a>
             </div>
           </div>
           <div style="flex:1;display:flex;justify-content:center;align-items:center;padding:20px;">${mediaHtml}</div>
@@ -51,13 +49,15 @@ export default async function handler(req, res) {
       `;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       return res.send(html);
-    } catch (e) { return res.status(500).send("Erro."); }
+    } catch (e) {
+      return res.status(500).send("Erro.");
+    }
   }
 
   if (action === 'stream') {
-    const workerUrl = share 
+    const workerUrl = share
       ? `${WORKER_URL}/api/workspace/public/${share}`
-      : `${WORKER_URL}/api/workspace/view/${id}?tokenid=${token}`;
+      : `${WORKER_URL}/api/workspace/view/${id}?tokenid=${token}&type=${type || 'file'}`;
     try {
       const response = await fetch(workerUrl);
       if (!response.ok) return res.status(response.status).send("Erro.");
@@ -65,7 +65,9 @@ export default async function handler(req, res) {
       if (download === 'true') res.setHeader("Content-Disposition", `attachment; filename="arquivo"`);
       const buffer = await response.arrayBuffer();
       return res.send(Buffer.from(buffer));
-    } catch (e) { return res.status(500).send("Erro."); }
+    } catch (e) {
+      return res.status(500).send("Erro.");
+    }
   }
 
   return res.status(404).send("Ação não encontrada.");
