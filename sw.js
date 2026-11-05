@@ -5,8 +5,8 @@ const OFFLINE_PAGE = './index.html';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './manifest.json',
-  './app-shell.js'
+  './notificação.html',
+  './app.js'
 ];
 
 // INSTALL
@@ -14,7 +14,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Não falha o install se algum asset der 404
       return cache.addAll(STATIC_ASSETS).catch(() => {});
     })
   );
@@ -43,19 +42,19 @@ self.addEventListener('fetch', (event) => {
   // 1) OneSignal: nunca interceptar
   if (url.hostname.includes('onesignal')) return;
 
-  // 2) ⭐ MANIFEST: sempre network (nunca cache)
+  // 2) ⭐ MANIFEST DO WORKER: SEMPRE network (nunca cache)
   if (url.pathname.endsWith('/manifest.json')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // 3) APIs (worker): sempre network
+  // 3) APIs do worker: SEMPRE network
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // 4) Demais requisições: network-first com fallback de cache
+  // 4) Demais: network-first com fallback de cache
   event.respondWith(
     fetch(event.request)
       .then((res) => {
@@ -69,7 +68,7 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(async () => {
         const cached = await caches.match(event.request);
-        return cached || caches.match(OFFLINE_PAGE);
+        return cached || caches.match('./notificação.html') || caches.match('./index.html');
       })
   );
 });
