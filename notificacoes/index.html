@@ -324,26 +324,22 @@
 
   </div>
 
-  <!-- ===== FIREBASE ===== -->
+  <!-- ===== FIREBASE E LÓGICA ===== -->
   <script type="module">
+    window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getDatabase, ref, set, remove, get, serverTimestamp }
-      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const FIREBASE_CONFIG = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
-      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
       projectId: "html-15e80",
-      storageBucket: "html-15e80.firebasestorage.app",
-      messagingSenderId: "1068148640439",
       appId: "1:1068148640439:web:1ac651348e624f6be41b32"
     };
 
     const app  = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
     const auth = getAuth(app);
-    const db   = getDatabase(app);
 
     const elNotLogged = document.getElementById("notLogged");
     const elContent   = document.getElementById("content");
@@ -356,6 +352,7 @@
     const elBtnLabel  = document.getElementById("btnLabel");
 
     let currentUser = null;
+    let currentToken = null;
     let isSubscribed = false;
 
     function setStatus(msg, type = ""){
@@ -363,7 +360,6 @@
       elStatus.className = "status" + (type ? " " + type : "");
     }
 
-    // ===== ATUALIZA UI CONFORME ESTADO =====
     function renderUI(){
       if (isSubscribed){
         elIcon.classList.remove("off");
@@ -387,10 +383,8 @@
       }
     }
 
-    // ===== VERIFICA SE JÁ ESTÁ INSCRITO =====
     async function checkSubscription(){
-      if (!currentUser) return false;
-
+      if (!currentToken) return false;
       const os = window.__OneSignal;
       if (!os) return false;
 
@@ -398,76 +392,58 @@
       if (!subId) return false;
 
       try {
-        const snap = await get(ref(db, `users/${currentUser.uid}/notification_ids/${subId}`));
-        return snap.exists();
+        const r = await fetch(`${window.WORKER_URL}/api/notification/status?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}`);
+        const d = await r.json();
+        return d.ok && d.subscribed;
       } catch(e){
-        console.warn("Erro ao checar inscrição:", e);
         return false;
       }
     }
 
-    // ===== SALVA O SUBSCRIPTION ID =====
-    async function saveSubscriptionId(){
-      if (!currentUser) return null;
-
-      const os = window.__OneSignal;
-      if (!os) return null;
-
-      try {
-        const subId = os.User?.PushSubscription?.id;
-        if (!subId) return null;
-
-        const idRef = ref(db, `users/${currentUser.uid}/notification_ids/${subId}`);
-        await set(idRef, {
-          subscription_id: subId,
-          user_agent: navigator.userAgent,
-          platform: navigator.platform || "unknown",
-          language: navigator.language || "unknown",
-          created_at: serverTimestamp(),
-          last_seen: serverTimestamp()
-        });
-
-        try { await os.login(currentUser.uid); } catch(e){}
-
-        console.log("[Notificações] ID salvo:", subId);
-        return subId;
-
-      } catch (e) {
-        console.error("[Notificações] Erro ao salvar:", e);
-        return null;
-      }
-    }
-
-    // ===== REMOVE O ID DO FIREBASE =====
-    async function removeSubscriptionId(){
-      if (!currentUser) return false;
-
+    async function saveSubscriptionViaWorker(){
+      if (!currentToken) return false;
       const os = window.__OneSignal;
       if (!os) return false;
 
+      const subId = os.User?.PushSubscription?.id;
+      if (!subId) return false;
+
       try {
-        const subId = os.User?.PushSubscription?.id;
-        if (subId){
-          await remove(ref(db, `users/${currentUser.uid}/notification_ids/${subId}`));
-          console.log("[Notificações] ID removido do Firebase:", subId);
-        }
-        return true;
-      } catch (e) {
-        console.error("[Notificações] Erro ao remover:", e);
+        const r = await fetch(`${window.WORKER_URL}/api/notification/subscribe?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}`);
+        const d = await r.json();
+        return d.ok === true;
+      } catch(e){
         return false;
       }
     }
 
-    // ===== ESTADO INICIAL =====
+    async function removeSubscriptionViaWorker(){
+      if (!currentToken) return false;
+      const os = window.__OneSignal;
+      if (!os) return false;
+
+      const subId = os.User?.PushSubscription?.id;
+      if (!subId) return false;
+
+      try {
+        await fetch(`${window.WORKER_URL}/api/notification/subscribe?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}&action=remove`);
+        return true;
+      } catch(e){
+        return false;
+      }
+    }
+
     onAuthStateChanged(auth, async (user) => {
       currentUser = user;
 
       if (!user) {
+        currentToken = null;
         elNotLogged.classList.remove("hidden");
         elContent.classList.add("hidden");
         return;
       }
 
+      currentToken = await user.getIdToken();
       elNotLogged.classList.add("hidden");
       elContent.classList.remove("hidden");
 
@@ -486,9 +462,8 @@
       renderUI();
     });
 
-    // ===== BOTÃO ATIVAR =====
     elBtn.addEventListener("click", async () => {
-      if (!currentUser){
+      if (!currentUser || !currentToken){
         setStatus("Você precisa estar logado.", "err");
         return;
       }
@@ -517,14 +492,19 @@
           tries++;
         }
 
-        const saved = await saveSubscriptionId();
+        setStatus("⏳ Sincronizando com o servidor...", "loading");
+
+        // ⭐ ESPERA 2 SEGUNDOS PARA O ONESIGNAL PROCESSAR O ID ANTES DE ENVIAR
+        await new Promise(r => setTimeout(r, 2000));
+
+        const saved = await saveSubscriptionViaWorker();
 
         if (saved){
           isSubscribed = true;
           renderUI();
           setStatus("🎉 Notificações ativadas com sucesso!", "ok");
         } else {
-          setStatus("⚠️ Permissão concedida, mas não conseguimos salvar o ID.", "err");
+          setStatus("⚠️ Permissão concedida, mas o servidor não conseguiu salvar.", "err");
           elBtn.disabled = false;
         }
 
@@ -535,10 +515,8 @@
       }
     });
 
-    // ===== BOTÃO DESINSCREVER =====
     elUnsub.addEventListener("click", async () => {
       if (!currentUser) return;
-
       if (!confirm("Desinscrever este dispositivo das notificações push?")) return;
 
       elUnsub.disabled = true;
@@ -549,7 +527,7 @@
         if (!os) throw new Error("OneSignal não carregou.");
 
         await os.User.PushSubscription.optOut();
-        await removeSubscriptionId();
+        await removeSubscriptionViaWorker();
 
         isSubscribed = false;
         renderUI();
@@ -562,7 +540,6 @@
       }
     });
 
-    // ===== ONESIGNAL PRONTO =====
     window.addEventListener("onesignal-ready", async () => {
       if (currentUser){
         const perm = window.Notification?.permission;
@@ -575,7 +552,6 @@
     });
   </script>
 
-  <!-- ===== APP-SHELL (menu lateral + perfil) — caminho relativo na raiz ===== -->
   <script src="/app-shell.js"></script>
   <script>
     if (typeof AppShell !== "undefined") {
