@@ -6,6 +6,7 @@
   <title>Notificações · CodeHUB</title>
   <link rel="icon" type="image/png" href="/InShot_20250807_112151490.jpg">
 
+  <!-- ===== ONESIGNAL ===== -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -95,6 +96,7 @@
       line-height:1.6;
     }
 
+    /* ===== BOTÃO PRINCIPAL ===== */
     .big-btn{
       position:relative;
       width:min(320px, 80vw);
@@ -145,10 +147,12 @@
       filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));
     }
 
+    /* Estado ativo = verde */
     .big-btn.active{
       background:linear-gradient(135deg,#16a34a,#22c55e);
       animation:none;
     }
+    /* Estado desativado = cinza */
     .big-btn.inactive{
       background:linear-gradient(135deg,#475569,#64748b);
     }
@@ -160,6 +164,7 @@
     }
     @keyframes spin{to{transform:rotate(360deg)}}
 
+    /* ===== BOTÃO SECUNDÁRIO (desinscrever) ===== */
     .secondary-btn{
       display:inline-flex;align-items:center;gap:8px;
       padding:12px 24px;
@@ -183,6 +188,7 @@
       stroke-linecap:round;stroke-linejoin:round;
     }
 
+    /* ===== STATUS ===== */
     .status{
       min-height:24px;
       font-size:.9rem;
@@ -194,6 +200,7 @@
     .status.err{color:var(--danger)}
     .status.loading{color:var(--accent-2)}
 
+    /* ===== BOTÃO VOLTAR (mais para baixo) ===== */
     .back{
       position:fixed;
       top:80px;
@@ -229,6 +236,7 @@
       stroke-linejoin:round;
     }
 
+    /* ===== AVISO NÃO LOGADO ===== */
     .not-logged{
       background:var(--surface);
       border:1px solid var(--border);
@@ -270,12 +278,14 @@
 
   <div class="wrap">
 
+    <!-- Estado 1: NÃO LOGADO -->
     <div id="notLogged" class="not-logged hidden">
       <h2>Você não está logado</h2>
       <p>Faça login para poder ativar as notificações push neste dispositivo.</p>
       <a href="/">Ir para o login</a>
     </div>
 
+    <!-- Estado 2: LOGADO -->
     <div id="content" class="hidden" style="display:contents">
 
       <div class="icon-top" id="iconTop">
@@ -314,11 +324,10 @@
 
   </div>
 
-  <script>
-    window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-  </script>
-
+  <!-- ===== FIREBASE E LÓGICA ===== -->
   <script type="module">
+    window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
@@ -374,7 +383,6 @@
       }
     }
 
-    // Verifica no Worker se já está ativo
     async function checkSubscription(){
       if (!currentToken) return false;
       const os = window.__OneSignal;
@@ -392,7 +400,6 @@
       }
     }
 
-    // Envia pro Worker salvar
     async function saveSubscriptionViaWorker(){
       if (!currentToken) return false;
       const os = window.__OneSignal;
@@ -410,7 +417,6 @@
       }
     }
 
-    // Remove do Worker (usa a mesma rota, mas só pra "desinscrever")
     async function removeSubscriptionViaWorker(){
       if (!currentToken) return false;
       const os = window.__OneSignal;
@@ -486,7 +492,10 @@
           tries++;
         }
 
-        setStatus("⏳ Validando no servidor...", "loading");
+        setStatus("⏳ Sincronizando com o servidor...", "loading");
+
+        // ⭐ ESPERA 2 SEGUNDOS PARA O ONESIGNAL PROCESSAR O ID ANTES DE ENVIAR
+        await new Promise(r => setTimeout(r, 2000));
 
         const saved = await saveSubscriptionViaWorker();
 
@@ -508,7 +517,6 @@
 
     elUnsub.addEventListener("click", async () => {
       if (!currentUser) return;
-
       if (!confirm("Desinscrever este dispositivo das notificações push?")) return;
 
       elUnsub.disabled = true;
