@@ -84,7 +84,6 @@
       status.className = "status " + (type || "");
     }
 
-    // Espera o Firebase Auth e o OneSignal
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setStatus("Faça login para ativar notificações.", "err");
@@ -93,8 +92,6 @@
       }
       currentToken = await user.getIdToken();
       btn.disabled = false;
-
-      // Se já tem subscription salva, verifica status
       verificarStatusExistente();
     });
 
@@ -103,7 +100,7 @@
       try {
         const subId = window.__OneSignal.User.PushSubscription.id;
         if (!subId) return;
-        const r = await fetch(`${window.WORKER_URL}/api/notification/status?tokenid=${encodeURIComponent(currentToken)}&subid=${encodeURIComponent(subId)}`);
+        const r = await fetch(`${window.WORKER_URL}/api/notification/status?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}`);
         const d = await r.json();
         if (d.ok && d.subscribed) {
           setStatus("Notificações já ativadas neste dispositivo.", "ok");
@@ -120,7 +117,6 @@
       setStatus("Solicitando permissão...", "info");
 
       try {
-        // 1) Pede permissão nativa do navegador
         const permission = await window.__OneSignal.Notifications.requestPermission();
         if (!permission) {
           setLoading(false);
@@ -129,7 +125,6 @@
 
         setStatus("Obtendo ID de inscrição...", "info");
 
-        // 2) Pega o Subscription ID (pode demorar um pouco após permissão)
         let subId = null;
         for (let i = 0; i < 10; i++) {
           subId = window.__OneSignal.User.PushSubscription.id;
@@ -144,21 +139,13 @@
 
         setStatus("Verificando no servidor...", "info");
 
-        // 3) Envia pro worker validar e salvar no Firebase
-        const r = await fetch(`${window.WORKER_URL}/api/notification/subscribe`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tokenid: currentToken,
-            subscriptionId: subId
-          })
-        });
+        const r = await fetch(`${window.WORKER_URL}/api/notification/subscribe?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}`);
         const d = await r.json();
 
         setLoading(false);
 
         if (!d.ok) {
-          return setStatus(d.error || "Falha ao validar inscrição.", "err");
+          return setStatus(d.erro || "Falha ao validar inscrição.", "err");
         }
 
         setStatus("Notificações ativadas com sucesso!", "ok");
