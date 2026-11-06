@@ -4,43 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Notificações · CodeHUB</title>
-  <link rel="icon" href="/InShot_20250807_112151490.jpg">
-  <style>
-    :root { --bg:#0a0e1a; --surface:#101626; --border:#1f2a44; --text:#e8eef8; --text2:#8fa0bd; --accent:#4f8cff; }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:radial-gradient(circle at 30% 20%, #0a0e1a, #05070f); font-family:'Segoe UI',sans-serif; color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
-    .card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:32px; max-width:420px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.4); }
-    .icon { width:64px; height:64px; border-radius:16px; background:rgba(79,140,255,0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px; color:var(--accent); }
-    .icon svg { width:32px; height:32px; stroke:currentColor; fill:none; stroke-width:2; }
-    h1 { font-size:1.3rem; margin-bottom:8px; }
-    p { color:var(--text2); font-size:0.9rem; line-height:1.5; margin-bottom:24px; }
-    .btn { background:var(--accent); color:#fff; border:none; border-radius:12px; padding:14px 24px; font-size:1rem; font-weight:600; cursor:pointer; width:100%; transition:0.2s; display:flex; align-items:center; justify-content:center; gap:10px; }
-    .btn:hover:not(:disabled) { filter:brightness(1.1); }
-    .btn:disabled { opacity:0.6; cursor:not-allowed; }
-    .spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .status { font-size:0.8rem; margin-top:16px; min-height:20px; }
-    .status.ok { color:#4caf50; }
-    .status.err { color:#f44336; }
-    .status.info { color:var(--text2); }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">
-      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    </div>
-    <h1>Notificações push</h1>
-    <p>Ative para receber alertas de compartilhamento, novos arquivos e novidades do CodeHUB.</p>
-    <button class="btn" id="btnSubscribe">
-      <span id="btnText">Ativar notificações</span>
-    </button>
-    <div class="status" id="status"></div>
-  </div>
-
-  <script>
-    window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-  </script>
+  <link rel="icon" type="image/png" href="/InShot_20250807_112151490.jpg">
 
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
@@ -57,106 +21,541 @@
     });
   </script>
 
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+
+    :root{
+      --bg-1:#0a0e1a;--bg-2:#05070f;
+      --surface:#101626;--surface-2:#151c30;
+      --border:#1f2a44;--border-strong:#2d3b5c;
+      --text:#e8eef8;--text-2:#8fa0bd;
+      --accent:#4f8cff;--accent-2:#7aa8ff;
+      --accent-glow:rgba(79,140,255,0.35);
+      --shadow:rgba(0,0,0,0.55);
+      --success:#22c55e;
+      --danger:#ef4444;
+    }
+
+    html, body{
+      height:100%;
+      font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;
+      background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    .wrap{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      gap:28px;
+      text-align:center;
+    }
+
+    .icon-top{
+      width:110px;height:110px;
+      border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 0 60px var(--accent-glow);
+      animation:pulse 2.2s ease-in-out infinite;
+      transition:background .3s, box-shadow .3s;
+    }
+    .icon-top.off{
+      background:linear-gradient(135deg,#475569,#64748b);
+      box-shadow:0 0 30px rgba(71,85,105,.4);
+      animation:none;
+    }
+    .icon-top svg{
+      width:56px;height:56px;
+      stroke:#fff;fill:none;stroke-width:2;
+      stroke-linecap:round;stroke-linejoin:round;
+    }
+    @keyframes pulse{
+      0%,100%{transform:scale(1);box-shadow:0 0 60px var(--accent-glow)}
+      50%{transform:scale(1.06);box-shadow:0 0 90px var(--accent-glow)}
+    }
+
+    h1{
+      font-size:1.9rem;
+      font-weight:700;
+      letter-spacing:-.5px;
+      line-height:1.2;
+      max-width:600px;
+    }
+    h1 span{color:var(--accent-2)}
+
+    p.sub{
+      color:var(--text-2);
+      font-size:1rem;
+      max-width:520px;
+      line-height:1.6;
+    }
+
+    .big-btn{
+      position:relative;
+      width:min(320px, 80vw);
+      height:min(320px, 80vw);
+      border-radius:50%;
+      border:none;
+      cursor:pointer;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      color:#fff;
+      font-family:inherit;
+      font-size:1.4rem;
+      font-weight:700;
+      letter-spacing:.5px;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      gap:12px;
+      box-shadow:
+        0 20px 60px var(--accent-glow),
+        0 0 0 0 rgba(79,140,255,.6);
+      transition:transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .3s, background .3s;
+      animation:ring 2.5s infinite;
+      overflow:hidden;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .big-btn::before{
+      content:'';
+      position:absolute;inset:-2px;
+      border-radius:50%;
+      background:conic-gradient(from 0deg, transparent, rgba(255,255,255,.35), transparent 30%);
+      animation:spin 4s linear infinite;
+      z-index:0;
+    }
+    .big-btn > *{position:relative;z-index:1}
+    .big-btn:hover{transform:scale(1.05)}
+    .big-btn:active{transform:scale(.96)}
+    .big-btn:disabled{
+      cursor:default;
+      animation:none;
+      box-shadow:0 20px 60px rgba(0,0,0,.4);
+    }
+    .big-btn:disabled::before{display:none}
+
+    .big-btn svg{
+      width:64px;height:64px;
+      stroke:#fff;fill:none;stroke-width:2;
+      stroke-linecap:round;stroke-linejoin:round;
+      filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));
+    }
+
+    .big-btn.active{
+      background:linear-gradient(135deg,#16a34a,#22c55e);
+      animation:none;
+    }
+    .big-btn.inactive{
+      background:linear-gradient(135deg,#475569,#64748b);
+    }
+
+    @keyframes ring{
+      0%{box-shadow:0 20px 60px var(--accent-glow),0 0 0 0 rgba(79,140,255,.55)}
+      70%{box-shadow:0 20px 60px var(--accent-glow),0 0 0 30px rgba(79,140,255,0)}
+      100%{box-shadow:0 20px 60px var(--accent-glow),0 0 0 0 rgba(79,140,255,0)}
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .secondary-btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:12px 24px;
+      background:transparent;
+      border:1.5px solid var(--danger);
+      border-radius:14px;
+      color:var(--danger);
+      font-family:inherit;font-size:.9rem;font-weight:600;
+      cursor:pointer;
+      transition:.2s;
+    }
+    .secondary-btn:hover{
+      background:rgba(239,68,68,.12);
+      transform:translateY(-2px);
+      box-shadow:0 8px 20px rgba(239,68,68,.25);
+    }
+    .secondary-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .secondary-btn svg{
+      width:16px;height:16px;
+      stroke:currentColor;fill:none;stroke-width:2.2;
+      stroke-linecap:round;stroke-linejoin:round;
+    }
+
+    .status{
+      min-height:24px;
+      font-size:.9rem;
+      font-weight:500;
+      color:var(--text-2);
+      transition:color .3s;
+    }
+    .status.ok{color:var(--success)}
+    .status.err{color:var(--danger)}
+    .status.loading{color:var(--accent-2)}
+
+    .back{
+      position:fixed;
+      top:80px;
+      left:18px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 16px;
+      background:rgba(10,15,28,.9);
+      backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);
+      border:1px solid var(--border);
+      border-radius:14px;
+      color:var(--text);
+      font-family:inherit;
+      font-size:.85rem;
+      font-weight:500;
+      cursor:pointer;
+      text-decoration:none;
+      transition:.2s;
+      z-index:10;
+    }
+    .back:hover{
+      border-color:var(--accent);
+      color:var(--accent-2);
+      transform:translateX(-3px);
+    }
+    .back svg{
+      width:16px;height:16px;
+      stroke:currentColor;fill:none;
+      stroke-width:2.2;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+
+    .not-logged{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:24px;
+      padding:28px 32px;
+      max-width:480px;
+      box-shadow:0 20px 45px -10px var(--shadow);
+    }
+    .not-logged h2{color:var(--danger);font-size:1.2rem;margin-bottom:10px}
+    .not-logged p{color:var(--text-2);font-size:.9rem;line-height:1.5}
+    .not-logged a{
+      display:inline-block;margin-top:16px;
+      padding:10px 22px;border-radius:12px;
+      background:var(--accent);color:#fff;
+      text-decoration:none;font-weight:600;font-size:.9rem;
+      transition:.2s;
+    }
+    .not-logged a:hover{background:var(--accent-2);transform:translateY(-2px)}
+
+    .hidden{display:none !important}
+
+    @media(max-width:550px){
+      h1{font-size:1.5rem}
+      p.sub{font-size:.9rem}
+      .icon-top{width:88px;height:88px}
+      .icon-top svg{width:44px;height:44px}
+      .big-btn{font-size:1.2rem}
+      .big-btn svg{width:52px;height:52px}
+      .back{top:80px;left:12px;padding:8px 14px;font-size:.8rem}
+    }
+  </style>
+</head>
+<body>
+
+  <a href="/" class="back">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    Voltar
+  </a>
+
+  <div class="wrap">
+
+    <div id="notLogged" class="not-logged hidden">
+      <h2>Você não está logado</h2>
+      <p>Faça login para poder ativar as notificações push neste dispositivo.</p>
+      <a href="/">Ir para o login</a>
+    </div>
+
+    <div id="content" class="hidden" style="display:contents">
+
+      <div class="icon-top" id="iconTop">
+        <svg viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+      </div>
+
+      <h1 id="title">Ativar <span>notificações</span> push</h1>
+
+      <p class="sub" id="subtitle">
+        Receba avisos em tempo real sobre novidades, atualizações e mensagens
+        importantes do <strong>CodeHUB</strong> diretamente neste dispositivo.
+      </p>
+
+      <button class="big-btn" id="acceptBtn">
+        <svg viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        <span id="btnLabel">ATIVAR NOTIFICAÇÕES</span>
+      </button>
+
+      <button class="secondary-btn hidden" id="unsubBtn">
+        <svg viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+        Desinscrever deste dispositivo
+      </button>
+
+      <div class="status" id="status"></div>
+
+    </div>
+
+  </div>
+
+  <script>
+    window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+  </script>
+
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    const cfg = {
+    const FIREBASE_CONFIG = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
       projectId: "html-15e80",
       appId: "1:1068148640439:web:1ac651348e624f6be41b32"
     };
-    const app = initializeApp(cfg);
+
+    const app  = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
     const auth = getAuth(app);
 
-    const btn = document.getElementById("btnSubscribe");
-    const btnText = document.getElementById("btnText");
-    const status = document.getElementById("status");
-    let currentToken = null;
+    const elNotLogged = document.getElementById("notLogged");
+    const elContent   = document.getElementById("content");
+    const elBtn       = document.getElementById("acceptBtn");
+    const elUnsub     = document.getElementById("unsubBtn");
+    const elStatus    = document.getElementById("status");
+    const elIcon      = document.getElementById("iconTop");
+    const elTitle     = document.getElementById("title");
+    const elSubtitle  = document.getElementById("subtitle");
+    const elBtnLabel  = document.getElementById("btnLabel");
 
-    function setLoading(on) {
-      btn.disabled = on;
-      btnText.innerHTML = on ? '<span class="spinner"></span> Verificando...' : 'Ativar notificações';
+    let currentUser = null;
+    let currentToken = null;
+    let isSubscribed = false;
+
+    function setStatus(msg, type = ""){
+      elStatus.textContent = msg;
+      elStatus.className = "status" + (type ? " " + type : "");
     }
-    function setStatus(msg, type) {
-      status.textContent = msg;
-      status.className = "status " + (type || "");
+
+    function renderUI(){
+      if (isSubscribed){
+        elIcon.classList.remove("off");
+        elBtn.classList.add("active");
+        elBtn.classList.remove("inactive");
+        elBtn.disabled = true;
+        elBtnLabel.textContent = "ATIVADO";
+        elBtn.querySelector("svg").outerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+        elTitle.innerHTML = 'Notificações <span>ativadas</span>';
+        elSubtitle.textContent = 'Você está recebendo notificações push neste dispositivo.';
+        elUnsub.classList.remove("hidden");
+      } else {
+        elIcon.classList.add("off");
+        elBtn.classList.remove("active", "inactive");
+        elBtn.disabled = false;
+        elBtnLabel.textContent = "ATIVAR NOTIFICAÇÕES";
+        elBtn.querySelector("svg").outerHTML = `<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>`;
+        elTitle.innerHTML = 'Ativar <span>notificações</span> push';
+        elSubtitle.innerHTML = 'Receba avisos em tempo real sobre novidades, atualizações e mensagens importantes do <strong>CodeHUB</strong> diretamente neste dispositivo.';
+        elUnsub.classList.add("hidden");
+      }
+    }
+
+    // Verifica no Worker se já está ativo
+    async function checkSubscription(){
+      if (!currentToken) return false;
+      const os = window.__OneSignal;
+      if (!os) return false;
+
+      const subId = os.User?.PushSubscription?.id;
+      if (!subId) return false;
+
+      try {
+        const r = await fetch(`${window.WORKER_URL}/api/notification/status?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}`);
+        const d = await r.json();
+        return d.ok && d.subscribed;
+      } catch(e){
+        return false;
+      }
+    }
+
+    // Envia pro Worker salvar
+    async function saveSubscriptionViaWorker(){
+      if (!currentToken) return false;
+      const os = window.__OneSignal;
+      if (!os) return false;
+
+      const subId = os.User?.PushSubscription?.id;
+      if (!subId) return false;
+
+      try {
+        const r = await fetch(`${window.WORKER_URL}/api/notification/subscribe?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}`);
+        const d = await r.json();
+        return d.ok === true;
+      } catch(e){
+        return false;
+      }
+    }
+
+    // Remove do Worker (usa a mesma rota, mas só pra "desinscrever")
+    async function removeSubscriptionViaWorker(){
+      if (!currentToken) return false;
+      const os = window.__OneSignal;
+      if (!os) return false;
+
+      const subId = os.User?.PushSubscription?.id;
+      if (!subId) return false;
+
+      try {
+        await fetch(`${window.WORKER_URL}/api/notification/subscribe?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}&action=remove`);
+        return true;
+      } catch(e){
+        return false;
+      }
     }
 
     onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+
       if (!user) {
-        setStatus("Faça login para ativar notificações.", "err");
-        btn.disabled = true;
+        currentToken = null;
+        elNotLogged.classList.remove("hidden");
+        elContent.classList.add("hidden");
         return;
       }
+
       currentToken = await user.getIdToken();
-      btn.disabled = false;
-      verificarStatusExistente();
+      elNotLogged.classList.add("hidden");
+      elContent.classList.remove("hidden");
+
+      const perm = window.Notification?.permission;
+      const os = window.__OneSignal;
+      const hasPush = os?.User?.PushSubscription?.optedIn;
+
+      isSubscribed = (perm === "granted") && !!hasPush && await checkSubscription();
+
+      if (perm === "denied"){
+        setStatus("❌ Permissão bloqueada. Libere nas configurações do navegador.", "err");
+      } else if (isSubscribed){
+        setStatus("✅ Notificações já estão ativadas neste dispositivo.", "ok");
+      }
+
+      renderUI();
     });
 
-    async function verificarStatusExistente() {
-      if (!window.__OneSignal || !currentToken) return;
-      try {
-        const subId = window.__OneSignal.User.PushSubscription.id;
-        if (!subId) return;
-        const r = await fetch(`${window.WORKER_URL}/api/notification/status?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}`);
-        const d = await r.json();
-        if (d.ok && d.subscribed) {
-          setStatus("Notificações já ativadas neste dispositivo.", "ok");
-          btnText.textContent = "Notificações ativas";
-          btn.disabled = true;
-        }
-      } catch (e) {}
-    }
+    elBtn.addEventListener("click", async () => {
+      if (!currentUser || !currentToken){
+        setStatus("Você precisa estar logado.", "err");
+        return;
+      }
 
-    btn.addEventListener("click", async () => {
-      if (!window.__OneSignal) return setStatus("OneSignal ainda carregando...", "err");
-
-      setLoading(true);
-      setStatus("Solicitando permissão...", "info");
+      elBtn.disabled = true;
+      setStatus("⏳ Solicitando permissão...", "loading");
 
       try {
-        const permission = await window.__OneSignal.Notifications.requestPermission();
-        if (!permission) {
-          setLoading(false);
-          return setStatus("Permissão negada. Ative nas configurações do navegador.", "err");
+        const os = window.__OneSignal;
+        if (!os) throw new Error("OneSignal ainda não carregou. Tente novamente.");
+
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          setStatus("❌ Permissão negada pelo usuário.", "err");
+          elBtn.disabled = false;
+          return;
         }
 
-        setStatus("Obtendo ID de inscrição...", "info");
+        await os.User.PushSubscription.optIn();
 
-        let subId = null;
-        for (let i = 0; i < 10; i++) {
-          subId = window.__OneSignal.User.PushSubscription.id;
-          if (subId) break;
+        let subId = os.User?.PushSubscription?.id;
+        let tries = 0;
+        while (!subId && tries < 30){
           await new Promise(r => setTimeout(r, 300));
+          subId = os.User?.PushSubscription?.id;
+          tries++;
         }
 
-        if (!subId) {
-          setLoading(false);
-          return setStatus("Não foi possível obter o ID. Tente novamente.", "err");
+        setStatus("⏳ Validando no servidor...", "loading");
+
+        const saved = await saveSubscriptionViaWorker();
+
+        if (saved){
+          isSubscribed = true;
+          renderUI();
+          setStatus("🎉 Notificações ativadas com sucesso!", "ok");
+        } else {
+          setStatus("⚠️ Permissão concedida, mas o servidor não conseguiu salvar.", "err");
+          elBtn.disabled = false;
         }
 
-        setStatus("Verificando no servidor...", "info");
+      } catch (e){
+        console.error(e);
+        setStatus("❌ Erro: " + e.message, "err");
+        elBtn.disabled = false;
+      }
+    });
 
-        const r = await fetch(`${window.WORKER_URL}/api/notification/subscribe?tokenid=${encodeURIComponent(currentToken)}&subscribe_id=${encodeURIComponent(subId)}`);
-        const d = await r.json();
+    elUnsub.addEventListener("click", async () => {
+      if (!currentUser) return;
 
-        setLoading(false);
+      if (!confirm("Desinscrever este dispositivo das notificações push?")) return;
 
-        if (!d.ok) {
-          return setStatus(d.erro || "Falha ao validar inscrição.", "err");
-        }
+      elUnsub.disabled = true;
+      setStatus("⏳ Desinscrevendo...", "loading");
 
-        setStatus("Notificações ativadas com sucesso!", "ok");
-        btnText.textContent = "Notificações ativas";
-        btn.disabled = true;
+      try {
+        const os = window.__OneSignal;
+        if (!os) throw new Error("OneSignal não carregou.");
 
-      } catch (e) {
-        setLoading(false);
-        setStatus("Erro: " + e.message, "err");
+        await os.User.PushSubscription.optOut();
+        await removeSubscriptionViaWorker();
+
+        isSubscribed = false;
+        renderUI();
+        setStatus("🔕 Dispositivo desinscrito com sucesso.", "ok");
+
+      } catch (e){
+        console.error(e);
+        setStatus("❌ Erro ao desinscrever: " + e.message, "err");
+        elUnsub.disabled = false;
+      }
+    });
+
+    window.addEventListener("onesignal-ready", async () => {
+      if (currentUser){
+        const perm = window.Notification?.permission;
+        const os = window.__OneSignal;
+        const hasPush = os?.User?.PushSubscription?.optedIn;
+
+        isSubscribed = (perm === "granted") && !!hasPush && await checkSubscription();
+        renderUI();
       }
     });
   </script>
+
+  <script src="/app-shell.js"></script>
+  <script>
+    if (typeof AppShell !== "undefined") {
+      try {
+        new AppShell().mount();
+      } catch (e) {
+        console.error("[CodeHUB] AppShell.mount():", e.message);
+      }
+    } else {
+      console.warn("[CodeHUB] AppShell não definido — verifique se /app-shell.js carregou.");
+    }
+  </script>
+
 </body>
 </html>
