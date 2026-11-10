@@ -1,13 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
-
-  <url><loc>https://kloewa.ooguy.com/ajude-a-kloewa.html</loc></url>
-  <url><loc>kloewa.ooguy.com/auth</loc></url>
-  <url><loc>kloewa.ooguy.com/docs</loc></url>
-  <url><loc>https://kloewa.ooguy.com/index.html</loc></url>
-  <url><loc>https://kloewa.ooguy.com/notificacoes/</loc></url>
-  <url><loc>https://kloewa.ooguy.com/terms/</loc></url>
-  <url><loc>https://kloewa.ooguy.com/developers/</loc></url>
-  <url><loc>https://kloewa.ooguy.com/workspace</loc></url>
-
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://kloewa.ooguy.com/ajude-a-kloewa.html</loc>
+    </url>
+    <url>
+        <loc>https://kloewa.ooguy.com/auth</loc>
+    </url>
+    <url>
+        <loc>https://kloewa.ooguy.com/docs</loc>
+    </url>
+    <url>
+        <loc>https://kloewa.ooguy.com/index.html</loc>
+    </url>
+    <url>
+        <loc>https://kloewa.ooguy.com/notificacoes/</loc>
+    </url>
+    <url>
+        <loc>https://kloewa.ooguy.com/terms/</loc>
+    </url>
+    <url>
+        <loc>https://kloewa.ooguy.com/developers/</loc>
+    </url>
+    <url>
+        <loc>https://kloewa.ooguy.com/workspace</loc>
+    </url>
 </urlset>
