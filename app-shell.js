@@ -202,7 +202,7 @@
   }
 
   function getDeviceId() {
-    let id = localStorage.getItem('codehub_deviceId');
+    let id = localStorage.getItem('kloewa_deviceId');
     if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
     return id;
   }
@@ -256,7 +256,7 @@
       };
 
       const setTheme = (mode) => {
-        localStorage.setItem('codehub-theme', mode);
+        localStorage.setItem('kloewa-theme', mode);
         applyTheme(mode);
       };
 
@@ -265,10 +265,10 @@
       });
 
       mq.addEventListener('change', () => {
-        if (localStorage.getItem('codehub-theme') === 'system') applyTheme('system');
+        if (localStorage.getItem('kloewa-theme') === 'system') applyTheme('system');
       });
 
-      applyTheme(localStorage.getItem('codehub-theme') || 'dark');
+      applyTheme(localStorage.getItem('kloewa-theme') || 'dark');
     }
 
     async _initFirebaseAuth() {
@@ -311,7 +311,7 @@
       menu.id = "appShellMenu";
       menu.innerHTML = `
         <div class="app-shell-menu-header">
-          <h2>CodeHUB</h2>
+          <h2>kloewa</h2>
           <p>MENU</p>
           <!-- Botão X exclusivo para mobile -->
           <button class="app-shell-close-btn" id="appShellCloseBtn">✕</button>
@@ -375,7 +375,7 @@
       document.getElementById('appShellBtnLogout').addEventListener('click', () => {
         if (confirm("Sair da conta?")) {
           if (this._auth) this._auth.signOut().then(() => {
-            document.cookie = "firebaseToken=; Domain=.codehub.site.je; Path=/; Max-Age=0";
+            document.cookie = "firebaseToken=; Domain=.kloewa.ooguy.com; Path=/; Max-Age=0";
             location.href = "https://alexandre7888.github.io/auth.html";
           });
         }
