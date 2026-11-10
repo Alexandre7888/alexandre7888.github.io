@@ -4,8 +4,8 @@ function _injectSpinCSS(){if(document.getElementById(SPIN_CSS_ID))return;const s
 const _s=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};const _r=k=>{try{return localStorage.getItem(k)}catch(e){return null}};const _d=k=>{try{localStorage.removeItem(k)}catch(e){}};
 const SPIN_ID="ch-spin",SPIN_CSS_ID="ch-spin-css";
 const VERSION="1.5";
-const DEF={worker:"https://proud-flower-677b.braatzjunioralexandre5.workers.dev",baseLogin:"https://codehub.giize.com/API/v3/continuar-conta",storageKey:"ch_authid",appToken:""};
-export class CodeHub{
+const DEF={worker:"https://proud-flower-677b.braatzjunioralexandre5.workers.dev",baseLogin:"https://kloewa.giize.com/API/v3/continuar-conta",storageKey:"ch_authid",appToken:""};
+export class kloewa{
 constructor(o={}){const c={...DEF,...o};this.worker=c.worker;this.baseLogin=c.baseLogin;this.appToken=c.appToken;this.storageKey=c.storageKey;this.onPending=c.onPending||(()=>{});this.onConfirmed=c.onConfirmed||(()=>{});this.onError=c.onError||(()=>{});this.onReloaded=c.onReloaded||(()=>{});this.es=null;this.popup=null;this._ls={};window.addEventListener("message",e=>{if(!e.data||e.data.type!=="AUTH_DONE")return;try{const u=new URL(e.data.url);if(u.protocol!=="https:")return;if(e.data.url===location.href)return;location.href=e.data.url}catch(err){}})}
 get version(){return VERSION}
 _emit(k,d){(this._ls[k]||[]).forEach(f=>{try{f(d)}catch(e){console.warn(e)}})}
@@ -67,5 +67,5 @@ async reloadAccount(authId){
 watchSession(){const id=this.readSession();if(!id)return null;this.listenSSE(id);return id}
 async autoReload(){const id=this.readSession();if(!id)return{ok:false,status:"no_session"};return await this.reloadAccount(id)}
 close(){if(this.es){this.es.close();this.es=null}if(this.popup&&!this.popup.closed){try{this.popup.close()}catch(e){}}}}
-export function createCodeHub(o){return new CodeHub(o)}
-export default CodeHub;
+export function createkloewa(o){return new kloewa(o)}
+export default kloewa;
