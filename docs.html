@@ -220,7 +220,7 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
 
 <div class="container">
 
-  <h1>📚 Documentação API CodeHUB <span class="ver">v1.5</span></h1>
+  <h1>📚 Documentação API<span class="ver">v1.5</span></h1>
   <p class="subtitle">SDK oficial — autenticação, perfil e App Token</p>
 
   <div class="success">
@@ -305,7 +305,7 @@ pre::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
 &lt;head&gt;
 &lt;meta charset="UTF-8"&gt;
 &lt;meta name="viewport" content="width=device-width,initial-scale=1"&gt;
-&lt;title&gt;CodeHUB SDK v1.5 — Teste&lt;/title&gt;
+&lt;title&gt;kloewa SDK v1.5 — Teste&lt;/title&gt;
 &lt;style&gt;
 *{margin:0;padding:0;box-sizing:border-box}
 :root,html[data-theme="dark"]{--bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;--border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);--accent-soft:rgba(79,140,255,.1);--shadow:rgba(0,0,0,.55);--toggle-bg:#151c30}
@@ -349,7 +349,7 @@ p.email{text-align:center;color:var(--text-2);font-size:.82rem;margin-bottom:16p
 &lt;body&gt;
 &lt;div class="card"&gt;
   &lt;div class="header"&gt;
-    &lt;h1&gt;CodeHUB SDK &lt;span class="ver"&gt;v1.5&lt;/span&gt;&lt;/h1&gt;
+    &lt;h1&gt;kloewa SDK &lt;span class="ver"&gt;v1.5&lt;/span&gt;&lt;/h1&gt;
     &lt;p class="sub"&gt;Autenticação + AuthID + App Token&lt;/p&gt;
   &lt;/div&gt;
   &lt;button class="btn primary" id="btnLogin"&gt;
@@ -383,11 +383,11 @@ p.email{text-align:center;color:var(--text-2);font-size:.82rem;margin-bottom:16p
   &lt;/div&gt;
 &lt;/div&gt;
 &lt;script type="module"&gt;
-import { CodeHub } from "https://api.codehub.giize.com/sdk.js";
+import { CodeHub } from "https://api.kloewa.ooguy.com/sdk.js";
 
 const APP_TOKEN = "TESTE";
 const $ = id =&gt; document.getElementById(id);
-const sdk = new CodeHub({ appToken: APP_TOKEN });
+const sdk = new kloewa({ appToken: APP_TOKEN });
 
 function status(msg, cls = "", spinner = false) {
   const s = $("status");
