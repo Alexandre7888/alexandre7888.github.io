@@ -376,7 +376,7 @@
         if (confirm("Sair da conta?")) {
           if (this._auth) this._auth.signOut().then(() => {
             document.cookie = "firebaseToken=; Domain=.kloewa.ooguy.com; Path=/; Max-Age=0";
-            location.href = "https://alexandre7888.github.io/auth.html";
+            location.href = "https://kloewa.ooguy.com/auth.html";
           });
         }
       });
