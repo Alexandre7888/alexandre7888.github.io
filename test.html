@@ -30,7 +30,7 @@
 
   <div class="box">
     <h2>Gerador de API Key</h2>
-    <p>Faça login, insira o Admin Token e gere sua chave com biometria.</p>
+    <p>Faça login, registre sua biometria e gere uma chave segura.</p>
 
     <div id="loginSection">
       <button class="btn-primary" id="btnLogin">Fazer Login com Google</button>
@@ -40,7 +40,7 @@
       <label>Admin Token (ADMIN_KEY_B64)</label>
       <input type="password" id="adminToken" placeholder="Cole a chave de administrador aqui...">
       
-      <button class="btn-secondary" id="btnRegistrar">1. Registrar Biometria (WebAuthn)</button>
+      <button class="btn-secondary" id="btnRegistrar">1. Registrar Biometria</button>
       <button class="btn-success" id="btnGerar" disabled>2. Gerar Minha API Key</button>
     </div>
 
@@ -48,7 +48,6 @@
     <div id="resultado" class="resultado"></div>
   </div>
 
-  <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -76,6 +75,7 @@
     const statusEl = document.getElementById('status');
 
     let currentUser = null;
+    let webauthnCredentialId = null; 
 
     function mostrarStatus(msg) {
       statusEl.style.display = "block";
@@ -86,7 +86,6 @@
       statusEl.style.display = "none";
     }
 
-    // Login
     btnLogin.onclick = async () => {
       try {
         await signInWithPopup(auth, provider);
@@ -95,7 +94,6 @@
       }
     };
 
-    // Verifica se o usuário está logado
     onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUser = user;
@@ -108,7 +106,7 @@
       }
     });
 
-    // Biometria
+    // 1. REGISTRAR BIOMETRIA
     btnRegistrar.onclick = async () => {
       try {
         if (!window.PublicKeyCredential) throw new Error("WebAuthn não suportado.");
@@ -129,6 +127,7 @@
         });
 
         if (credential) {
+          webauthnCredentialId = credential.id; // Salva o ID da biometria
           btnGerar.disabled = false;
           btnRegistrar.style.background = "#1f2a44";
           btnRegistrar.textContent = "Biometria Registrada ✅";
@@ -138,19 +137,19 @@
       }
     };
 
-    // Gerar chave
+    // 2. GERAR CHAVE
     btnGerar.onclick = async () => {
       const adminToken = adminTokenInput.value.trim();
       if (!adminToken) return alert("Preencha o Admin Token!");
       if (!currentUser) return alert("Faça login primeiro!");
+      if (!webauthnCredentialId) return alert("Você precisa registrar a biometria primeiro!");
 
       btnGerar.disabled = true;
       btnGerar.textContent = "Gerando chave...";
       resultado.style.display = "none";
-      mostrarStatus("Solicitando biometria...");
+      mostrarStatus("Solicitando autenticação biométrica...");
 
       try {
-        // Pede a biometria de novo como confirmação
         await navigator.credentials.get({
           publicKey: {
             challenge: new Uint8Array(32),
@@ -159,7 +158,7 @@
           }
         });
 
-        mostrarStatus("Gerando chave no servidor...");
+        mostrarStatus("Validando token no servidor...");
 
         const idToken = await currentUser.getIdToken();
 
@@ -169,7 +168,8 @@
           body: JSON.stringify({
             tokenid: idToken,
             admin: adminToken,
-            nome: "Chave via WebAuthn"
+            nome: "Chave via WebAuthn",
+            webauthnId: webauthnCredentialId
           })
         });
 
