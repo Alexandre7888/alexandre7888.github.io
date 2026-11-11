@@ -1,135 +1,198 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Teste de Upload Social</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de API Key - Kloewa</title>
   <style>
-    body { font-family: sans-serif; background: #121212; color: #fff; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-    .box { background: #1e1e1e; padding: 20px; border-radius: 8px; width: 100%; max-width: 400px; }
-    textarea, input { width: 100%; margin-bottom: 10px; padding: 10px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 6px; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; background: #4f8cff; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    button:disabled { background: #333; color: #888; }
-    #status { margin-top: 15px; font-size: 14px; text-align: center; }
-    #preview { max-width: 100%; border-radius: 8px; margin-top: 10px; display: none; }
-    .user-info { font-size: 12px; color: #888; text-align: center; margin-bottom: 15px; }
+    body { font-family: system-ui, sans-serif; background: #0a0e1a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+    .box { background: #101626; padding: 30px; border-radius: 16px; border: 1px solid #1f2a44; width: 100%; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    h2 { margin-top: 0; color: #4f8cff; text-align: center; }
+    p { color: #8fa0bd; font-size: 14px; margin-bottom: 20px; text-align: center; }
+    label { display: block; font-size: 12px; color: #8fa0bd; margin-bottom: 5px; margin-top: 15px; }
+    input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #1f2a44; background: #05070f; color: #fff; box-sizing: border-box; margin-bottom: 10px; font-family: monospace; }
+    input:focus { outline: none; border-color: #4f8cff; }
+    button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-primary { background: #4f8cff; color: #fff; }
+    .btn-primary:hover { background: #7aa8ff; }
+    .btn-secondary { background: #1f2a44; color: #8fa0bd; }
+    .btn-secondary:hover { background: #2d3b5c; color: #fff; }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-success:hover { background: #16a34a; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .resultado { background: #05070f; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; word-break: break-all; margin-top: 20px; display: none; border: 1px solid #1f2a44; }
+    .sucesso { color: #22c55e; border-color: #22c55e; }
+    .erro { color: #ef4444; border-color: #ef4444; }
+    .status { font-size: 12px; text-align: center; margin-top: 10px; color: #f59e0b; display: none; }
   </style>
 </head>
 <body>
 
-<div class="box">
-  <h3>Testar Post</h3>
-  
-  <!-- Aviso de login -->
-  <div class="user-info" id="userInfo">Verificando login...</div>
-  
-  <label>Texto do Post:</label>
-  <textarea id="text" placeholder="Escreva algo..."></textarea>
-  
-  <label>Foto:</label>
-  <input type="file" id="file" accept="image/*">
-  
-  <button id="btnPost" disabled>Publicar Post</button>
-  
-  <div id="status"></div>
-  <img id="preview">
-</div>
+  <div class="box">
+    <h2>Gerador de API Key</h2>
+    <p>Faça login, insira o Admin Token e gere sua chave com biometria.</p>
 
-<!-- SDK do Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <div id="loginSection">
+      <button class="btn-primary" id="btnLogin">Fazer Login com Google</button>
+    </div>
 
-<script>
-  const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-  
-  const firebaseConfig = {
-    apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-    authDomain: "html-15e80.firebaseapp.com",
-    databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-    projectId: "html-15e80",
-    storageBucket: "html-15e80.firebasestorage.app",
-    messagingSenderId: "1068148640439",
-    appId: "1:1068148640439:web:1ac651348e624f6be41b32"
-  };
+    <div id="formSection" style="display: none;">
+      <label>Admin Token (ADMIN_KEY_B64)</label>
+      <input type="password" id="adminToken" placeholder="Cole a chave de administrador aqui...">
+      
+      <button class="btn-secondary" id="btnRegistrar">1. Registrar Biometria (WebAuthn)</button>
+      <button class="btn-success" id="btnGerar" disabled>2. Gerar Minha API Key</button>
+    </div>
 
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
+    <div id="status" class="status">Carregando...</div>
+    <div id="resultado" class="resultado"></div>
+  </div>
 
-  let currentUser = null;
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-  const btnPost = document.getElementById('btnPost');
-  const textInput = document.getElementById('text');
-  const fileInput = document.getElementById('file');
-  const status = document.getElementById('status');
-  const preview = document.getElementById('preview');
-  const userInfo = document.getElementById('userInfo');
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      projectId: "html-15e80",
+      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+    };
 
-  // Habilita o botão se tiver texto ou foto
-  function checkFields() {
-    btnPost.disabled = textInput.value.trim() === "" && fileInput.files.length === 0;
-  }
-  textInput.addEventListener('input', checkFields);
-  fileInput.addEventListener('change', checkFields);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-  // Verifica se o usuário está logado
-  auth.onAuthStateChanged((user) => {
-    if (user) {
-      currentUser = user;
-      userInfo.innerHTML = `Logado como: <strong>${user.email || user.uid}</strong>`;
-      checkFields();
-    } else {
-      currentUser = null;
-      userInfo.innerHTML = `<span style="color: #ff4444;">Você não está logado. Faça login no app principal primeiro.</span>`;
-      btnPost.disabled = true;
+    const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev/api/keys/create";
+
+    const btnLogin = document.getElementById('btnLogin');
+    const btnRegistrar = document.getElementById('btnRegistrar');
+    const btnGerar = document.getElementById('btnGerar');
+    const adminTokenInput = document.getElementById('adminToken');
+    const loginSection = document.getElementById('loginSection');
+    const formSection = document.getElementById('formSection');
+    const resultado = document.getElementById('resultado');
+    const statusEl = document.getElementById('status');
+
+    let currentUser = null;
+
+    function mostrarStatus(msg) {
+      statusEl.style.display = "block";
+      statusEl.textContent = msg;
     }
-  });
 
-  btnPost.addEventListener('click', async () => {
-    if (!currentUser) return;
+    function esconderStatus() {
+      statusEl.style.display = "none";
+    }
 
-    btnPost.disabled = true;
-    status.textContent = "Gerando token e enviando...";
-
-    try {
-      // Pega o token automaticamente do Firebase
-      const tokenid = await currentUser.getIdToken();
-
-      const formData = new FormData();
-      formData.append("tokenid", tokenid);
-      formData.append("text", textInput.value);
-      if (fileInput.files.length > 0) {
-        formData.append("file", fileInput.files[0]);
+    // Login
+    btnLogin.onclick = async () => {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        alert("Erro no login: " + err.message);
       }
+    };
 
-      const res = await fetch(WORKER_URL + '/api/social/post', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-
-      if (data.ok) {
-        status.textContent = "✅ Post criado com sucesso!";
-        status.style.color = "#1db954";
-        if (data.post.mediaUrl) {
-          preview.src = data.post.mediaUrl;
-          preview.style.display = 'block';
-        }
-        console.log("Post gerado:", data.post);
-        
-        // Limpa o formulário após o sucesso
-        textInput.value = "";
-        fileInput.value = "";
+    // Verifica se o usuário está logado
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        loginSection.style.display = "none";
+        formSection.style.display = "block";
       } else {
-        throw new Error(data.erro);
+        currentUser = null;
+        loginSection.style.display = "block";
+        formSection.style.display = "none";
       }
-    } catch (e) {
-      status.textContent = "❌ Erro: " + e.message;
-      status.style.color = "#ff4444";
-    }
+    });
 
-    btnPost.disabled = false;
-  });
-</script>
+    // Biometria
+    btnRegistrar.onclick = async () => {
+      try {
+        if (!window.PublicKeyCredential) throw new Error("WebAuthn não suportado.");
+        
+        const challenge = new Uint8Array(32);
+        crypto.getRandomValues(challenge);
 
+        const credential = await navigator.credentials.create({
+          publicKey: {
+            challenge: challenge,
+            rp: { name: "Kloewa" },
+            user: { id: new Uint8Array(16), name: "usuario", displayName: "Usuário" },
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+            authenticatorSelection: { userVerification: "preferred" },
+            timeout: 60000,
+            attestation: "none"
+          }
+        });
+
+        if (credential) {
+          btnGerar.disabled = false;
+          btnRegistrar.style.background = "#1f2a44";
+          btnRegistrar.textContent = "Biometria Registrada ✅";
+        }
+      } catch (err) {
+        alert("Erro ao registrar biometria: " + err.message);
+      }
+    };
+
+    // Gerar chave
+    btnGerar.onclick = async () => {
+      const adminToken = adminTokenInput.value.trim();
+      if (!adminToken) return alert("Preencha o Admin Token!");
+      if (!currentUser) return alert("Faça login primeiro!");
+
+      btnGerar.disabled = true;
+      btnGerar.textContent = "Gerando chave...";
+      resultado.style.display = "none";
+      mostrarStatus("Solicitando biometria...");
+
+      try {
+        // Pede a biometria de novo como confirmação
+        await navigator.credentials.get({
+          publicKey: {
+            challenge: new Uint8Array(32),
+            timeout: 60000,
+            userVerification: "preferred"
+          }
+        });
+
+        mostrarStatus("Gerando chave no servidor...");
+
+        const idToken = await currentUser.getIdToken();
+
+        const res = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tokenid: idToken,
+            admin: adminToken,
+            nome: "Chave via WebAuthn"
+          })
+        });
+
+        const data = await res.json();
+        esconderStatus();
+
+        resultado.style.display = "block";
+        if (data.ok) {
+          resultado.className = "resultado sucesso";
+          resultado.innerHTML = `<strong>Chave Criada com Sucesso:</strong><br><br>${data.chave}`;
+          btnGerar.textContent = "Chave Gerada!";
+        } else {
+          throw new Error(data.erro || "Erro desconhecido");
+        }
+      } catch (err) {
+        esconderStatus();
+        resultado.style.display = "block";
+        resultado.className = "resultado erro";
+        resultado.textContent = "Erro: " + err.message;
+        btnGerar.disabled = false;
+        btnGerar.textContent = "Tentar Novamente";
+      }
+    };
+  </script>
 </body>
 </html>
