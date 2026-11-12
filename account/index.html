@@ -12,7 +12,8 @@
 :root{
   --bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;
   --border:#1f2a44;--border-strong:#2d3b5c;--text:#e8eef8;--text-2:#8fa0bd;
-  --accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);--danger:#ef4444;--success:#22c55e;
+  --accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);
+  --danger:#ef4444;--success:#22c55e;
 }
 body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px; overflow-x: hidden;}
 .wrap{max-width:760px;margin: 0 auto; padding-top: 80px;}
@@ -35,7 +36,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .form-control:focus { border-color: var(--accent); }
 .link-senha { display: inline-block; margin-top: 10px; font-size: 0.8rem; color: var(--accent-2); text-decoration: none; cursor: pointer; }
 .link-senha:hover { text-decoration: underline; }
-.key-item { display: flex; align-items: center; justify-content: space-between; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; }
+.key-item { display: flex; align-items: center; justify-content: space-between; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; transition: 0.3s; }
 .key-info h3 { font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
 .key-info p { font-size: 0.75rem; color: var(--text-2); }
 .badge-ativa { background: rgba(34,197,94,.15); color: #6ee7a0; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; }
@@ -184,7 +185,6 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Converte a chave pública COSE para JWK (necessário para o Worker)
 async function exportPublicKeyJwk(credential) {
   const publicKey = credential.response.getPublicKey();
   const coseKey = new Uint8Array(publicKey);
@@ -193,10 +193,7 @@ async function exportPublicKeyJwk(credential) {
   while (offset < coseKey.length) {
     const label = coseKey[offset++];
     const length = coseKey[offset++];
-    if (label === 1) json.kty = "EC";
-    else if (label === 3) json.alg = "ES256";
-    else if (label === -1) json.crv = "P-256";
-    else if (label === -2) json.x = arrayBufferToBase64(coseKey.slice(offset, offset + length));
+    if (label === -2) json.x = arrayBufferToBase64(coseKey.slice(offset, offset + length));
     else if (label === -3) json.y = arrayBufferToBase64(coseKey.slice(offset, offset + length));
     offset += length;
   }
@@ -458,6 +455,14 @@ $("btnGenerateKey").onclick = async () => {
 
 $("btnLogout").onclick = async () => { if (confirm("Sair da conta?")) { await auth.signOut(); window.location.href = "/auth.html"; } };
 $("btnLogoutBlocked").onclick = async () => { await auth.signOut(); window.location.href = "/auth.html"; };
+</script>
+
+<!-- APP SHELL -->
+<script src="https://api.kloewa.ooguy.com/app-shell.js"></script>
+<script>
+  if (typeof AppShell !== "undefined") {
+    try { new AppShell().mount(); } catch (e) { console.error("Erro no AppShell:", e); }
+  }
 </script>
 </body>
 </html>
