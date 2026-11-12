@@ -1,4 +1,4 @@
-// app-shell.js v4.0.0 - Menu flutuante no mobile + Gavetas no Desktop
+// app-shell.js v4.2.0 - Regra para esconder a barra inferior na página da conta
 (function () {
   "use strict";
 
@@ -202,11 +202,14 @@
        RESPONSIVIDADE ESTRITA
        ========================================= */
     @media (max-width: 768px) {
-      .app-shell-tab-left, .app-shell-tab-right { display: none !important; } /* Esconde gavetas */
-      .app-shell-mobile-nav { display: flex; } /* Mostra barra inferior */
+      .app-shell-tab-left, .app-shell-tab-right { display: none !important; }
+      .app-shell-mobile-nav { display: flex; }
+      
+      /* ⭐ ESCONDE A BARRA SE ESTIVER NA PÁGINA DA CONTA */
+      body.hide-mobile-nav .app-shell-mobile-nav { display: none !important; }
     }
     @media (min-width: 769px) {
-      .app-shell-mobile-nav { display: none !important; } /* Esconde barra inferior */
+      .app-shell-mobile-nav { display: none !important; }
       .app-shell-mobile-modal { display: none !important; }
     }
   `;
@@ -281,12 +284,15 @@
 
     mount() {
       injectStyles();
+
+      // ⭐ VERIFICA SE É A PÁGINA DA CONTA PARA ESCONDER A BARRA NO MOBILE
+      const path = window.location.pathname;
+      if (path.includes('/account') || path.includes('/conta')) {
+        document.body.classList.add('hide-mobile-nav');
+      }
       
-      // Renderiza os componentes para Desktop
       this._renderLeftTab();
       this._renderRightTab();
-      
-      // Renderiza os componentes para Mobile
       this._renderMobileNav();
       this._renderMobileModal();
 
@@ -305,7 +311,6 @@
         let effective = mode === 'system' ? (mq.matches ? 'dark' : 'light') : mode;
         html.setAttribute('data-theme', effective);
         
-        // Atualiza os botões no desktop e no modal mobile
         document.querySelectorAll('.app-theme-btn').forEach(b => {
           b.classList.toggle('active', b.dataset.setTheme === mode);
         });
@@ -438,7 +443,6 @@
       modal.className = "app-shell-mobile-modal";
       modal.id = "appShellMobileModal";
       
-      // Reutiliza os mesmos IDs para que o Firebase atualize a foto/nome nos dois lugares (desktop e mobile)
       modal.innerHTML = `
         <div class="app-shell-profile-avatar" id="appShellAvatarMobile"><div class="app-shell-spinner"></div></div>
         <div class="app-shell-profile-name" id="appShellNameMobile">Carregando...</div>
@@ -454,7 +458,6 @@
       `;
       document.body.appendChild(modal);
 
-      // Botão de Sair no mobile
       document.getElementById('appShellBtnLogoutMobile').addEventListener('click', () => {
         if (confirm("Sair da conta?")) {
           if (this._auth) this._auth.signOut().then(() => {
@@ -464,12 +467,10 @@
         }
       });
 
-      // Controle do botão de 3 pontinhos
       document.getElementById('mobileMoreBtn').addEventListener('click', () => {
         modal.classList.toggle('open');
       });
 
-      // Fecha o modal se clicar fora
       document.addEventListener('click', (e) => {
         if (!modal.contains(e.target) && !e.target.closest('#mobileMoreBtn') && modal.classList.contains('open')) {
           modal.classList.remove('open');
@@ -505,22 +506,17 @@
         emailEl.textContent = user.email || "";
       };
 
-      // Atualiza Desktop
       setElements(this._avatarEl, this._nameEl, this._emailEl);
-      
-      // Atualiza Mobile
       setElements(this._mobileAvatarEl, this._mobileNameEl, this._mobileEmailEl);
     }
 
     _applyView(view) {
-      // Atualiza a gaveta lateral
       if(this._menu) {
         this._menu.querySelectorAll(".app-shell-item").forEach(item => {
           item.classList.toggle("active", item.dataset.view === view);
         });
       }
       
-      // Atualiza a barra inferior mobile
       const mobileNav = document.querySelector('.app-shell-mobile-nav');
       if(mobileNav) {
         mobileNav.querySelectorAll("[data-view]").forEach(btn => {
