@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Minha Conta · kloewa</title>
-<link rel="icon" type="image/png" href="https://alexandre7888.github.io/InShot_20250807_112151490.jpg">
+<link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
@@ -18,11 +18,13 @@
   --accent-glow:rgba(79,140,255,.35);
   --danger:#ef4444;--success:#22c55e;--warning:#f59e0b;
 }
-body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px}
-.wrap{max-width:760px;margin:0 auto}
-.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
-.header h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
-.header h1 svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px; overflow-x: hidden;}
+.wrap{max-width:760px;margin: 0 auto; padding-top: 80px; transition: margin-right 0.3s ease;}
+.wrap.shifted { margin-right: 320px; }
+
+.header-page{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.header-page h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
+.header-page h1 svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 .btn{padding:11px 18px;border:none;border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
 .btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
@@ -32,17 +34,16 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .btn-outline:hover{border-color:var(--accent);color:var(--accent-2)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 
-.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px; animation: fadeIn 0.3s ease;}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .card h2{font-size:1.05rem;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 .card h2 svg{width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-/* ESTILOS DO FORMULÁRIO DE NOVA CHAVE */
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-size: 0.8rem; color: var(--text-2); margin-bottom: 6px; font-weight: 600; }
 .form-control { width: 100%; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; }
 .form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,140,255,0.2); }
 
-/* ESTILOS DO DISPOSITIVO */
 .device{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;transition:.2s}
 .device:hover{border-color:var(--border-strong)}
 .device.current{border-color:var(--accent);background:rgba(79,140,255,.06)}
@@ -61,7 +62,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .badge-blocked{background:rgba(239,68,68,.2);color:#ff8a8a}
 .badge-active{background:rgba(34,197,94,.15);color:#6ee7a0}
 
-.status{padding:12px 14px;border-radius:12px;font-size:.85rem;margin-bottom:16px;display:none;align-items:flex-start;gap:10px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.status{padding:12px 14px;border-radius:12px;font-size:.85rem;margin-bottom:16px;display:none;align-items:flex-start;gap:10px;line-height:1.5;word-break:break-word}
 .status.show{display:flex}
 .status.ok{background:rgba(34,197,94,.12);color:var(--success);border:1px solid rgba(34,197,94,.3)}
 .status.err{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
@@ -70,9 +71,59 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 @keyframes spin{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
 .empty{text-align:center;padding:30px;color:var(--text-2);font-size:.9rem}
+
+/* ===== FAB E SIDEBAR ===== */
+.fab { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; border: none; box-shadow: 0 8px 25px var(--accent-glow); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 999; transition: transform 0.2s; }
+.fab:hover { transform: scale(1.05); }
+.fab svg { width: 28px; height: 28px; stroke: white; fill: none; stroke-width: 2; }
+
+.sidebar { position: fixed; top: 0; right: -320px; width: 320px; height: 100vh; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -10px 0 30px rgba(0,0,0,0.5); z-index: 1000; transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); padding: 24px; display: flex; flex-direction: column; }
+.sidebar.open { right: 0; }
+.sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.sidebar-header h2 { font-size: 1.1rem; color: var(--text); }
+.close-btn { background: transparent; border: none; color: var(--text-2); cursor: pointer; padding: 5px; }
+.close-btn:hover { color: var(--danger); }
+.close-btn svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2; }
+
+.sidebar-nav { display: flex; flex-direction: column; gap: 16px; }
+.nav-circle-btn { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 50px; color: var(--text); text-decoration: none; font-weight: 600; cursor: pointer; transition: 0.2s; width: 100%; text-align: left; font-size: 0.95rem; }
+.nav-circle-btn:hover { border-color: var(--accent); background: rgba(79,140,255,0.05); }
+.nav-circle-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: white; box-shadow: 0 4px 15px var(--accent-glow); }
+.nav-circle-btn .icon-box { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.nav-circle-btn .icon-box svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+.nav-circle-btn.active .icon-box { background: rgba(255,255,255,0.2); }
+
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.overlay.show { opacity: 1; pointer-events: auto; }
+
+@media (max-width: 800px) { .wrap.shifted { margin-right: 0; } }
 </style>
 </head>
 <body>
+
+<div class="overlay" id="overlay"></div>
+
+<button class="fab" id="fabBtn">
+  <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h2>Menu</h2>
+    <button class="close-btn" id="closeSidebar"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  
+  <div class="sidebar-nav">
+    <button class="nav-circle-btn active" id="navDispositivos" onclick="mudarAba('dispositivos')">
+      <div class="icon-box"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+      Meus Dispositivos
+    </button>
+    <button class="nav-circle-btn" id="navChaves" onclick="mudarAba('chaves')">
+      <div class="icon-box"><svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+      Chaves de Acesso
+    </button>
+  </div>
+</div>
 
 <div id="loading" style="text-align:center;padding:60px">
   <div class="spinner" style="margin:0 auto 12px;width:24px;height:24px"></div>
@@ -80,7 +131,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 </div>
 
 <div id="app" class="wrap hidden">
-  <div class="header">
+  <div class="header-page">
     <h1>
       <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       Minha Conta
@@ -93,43 +144,38 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 
   <div class="status" id="status"></div>
 
-  <!-- CARD 1: DISPOSITIVOS -->
-  <div class="card">
-    <h2>
-      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-      Dispositivos Conectados
-    </h2>
-    <div id="devicesList">
-      <div class="empty"><div class="spinner" style="margin:0 auto 10px"></div>Carregando...</div>
+  <!-- ABA 1: DISPOSITIVOS -->
+  <div id="aba-dispositivos">
+    <div class="card">
+      <h2><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Dispositivos Conectados</h2>
+      <div id="devicesList">
+        <div class="empty"><div class="spinner" style="margin:0 auto 10px"></div>Carregando...</div>
+      </div>
     </div>
   </div>
 
-  <!-- CARD 2: CHAVES DE ACESSO -->
-  <div class="card">
-    <h2>
-      <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-      Criar Nova Chave de Acesso
-    </h2>
-    <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 16px; line-height: 1.5;">
-      Crie uma credencial (WebAuthn) para acessar a Kloewa. É necessário confirmar a sua senha para gerar a chave.
-    </p>
+  <!-- ABA 2: CHAVES -->
+  <div id="aba-chaves" class="hidden">
+    <div class="card">
+      <h2><svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Criar Nova Chave de Acesso</h2>
+      <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 16px; line-height: 1.5;">Crie uma credencial (WebAuthn) para acessar a Kloewa. É necessário confirmar a sua senha para gerar a chave.</p>
 
-    <div class="form-group">
-      <label>Nome deste dispositivo</label>
-      <input type="text" id="deviceNameInput" class="form-control" placeholder="Ex: Celular do Trabalho, Notebook...">
-    </div>
-    
-    <div class="form-group">
-      <label>Senha do Firebase</label>
-      <input type="password" id="passwordInput" class="form-control" placeholder="Digite a sua senha para confirmar...">
-    </div>
+      <div class="form-group">
+        <label>Nome deste dispositivo</label>
+        <input type="text" id="deviceNameInput" class="form-control" placeholder="Ex: Celular do Trabalho, Notebook...">
+      </div>
+      
+      <div class="form-group">
+        <label>Senha do Firebase</label>
+        <input type="password" id="passwordInput" class="form-control" placeholder="Digite a sua senha para confirmar...">
+      </div>
 
-    <button class="btn btn-primary" id="btnAddBio" style="width: 100%; justify-content: center; margin-top: 8px;">
-      <svg viewBox="0 0 24 24"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/></svg>
-      Gerar Chave de Acesso
-    </button>
+      <button class="btn btn-primary" id="btnAddBio" style="width: 100%; justify-content: center; margin-top: 8px;">
+        <svg viewBox="0 0 24 24"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/></svg>
+        Gerar Chave de Acesso
+      </button>
+    </div>
   </div>
-
 </div>
 
 <script>
@@ -148,7 +194,6 @@ firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 
 function $(id){ return document.getElementById(id); }
-
 function showStatus(msg, tipo) {
   const s = $("status");
   s.className = "status show " + (tipo || "info");
@@ -156,9 +201,32 @@ function showStatus(msg, tipo) {
 }
 function hideStatus(){ $("status").className = "status"; }
 
-// ============================================
-// CHAMA O WORKER
-// ============================================
+// CONTROLE DA SIDEBAR
+const sidebar = $("sidebar"), overlay = $("overlay"), wrap = document.getElementById("app");
+function toggleSidebar() {
+  sidebar.classList.toggle("open");
+  overlay.classList.toggle("show");
+  if (wrap) wrap.classList.toggle("shifted");
+}
+$("fabBtn").onclick = toggleSidebar;
+$("closeSidebar").onclick = toggleSidebar;
+overlay.onclick = toggleSidebar;
+
+function mudarAba(aba) {
+  document.querySelectorAll('.nav-circle-btn').forEach(btn => btn.classList.remove('active'));
+  if (aba === 'dispositivos') {
+    $("navDispositivos").classList.add('active');
+    $("aba-dispositivos").classList.remove('hidden');
+    $("aba-chaves").classList.add('hidden');
+  } else {
+    $("navChaves").classList.add('active');
+    $("aba-chaves").classList.remove('hidden');
+    $("aba-dispositivos").classList.add('hidden');
+  }
+  if (window.innerWidth < 800) toggleSidebar();
+}
+
+// API
 async function deviceManage(action, extra = {}) {
   const token = await auth.currentUser.getIdToken(true);
   const r = await fetch(WORKER + "/device/manage", {
@@ -169,9 +237,7 @@ async function deviceManage(action, extra = {}) {
   return await r.json();
 }
 
-// ============================================
 // INIT
-// ============================================
 auth.onAuthStateChanged(async (user) => {
   if (!user) { window.location.href = "/auth.html"; return; }
   try {
@@ -180,67 +246,48 @@ auth.onAuthStateChanged(async (user) => {
     $("loading").classList.add("hidden");
     $("app").classList.remove("hidden");
     renderDispositivos(listRes.devices || [], listRes.current_device_key);
-  } catch (e) {
-    showStatus("Erro ao carregar: " + e.message, "err");
-  }
+  } catch (e) { showStatus("Erro ao carregar: " + e.message, "err"); }
 });
 
-// ============================================
-// RENDER DISPOSITIVOS
-// ============================================
 function renderDispositivos(devices, meuDeviceKey) {
-  if (!devices || devices.length === 0) {
-    $("devicesList").innerHTML = '<div class="empty">Nenhum dispositivo registrado.</div>';
-    return;
-  }
-
+  if (!devices || devices.length === 0) { $("devicesList").innerHTML = '<div class="empty">Nenhum dispositivo registrado.</div>'; return; }
   const html = devices.map(d => {
-    const isCurrent = d.device_key === meuDeviceKey;
-    const isBlocked = d.blocked;
+    const isCurrent = d.device_key === meuDeviceKey, isBlocked = d.blocked;
     const cls = "device" + (isCurrent ? " current" : "") + (isBlocked ? " blocked" : "");
-
     let badge = isCurrent ? '<span class="badge badge-current">Este dispositivo</span>' : (isBlocked ? '<span class="badge badge-blocked">Bloqueado</span>' : '<span class="badge badge-active">Ativo</span>');
-
     const actionBtn = isCurrent ? '' : (isBlocked
         ? `<button class="btn btn-outline" data-action="unblock" data-key="${d.device_key}">Desbloquear</button>`
         : `<button class="btn btn-danger" data-action="block" data-key="${d.device_key}">Bloquear</button>`
       );
-
     return `
       <div class="${cls}">
         <div class="device-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-        <div class="device-info">
-          <h3>${d.device_name || 'Dispositivo'} ${badge}</h3>
-          <p>IP: ${d.ip || '—'} • Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p>
-        </div>
+        <div class="device-info"><h3>${d.device_name || 'Dispositivo'} ${badge}</h3><p>IP: ${d.ip || '—'} • Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p></div>
         <div class="device-actions">${actionBtn}</div>
       </div>
     `;
   }).join("");
-
   $("devicesList").innerHTML = html;
   $("devicesList").querySelectorAll("[data-action]").forEach(btn => {
     btn.onclick = () => executarAcaoDispositivo(btn.dataset.action, btn.dataset.key);
   });
 }
 
-// ============================================
-// CRIAR CHAVE DE ACESSO (FORMS NA TELA)
-// ============================================
+// CRIAR CHAVE
 $("btnAddBio").onclick = async () => {
   const deviceName = $("deviceNameInput").value.trim();
   const password = $("passwordInput").value;
-
   if (!deviceName) return showStatus("Dê um nome para o dispositivo.", "err");
   if (!password) return showStatus("A senha é obrigatória.", "err");
 
   try {
-    showStatus("Solicitando biometria...", "info");
+    showStatus("Aguardando biometria (não feche a janela)...", "info");
     if (!window.PublicKeyCredential) throw new Error("WebAuthn não suportado.");
 
     const challenge = new Uint8Array(32);
     crypto.getRandomValues(challenge);
 
+    // Aumentado para 120 segundos para dar tempo de ler e confirmar
     const credential = await navigator.credentials.create({
       publicKey: {
         challenge: challenge,
@@ -248,7 +295,7 @@ $("btnAddBio").onclick = async () => {
         user: { id: new Uint8Array(16), name: auth.currentUser.email, displayName: deviceName },
         pubKeyCredParams: [{ type: "public-key", alg: -7 }],
         authenticatorSelection: { userVerification: "preferred" },
-        timeout: 60000,
+        timeout: 120000, 
         attestation: "none"
       }
     });
@@ -256,47 +303,39 @@ $("btnAddBio").onclick = async () => {
     if (credential) {
       showStatus("Validando senha no servidor...", "info");
       const token = await auth.currentUser.getIdToken(true);
-
       const res = await fetch(WORKER + "/api/auth/register-bio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tokenid: token,
-          webauthnId: credential.id,
-          deviceName: deviceName,
-          email: auth.currentUser.email,
-          password: password
-        })
+        body: JSON.stringify({ tokenid: token, webauthnId: credential.id, deviceName, email: auth.currentUser.email, password })
       });
-
       const data = await res.json();
       if (data.ok) {
         showStatus("Chave de acesso criada com sucesso!", "ok");
-        $("deviceNameInput").value = "";
-        $("passwordInput").value = "";
+        $("deviceNameInput").value = ""; $("passwordInput").value = "";
         setTimeout(hideStatus, 3000);
-      } else {
-        throw new Error(data.erro);
-      }
+      } else { throw new Error(data.erro); }
     }
   } catch (err) {
-    showStatus("Erro: " + err.message, "err");
+    // TRATAMENTO DO ERRO DE TIMEOUT/SEGURANÇA DO WEBAUTHN
+    if (err.name === 'NotAllowedError' || err.message.includes('timed out') || err.message.includes('not allowed')) {
+      showStatus("A biometria foi cancelada ou expirou. Clique em 'Gerar Chave' e tente novamente.", "err");
+    } else {
+      showStatus("Erro: " + err.message, "err");
+    }
   }
 };
 
-// ============================================
-// BLOQUEAR / DESBLOQUEAR (EXIGE BIOMETRIA)
-// ============================================
+// BLOQUEAR/DESBLOQUEAR
 async function executarAcaoDispositivo(action, deviceKey) {
   try {
-    showStatus("Solicitando biometria...", "info");
+    showStatus("Aguardando biometria (não feche a janela)...", "info");
     const challenge = new Uint8Array(32);
     crypto.getRandomValues(challenge);
 
     const credential = await navigator.credentials.get({
       publicKey: {
         challenge: challenge,
-        timeout: 60000,
+        timeout: 120000, // Aumentado aqui também
         userVerification: "preferred"
       }
     });
@@ -305,41 +344,38 @@ async function executarAcaoDispositivo(action, deviceKey) {
 
     showStatus(action === "block" ? "Bloqueando..." : "Desbloqueando...", "info");
     const token = await auth.currentUser.getIdToken(true);
-
     const r = await fetch(WORKER + "/device/manage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tokenid: token,
-        action: action,
-        device_key: deviceKey,
-        webauthn_id: credential.id 
-      })
+      body: JSON.stringify({ tokenid: token, action: action, device_key: deviceKey, webauthn_id: credential.id })
     });
-
     const data = await r.json();
     if (data.ok) {
       showStatus(data.mensagem || "Sucesso!", "ok");
       const listRes = await deviceManage("list");
       renderDispositivos(listRes.devices || [], listRes.current_device_key);
       setTimeout(hideStatus, 3000);
-    } else {
-      throw new Error(data.erro);
-    }
+    } else { throw new Error(data.erro); }
   } catch (err) {
-    showStatus("Erro: " + err.message, "err");
+    if (err.name === 'NotAllowedError' || err.message.includes('timed out') || err.message.includes('not allowed')) {
+      showStatus("Ação cancelada ou tempo de biometria expirado. Tente novamente.", "err");
+    } else {
+      showStatus("Erro: " + err.message, "err");
+    }
   }
 }
 
-// ============================================
-// LOGOUT
-// ============================================
 $("btnLogout").onclick = async () => {
-  if (confirm("Sair da conta?")) {
-    await auth.signOut();
-    window.location.href = "/auth.html";
-  }
+  if (confirm("Sair da conta?")) { await auth.signOut(); window.location.href = "/auth.html"; }
 };
+</script>
+
+<!-- APP SHELL DO DOMÍNIO OFICIAL -->
+<script src="https://api.kloewa.ooguy.com/app-shell.js"></script>
+<script>
+  if (typeof AppShell !== "undefined") {
+    try { new AppShell().mount(); } catch (e) { console.error("AppShell:", e.message); }
+  }
 </script>
 </body>
 </html>
