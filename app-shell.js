@@ -1,4 +1,4 @@
-// app-shell.js v4.2.0 - Regra para esconder a barra inferior na página da conta
+// app-shell.js v4.6.0 - Adiciona o botão hambúrguer ao lado dos 3 pontinhos
 (function () {
   "use strict";
 
@@ -6,164 +6,56 @@
 
   const STYLES = `
     /* =========================================
-       GAVETAS LATERAIS (Apenas Desktop)
+       GAVETAS LATERAIS
        ========================================= */
     .app-shell-tab-left, .app-shell-tab-right {
-      position: fixed;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 260px;
-      background: rgba(10, 15, 28, 0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid #1f2a44;
-      padding: 20px 12px;
-      z-index: 2000;
+      position: fixed; top: 50%; transform: translateY(-50%); width: 260px;
+      background: rgba(10, 15, 28, 0.95); backdrop-filter: blur(20px);
+      border: 1px solid #1f2a44; padding: 20px 12px; z-index: 2000;
       transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+      display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
     }
-
-    .app-shell-tab-left {
-      left: 0;
-      transform: translateY(-50%) translateX(-100%);
-      border-left: none;
-      border-radius: 0 16px 16px 0;
-    }
-    .app-shell-tab-left::after {
-      content: '>';
-      position: absolute;
-      right: -28px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 28px;
-      height: 60px;
-      background: rgba(10, 15, 28, 0.95);
-      border: 1px solid #1f2a44;
-      border-left: none;
-      border-radius: 0 12px 12px 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #4f8cff;
-      font-weight: 900;
-      font-size: 14px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .app-shell-tab-right {
-      right: 0;
-      transform: translateY(-50%) translateX(100%);
-      border-right: none;
-      border-radius: 16px 0 0 16px;
-      align-items: center;
-    }
-    .app-shell-tab-right::before {
-      content: '<';
-      position: absolute;
-      left: -28px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 28px;
-      height: 60px;
-      background: rgba(10, 15, 28, 0.95);
-      border: 1px solid #1f2a44;
-      border-right: none;
-      border-radius: 12px 0 0 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #4f8cff;
-      font-weight: 900;
-      font-size: 14px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    @media (hover: hover) {
-      .app-shell-tab-left:hover { transform: translateY(-50%) translateX(0); }
-      .app-shell-tab-right:hover { transform: translateY(-50%) translateX(0); }
-      .app-shell-tab-left:hover::after, .app-shell-tab-right:hover::before { background: #4f8cff; color: #fff; border-color: #4f8cff; }
-    }
-
-    /* =========================================
-       CONTEÚDO INTERNO DAS GAVETAS
-       ========================================= */
-    .app-shell-menu-header { 
-      border-bottom: 1px solid #1f2a44; padding-bottom: 12px; margin-bottom: 12px; 
-      text-align: center; position: relative;
-    }
+    .app-shell-tab-left { left: 0; transform: translateY(-50%) translateX(-100%); border-left: none; border-radius: 0 16px 16px 0; }
+    .app-shell-tab-left::after { content: '>'; position: absolute; right: -28px; top: 50%; transform: translateY(-50%); width: 28px; height: 60px; background: rgba(10, 15, 28, 0.95); border: 1px solid #1f2a44; border-left: none; border-radius: 0 12px 12px 0; display: flex; align-items: center; justify-content: center; color: #4f8cff; font-weight: 900; font-size: 14px; cursor: pointer; }
+    .app-shell-tab-right { right: 0; transform: translateY(-50%) translateX(100%); border-right: none; border-radius: 16px 0 0 16px; align-items: center; }
+    .app-shell-tab-right::before { content: '<'; position: absolute; left: -28px; top: 50%; transform: translateY(-50%); width: 28px; height: 60px; background: rgba(10, 15, 28, 0.95); border: 1px solid #1f2a44; border-right: none; border-radius: 12px 0 0 12px; display: flex; align-items: center; justify-content: center; color: #4f8cff; font-weight: 900; font-size: 14px; cursor: pointer; }
+    @media (hover: hover) { .app-shell-tab-left:hover { transform: translateY(-50%) translateX(0); } .app-shell-tab-right:hover { transform: translateY(-50%) translateX(0); } }
+    
+    .app-shell-menu-header { border-bottom: 1px solid #1f2a44; padding-bottom: 12px; margin-bottom: 12px; text-align: center; }
     .app-shell-menu-header h2 { color: #e8eef8; font-size: 1.2rem; font-weight: 700; }
     .app-shell-menu-header p { color: #8fa0bd; font-size: 0.7rem; letter-spacing: 1px; }
-
-    .app-shell-item {
-      display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px;
-      border-radius: 12px; background: transparent; border: none; color: #e8eef8;
-      font-size: 0.95rem; font-weight: 500; cursor: pointer; text-align: left; font-family: inherit;
-      transition: background 0.2s;
-    }
+    .app-shell-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border-radius: 12px; background: transparent; border: none; color: #e8eef8; font-size: 0.95rem; font-weight: 500; cursor: pointer; text-align: left; }
     .app-shell-item:hover { background: rgba(79, 140, 255, 0.1); }
     .app-shell-item.active { background: rgba(79, 140, 255, 0.15); border-left: 3px solid #4f8cff; }
     .app-shell-item .icon svg { width: 20px; height: 20px; stroke: #4f8cff; fill: none; stroke-width: 2; }
-
+    
     .app-shell-themes { display: flex; gap: 6px; margin-top: auto; padding-top: 16px; border-top: 1px solid #1f2a44; }
-    .app-theme-btn {
-      flex: 1; padding: 8px 0; border-radius: 8px; background: rgba(255,255,255,0.05);
-      border: 1px solid transparent; color: #8fa0bd; cursor: pointer; font-size: 0.75rem;
-      display: flex; align-items: center; justify-content: center; gap: 4px; transition: 0.2s;
-      font-family: inherit;
-    }
-    .app-theme-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .app-theme-btn { flex: 1; padding: 8px 0; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid transparent; color: #8fa0bd; cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 4px; }
     .app-theme-btn:hover { background: rgba(79, 140, 255, 0.15); color: #e8eef8; }
     .app-theme-btn.active { background: #4f8cff; color: #fff; border-color: #4f8cff; }
 
-    .app-shell-profile-avatar {
-      width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4f8cff, #7aa8ff);
-      display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold;
-      font-size: 32px; margin-bottom: 12px; overflow: hidden; border: 3px solid #1f2a44;
-    }
+    .app-shell-profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4f8cff, #7aa8ff); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 32px; margin-bottom: 12px; overflow: hidden; border: 3px solid #1f2a44; }
     .app-shell-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .app-shell-profile-name { color: #e8eef8; font-size: 1.1rem; font-weight: 600; text-align: center; margin-bottom: 4px; }
     .app-shell-profile-email { color: #8fa0bd; font-size: 0.8rem; text-align: center; margin-bottom: 20px; word-break: break-all; }
     
-    .app-shell-btn-logout {
-      width: 100%; max-width: 200px; padding: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; font-weight: 600; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem;
-      transition: 0.2s; font-family: inherit;
-    }
+    .app-shell-btn-logout { width: 100%; max-width: 200px; padding: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; }
     .app-shell-btn-logout:hover { background: rgba(239, 68, 68, 0.2); }
     .app-shell-btn-logout svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
 
-    .app-shell-spinner {
-      width: 24px; height: 24px; border: 3px solid rgba(255, 255, 255, 0.25);
-      border-top-color: #fff; border-radius: 50%; animation: appShellSpin 0.8s linear infinite;
-    }
+    .app-shell-spinner { width: 24px; height: 24px; border: 3px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; border-radius: 50%; animation: appShellSpin 0.8s linear infinite; }
     @keyframes appShellSpin { to { transform: rotate(360deg); } }
 
     /* =========================================
        BARRA INFERIOR FLUTUANTE (Apenas Mobile)
        ========================================= */
     .app-shell-mobile-nav {
-      display: none;
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: calc(100% - 48px);
-      max-width: 380px;
-      background: rgba(10, 15, 28, 0.85);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(79, 140, 255, 0.3);
-      border-radius: 40px;
-      padding: 10px 16px;
-      z-index: 2000;
+      display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      width: calc(100% - 48px); max-width: 380px; background: rgba(10, 15, 28, 0.85);
+      backdrop-filter: blur(24px); border: 1px solid rgba(79, 140, 255, 0.3);
+      border-radius: 40px; padding: 10px 16px; z-index: 2000;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(79, 140, 255, 0.15);
-      justify-content: space-between;
-      align-items: center;
+      justify-content: space-between; align-items: center;
     }
 
     .mobile-nav-btn {
@@ -175,26 +67,29 @@
     .mobile-nav-btn.active { color: #4f8cff; background: rgba(79, 140, 255, 0.1); }
     .mobile-nav-btn svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; }
 
-    /* Modal do Menu Mobile (3 pontinhos) */
-    .app-shell-mobile-modal {
-      display: none;
-      position: fixed;
-      bottom: 90px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: calc(100% - 48px);
-      max-width: 380px;
-      background: rgba(10, 15, 28, 0.95);
-      backdrop-filter: blur(20px);
-      border: 1px solid #1f2a44;
-      border-radius: 24px;
-      padding: 20px;
-      z-index: 2001;
-      flex-direction: column;
-      align-items: center;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-      animation: slideUp 0.3s ease;
+    /* ⭐ ESTILO DO BOTÃO FAB QUANDO DENTRO DA BARRA */
+    .fab-moved {
+      position: static !important;
+      transform: none !important;
+      width: 40px !important;
+      height: 40px !important;
+      box-shadow: none !important;
+      background: rgba(79, 140, 255, 0.2) !important;
+      border: 1px solid rgba(79, 140, 255, 0.4) !important;
+      border-radius: 50% !important;
+      margin: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      color: #4f8cff !important;
     }
+    .fab-moved svg {
+      width: 20px !important; height: 20px !important;
+      stroke: currentColor !important;
+    }
+
+    /* Modal do Menu Mobile (3 pontinhos) */
+    .app-shell-mobile-modal { display: none; position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: calc(100% - 48px); max-width: 380px; background: rgba(10, 15, 28, 0.95); backdrop-filter: blur(20px); border: 1px solid #1f2a44; border-radius: 24px; padding: 20px; z-index: 2001; flex-direction: column; align-items: center; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); animation: slideUp 0.3s ease; }
     @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
     .app-shell-mobile-modal.open { display: flex; }
 
@@ -204,9 +99,6 @@
     @media (max-width: 768px) {
       .app-shell-tab-left, .app-shell-tab-right { display: none !important; }
       .app-shell-mobile-nav { display: flex; }
-      
-      /* ⭐ ESCONDE A BARRA SE ESTIVER NA PÁGINA DA CONTA */
-      body.hide-mobile-nav .app-shell-mobile-nav { display: none !important; }
     }
     @media (min-width: 769px) {
       .app-shell-mobile-nav { display: none !important; }
@@ -284,23 +176,51 @@
 
     mount() {
       injectStyles();
-
-      // ⭐ VERIFICA SE É A PÁGINA DA CONTA PARA ESCONDER A BARRA NO MOBILE
-      const path = window.location.pathname;
-      if (path.includes('/account') || path.includes('/conta')) {
-        document.body.classList.add('hide-mobile-nav');
-      }
       
+      // Renderiza os componentes para Desktop
       this._renderLeftTab();
       this._renderRightTab();
+      
+      // Renderiza os componentes para Mobile
       this._renderMobileNav();
       this._renderMobileModal();
 
       this._applyView(this.currentView);
       this._initThemeController();
       
+      // ⭐ Lógica para mover o botão hambúrguer da página para dentro da barra (no celular)
+      this._setupMobileFab();
+
       if (this.autoFirebase) this._initFirebaseAuth();
       return this;
+    }
+
+    _setupMobileFab() {
+      const checkFab = setInterval(() => {
+        const fab = document.getElementById('fabBtn');
+        const nav = document.querySelector('.app-shell-mobile-nav');
+        
+        if (fab && nav) {
+          clearInterval(checkFab);
+          
+          if (window.innerWidth <= 768) {
+            // Move o botão para a barra
+            fab.classList.add('fab-moved');
+            nav.appendChild(fab);
+          } else {
+            // Se redimensionar a tela para desktop, devolve o botão para a página
+            window.addEventListener('resize', () => {
+              if (window.innerWidth > 768) {
+                fab.classList.remove('fab-moved');
+                document.body.appendChild(fab);
+              } else if (!nav.contains(fab)) {
+                fab.classList.add('fab-moved');
+                nav.appendChild(fab);
+              }
+            });
+          }
+        }
+      }, 100); // Verifica a cada 100ms até o botão e a barra existirem na página
     }
 
     _initThemeController() {
@@ -425,6 +345,7 @@
     _renderMobileNav() {
       const nav = document.createElement("nav");
       nav.className = "app-shell-mobile-nav";
+      // ⭐ Os 3 pontinhos (mobileMoreBtn) continuam aqui.
       nav.innerHTML = `
         <button class="mobile-nav-btn" data-view="home">${ICONS.home}</button>
         <button class="mobile-nav-btn" data-view="developer">${ICONS.dev}</button>
