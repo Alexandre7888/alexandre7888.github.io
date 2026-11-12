@@ -3,49 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerador de API Key - Kloewa</title>
+  <title>Desbloqueio Biométrico - Kloewa</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #0a0e1a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-    .box { background: #101626; padding: 30px; border-radius: 16px; border: 1px solid #1f2a44; width: 100%; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    h2 { margin-top: 0; color: #4f8cff; text-align: center; }
-    p { color: #8fa0bd; font-size: 14px; margin-bottom: 20px; text-align: center; }
-    label { display: block; font-size: 12px; color: #8fa0bd; margin-bottom: 5px; margin-top: 15px; }
-    input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #1f2a44; background: #05070f; color: #fff; box-sizing: border-box; margin-bottom: 10px; font-family: monospace; }
-    input:focus { outline: none; border-color: #4f8cff; }
-    button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .box { background: #101626; padding: 30px; border-radius: 16px; border: 1px solid #1f2a44; width: 100%; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+    h2 { margin-top: 0; color: #4f8cff; }
+    p { color: #8fa0bd; font-size: 14px; margin-bottom: 20px; }
+    button { width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 16px; }
     .btn-primary { background: #4f8cff; color: #fff; }
-    .btn-primary:hover { background: #7aa8ff; }
     .btn-secondary { background: #1f2a44; color: #8fa0bd; }
-    .btn-secondary:hover { background: #2d3b5c; color: #fff; }
     .btn-success { background: #22c55e; color: #fff; }
-    .btn-success:hover { background: #16a34a; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .resultado { background: #05070f; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; word-break: break-all; margin-top: 20px; display: none; border: 1px solid #1f2a44; }
-    .sucesso { color: #22c55e; border-color: #22c55e; }
-    .erro { color: #ef4444; border-color: #ef4444; }
-    .status { font-size: 12px; text-align: center; margin-top: 10px; color: #f59e0b; display: none; }
+    .status { font-size: 14px; margin-top: 20px; padding: 10px; border-radius: 8px; display: none; }
+    .sucesso { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
+    .erro { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
   </style>
 </head>
 <body>
 
   <div class="box">
-    <h2>Gerador de API Key</h2>
-    <p>Faça login, registre sua biometria e gere uma chave segura.</p>
+    <h2>Segurança Biométrica</h2>
+    <p>Use sua digital ou rosto para desbloquear ações sensíveis.</p>
 
     <div id="loginSection">
       <button class="btn-primary" id="btnLogin">Fazer Login com Google</button>
     </div>
 
     <div id="formSection" style="display: none;">
-      <label>Admin Token (ADMIN_KEY_B64)</label>
-      <input type="password" id="adminToken" placeholder="Cole a chave de administrador aqui...">
-      
-      <button class="btn-secondary" id="btnRegistrar">1. Registrar Biometria</button>
-      <button class="btn-success" id="btnGerar" disabled>2. Gerar Minha API Key</button>
+      <button class="btn-secondary" id="btnRegistrar">1. Cadastrar Biometria</button>
+      <button class="btn-success" id="btnDesbloquear" disabled>2. Desbloquear com Biometria</button>
     </div>
 
-    <div id="status" class="status">Carregando...</div>
-    <div id="resultado" class="resultado"></div>
+    <div id="status" class="status"></div>
   </div>
 
   <script type="module">
@@ -63,35 +52,26 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev/api/keys/create";
+    const URL_REGISTRAR = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev/api/auth/register-bio";
+    const URL_VERIFICAR = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev/api/auth/verify-bio";
 
     const btnLogin = document.getElementById('btnLogin');
     const btnRegistrar = document.getElementById('btnRegistrar');
-    const btnGerar = document.getElementById('btnGerar');
-    const adminTokenInput = document.getElementById('adminToken');
+    const btnDesbloquear = document.getElementById('btnDesbloquear');
     const loginSection = document.getElementById('loginSection');
     const formSection = document.getElementById('formSection');
-    const resultado = document.getElementById('resultado');
     const statusEl = document.getElementById('status');
 
     let currentUser = null;
-    let webauthnCredentialId = null; 
 
-    function mostrarStatus(msg) {
+    function mostrarStatus(msg, tipo) {
       statusEl.style.display = "block";
       statusEl.textContent = msg;
-    }
-
-    function esconderStatus() {
-      statusEl.style.display = "none";
+      statusEl.className = "status " + tipo;
     }
 
     btnLogin.onclick = async () => {
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (err) {
-        alert("Erro no login: " + err.message);
-      }
+      try { await signInWithPopup(auth, provider); } catch (err) { alert(err.message); }
     };
 
     onAuthStateChanged(auth, (user) => {
@@ -106,19 +86,22 @@
       }
     });
 
-    // 1. REGISTRAR BIOMETRIA
+    // ==========================================
+    // 1. CADASTRAR BIOMETRIA
+    // ==========================================
     btnRegistrar.onclick = async () => {
       try {
         if (!window.PublicKeyCredential) throw new Error("WebAuthn não suportado.");
-        
+
         const challenge = new Uint8Array(32);
         crypto.getRandomValues(challenge);
 
+        // Cria a credencial biométrica
         const credential = await navigator.credentials.create({
           publicKey: {
             challenge: challenge,
             rp: { name: "Kloewa" },
-            user: { id: new Uint8Array(16), name: "usuario", displayName: "Usuário" },
+            user: { id: new Uint8Array(16), name: currentUser.email, displayName: currentUser.displayName },
             pubKeyCredParams: [{ type: "public-key", alg: -7 }],
             authenticatorSelection: { userVerification: "preferred" },
             timeout: 60000,
@@ -127,70 +110,69 @@
         });
 
         if (credential) {
-          webauthnCredentialId = credential.id; // Salva o ID da biometria
-          btnGerar.disabled = false;
-          btnRegistrar.style.background = "#1f2a44";
-          btnRegistrar.textContent = "Biometria Registrada ✅";
+          mostrarStatus("Salvando no servidor...", "sucesso");
+          const idToken = await currentUser.getIdToken();
+
+          // Envia o ID da biometria para o Worker salvar
+          const res = await fetch(URL_REGISTRAR, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tokenid: idToken, webauthnId: credential.id })
+          });
+
+          const data = await res.json();
+          if (data.ok) {
+            mostrarStatus("Biometria cadastrada com sucesso!", "sucesso");
+            btnDesbloquear.disabled = false;
+          } else {
+            throw new Error(data.erro);
+          }
         }
       } catch (err) {
-        alert("Erro ao registrar biometria: " + err.message);
+        mostrarStatus("Erro: " + err.message, "erro");
       }
     };
 
-    // 2. GERAR CHAVE
-    btnGerar.onclick = async () => {
-      const adminToken = adminTokenInput.value.trim();
-      if (!adminToken) return alert("Preencha o Admin Token!");
-      if (!currentUser) return alert("Faça login primeiro!");
-      if (!webauthnCredentialId) return alert("Você precisa registrar a biometria primeiro!");
-
-      btnGerar.disabled = true;
-      btnGerar.textContent = "Gerando chave...";
-      resultado.style.display = "none";
-      mostrarStatus("Solicitando autenticação biométrica...");
-
+    // ==========================================
+    // 2. DESBLOQUEAR (VALIDAR BIOMETRIA)
+    // ==========================================
+    btnDesbloquear.onclick = async () => {
       try {
-        await navigator.credentials.get({
+        mostrarStatus("Aguardando biometria...", "");
+        
+        const challenge = new Uint8Array(32);
+        crypto.getRandomValues(challenge);
+
+        // Pede para o usuário autenticar
+        const credential = await navigator.credentials.get({
           publicKey: {
-            challenge: new Uint8Array(32),
+            challenge: challenge,
             timeout: 60000,
             userVerification: "preferred"
           }
         });
 
-        mostrarStatus("Validando token no servidor...");
+        if (credential) {
+          mostrarStatus("Validando no servidor...", "");
+          const idToken = await currentUser.getIdToken();
 
-        const idToken = await currentUser.getIdToken();
+          // Envia o ID de volta pro Worker conferir se é o mesmo
+          const res = await fetch(URL_VERIFICAR, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tokenid: idToken, webauthnId: credential.id })
+          });
 
-        const res = await fetch(WORKER_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tokenid: idToken,
-            admin: adminToken,
-            nome: "Chave via WebAuthn",
-            webauthnId: webauthnCredentialId
-          })
-        });
-
-        const data = await res.json();
-        esconderStatus();
-
-        resultado.style.display = "block";
-        if (data.ok) {
-          resultado.className = "resultado sucesso";
-          resultado.innerHTML = `<strong>Chave Criada com Sucesso:</strong><br><br>${data.chave}`;
-          btnGerar.textContent = "Chave Gerada!";
-        } else {
-          throw new Error(data.erro || "Erro desconhecido");
+          const data = await res.json();
+          if (data.ok) {
+            mostrarStatus("✅ Desbloqueado com sucesso!", "sucesso");
+            // Aqui você pode liberar a ação (ex: redirecionar, mostrar dados, etc)
+          } else {
+            throw new Error(data.erro);
+          }
         }
       } catch (err) {
-        esconderStatus();
-        resultado.style.display = "block";
-        resultado.className = "resultado erro";
-        resultado.textContent = "Erro: " + err.message;
-        btnGerar.disabled = false;
-        btnGerar.textContent = "Tentar Novamente";
+        mostrarStatus("Acesso Negado: " + err.message, "erro");
       }
     };
   </script>
