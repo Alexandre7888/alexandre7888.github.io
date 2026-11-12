@@ -1,4 +1,4 @@
-// app-shell.js v4.6.0 - Adiciona o botão hambúrguer ao lado dos 3 pontinhos
+// app-shell.js v4.7.0 - Ajustes visuais finos
 (function () {
   "use strict";
 
@@ -6,7 +6,7 @@
 
   const STYLES = `
     /* =========================================
-       GAVETAS LATERAIS
+       GAVETAS LATERAIS (Desktop)
        ========================================= */
     .app-shell-tab-left, .app-shell-tab-right {
       position: fixed; top: 50%; transform: translateY(-50%); width: 260px;
@@ -66,6 +66,15 @@
     }
     .mobile-nav-btn.active { color: #4f8cff; background: rgba(79, 140, 255, 0.1); }
     .mobile-nav-btn svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; }
+    
+    /* ⭐ REMOVE O ANEL BRANCO (FOCUS) DOS BOTÕES */
+    .mobile-nav-btn:focus, .mobile-nav-btn:active, 
+    .mobile-nav-btn:focus-visible, #mobileMoreBtn:focus, 
+    #mobileMoreBtn:active, .fab-moved:focus, .fab-moved:active {
+      outline: none !important;
+      box-shadow: none !important;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     /* ⭐ ESTILO DO BOTÃO FAB QUANDO DENTRO DA BARRA */
     .fab-moved {
@@ -99,6 +108,8 @@
     @media (max-width: 768px) {
       .app-shell-tab-left, .app-shell-tab-right { display: none !important; }
       .app-shell-mobile-nav { display: flex; }
+      /* ⭐ DÁ UM ESPAÇO EXTRA NO FINAL DA PÁGINA PARA NÃO SOBREPOR O CONTEÚDO */
+      body { padding-bottom: 120px !important; }
     }
     @media (min-width: 769px) {
       .app-shell-mobile-nav { display: none !important; }
@@ -177,18 +188,13 @@
     mount() {
       injectStyles();
       
-      // Renderiza os componentes para Desktop
       this._renderLeftTab();
       this._renderRightTab();
-      
-      // Renderiza os componentes para Mobile
       this._renderMobileNav();
       this._renderMobileModal();
 
       this._applyView(this.currentView);
       this._initThemeController();
-      
-      // ⭐ Lógica para mover o botão hambúrguer da página para dentro da barra (no celular)
       this._setupMobileFab();
 
       if (this.autoFirebase) this._initFirebaseAuth();
@@ -204,11 +210,9 @@
           clearInterval(checkFab);
           
           if (window.innerWidth <= 768) {
-            // Move o botão para a barra
             fab.classList.add('fab-moved');
             nav.appendChild(fab);
           } else {
-            // Se redimensionar a tela para desktop, devolve o botão para a página
             window.addEventListener('resize', () => {
               if (window.innerWidth > 768) {
                 fab.classList.remove('fab-moved');
@@ -220,7 +224,7 @@
             });
           }
         }
-      }, 100); // Verifica a cada 100ms até o botão e a barra existirem na página
+      }, 100);
     }
 
     _initThemeController() {
@@ -345,7 +349,6 @@
     _renderMobileNav() {
       const nav = document.createElement("nav");
       nav.className = "app-shell-mobile-nav";
-      // ⭐ Os 3 pontinhos (mobileMoreBtn) continuam aqui.
       nav.innerHTML = `
         <button class="mobile-nav-btn" data-view="home">${ICONS.home}</button>
         <button class="mobile-nav-btn" data-view="developer">${ICONS.dev}</button>
