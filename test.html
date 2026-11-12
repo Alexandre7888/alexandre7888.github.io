@@ -9,6 +9,7 @@
     .box { background: #101626; padding: 30px; border-radius: 16px; border: 1px solid #1f2a44; width: 100%; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
     h2 { margin-top: 0; color: #4f8cff; }
     p { color: #8fa0bd; font-size: 14px; margin-bottom: 20px; }
+    input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #1f2a44; background: #05070f; color: #fff; box-sizing: border-box; margin-bottom: 10px; font-family: monospace; }
     button { width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 16px; }
     .btn-primary { background: #4f8cff; color: #fff; }
     .btn-secondary { background: #1f2a44; color: #8fa0bd; }
@@ -30,6 +31,7 @@
     </div>
 
     <div id="formSection" style="display: none;">
+      <input type="text" id="deviceName" placeholder="Nome do dispositivo (ex: Meu Celular)">
       <button class="btn-secondary" id="btnRegistrar">1. Cadastrar Biometria</button>
       <button class="btn-success" id="btnDesbloquear" disabled>2. Desbloquear com Biometria</button>
     </div>
@@ -61,6 +63,7 @@
     const loginSection = document.getElementById('loginSection');
     const formSection = document.getElementById('formSection');
     const statusEl = document.getElementById('status');
+    const deviceNameInput = document.getElementById('deviceName');
 
     let currentUser = null;
 
@@ -90,6 +93,9 @@
     // 1. CADASTRAR BIOMETRIA
     // ==========================================
     btnRegistrar.onclick = async () => {
+      const deviceName = deviceNameInput.value.trim();
+      if (!deviceName) return alert("Dê um nome para o dispositivo primeiro!");
+
       try {
         if (!window.PublicKeyCredential) throw new Error("WebAuthn não suportado.");
 
@@ -113,11 +119,15 @@
           mostrarStatus("Salvando no servidor...", "sucesso");
           const idToken = await currentUser.getIdToken();
 
-          // Envia o ID da biometria para o Worker salvar
+          // Envia o ID da biometria e o Nome do Dispositivo para o Worker
           const res = await fetch(URL_REGISTRAR, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tokenid: idToken, webauthnId: credential.id })
+            body: JSON.stringify({ 
+              tokenid: idToken, 
+              webauthnId: credential.id,
+              deviceName: deviceName
+            })
           });
 
           const data = await res.json();
@@ -156,7 +166,7 @@
           mostrarStatus("Validando no servidor...", "");
           const idToken = await currentUser.getIdToken();
 
-          // Envia o ID de volta pro Worker conferir se é o mesmo
+          // Envia o ID de volta pro Worker conferir
           const res = await fetch(URL_VERIFICAR, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -165,8 +175,7 @@
 
           const data = await res.json();
           if (data.ok) {
-            mostrarStatus("✅ Desbloqueado com sucesso!", "sucesso");
-            // Aqui você pode liberar a ação (ex: redirecionar, mostrar dados, etc)
+            mostrarStatus(`✅ Desbloqueado com sucesso no dispositivo: ${data.deviceName}`, "sucesso");
           } else {
             throw new Error(data.erro);
           }
