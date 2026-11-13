@@ -1,342 +1,317 @@
 <!DOCTYPE html>
-<html lang="pt-br" data-theme="dark">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>kloewa · Plataforma</title>
-  <link rel="icon" type="image/png" href="/InShot_20250807_112151490.jpg">
-
-  <!-- ⭐ MANIFEST DO WORKER (token injetado via JS) -->
-  <link rel="manifest" id="appManifest" href="https://proud-flower-677b.braatzjunioralexandre5.workers.dev/manifest.json">
-  <meta name="theme-color" content="#0a0e1a">
-
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X4VF1LWB0F"></script>
-  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-X4VF1LWB0F')</script>
-
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-  <script>
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({
-        appId: "5475922c-e999-4b42-b743-c7cde90db378",
-        safari_web_id: "web.onesignal.auto.3a869b75-1942-4792-8237-9de8041a4c17",
-        notifyButton: { enable: false },
-        allowLocalhostAsSecureOrigin: true
-      });
-      window.__OneSignal = OneSignal;
-      window.dispatchEvent(new Event("onesignal-ready"));
-    });
-  </script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>kloewa • Autenticação</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-
-    :root, html[data-theme="dark"]{
-      --bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;
-      --border:#1f2a44;--text:#e8eef8;--text-2:#8fa0bd;--accent:#4f8cff;--shadow:rgba(0,0,0,0.55);
-    }
-
-    html[data-theme="light"]{
-      --bg-1:#f7f9fc;--bg-2:#eef2f8;--surface:#ffffff;--surface-2:#f5f8fd;
-      --border:#e2e8f2;--text:#0f172a;--text-2:#5b6b85;--accent:#2563eb;--shadow:rgba(15,23,42,0.08);
-    }
-
-    body{
-      background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));
-      font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;
-      color:var(--text);min-height:100vh;display:flex;flex-direction:column;
-      transition:background .4s ease,color .3s ease;
-    }
-
-    .content-wrap{
-      flex:1;display:flex;flex-direction:column;align-items:center;
-      padding:20px;margin-top:20px;width:100%;
-    }
-
-    .apps-container { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 24px; }
-
-    .apps-header { text-align: center; margin-bottom: 10px; }
-    .apps-header h1 { font-size: 2rem; color: var(--text); margin-bottom: 8px; }
-    .apps-header p { color: var(--text-2); font-size: 1rem; margin-bottom: 20px; }
-
-    .search-bar { width: 100%; max-width: 500px; margin: 0 auto; position: relative; }
-    .search-bar input {
-      width: 100%; padding: 14px 20px 14px 48px; border-radius: 30px;
-      background: var(--surface); border: 1px solid var(--border); color: var(--text);
-      font-size: 1rem; outline: none; transition: 0.2s; box-shadow: 0 4px 12px var(--shadow);
-    }
-    .search-bar input:focus { border-color: var(--accent); box-shadow: 0 4px 20px rgba(79,140,255,0.2); }
-    .search-bar svg {
-      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
-      width: 20px; height: 20px; stroke: var(--text-2); fill: none; stroke-width: 2;
-    }
-
-    .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-
-    .app-card {
-      background: var(--surface); border-radius: 20px; padding: 24px;
-      border: 1px solid var(--border); text-align: center;
-      box-shadow: 0 8px 24px var(--shadow); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      cursor: pointer; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 12px;
-    }
-    .app-card:hover {
-      transform: translateY(-6px); border-color: var(--accent);
-      box-shadow: 0 12px 30px rgba(79, 140, 255, 0.15);
-    }
-
-    .app-icon {
-      width: 64px; height: 64px; border-radius: 16px;
-      background: rgba(79, 140, 255, 0.1); display: flex; align-items: center; justify-content: center;
-      color: var(--accent); transition: 0.3s;
-    }
-    .app-card:hover .app-icon { background: var(--accent); color: #fff; transform: scale(1.1) rotate(-5deg); }
-    .app-icon svg { width: 32px; height: 32px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-    .app-title { font-size: 1.1rem; font-weight: 600; color: var(--text); }
-    .app-desc { font-size: 0.8rem; color: var(--text-2); line-height: 1.4; }
-
-    .empty-state { text-align: center; color: var(--text-2); grid-column: 1/-1; padding: 40px; display: none; }
-
-    /* ===== BOTÃO INSTALAR ===== */
-    .install-bar {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px 18px;
-      display: none;
-      align-items: center;
-      gap: 14px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
-      z-index: 9999;
-      max-width: calc(100% - 40px);
-      width: 380px;
-    }
-    .install-bar.active { display: flex; }
-    .install-bar .install-text { flex: 1; font-size: 0.85rem; color: var(--text-2); line-height: 1.3; }
-    .install-bar .install-text strong { color: var(--text); display: block; font-size: 0.9rem; margin-bottom: 2px; }
-    .install-btn {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 16px;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: 0.2s;
-      white-space: nowrap;
-    }
-    .install-btn:hover { filter: brightness(1.1); }
-    .install-close {
-      background: transparent;
-      border: none;
-      color: var(--text-2);
-      cursor: pointer;
-      font-size: 1.2rem;
-      padding: 0 4px;
-      line-height: 1;
-    }
+    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+    .auth-container{width:100%;max-width:480px;background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .auth-header{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;padding:25px;text-align:center}
+    .auth-header h1{font-size:24px;margin-bottom:5px}
+    .auth-header p{font-size:13px;opacity:0.9}
+    .tabs{display:flex;background:rgba(0,0,0,0.3)}
+    .tab{flex:1;text-align:center;padding:14px;cursor:pointer;font-weight:600;color:#a0b3c9;transition:0.3s;position:relative;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .tab.active{color:#fff;background:rgba(67,97,238,0.3)}
+    .tab.active::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:3px;background:#4361ee}
+    .tab-content{padding:25px;display:none}
+    .tab-content.active{display:block}
+    .form-group{margin-bottom:16px}
+    .form-group label{display:block;margin-bottom:6px;font-weight:600;color:#e2e9f0;font-size:13px}
+    .form-control{width:100%;padding:11px 14px;background:rgba(0,0,0,0.3);border:2px solid rgba(67,97,238,0.3);border-radius:8px;font-size:14px;color:#fff;transition:0.3s}
+    .form-control:focus{border-color:#4895ef;outline:none;box-shadow:0 0 0 3px rgba(67,97,238,0.2);background:rgba(0,0,0,0.5)}
+    .form-control::placeholder{color:#6b7280}
+    .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:0.3s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .btn-primary{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(67,97,238,0.3)}
+    .btn-google{background:#fff;color:#212529;border:1px solid #dee2e6}
+    .btn-google:hover{background:#f8f9fa;transform:translateY(-2px)}
+    .btn-secondary{background:rgba(255,255,255,0.1);color:#a0b3c9;border:1px solid rgba(255,255,255,0.2)}
+    .btn-secondary:hover{background:rgba(255,255,255,0.2)}
+    .divider{display:flex;align-items:center;margin:18px 0;color:#a0b3c9;font-size:13px}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.2);margin:0 10px}
+    .error-message{color:#f72585;font-size:12px;display:none;background:rgba(247,37,133,0.1);padding:8px;border-radius:6px;margin-bottom:10px}
+    .error-message.show{display:block}
+    .success-message{color:#4cc9f0;font-size:13px;margin-top:12px;text-align:center;font-weight:600;background:rgba(76,201,240,0.1);padding:8px;border-radius:6px}
+    .footer-text{text-align:center;margin-top:18px;font-size:13px;color:#a0b3c9}
+    .footer-text a{color:#4361ee;text-decoration:none;font-weight:600;cursor:pointer}
+    .header-actions{position:fixed;top:20px;right:20px;z-index:1000}
+    .home-btn{background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;transition:0.3s;backdrop-filter:blur(10px);display:flex;align-items:center;gap:8px;}
+    .home-btn:hover{background:rgba(255,255,255,0.2)}
+    .home-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+    @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
 <body>
 
-  <div class="content-wrap">
-    <div class="apps-container">
+  <div class="header-actions">
+    <button class="home-btn" onclick="goToIndex()">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Voltar
+    </button>
+  </div>
+
+  <div class="auth-container">
+    <div class="auth-header">
+      <h1>Bem-vindo ao Kloewa</h1>
+      <p>Faça login com sua conta</p>
+    </div>
+
+    <div id="global-error" class="error-message"></div>
+    <div id="global-success" class="success-message" style="display:none;"></div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-login" onclick="switchTab('login')">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Entrar
+      </div>
+      <div class="tab" id="tab-register" onclick="switchTab('register')">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        Criar Conta
+      </div>
+    </div>
+
+    <div id="login-tab" class="tab-content active">
+      <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" class="form-control" placeholder="digite seu email"></div>
+      <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
       
-      <div class="apps-header">
-        <h1>Meus Aplicativos</h1>
-        <p>Escolha uma ferramenta para começar a trabalhar.</p>
-        
-        <div class="search-bar">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="searchInput" placeholder="Pesquisar aplicativo..." onkeyup="filtrarApps()">
-        </div>
+      <button class="btn btn-primary" id="login-btn" onclick="login()">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Entrar
+      </button>
+      
+      <div style="margin-top:10px;">
+        <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">
+          <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          Esqueci minha senha
+        </button>
       </div>
+      
+      <div class="divider">ou</div>
+      
+      <button class="btn btn-google" onclick="loginWithGoogle()">
+        <svg width="20" height="20" viewBox="-3 0 262 262" xmlns="http://www.w3.org/2000/svg">
+          <path d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027" fill="#4285F4"></path>
+          <path d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1" fill="#34A853"></path>
+          <path d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782" fill="#FBBC05"></path>
+          <path d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251" fill="#EB4335"></path>
+        </svg> 
+        Google
+      </button>
+      
+      <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
+    </div>
 
-      <div class="apps-grid" id="appsGrid">
-        
-        <a href="/workspace.html" class="app-card" data-name="workspace arquivos drive upload nuvem">
-          <div class="app-icon">
-            <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          </div>
-          <div class="app-title">Workspace</div>
-          <div class="app-desc">Armazene e gerencie seus arquivos e fotos na nuvem.</div>
-        </a>
-
-        <a href="/developer/" class="app-card" data-name="api tokens desenvolvedor chaves">
-          <div class="app-icon">
-            <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-          </div>
-          <div class="app-title">API & Tokens</div>
-          <div class="app-desc">Crie e gerencie chaves de acesso para suas integrações.</div>
-        </a>
-
-        <a href="/kyc" class="app-card" data-name="kyc identidade verificacao documentos">
-          <div class="app-icon">
-            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2"/><path d="M15 12h2"/><path d="M7 16h10"/></svg>
-          </div>
-          <div class="app-title">Verificação KYC</div>
-          <div class="app-desc">Valide documentos de identidade com Inteligência Artificial.</div>
-        </a>
-
-        <a href="/notificacoes" class="app-card" data-name="notificacoes push alertas">
-          <div class="app-icon">
-            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          </div>
-          <div class="app-title">Notificações</div>
-          <div class="app-desc">Gerencie seus alertas e envios push.</div>
-        </a>
-
-        <div class="empty-state" id="emptyState">Nenhum aplicativo encontrado.</div>
-
-      </div>
-
+    <div id="register-tab" class="tab-content">
+      <div class="form-group"><label for="register-username">Usuário</label><input type="text" id="register-username" class="form-control" placeholder="ex: dev123"></div>
+      <div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" class="form-control" placeholder="seu email"></div>
+      <div class="form-group"><label for="register-password">Senha</label><input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres"></div>
+      <div class="form-group"><label for="register-confirm-password">Confirmar</label><input type="password" id="register-confirm-password" class="form-control" placeholder="confirme"></div>
+      
+      <button class="btn btn-primary" id="register-btn" onclick="register()">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>
+        Criar Conta
+      </button>
+      
+      <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
     </div>
   </div>
 
-  <!-- ⭐ BOTÃO INSTALAR -->
-  <div class="install-bar" id="installBar">
-    <div class="install-text">
-      <strong>Instalar kloewa</strong>
-      Adicione à tela inicial para acesso rápido.
-    </div>
-    <button class="install-btn" id="installBtn">Instalar</button>
-    <button class="install-close" id="installClose" aria-label="Fechar">×</button>
-  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
-  <script>
-    window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-  </script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+      authDomain: "html-15e80.firebaseapp.com",
+      databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+      projectId: "html-15e80",
+      storageBucket: "html-15e80.firebasestorage.app",
+      messagingSenderId: "1068148640439",
+      appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
+    };
 
-  <script src="/app-shell.js"></script>
+    const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
-  <script>
-    if (typeof AppShell !== "undefined") {
-      try { new AppShell().mount(); } catch (e) { console.error("[kloewa] AppShell.mount():", e.message); }
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    function showError(m) {
+      const e = document.getElementById('global-error');
+      e.textContent = m;
+      e.classList.add('show');
     }
 
-    function filtrarApps() {
-      const termo = document.getElementById('searchInput').value.toLowerCase();
-      const cards = document.querySelectorAll('.app-card');
-      let encontrou = 0;
-
-      cards.forEach(card => {
-        const texto = (card.getAttribute('data-name') + ' ' + card.innerText).toLowerCase();
-        if (texto.includes(termo)) {
-          card.style.display = 'flex';
-          encontrou++;
-        } else {
-          card.style.display = 'none';
-        }
-      });
-
-      document.getElementById('emptyState').style.display = encontrou === 0 ? 'block' : 'none';
+    function showSuccess(m) {
+      const e = document.getElementById('global-success');
+      e.textContent = m;
+      e.style.display = 'block';
     }
 
-    // ============================================================
-    // ⭐ MANIFEST DINÂMICO DO WORKER: /manifest.json?token=${tokenid}
-    // ============================================================
-    (function injetarManifestToken() {
-      const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-      const manifestLink = document.getElementById("appManifest");
+    function detectDeviceName() {
+      const ua = navigator.userAgent;
+      let browser = "Navegador", os = "Dispositivo";
+      if (ua.includes("Firefox")) browser = "Firefox";
+      else if (ua.includes("Edg")) browser = "Edge";
+      else if (ua.includes("Chrome")) browser = "Chrome";
+      else if (ua.includes("Safari")) browser = "Safari";
+      else if (ua.includes("Opera") || ua.includes("OPR")) browser = "Opera";
 
-      function atualizarManifest(token) {
-        if (!manifestLink) return;
-        const url = token
-          ? `${WORKER_URL}/manifest.json?token=${encodeURIComponent(token)}`
-          : `${WORKER_URL}/manifest.json`;
-        manifestLink.setAttribute("href", url);
-        console.log("[manifest] href =", url);
-      }
+      if (ua.includes("Windows")) os = "Windows";
+      else if (ua.includes("Mac")) os = "Mac";
+      else if (ua.includes("Android")) os = "Android";
+      else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+      else if (ua.includes("Linux")) os = "Linux";
 
-      // 1) Tenta token do localStorage (pode ser setado pelo app-shell)
-      let token = null;
+      return `${browser} no ${os}`;
+    }
+
+    async function redirectAfterAuth(user) {
       try {
-        token = localStorage.getItem("tokenid")
-          || localStorage.getItem("firebaseToken")
-          || localStorage.getItem("idToken");
-      } catch (e) {}
+        showSuccess(`Autenticado! Enviando notificação...`);
 
-      atualizarManifest(token);
+        const token = await user.getIdToken(true);
 
-      // 2) Quando o Firebase Auth ficar pronto, pega o token fresco
-      async function tentarTokenFresco() {
+        document.cookie = `firebaseToken=${token}; Domain=.kloewa.ooguy.com; Path=/; SameSite=Lax; Secure`;
+
+        const deviceName = detectDeviceName();
+        const platform   = navigator.platform || "Desconhecido";
+        const language   = navigator.language || "Desconhecido";
+
+        let currentSubId = null;
         try {
-          const u = window.firebaseAuth?.currentUser;
-          if (u) {
-            const fresh = await u.getIdToken();
-            atualizarManifest(fresh);
-            try { localStorage.setItem("tokenid", fresh); } catch (e) {}
+          const os = window.__OneSignal;
+          currentSubId = os?.User?.PushSubscription?.id || null;
+        } catch {}
+
+        if (WORKER_URL && !WORKER_URL.includes("SEU-WORKER")) {
+          try {
+            const r = await fetch(`${WORKER_URL}/NotifyNewLogin?tokenid=${encodeURIComponent(token)}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                device_name: deviceName,
+                platform,
+                language,
+                user_agent: navigator.userAgent,
+                current_subscription_id: currentSubId,
+                title: "Bem-vindo de volta!",
+                message: `Você entrou na sua conta pelo ${deviceName}. Se não foi você, troque sua senha.`
+              })
+            });
+
+            const data = await r.json();
+
+            if (data.ok) {
+              showSuccess(data.mensagem || "Bem-vindo!");
+            } else {
+              console.warn("[Auth] Worker erro:", data);
+              showSuccess("Autenticado!");
+            }
+          } catch (e){
+            console.warn("[Auth] Worker falhou:", e.message);
+            showSuccess("Autenticado!");
           }
-        } catch (e) {}
+        } else {
+          showSuccess("Autenticado!");
+        }
+
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1400);
+
+      } catch (e) {
+        console.error(e);
+        showError("Erro ao validar sessão");
       }
-
-      window.addEventListener("firebase-ready", tentarTokenFresco);
-      window.addEventListener("auth-ready", tentarTokenFresco);
-
-      // 3) Revalida a cada 50 min (token Firebase expira em ~1h)
-      setInterval(async () => {
-        try {
-          const u = window.firebaseAuth?.currentUser;
-          if (u) {
-            const fresh = await u.getIdToken(true);
-            atualizarManifest(fresh);
-            try { localStorage.setItem("tokenid", fresh); } catch (e) {}
-          }
-        } catch (e) {}
-      }, 50 * 60 * 1000);
-    })();
-
-    // ============================================================
-    // ⭐ BOTÃO INSTALAR
-    // ============================================================
-    (function setupInstall() {
-      let deferredPrompt = null;
-      const bar = document.getElementById("installBar");
-      const btn = document.getElementById("installBtn");
-      const close = document.getElementById("installClose");
-
-      const isStandalone = window.matchMedia("(display-mode: standalone)").matches
-        || window.navigator.standalone === true;
-
-      window.addEventListener("beforeinstallprompt", (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        if (!isStandalone && bar) bar.classList.add("active");
-      });
-
-      btn?.addEventListener("click", async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        if (bar) bar.classList.remove("active");
-      });
-
-      close?.addEventListener("click", () => {
-        if (bar) bar.classList.remove("active");
-      });
-
-      window.addEventListener("appinstalled", () => {
-        deferredPrompt = null;
-        if (bar) bar.classList.remove("active");
-      });
-    })();
-
-    // ============================================================
-    // ⭐ SERVICE WORKER
-    // ============================================================
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js", { scope: "/" })
-          .then((reg) => console.log("[SW] registrado:", reg.scope))
-          .catch((err) => console.warn("[SW] falhou:", err));
-      });
     }
+
+    window.goToIndex = () => window.location.href = 'index.html';
+
+    window.switchTab = (id) => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById(`tab-${id}`).classList.add('active');
+      document.getElementById(`${id}-tab`).classList.add('active');
+      document.getElementById('global-error').classList.remove('show');
+      document.getElementById('global-success').style.display = 'none';
+    };
+
+    window.resetPassword = async () => {
+      const email = document.getElementById('login-email').value.trim();
+      if (!email) return showError('Digite seu email');
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showSuccess(`Email de recuperação enviado.`);
+      } catch (error) {
+        showError('Erro ao enviar email');
+      }
+    };
+
+    window.register = async () => {
+      document.getElementById('global-error').classList.remove('show');
+      document.getElementById('global-success').style.display = 'none';
+
+      const username = document.getElementById('register-username').value.trim();
+      const email = document.getElementById('register-email').value.trim();
+      const password = document.getElementById('register-password').value;
+      const confirm = document.getElementById('register-confirm-password').value;
+
+      if (!username || !email) return showError('Preencha todos os campos');
+      if (password.length < 6) return showError('Senha: mín. 6 caracteres');
+      if (password !== confirm) return showError('Senhas não coincidem');
+
+      const btn = document.getElementById('register-btn');
+      btn.disabled = true; btn.textContent = 'Criando...';
+
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        redirectAfterAuth(auth.currentUser);
+      } catch (error) {
+        let msg = 'Erro ao criar conta';
+        if (error.code === 'auth/email-already-in-use') msg = 'Email já em uso.';
+        else if (error.code === 'auth/weak-password') msg = 'Senha muito fraca.';
+        showError(msg);
+        btn.disabled = false; btn.textContent = 'Criar Conta';
+      }
+    };
+
+    window.login = async () => {
+      document.getElementById('global-error').classList.remove('show');
+      document.getElementById('global-success').style.display = 'none';
+
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) return showError('Preencha todos os campos');
+
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true; btn.textContent = 'Entrando...';
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        redirectAfterAuth(auth.currentUser);
+      } catch (error) {
+        let msg = 'Email ou senha incorretos.';
+        showError(msg);
+        btn.disabled = false; btn.textContent = 'Entrar';
+      }
+    };
+
+    window.loginWithGoogle = async () => {
+      document.getElementById('global-error').classList.remove('show');
+      document.getElementById('global-success').style.display = 'none';
+
+      try {
+        await signInWithPopup(auth, provider);
+        redirectAfterAuth(auth.currentUser);
+      } catch (error) {
+        if (error.code !== 'auth/popup-closed-by-user') showError('Erro ao fazer login com Google');
+      }
+    };
   </script>
 </body>
 </html>
