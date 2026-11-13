@@ -1,4 +1,4 @@
-// app-shell.js v4.7.0 - Ajustes visuais finos
+// app-shell.js v4.8.0 - Correção dos ícones gigantes do tema e fundo do modal
 (function () {
   "use strict";
 
@@ -67,10 +67,10 @@
     .mobile-nav-btn.active { color: #4f8cff; background: rgba(79, 140, 255, 0.1); }
     .mobile-nav-btn svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; }
     
-    /* ⭐ REMOVE O ANEL BRANCO (FOCUS) DOS BOTÕES */
-    .mobile-nav-btn:focus, .mobile-nav-btn:active, 
-    .mobile-nav-btn:focus-visible, #mobileMoreBtn:focus, 
-    #mobileMoreBtn:active, .fab-moved:focus, .fab-moved:active {
+    /* Remove o anel branco (focus) dos botões */
+    .mobile-nav-btn:focus, .mobile-nav-btn:active, .mobile-nav-btn:focus-visible, 
+    #mobileMoreBtn:focus, #mobileMoreBtn:active, 
+    .fab-moved:focus, .fab-moved:active {
       outline: none !important;
       box-shadow: none !important;
       -webkit-tap-highlight-color: transparent;
@@ -80,27 +80,48 @@
     .fab-moved {
       position: static !important;
       transform: none !important;
-      width: 40px !important;
-      height: 40px !important;
+      width: 40px !important; height: 40px !important;
       box-shadow: none !important;
       background: rgba(79, 140, 255, 0.2) !important;
       border: 1px solid rgba(79, 140, 255, 0.4) !important;
       border-radius: 50% !important;
       margin: 0 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
+      display: flex !important; align-items: center !important; justify-content: center !important;
       color: #4f8cff !important;
     }
-    .fab-moved svg {
-      width: 20px !important; height: 20px !important;
-      stroke: currentColor !important;
-    }
+    .fab-moved svg { width: 20px !important; height: 20px !important; stroke: currentColor !important; }
 
-    /* Modal do Menu Mobile (3 pontinhos) */
-    .app-shell-mobile-modal { display: none; position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: calc(100% - 48px); max-width: 380px; background: rgba(10, 15, 28, 0.95); backdrop-filter: blur(20px); border: 1px solid #1f2a44; border-radius: 24px; padding: 20px; z-index: 2001; flex-direction: column; align-items: center; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); animation: slideUp 0.3s ease; }
+    /* ⭐ FUNDO ESCURO PARA O MODAL (BACKDROP) */
+    .app-shell-mobile-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      z-index: 2000; backdrop-filter: blur(4px);
+    }
+    .app-shell-mobile-backdrop.open { display: block; }
+
+    /* Modal do Menu Mobile */
+    .app-shell-mobile-modal { 
+      display: none; position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      width: calc(100% - 48px); max-width: 380px; 
+      background: rgba(10, 15, 28, 0.95); backdrop-filter: blur(20px); 
+      border: 1px solid #1f2a44; border-radius: 24px; padding: 24px 20px; 
+      z-index: 2001; flex-direction: column; align-items: center; 
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); animation: slideUp 0.3s ease; 
+    }
     @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
     .app-shell-mobile-modal.open { display: flex; }
+
+    /* ⭐ CORREÇÃO DOS ÍCONES GIGANTES (TEMA) */
+    .app-shell-mobile-modal .app-shell-themes { width: 100%; justify-content: space-between; }
+    .app-shell-mobile-modal .app-theme-btn {
+      height: 50px !important; /* Altura fixa para não esticar */
+      flex: 1;
+      padding: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .app-shell-mobile-modal .app-theme-btn svg {
+      width: 24px !important; height: 24px !important;
+      max-width: 24px !important; max-height: 24px !important;
+    }
 
     /* =========================================
        RESPONSIVIDADE ESTRITA
@@ -108,11 +129,11 @@
     @media (max-width: 768px) {
       .app-shell-tab-left, .app-shell-tab-right { display: none !important; }
       .app-shell-mobile-nav { display: flex; }
-      /* ⭐ DÁ UM ESPAÇO EXTRA NO FINAL DA PÁGINA PARA NÃO SOBREPOR O CONTEÚDO */
+      /* Dá um espaço extra no final da página para a barra não cobrir o conteúdo */
       body { padding-bottom: 120px !important; }
     }
     @media (min-width: 769px) {
-      .app-shell-mobile-nav { display: none !important; }
+      .app-shell-mobile-nav, .app-shell-mobile-backdrop { display: none !important; }
       .app-shell-mobile-modal { display: none !important; }
     }
   `;
@@ -363,6 +384,12 @@
     }
 
     _renderMobileModal() {
+      // Adiciona o fundo escuro
+      const backdrop = document.createElement("div");
+      backdrop.className = "app-shell-mobile-backdrop";
+      backdrop.id = "appShellMobileBackdrop";
+      document.body.appendChild(backdrop);
+
       const modal = document.createElement("div");
       modal.className = "app-shell-mobile-modal";
       modal.id = "appShellMobileModal";
@@ -372,7 +399,7 @@
         <div class="app-shell-profile-name" id="appShellNameMobile">Carregando...</div>
         <div class="app-shell-profile-email" id="appShellEmailMobile"></div>
         
-        <div class="app-shell-themes" style="margin-top:20px; width:100%; border-top: 1px solid #1f2a44; padding-top: 16px;">
+        <div class="app-shell-themes" style="margin-top:20px; border-top: 1px solid #1f2a44; padding-top: 16px;">
           <button class="app-theme-btn" data-set-theme="dark">${ICONS.dark}</button>
           <button class="app-theme-btn" data-set-theme="light">${ICONS.light}</button>
           <button class="app-theme-btn" data-set-theme="system">${ICONS.sys}</button>
@@ -381,6 +408,8 @@
         <button class="app-shell-btn-logout" id="appShellBtnLogoutMobile" style="margin-top:20px;">${ICONS.out} Sair da conta</button>
       `;
       document.body.appendChild(modal);
+
+      const btnMore = document.getElementById('mobileMoreBtn');
 
       document.getElementById('appShellBtnLogoutMobile').addEventListener('click', () => {
         if (confirm("Sair da conta?")) {
@@ -391,14 +420,16 @@
         }
       });
 
-      document.getElementById('mobileMoreBtn').addEventListener('click', () => {
-        modal.classList.toggle('open');
+      // Abre o modal e o fundo
+      btnMore.addEventListener('click', () => {
+        modal.classList.add('open');
+        backdrop.classList.add('open');
       });
 
-      document.addEventListener('click', (e) => {
-        if (!modal.contains(e.target) && !e.target.closest('#mobileMoreBtn') && modal.classList.contains('open')) {
-          modal.classList.remove('open');
-        }
+      // Fecha o modal e o fundo ao clicar fora
+      backdrop.addEventListener('click', () => {
+        modal.classList.remove('open');
+        backdrop.classList.remove('open');
       });
 
       this._mobileAvatarEl = document.getElementById('appShellAvatarMobile');
