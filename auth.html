@@ -42,8 +42,6 @@
     .home-btn{background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;transition:0.3s;backdrop-filter:blur(10px);display:flex;align-items:center;gap:8px;}
     .home-btn:hover{background:rgba(255,255,255,0.2)}
     .home-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
-    .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;}
-    .device-info svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -120,8 +118,6 @@
       
       <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
     </div>
-
-    <div class="device-info" id="deviceInfo"></div>
   </div>
 
   <script type="module">
@@ -138,18 +134,11 @@
       appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
     };
 
-    // ⚠️ URL DO SEU WORKER
     const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
-
-    function generateDeviceId() {
-      let id = localStorage.getItem('kloewa_deviceId');
-      if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('kloewa_deviceId', id); }
-      return id;
-    }
 
     function showError(m) {
       const e = document.getElementById('global-error');
@@ -187,7 +176,6 @@
 
         const token = await user.getIdToken(true);
 
-        // Salva em cookie para o domínio novo
         document.cookie = `firebaseToken=${token}; Domain=.kloewa.ooguy.com; Path=/; SameSite=Lax; Secure`;
 
         const deviceName = detectDeviceName();
@@ -241,12 +229,6 @@
         showError("Erro ao validar sessão");
       }
     }
-
-    const deviceId = generateDeviceId();
-    document.getElementById('deviceInfo').innerHTML = `
-      <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-      ${deviceId.substring(0, 25)}...
-    `;
 
     window.goToIndex = () => window.location.href = 'index.html';
 
