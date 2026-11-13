@@ -13,7 +13,7 @@
     .auth-header h1{font-size:24px;margin-bottom:5px}
     .auth-header p{font-size:13px;opacity:0.9}
     .tabs{display:flex;background:rgba(0,0,0,0.3)}
-    .tab{flex:1;text-align:center;padding:14px;cursor:pointer;font-weight:600;color:#a0b3c9;transition:0.3s;position:relative}
+    .tab{flex:1;text-align:center;padding:14px;cursor:pointer;font-weight:600;color:#a0b3c9;transition:0.3s;position:relative;display:flex;align-items:center;justify-content:center;gap:6px;}
     .tab.active{color:#fff;background:rgba(67,97,238,0.3)}
     .tab.active::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:3px;background:#4361ee}
     .tab-content{padding:25px;display:none}
@@ -24,6 +24,7 @@
     .form-control:focus{border-color:#4895ef;outline:none;box-shadow:0 0 0 3px rgba(67,97,238,0.2);background:rgba(0,0,0,0.5)}
     .form-control::placeholder{color:#6b7280}
     .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:0.3s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .btn-primary{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff}
     .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(67,97,238,0.3)}
     .btn-google{background:#fff;color:#212529;border:1px solid #dee2e6}
@@ -38,18 +39,26 @@
     .footer-text{text-align:center;margin-top:18px;font-size:13px;color:#a0b3c9}
     .footer-text a{color:#4361ee;text-decoration:none;font-weight:600;cursor:pointer}
     .header-actions{position:fixed;top:20px;right:20px;z-index:1000}
-    .home-btn{background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;transition:0.3s;backdrop-filter:blur(10px)}
+    .home-btn{background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;transition:0.3s;backdrop-filter:blur(10px);display:flex;align-items:center;gap:8px;}
     .home-btn:hover{background:rgba(255,255,255,0.2)}
-    .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center}
+    .home-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .device-info{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;margin:15px;font-size:11px;color:#a0b3c9;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .device-info svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
 <body>
-  <div class="header-actions"><button class="home-btn" onclick="goToIndex()">🏠 Voltar</button></div>
+
+  <div class="header-actions">
+    <button class="home-btn" onclick="goToIndex()">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Voltar
+    </button>
+  </div>
 
   <div class="auth-container">
     <div class="auth-header">
-      <h1>Bem-vindo ao CodeHub</h1>
+      <h1>Bem-vindo ao Kloewa</h1>
       <p>Faça login com sua conta</p>
     </div>
 
@@ -57,19 +66,44 @@
     <div id="global-success" class="success-message" style="display:none;"></div>
 
     <div class="tabs">
-      <div class="tab active" id="tab-login" onclick="switchTab('login')">Entrar</div>
-      <div class="tab" id="tab-register" onclick="switchTab('register')">Criar Conta</div>
+      <div class="tab active" id="tab-login" onclick="switchTab('login')">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Entrar
+      </div>
+      <div class="tab" id="tab-register" onclick="switchTab('register')">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        Criar Conta
+      </div>
     </div>
 
     <div id="login-tab" class="tab-content active">
       <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" class="form-control" placeholder="digite seu email"></div>
       <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
-      <button class="btn btn-primary" id="login-btn" onclick="login()">🔐 Entrar</button>
+      
+      <button class="btn btn-primary" id="login-btn" onclick="login()">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Entrar
+      </button>
+      
       <div style="margin-top:10px;">
-        <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">🔑 Esqueci minha senha</button>
+        <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">
+          <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          Esqueci minha senha
+        </button>
       </div>
+      
       <div class="divider">ou</div>
-      <button class="btn btn-google" onclick="loginWithGoogle()"><svg width="20" height="20" viewBox="-3 0 262 262" xmlns="http://www.w3.org/2000/svg"><path d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027" fill="#4285F4"></path><path d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1" fill="#34A853"></path><path d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782" fill="#FBBC05"></path><path d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251" fill="#EB4335"></path></svg> Google</button>
+      
+      <button class="btn btn-google" onclick="loginWithGoogle()">
+        <svg width="20" height="20" viewBox="-3 0 262 262" xmlns="http://www.w3.org/2000/svg">
+          <path d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027" fill="#4285F4"></path>
+          <path d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1" fill="#34A853"></path>
+          <path d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782" fill="#FBBC05"></path>
+          <path d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251" fill="#EB4335"></path>
+        </svg> 
+        Google
+      </button>
+      
       <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
     </div>
 
@@ -78,7 +112,12 @@
       <div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" class="form-control" placeholder="seu email"></div>
       <div class="form-group"><label for="register-password">Senha</label><input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres"></div>
       <div class="form-group"><label for="register-confirm-password">Confirmar</label><input type="password" id="register-confirm-password" class="form-control" placeholder="confirme"></div>
-      <button class="btn btn-primary" id="register-btn" onclick="register()">✨ Criar Conta</button>
+      
+      <button class="btn btn-primary" id="register-btn" onclick="register()">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>
+        Criar Conta
+      </button>
+      
       <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
     </div>
 
@@ -99,16 +138,16 @@
       appId: "1:1068148640439:web:7cc5bde34f4c5a5ce41b32"
     };
 
-    // ⚠️ TROCA PELA URL DO SEU WORKER
-    const WORKER_URL = "https://SEU-WORKER.workers.dev";
+    // ⚠️ URL DO SEU WORKER
+    const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
     function generateDeviceId() {
-      let id = localStorage.getItem('codehub_deviceId');
-      if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('codehub_deviceId', id); }
+      let id = localStorage.getItem('kloewa_deviceId');
+      if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('kloewa_deviceId', id); }
       return id;
     }
 
@@ -126,9 +165,7 @@
 
     function detectDeviceName() {
       const ua = navigator.userAgent;
-      let browser = "Navegador";
-      let os = "Dispositivo";
-
+      let browser = "Navegador", os = "Dispositivo";
       if (ua.includes("Firefox")) browser = "Firefox";
       else if (ua.includes("Edg")) browser = "Edge";
       else if (ua.includes("Chrome")) browser = "Chrome";
@@ -146,27 +183,23 @@
 
     async function redirectAfterAuth(user) {
       try {
-        showSuccess(`✅ Autenticado! Enviando notificação...`);
+        showSuccess(`Autenticado! Enviando notificação...`);
 
-        // 1) Pega o JWT
         const token = await user.getIdToken(true);
 
-        // 2) Salva em cookie
-        document.cookie = `firebaseToken=${token}; Domain=.codehub.site.je; Path=/; SameSite=Lax; Secure`;
+        // Salva em cookie para o domínio novo
+        document.cookie = `firebaseToken=${token}; Domain=.kloewa.ooguy.com; Path=/; SameSite=Lax; Secure`;
 
-        // 3) Detecta o dispositivo
         const deviceName = detectDeviceName();
         const platform   = navigator.platform || "Desconhecido";
         const language   = navigator.language || "Desconhecido";
 
-        // 4) Pega o subscription_id do OneSignal (se existir)
         let currentSubId = null;
         try {
           const os = window.__OneSignal;
           currentSubId = os?.User?.PushSubscription?.id || null;
         } catch {}
 
-        // 5) Chama o Worker
         if (WORKER_URL && !WORKER_URL.includes("SEU-WORKER")) {
           try {
             const r = await fetch(`${WORKER_URL}/NotifyNewLogin?tokenid=${encodeURIComponent(token)}`, {
@@ -178,7 +211,7 @@
                 language,
                 user_agent: navigator.userAgent,
                 current_subscription_id: currentSubId,
-                title: "👋 Bem-vindo de volta!",
+                title: "Bem-vindo de volta!",
                 message: `Você entrou na sua conta pelo ${deviceName}. Se não foi você, troque sua senha.`
               })
             });
@@ -186,20 +219,19 @@
             const data = await r.json();
 
             if (data.ok) {
-              showSuccess(data.mensagem || "🎉 Bem-vindo!");
+              showSuccess(data.mensagem || "Bem-vindo!");
             } else {
               console.warn("[Auth] Worker erro:", data);
-              showSuccess("✅ Autenticado!");
+              showSuccess("Autenticado!");
             }
           } catch (e){
             console.warn("[Auth] Worker falhou:", e.message);
-            showSuccess("✅ Autenticado!");
+            showSuccess("Autenticado!");
           }
         } else {
-          showSuccess("✅ Autenticado!");
+          showSuccess("Autenticado!");
         }
 
-        // 6) Redireciona
         setTimeout(() => {
           window.location.href = "index.html";
         }, 1400);
@@ -211,7 +243,10 @@
     }
 
     const deviceId = generateDeviceId();
-    document.getElementById('deviceInfo').innerHTML = `📱 ${deviceId.substring(0, 25)}...`;
+    document.getElementById('deviceInfo').innerHTML = `
+      <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      ${deviceId.substring(0, 25)}...
+    `;
 
     window.goToIndex = () => window.location.href = 'index.html';
 
@@ -229,7 +264,7 @@
       if (!email) return showError('Digite seu email');
       try {
         await sendPasswordResetEmail(auth, email);
-        showSuccess(`📧 Email de recuperação enviado.`);
+        showSuccess(`Email de recuperação enviado.`);
       } catch (error) {
         showError('Erro ao enviar email');
       }
@@ -259,7 +294,7 @@
         if (error.code === 'auth/email-already-in-use') msg = 'Email já em uso.';
         else if (error.code === 'auth/weak-password') msg = 'Senha muito fraca.';
         showError(msg);
-        btn.disabled = false; btn.textContent = '✨ Criar Conta';
+        btn.disabled = false; btn.textContent = 'Criar Conta';
       }
     };
 
@@ -278,9 +313,9 @@
         await signInWithEmailAndPassword(auth, email, password);
         redirectAfterAuth(auth.currentUser);
       } catch (error) {
-        let msg = '❌ Email ou senha incorretos.';
+        let msg = 'Email ou senha incorretos.';
         showError(msg);
-        btn.disabled = false; btn.textContent = '🔐 Entrar';
+        btn.disabled = false; btn.textContent = 'Entrar';
       }
     };
 
