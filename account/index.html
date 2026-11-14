@@ -15,7 +15,7 @@
   --accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);--danger:#ef4444;--success:#22c55e;
 }
 body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px; overflow-x: hidden;}
-.wrap{max-width:760px;margin: 0 auto; padding-top: 20px;}
+.wrap{max-width:760px;margin: 0 auto; padding-top: 20px; padding-bottom: 100px; /* espaço para não sumir com o conteúdo no mobile */ }
 .header-page{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .header-page h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
 
@@ -40,20 +40,26 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .link-senha { display: inline-block; margin-top: 10px; font-size: 0.8rem; color: var(--accent-2); text-decoration: none; cursor: pointer; }
 .link-senha:hover { text-decoration: underline; }
 
+/* ⭐ CORREÇÃO DO NOME LONGO (TRUNCATE) */
 .key-item { display: flex; align-items: center; justify-content: space-between; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; transition: 0.3s; }
-.key-info h3 { font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.key-info { flex: 1; min-width: 0; margin-right: 10px; } /* Permite o encolhimento do texto */
+.key-info h3 { 
+  font-size: 0.95rem; margin-bottom: 4px; 
+  display: flex; align-items: center; gap: 8px; 
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* Trunca o texto */
+}
 .key-info p { font-size: 0.75rem; color: var(--text-2); }
-.badge-ativa { background: rgba(34,197,94,.15); color: #6ee7a0; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; }
+.badge-ativa { background: rgba(34,197,94,.15); color: #6ee7a0; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; flex-shrink: 0; }
 
 .device{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;}
 .device.current{border-color:var(--accent);background:rgba(79,140,255,.06)}
 .device.blocked{border-color:var(--danger);background:rgba(239,68,68,.06);opacity:.8}
-.device-icon{width:44px;height:44px;border-radius:12px;background:rgba(79,140,255,.1);display:flex;align-items:center;justify-content:center}
-.device-info{flex:1;}
-.device-info h3{font-size:.95rem;margin-bottom:3px;display:flex;align-items:center;gap:8px;}
-.device-info p{font-size:.72rem;color:var(--text-2);}
+.device-icon{width:44px;height:44px;border-radius:12px;background:rgba(79,140,255,.1);display:flex;align-items:center;justify-content:center; flex-shrink: 0;}
+.device-info{flex:1; min-width: 0;}
+.device-info h3{font-size:.95rem;margin-bottom:3px;display:flex;align-items:center;gap:8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.device-info p{font-size:.72rem;color:var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
 
-.badge{font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase}
+.badge{font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase; flex-shrink: 0;}
 .badge-current{background:rgba(79,140,255,.2);color:var(--accent-2)}
 .badge-blocked{background:rgba(239,68,68,.2);color:#ff8a8a}
 .badge-active{background:rgba(34,197,94,.15);color:#6ee7a0}
@@ -71,7 +77,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .blocked-screen svg { width: 80px; height: 80px; stroke: var(--danger); margin-bottom: 20px; }
 .blocked-screen h1 { color: var(--danger); font-size: 1.8rem; margin-bottom: 10px; }
 
-.fab { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; border: none; box-shadow: 0 8px 25px var(--accent-glow); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 999; }
+.fab { position: fixed; bottom: 100px; right: 30px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; border: none; box-shadow: 0 8px 25px var(--accent-glow); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 999; }
 .sidebar { position: fixed; top: 0; right: -320px; width: 320px; height: 100vh; background: var(--surface); border-left: 1px solid var(--border); z-index: 1000; transition: right 0.3s; padding: 24px; }
 .sidebar.open { right: 0; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 16px; margin-top: 20px;}
@@ -211,6 +217,15 @@ async function exportPublicKeyJwk(credential) {
   return json;
 }
 
+// Função para truncar o nome do dispositivo se passar de 15 caracteres
+function truncateName(name, maxLength = 15) {
+  if (!name) return "Dispositivo";
+  if (name.length > maxLength) {
+    return name.substring(0, maxLength) + "...";
+  }
+  return name;
+}
+
 function showStatus(msg, tipo) { const s = $("status"); s.className = "status show " + tipo; s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + `<span>${msg}</span>`; }
 function hideStatus() { $("status").className = "status"; }
 
@@ -270,6 +285,10 @@ function renderDispositivos(devices, meuDeviceKey) {
     const isCurrent = d.device_key === meuDeviceKey, isBlocked = d.blocked;
     const cls = "device" + (isCurrent ? " current" : "") + (isBlocked ? " blocked" : "");
     let badge = isCurrent ? '<span class="badge badge-current">Este dispositivo</span>' : (isBlocked ? '<span class="badge badge-blocked">Bloqueado</span>' : '<span class="badge badge-active">Ativo</span>');
+    
+    // Truncando o nome do dispositivo para não estourar
+    const nomeCurto = truncateName(d.device_name || 'Dispositivo');
+
     const actionBtn = isCurrent ? '' : (isBlocked
         ? `<button class="btn btn-outline" data-action="unblock" data-key="${d.device_key}">Desbloquear</button>`
         : `<button class="btn btn-danger" data-action="block" data-key="${d.device_key}">Bloquear</button>`
@@ -277,7 +296,7 @@ function renderDispositivos(devices, meuDeviceKey) {
     return `
       <div class="${cls}">
         <div class="device-icon"><svg viewBox="0 0 24 24" stroke="var(--accent)" fill="none" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-        <div class="device-info"><h3>${d.device_name || 'Dispositivo'} ${badge}</h3><p>IP: ${d.ip || '—'} • Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p></div>
+        <div class="device-info"><h3>${nomeCurto} ${badge}</h3><p>IP: ${d.ip || '—'} • Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p></div>
         <div class="device-actions">${actionBtn}</div>
       </div>
     `;
@@ -332,15 +351,19 @@ async function carregarChaves() {
         $("keysList").innerHTML = '<div class="empty" style="text-align:center; color: var(--text-2); padding: 20px;">Nenhuma chave cadastrada.</div>';
         return;
       }
-      $("keysList").innerHTML = data.keys.map(k => `
+      $("keysList").innerHTML = data.keys.map(k => {
+        // ⭐ Truncando o nome da chave
+        const nomeCurto = truncateName(k.deviceName);
+
+        return `
         <div class="key-item" id="key-${k.webauthnId}">
           <div class="key-info">
-            <h3>${k.deviceName} <span class="badge-ativa">Ativa</span></h3>
+            <h3>${nomeCurto} <span class="badge-ativa">Ativa</span></h3>
             <p>Criada em: ${new Date(k.criadoEm).toLocaleString("pt-BR")}</p>
           </div>
-          <button class="btn btn-outline" onclick="abrirModalDelete('${k.webauthnId}')" style="padding: 8px; color: var(--danger); border-color: var(--danger);">Deletar</button>
+          <button class="btn btn-outline" onclick="abrirModalDelete('${k.webauthnId}')" style="padding: 8px; color: var(--danger); border-color: var(--danger); flex-shrink: 0;">Deletar</button>
         </div>
-      `).join("");
+      `}).join("");
     } else { throw new Error(data.erro); }
   } catch (e) {
     $("keysList").innerHTML = `<div class="empty" style="color: var(--danger); text-align:center; padding: 20px;">Erro: ${e.message}</div>`;
@@ -420,7 +443,6 @@ $("btnGenerateKey").onclick = async () => {
   try {
     showStatus("Solicitando biometria...", "info");
     
-    // Cria um ID fixo baseado no UID para o iCloud/Google reconhecerem o mesmo usuário
     const userUid = auth.currentUser.uid;
     const encoder = new TextEncoder();
     const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(userUid));
@@ -438,8 +460,8 @@ $("btnGenerateKey").onclick = async () => {
           displayName: deviceName 
         },
         pubKeyCredParams: [
-          { type: "public-key", alg: -7 },   // ES256 (Apple/Android)
-          { type: "public-key", alg: -257 }  // RS256 (Windows Hello)
+          { type: "public-key", alg: -7 },   
+          { type: "public-key", alg: -257 }  
         ],
         authenticatorSelection: { 
           residentKey: "required", 
@@ -485,6 +507,14 @@ $("btnGenerateKey").onclick = async () => {
 
 $("btnLogout").onclick = async () => { if (confirm("Sair da conta?")) { await auth.signOut(); window.location.href = "/auth.html"; } };
 $("btnLogoutBlocked").onclick = async () => { await auth.signOut(); window.location.href = "/auth.html"; };
+</script>
+
+<!-- APP SHELL -->
+<script src="https://api.kloewa.ooguy.com/app-shell.js"></script>
+<script>
+  if (typeof AppShell !== "undefined") {
+    try { new AppShell().mount(); } catch (e) { console.error("Erro no AppShell:", e); }
+  }
 </script>
 </body>
 </html>
