@@ -12,8 +12,7 @@
 :root{
   --bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;
   --border:#1f2a44;--border-strong:#2d3b5c;--text:#e8eef8;--text-2:#8fa0bd;
-  --accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);
-  --danger:#ef4444;--success:#22c55e;
+  --accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);--danger:#ef4444;--success:#22c55e;
 }
 body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px; overflow-x: hidden;}
 .wrap{max-width:760px;margin: 0 auto; padding-top: 20px;}
@@ -72,22 +71,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .blocked-screen svg { width: 80px; height: 80px; stroke: var(--danger); margin-bottom: 20px; }
 .blocked-screen h1 { color: var(--danger); font-size: 1.8rem; margin-bottom: 10px; }
 
-/* =========================================
-   MENU HAMBÚRGUER E SIDEBAR CUSTOMIZADOS
-   ========================================= */
-.fab { 
-  position: fixed; 
-  bottom: 100px; /* Subi um pouco para não ficar atrás da barra do app-shell */
-  right: 30px; 
-  width: 60px; height: 60px; 
-  border-radius: 50%; 
-  background: linear-gradient(135deg, var(--accent), var(--accent-2)); 
-  color: white; border: none; 
-  box-shadow: 0 8px 25px var(--accent-glow); 
-  cursor: pointer; 
-  display: flex; align-items: center; justify-content: center; 
-  z-index: 999; 
-}
+.fab { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; border: none; box-shadow: 0 8px 25px var(--accent-glow); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 999; }
 .sidebar { position: fixed; top: 0; right: -320px; width: 320px; height: 100vh; background: var(--surface); border-left: 1px solid var(--border); z-index: 1000; transition: right 0.3s; padding: 24px; }
 .sidebar.open { right: 0; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 16px; margin-top: 20px;}
@@ -116,10 +100,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 
 <div class="overlay" id="overlay"></div>
 
-<!-- SEU BOTÃO HAMBÚRGUER -->
 <button class="fab" id="fabBtn"><svg viewBox="0 0 24 24" stroke="white" fill="none" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
 
-<!-- SEU MENU LATERAL -->
 <div class="sidebar" id="sidebar">
   <div class="sidebar-header" style="display:flex; justify-content:space-between; align-items:center;">
     <h2>Menu</h2>
@@ -207,7 +189,6 @@ firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
 
-// Funções utilitárias
 function arrayBufferToBase64(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -233,7 +214,6 @@ async function exportPublicKeyJwk(credential) {
 function showStatus(msg, tipo) { const s = $("status"); s.className = "status show " + tipo; s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + `<span>${msg}</span>`; }
 function hideStatus() { $("status").className = "status"; }
 
-// CONTROLE DO MENU HAMBÚRGUER
 $("fabBtn").onclick = () => { $("sidebar").classList.add("open"); $("overlay").classList.add("show"); };
 $("closeSidebar").onclick = () => { $("sidebar").classList.remove("open"); $("overlay").classList.remove("show"); };
 $("overlay").onclick = () => { $("sidebar").classList.remove("open"); $("overlay").classList.remove("show"); };
@@ -445,7 +425,11 @@ $("btnGenerateKey").onclick = async () => {
       publicKey: {
         challenge: challenge,
         rp: { name: "Kloewa" },
-        user: { id: new Uint8Array(16), name: auth.currentUser.email, displayName: deviceName },
+        user: { 
+          id: new Uint8Array(16), 
+          name: deviceName, // ⭐ Usa o nome digitado no user.name
+          displayName: deviceName // ⭐ Usa o nome digitado no displayName
+        },
         pubKeyCredParams: [{ type: "public-key", alg: -7 }],
         authenticatorSelection: { userVerification: "preferred" },
         timeout: 120000, attestation: "none"
@@ -486,14 +470,6 @@ $("btnGenerateKey").onclick = async () => {
 
 $("btnLogout").onclick = async () => { if (confirm("Sair da conta?")) { await auth.signOut(); window.location.href = "/auth.html"; } };
 $("btnLogoutBlocked").onclick = async () => { await auth.signOut(); window.location.href = "/auth.html"; };
-</script>
-
-<!-- APP SHELL -->
-<script src="https://api.kloewa.ooguy.com/app-shell.js"></script>
-<script>
-  if (typeof AppShell !== "undefined") {
-    try { new AppShell().mount(); } catch (e) { console.error("Erro no AppShell:", e); }
-  }
 </script>
 </body>
 </html>
