@@ -12,7 +12,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background: #0a0e1a; color: #e8eef8; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .card { background: #101626; border: 1px solid #1f2a44; border-radius: 16px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .card { background: #101626; border: 1px solid #1f2a44; border-radius: 16px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px;}
     h1 { font-size: 1.4rem; margin-bottom: 10px; }
     p { color: #8fa0bd; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4; }
     .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; background: #4f8cff; color: #fff; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; margin-bottom: 10px; }
@@ -38,54 +38,48 @@
 </head>
 <body>
 
-  <div class="card">
-    <!-- TELA 1: GERAR ID -->
-    <div id="screen-gen">
-      <h1>Transferir Sessão</h1>
-      <p>Escaneie o QR Code abaixo com um dispositivo que já está logado na Kloewa.</p>
-      
-      <div id="alerta-biometria" class="biometria-alerta hidden">
-        <h3>Chave de Acesso Necessária</h3>
-        <p id="msg-biometria">Para usar o login rápido, você precisa criar uma chave de acesso (biometria) na sua conta.</p>
-        <a href="https://kloewa.ooguy.com/account/" class="btn" style="font-size: 0.9rem;">Criar Chave de Acesso Agora</a>
+  <!-- TELA 1: GERAR ID -->
+  <div class="card" id="screen-gen">
+    <h1>Transferir Sessão</h1>
+    <p>Escaneie o QR Code abaixo com um dispositivo que já está logado na Kloewa.</p>
+    
+    <div id="alerta-biometria" class="biometria-alerta hidden">
+      <h3>Chave de Acesso Necessária</h3>
+      <p id="msg-biometria">Para usar o login rápido, você precisa criar uma chave de acesso (biometria) na sua conta.</p>
+      <a href="https://kloewa.ooguy.com/account/" class="btn" style="font-size: 0.9rem;">Criar Chave de Acesso Agora</a>
+    </div>
+
+    <div id="qr-area" class="hidden">
+      <div class="qr-box">
+        <canvas id="qr-canvas"></canvas>
       </div>
-
-      <div id="qr-area" class="hidden">
-        <div class="qr-box">
-          <canvas id="qr-canvas"></canvas>
-        </div>
-        <div class="id-text" id="id-display"></div>
-        <div class="status loading" id="status-gen">Aguardando outro dispositivo...</div>
-      </div>
-      
-      <button class="btn" id="btnGen" onclick="gerarId()">Gerar QR Code</button>
+      <div class="id-text" id="id-display"></div>
+      <div class="status loading" id="status-gen">Aguardando outro dispositivo...</div>
     </div>
-
-    <!-- TELA 2: LER QR OU COLAR CÓDIGO -->
-    <div id="screen-read" class="hidden">
-      <h1>Aprovar Sessão</h1>
-      <p>Aponte a câmera para o QR Code ou digite o código manualmente.</p>
-      
-      <div id="reader"></div>
-      
-      <input type="text" id="codigoManual" class="input-codigo" placeholder="Cole o código de 90 caracteres aqui...">
-      <button class="btn btn-primary" onclick="confirmarCodigoManual()" style="margin-bottom: 10px;">Confirmar Código</button>
-
-      <button class="btn btn-outline" id="btnCancelRead" onclick="cancelarLeitura()">Voltar</button>
-      <div class="status" id="status-read"></div>
-    </div>
-
-    <!-- TELA 3: SUCESSO -->
-    <div id="screen-success" class="hidden">
-      <h1>Autenticado!</h1>
-      <p>Sua sessão foi transferida com sucesso.</p>
-      <div class="status ok">Redirecionando...</div>
-    </div>
+    
+    <button class="btn" id="btnGen" onclick="gerarId()">Gerar QR Code</button>
+    <button class="btn btn-outline" onclick="mostrarLeitor()">Ler QR Code</button>
   </div>
 
-  <button class="btn btn-outline" style="position: fixed; bottom: 20px; width: auto; padding: 10px 20px;" onclick="mostrarLeitor()">
-    Ler QR Code
-  </button>
+  <!-- TELA 2: LER QR OU COLAR CÓDIGO -->
+  <div class="card hidden" id="screen-read">
+    <h1>Aprovar Sessão</h1>
+    <p>Aponte a câmera para o QR Code ou digite o código manualmente.</p>
+    
+    <div id="reader"></div>
+    
+    <input type="text" id="codigoManual" class="input-codigo" placeholder="Cole o código de 90 caracteres aqui...">
+    <button class="btn btn-primary" onclick="confirmarCodigoManual()">Confirmar Código</button>
+    <button class="btn btn-outline" onclick="cancelarLeitura()">Voltar</button>
+    <div class="status" id="status-read"></div>
+  </div>
+
+  <!-- TELA 3: SUCESSO -->
+  <div class="card hidden" id="screen-success">
+    <h1>Autenticado!</h1>
+    <p>Sua sessão foi transferida com sucesso.</p>
+    <div class="status ok">Redirecionando...</div>
+  </div>
 
   <script>
     const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
