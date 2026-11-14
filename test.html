@@ -95,6 +95,13 @@
     let eventSource = null;
     let html5QrCode = null;
 
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
     // DISPOSITIVO 1: GERAR ID
     function gerarId() {
       document.getElementById('btnGen').disabled = true;
@@ -136,7 +143,7 @@
         }
       });
 
-      eventSource.addEventListener("erro_sem_biometria", (e) => {
+      eventSource.addEventListener("erro", (e) => {
         const data = JSON.parse(e.data);
         eventSource.close();
         document.getElementById('qr-area').classList.add('hidden');
@@ -144,17 +151,9 @@
         document.getElementById('msg-biometria').textContent = data.mensagem;
         document.getElementById('btnGen').disabled = false;
       });
-
-      eventSource.addEventListener("erro", (e) => {
-        const data = JSON.parse(e.data);
-        eventSource.close();
-        document.getElementById('status-gen').textContent = data.mensagem;
-        document.getElementById('status-gen').className = "status err";
-        document.getElementById('btnGen').disabled = false;
-      });
     }
 
-    // DISPOSITIVO 2: LER QR
+    // DISPOSITIVO 2: LER QR E AUTENTICAR
     function mostrarLeitor() {
       document.getElementById('screen-gen').classList.add('hidden');
       document.getElementById('screen-read').classList.remove('hidden');
@@ -188,23 +187,46 @@
     }
 
     async function confirmarAuth(authId) {
-      document.getElementById('status-read').textContent = "Confirmando...";
+      document.getElementById('status-read').textContent = "Solicitando biometria...";
       document.getElementById('status-read').className = "status loading";
 
       try {
+        // Pede para o usuário autenticar a biometria
+        const challenge = new Uint8Array(32);
+        crypto.getRandomValues(challenge);
+
+        const credential = await navigator.credentials.get({
+          publicKey: { challenge, timeout: 120000, userVerification: "preferred" }
+        });
+
+        if (!credential) throw new Error("Autenticação cancelada.");
+
+        const credentialResponse = {
+          clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
+          authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
+          signature: arrayBufferToBase64(credential.response.signature)
+        };
+
+        document.getElementById('status-read').textContent = "Validando...";
+        
         const user = auth.currentUser;
         const tokenid = await user.getIdToken();
 
         const res = await fetch(`${WORKER_URL}/api/confirm-authentication`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ authId, tokenid })
+          body: JSON.stringify({ 
+            authId, 
+            tokenid,
+            webauthnId: credential.id,
+            credentialResponse
+          })
         });
 
         const data = await res.json();
 
         if (data.ok) {
-          document.getElementById('status-read').textContent = "Transferência concluída com sucesso!";
+          document.getElementById('status-read').textContent = "Transferência concluída!";
           document.getElementById('status-read').className = "status ok";
           setTimeout(() => { window.location.href = '/account/'; }, 2000);
         } else {
