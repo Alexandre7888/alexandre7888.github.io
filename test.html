@@ -4,11 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Autenticação Rápida - Kloewa</title>
+  <!-- Ícone do domínio oficial -->
   <link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  
+  <!-- Bibliotecas: QRious (Gerar QR) e Html5-Qrcode (Ler QR) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background: #0a0e1a; color: #e8eef8; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
@@ -21,9 +26,9 @@
     .btn-outline { background: transparent; border: 1.5px solid #2d3b5c; color: #e8eef8; }
     .btn-outline:hover { border-color: #4f8cff; }
     .qr-box { background: #fff; padding: 15px; border-radius: 12px; display: inline-block; margin-bottom: 15px; }
-    .qr-box img, .qr-box canvas { display: block; max-width: 100%; }
+    .qr-box canvas { display: block; max-width: 100%; border-radius: 8px; }
     .id-text { background: #05070f; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.75rem; color: #8fa0bd; word-break: break-all; margin-bottom: 20px; border: 1px solid #1f2a44; }
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; border: 2px solid #4f8cff; }
     .status { margin-top: 15px; font-size: 0.85rem; font-weight: 600; min-height: 20px; }
     .status.ok { color: #22c55e; }
     .status.err { color: #ef4444; }
@@ -36,23 +41,26 @@
   <div class="card">
     <!-- TELA 1: GERAR ID -->
     <div id="screen-gen">
-      <h1>Gerar Código</h1>
-      <p>Escaneie o QR Code com um dispositivo que já esteja logado para transferir a sessão.</p>
-      <button class="btn" id="btnGen" onclick="gerarId()">Gerar QR Code</button>
+      <h1>Transferir Sessão</h1>
+      <p>Escaneie o QR Code abaixo com um dispositivo que já está logado na Kloewa.</p>
       
       <div id="qr-area" class="hidden">
-        <div class="qr-box" id="qrcode"></div>
+        <div class="qr-box">
+          <canvas id="qr-canvas"></canvas>
+        </div>
         <div class="id-text" id="id-display"></div>
         <div class="status loading" id="status-gen">Aguardando outro dispositivo...</div>
       </div>
+      
+      <button class="btn" id="btnGen" onclick="gerarId()" style="margin-top: 15px;">Gerar QR Code</button>
     </div>
 
     <!-- TELA 2: LER QR -->
     <div id="screen-read" class="hidden">
-      <h1>Escanear Código</h1>
+      <h1>Aprovar Sessão</h1>
       <p>Aponte a câmera para o QR Code no outro dispositivo.</p>
       <div id="reader"></div>
-      <button class="btn btn-outline" id="btnCancelRead" onclick="cancelarLeitura()">Cancelar</button>
+      <button class="btn btn-outline" id="btnCancelRead" onclick="cancelarLeitura()">Cancelar Leitura</button>
       <div class="status" id="status-read"></div>
     </div>
 
@@ -64,7 +72,7 @@
     </div>
   </div>
 
-  <!-- Botão para alternar para o leitor (fica no canto da tela) -->
+  <!-- Botão para alternar para o leitor (Dispositivo 2) -->
   <button class="btn btn-outline" style="position: fixed; bottom: 20px; width: auto; padding: 10px 20px;" onclick="mostrarLeitor()">
     Ler QR Code
   </button>
@@ -72,7 +80,7 @@
   <script>
     const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
     
-    // Firebase config
+    // Configuração do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
@@ -92,6 +100,7 @@
       document.getElementById('btnGen').disabled = true;
       document.getElementById('qr-area').classList.remove('hidden');
       document.getElementById('status-gen').textContent = "Conectando...";
+      document.getElementById('status-gen').className = "status loading";
 
       // Conecta no SSE
       eventSource = new EventSource(`${WORKER_URL}/api/generate-id-authentication`);
@@ -99,17 +108,17 @@
       eventSource.addEventListener("id_gerado", (e) => {
         const data = JSON.parse(e.data);
         
-        // Desenha o QR Code
-        QRCode.toCanvas(document.createElement('canvas'), data.authId, { width: 200, margin: 1 }, (err, canvas) => {
-          if (err) return console.error(err);
-          const qrBox = document.getElementById('qrcode');
-          qrBox.innerHTML = '';
-          qrBox.appendChild(canvas);
+        // Desenha o QR Code usando a biblioteca QRious
+        new QRious({
+          element: document.getElementById('qr-canvas'),
+          value: data.authId,
+          size: 220,
+          background: 'white',
+          foreground: '#0a0e1a'
         });
 
         document.getElementById('id-display').textContent = data.authId;
-        document.getElementById('status-gen').textContent = "Aguardando outro dispositivo...";
-        document.getElementById('status-gen').className = "status loading";
+        document.getElementById('status-gen').textContent = "Aguardando aprovação...";
       });
 
       eventSource.addEventListener("sucesso", async (e) => {
@@ -120,11 +129,10 @@
         document.getElementById('status-gen').className = "status ok";
 
         try {
-          // Faz login com o customToken recebido
           await auth.signInWithCustomToken(data.customToken);
           document.getElementById('screen-gen').classList.add('hidden');
           document.getElementById('screen-success').classList.remove('hidden');
-          setTimeout(() => { window.location.href = '/'; }, 1500);
+          setTimeout(() => { window.location.href = '/account/'; }, 1500); // Redireciona após logar
         } catch (error) {
           document.getElementById('status-gen').textContent = "Erro ao logar: " + error.message;
           document.getElementById('status-gen').className = "status err";
@@ -140,7 +148,7 @@
       });
 
       eventSource.onerror = () => {
-        document.getElementById('status-gen').textContent = "Conexão perdida.";
+        document.getElementById('status-gen').textContent = "Conexão com o servidor perdida.";
         document.getElementById('status-gen').className = "status err";
         eventSource.close();
       };
@@ -153,23 +161,22 @@
       document.getElementById('screen-gen').classList.add('hidden');
       document.getElementById('screen-read').classList.remove('hidden');
       
-      // Verifica se está logado para poder confirmar
       auth.onAuthStateChanged(user => {
         if (!user) {
-          document.getElementById('status-read').textContent = "Você precisa estar logado para confirmar.";
+          document.getElementById('status-read').textContent = "Você precisa estar logado neste dispositivo para aprovar.";
           document.getElementById('status-read').className = "status err";
           return;
         }
 
         document.getElementById('status-read').textContent = "Aponte a câmera para o QR Code.";
         document.getElementById('status-read').className = "status loading";
+        document.getElementById('reader').style.display = 'block';
 
         html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start(
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           (textoLido) => {
-            // Parou de ler e confirmou
             html5QrCode.stop();
             document.getElementById('reader').style.display = 'none';
             confirmarAuth(textoLido);
@@ -201,7 +208,7 @@
         if (data.ok) {
           document.getElementById('status-read').textContent = "Transferência concluída com sucesso!";
           document.getElementById('status-read').className = "status ok";
-          setTimeout(() => { window.location.reload(); }, 2000);
+          setTimeout(() => { window.location.href = '/account/'; }, 2000);
         } else {
           throw new Error(data.erro || "Erro desconhecido");
         }
@@ -215,6 +222,7 @@
       if (html5QrCode) {
         html5QrCode.stop().catch(() => {});
       }
+      document.getElementById('reader').style.display = 'none';
       document.getElementById('screen-read').classList.add('hidden');
       document.getElementById('screen-gen').classList.remove('hidden');
     }
