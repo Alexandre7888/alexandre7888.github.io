@@ -42,7 +42,6 @@
       <h1>Transferir Sessão</h1>
       <p>Escaneie o QR Code abaixo com um dispositivo que já está logado na Kloewa.</p>
       
-      <!-- Alerta que aparece se não tiver biometria -->
       <div id="alerta-biometria" class="biometria-alerta hidden">
         <h3>Chave de Acesso Necessária</h3>
         <p id="msg-biometria">Para usar o login rápido, você precisa criar uma chave de acesso (biometria) na sua conta.</p>
@@ -137,7 +136,6 @@
         }
       });
 
-      // ⭐ ESCUTA O ERRO DE FALTA DE BIOMETRIA
       eventSource.addEventListener("erro_sem_biometria", (e) => {
         const data = JSON.parse(e.data);
         eventSource.close();
