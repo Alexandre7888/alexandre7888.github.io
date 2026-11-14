@@ -1,275 +1,557 @@
 <!DOCTYPE html>
-<html lang="pt-br" data-theme="dark">
+<html lang="pt-BR" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Autenticação Rápida - Kloewa</title>
-  <link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-    body { background: #0a0e1a; color: #e8eef8; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .card { background: #101626; border: 1px solid #1f2a44; border-radius: 16px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    h1 { font-size: 1.4rem; margin-bottom: 10px; }
-    p { color: #8fa0bd; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4; }
-    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; background: #4f8cff; color: #fff; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; margin-bottom: 10px; }
-    .btn:hover { filter: brightness(1.1); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-outline { background: transparent; border: 1.5px solid #2d3b5c; color: #e8eef8; }
-    .btn-outline:hover { border-color: #4f8cff; }
-    .qr-box { background: #fff; padding: 15px; border-radius: 12px; display: inline-block; margin-bottom: 15px; }
-    .qr-box canvas { display: block; max-width: 100%; border-radius: 8px; }
-    .id-text { background: #05070f; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.75rem; color: #8fa0bd; word-break: break-all; margin-bottom: 20px; border: 1px solid #1f2a44; }
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; border: 2px solid #4f8cff; }
-    .status { margin-top: 15px; font-size: 0.85rem; font-weight: 600; min-height: 20px; line-height: 1.4; }
-    .status.ok { color: #22c55e; }
-    .status.err { color: #ef4444; }
-    .status.loading { color: #4f8cff; }
-    .hidden { display: none !important; }
-    .biometria-alerta { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left; }
-    .biometria-alerta h3 { color: #ef4444; font-size: 1rem; margin-bottom: 8px; }
-    .biometria-alerta p { color: #fff; font-size: 0.85rem; margin-bottom: 15px; }
-    
-    /* Estilo do campo de texto para colar o código */
-    .input-codigo { width: 100%; padding: 12px; background: #05070f; border: 1px solid #1f2a44; border-radius: 8px; color: #fff; font-family: monospace; font-size: 0.85rem; margin-bottom: 10px; outline: none; }
-    .input-codigo:focus { border-color: #4f8cff; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minha Conta · kloewa</title>
+<link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;
+  --border:#1f2a44;--border-strong:#2d3b5c;--text:#e8eef8;--text-2:#8fa0bd;
+  --accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);--danger:#ef4444;--success:#22c55e;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px; overflow-x: hidden;}
+.wrap{max-width:760px;margin: 0 auto; padding-top: 20px; padding-bottom: 100px; }
+.header-page{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.header-page h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
+
+.btn{padding:11px 18px;border:none;border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 6px 20px var(--accent-glow)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{background:transparent;border:1.5px solid var(--border-strong);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent-2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px;}
+.card h2{font-size:1.05rem;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+.wizard-step { display: none; animation: fadeIn 0.3s ease; }
+.wizard-step.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 0.8rem; color: var(--text-2); margin-bottom: 6px; font-weight: 600; }
+.form-control { width: 100%; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 0.95rem; outline: none; }
+.form-control:focus { border-color: var(--accent); }
+.link-senha { display: inline-block; margin-top: 10px; font-size: 0.8rem; color: var(--accent-2); text-decoration: none; cursor: pointer; }
+.link-senha:hover { text-decoration: underline; }
+
+.key-item { display: flex; align-items: center; justify-content: space-between; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; transition: 0.3s; }
+.key-info { flex: 1; min-width: 0; margin-right: 10px; } 
+.key-info h3 { font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.key-info p { font-size: 0.75rem; color: var(--text-2); }
+.badge-ativa { background: rgba(34,197,94,.15); color: #6ee7a0; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; flex-shrink: 0; }
+
+.device{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;}
+.device.current{border-color:var(--accent);background:rgba(79,140,255,.06)}
+.device.blocked{border-color:var(--danger);background:rgba(239,68,68,.06);opacity:.8}
+.device-icon{width:44px;height:44px;border-radius:12px;background:rgba(79,140,255,.1);display:flex;align-items:center;justify-content:center; flex-shrink: 0;}
+.device-info{flex:1; min-width: 0;}
+.device-info h3{font-size:.95rem;margin-bottom:3px;display:flex;align-items:center;gap:8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.device-info p{font-size:.72rem;color:var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+
+.badge{font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase; flex-shrink: 0;}
+.badge-current{background:rgba(79,140,255,.2);color:var(--accent-2)}
+.badge-blocked{background:rgba(239,68,68,.2);color:#ff8a8a}
+.badge-active{background:rgba(34,197,94,.15);color:#6ee7a0}
+
+.status{padding:12px 14px;border-radius:12px;font-size:.85rem;margin-bottom:16px;display:none;align-items:center;gap:10px;}
+.status.show{display:flex}
+.status.ok{background:rgba(34,197,94,.12);color:var(--success);border:1px solid rgba(34,197,94,.3)}
+.status.err{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
+.status.info{background:rgba(79,140,255,.12);color:var(--accent-2);border:1px solid rgba(79,140,255,.3)}
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.15);border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+
+.blocked-screen { position: fixed; inset: 0; background: var(--bg-1); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+.blocked-screen svg { width: 80px; height: 80px; stroke: var(--danger); margin-bottom: 20px; }
+.blocked-screen h1 { color: var(--danger); font-size: 1.8rem; margin-bottom: 10px; }
+
+.fab { position: fixed; bottom: 100px; right: 30px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; border: none; box-shadow: 0 8px 25px var(--accent-glow); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 999; }
+.sidebar { position: fixed; top: 0; right: -320px; width: 320px; height: 100vh; background: var(--surface); border-left: 1px solid var(--border); z-index: 1000; transition: right 0.3s; padding: 24px; }
+.sidebar.open { right: 0; }
+.sidebar-nav { display: flex; flex-direction: column; gap: 16px; margin-top: 20px;}
+.nav-circle-btn { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 50px; color: var(--text); font-weight: 600; cursor: pointer; width: 100%; transition: 0.2s;}
+.nav-circle-btn:hover { border-color: var(--accent); }
+.nav-circle-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; border-color: transparent;}
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.overlay.show { opacity: 1; pointer-events: auto; }
+
+#modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 9999; }
+#modalOverlay.show { display: flex; }
+.modal { background: var(--surface); padding: 24px; border-radius: 16px; max-width: 400px; width: 90%; border: 1px solid var(--border); }
+.modal h3 { margin-bottom: 12px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-actions .btn { flex: 1; justify-content: center; }
+</style>
 </head>
 <body>
 
-  <div class="card">
-    <!-- TELA 1: GERAR ID -->
-    <div id="screen-gen">
-      <h1>Transferir Sessão</h1>
-      <p>Escaneie o QR Code abaixo com um dispositivo que já está logado na Kloewa.</p>
-      
-      <div id="alerta-biometria" class="biometria-alerta hidden">
-        <h3>Chave de Acesso Necessária</h3>
-        <p id="msg-biometria">Para usar o login rápido, você precisa criar uma chave de acesso (biometria) na sua conta.</p>
-        <a href="https://kloewa.ooguy.com/account/" class="btn" style="font-size: 0.9rem;">Criar Chave de Acesso Agora</a>
-      </div>
+<div id="blockedScreen" class="blocked-screen hidden">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+  <h1>Acesso Negado</h1>
+  <p>Este dispositivo foi bloqueado nesta conta.</p>
+  <button class="btn btn-outline" id="btnLogoutBlocked" style="margin-top:20px;">Sair da conta</button>
+</div>
 
-      <div id="qr-area" class="hidden">
-        <div class="qr-box">
-          <canvas id="qr-canvas"></canvas>
-        </div>
-        <div class="id-text" id="id-display"></div>
-        <div class="status loading" id="status-gen">Aguardando outro dispositivo...</div>
-      </div>
-      
-      <button class="btn" id="btnGen" onclick="gerarId()">Gerar QR Code</button>
-    </div>
+<div class="overlay" id="overlay"></div>
 
-    <!-- TELA 2: LER QR OU COLAR CÓDIGO -->
-    <div id="screen-read" class="hidden">
-      <h1>Aprovar Sessão</h1>
-      <p>Aponte a câmera para o QR Code ou digite o código manualmente.</p>
-      
-      <div id="reader"></div>
-      
-      <!-- ⭐ CAMPO PARA COLAR O CÓDIGO MANUALMENTE -->
-      <input type="text" id="codigoManual" class="input-codigo" placeholder="Cole o código de 90 caracteres aqui...">
-      <button class="btn btn-primary" onclick="confirmarCodigoManual()" style="margin-bottom: 10px;">Confirmar Código</button>
+<button class="fab" id="fabBtn"><svg viewBox="0 0 24 24" stroke="white" fill="none" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
 
-      <button class="btn btn-outline" id="btnCancelRead" onclick="cancelarLeitura()">Voltar</button>
-      <div class="status" id="status-read"></div>
-    </div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <h2>Menu</h2>
+    <button class="btn-outline" id="closeSidebar" style="border:none; padding:4px;">X</button>
+  </div>
+  <div class="sidebar-nav">
+    <button class="nav-circle-btn active" id="navDispositivos" onclick="mudarAba('dispositivos')">Dispositivos</button>
+    <button class="nav-circle-btn" id="navChaves" onclick="mudarAba('chaves')">Chaves de Acesso</button>
+  </div>
+</div>
 
-    <!-- TELA 3: SUCESSO -->
-    <div id="screen-success" class="hidden">
-      <h1>Autenticado!</h1>
-      <p>Sua sessão foi transferida com sucesso.</p>
-      <div class="status ok">Redirecionando...</div>
+<div id="loading" style="text-align:center;padding:60px">
+  <div class="spinner" style="margin:0 auto 12px;width:24px;height:24px"></div>
+</div>
+
+<div id="app" class="wrap hidden">
+  <div class="header-page">
+    <h1>Minha Conta</h1>
+    <button class="btn btn-outline" id="btnLogout">Sair</button>
+  </div>
+  <div class="status" id="status"></div>
+
+  <div id="aba-dispositivos">
+    <div class="card">
+      <h2>Dispositivos Conectados</h2>
+      <div id="devicesList"></div>
     </div>
   </div>
 
-  <button class="btn btn-outline" style="position: fixed; bottom: 20px; width: auto; padding: 10px 20px;" onclick="mostrarLeitor()">
-    Ler QR Code
-  </button>
+  <div id="aba-chaves" class="hidden">
+    <div class="card">
+      <h2>Minhas Chaves de Acesso</h2>
+      <div id="keysList"></div>
+    </div>
 
-  <script>
-    const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+    <div class="card">
+      <h2>Criar Nova Chave de Acesso</h2>
+      <div id="step1" class="wizard-step active">
+        <div class="form-group">
+          <label>Nome deste dispositivo</label>
+          <input type="text" id="deviceNameInput" class="form-control" placeholder="Ex: Celular do Trabalho, Notebook...">
+        </div>
+        <button class="btn btn-primary" id="btnNextStep" style="width: 100%; justify-content: center;">Continuar</button>
+      </div>
+
+      <div id="step2" class="wizard-step">
+        <div class="form-group">
+          <label>Senha da Conta</label>
+          <input type="password" id="passwordInput" class="form-control" placeholder="Digite sua senha para confirmar...">
+        </div>
+        <a id="linkCriarSenha" class="link-senha hidden">Não tem senha? Clique aqui para criar uma.</a>
+        <button class="btn btn-primary" id="btnGenerateKey" style="width: 100%; justify-content: center; margin-top: 10px;">Gerar Chave de Acesso</button>
+        <button class="btn btn-outline" id="btnBackStep" style="width: 100%; justify-content: center; margin-top: 8px;">Voltar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modalOverlay">
+  <div class="modal">
+    <h3>Deletar Chave de Acesso</h3>
+    <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 16px;">Para excluir esta chave, digite a senha da sua conta.</p>
+    <div class="form-group">
+      <label>Senha da Conta</label>
+      <input type="password" id="deletePasswordInput" class="form-control" placeholder="Digite sua senha...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="btnCancelDelete">Cancelar</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">Deletar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+  authDomain: "html-15e80.firebaseapp.com",
+  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+  projectId: "html-15e80",
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+};
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const $ = (id) => document.getElementById(id);
+
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// ⭐ NOVA EXPORTAÇÃO JWK (Compatível com ES256 e RS256)
+async function exportPublicKeyJwk(credential) {
+  const publicKey = credential.response.getPublicKey();
+  const coseKey = new Uint8Array(publicKey);
+  
+  let offset = 0;
+  const readByte = () => coseKey[offset++];
+  const readLength = () => {
+    let byte = readByte();
+    if (byte < 24) return byte;
+    if (byte === 24) return readByte();
+    if (byte === 25) { let val = (coseKey[offset] << 8) | coseKey[offset+1]; offset += 2; return val; }
+    return 0;
+  };
+
+  const json = { ext: true };
+  offset = 1; // Pula o mapa CBOR
+  const len = readLength() / 2; 
+  
+  for (let i = 0; i < len; i++) {
+    const label = readLength();
+    const type = readByte();
+    const valueLength = readLength();
     
-    const firebaseConfig = {
-      apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-      authDomain: "html-15e80.firebaseapp.com",
-      projectId: "html-15e80",
-      appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+    if (label === 1) json.kty = "EC"; // Simplificado, assumindo EC para a maioria
+    if (label === 3) json.alg = -7; 
+    if (label === -1) json.crv = "P-256";
+    if (label === -2) json.x = arrayBufferToBase64(coseKey.slice(offset, offset + valueLength));
+    if (label === -3) json.y = arrayBufferToBase64(coseKey.slice(offset, offset + valueLength));
+    
+    offset += valueLength;
+  }
+  
+  return json;
+}
+
+function truncateName(name, maxLength = 15) {
+  if (!name) return "Dispositivo";
+  if (name.length > maxLength) return name.substring(0, maxLength) + "...";
+  return name;
+}
+
+function showStatus(msg, tipo) { const s = $("status"); s.className = "status show " + tipo; s.innerHTML = (tipo === "info" ? '<div class="spinner"></div>' : '') + `<span>${msg}</span>`; }
+function hideStatus() { $("status").className = "status"; }
+
+$("fabBtn").onclick = () => { $("sidebar").classList.add("open"); $("overlay").classList.add("show"); };
+$("closeSidebar").onclick = () => { $("sidebar").classList.remove("open"); $("overlay").classList.remove("show"); };
+$("overlay").onclick = () => { $("sidebar").classList.remove("open"); $("overlay").classList.remove("show"); };
+
+function mudarAba(aba) {
+  document.querySelectorAll('.nav-circle-btn').forEach(b => b.classList.remove('active'));
+  if (aba === 'dispositivos') {
+    $("navDispositivos").classList.add('active');
+    $("aba-dispositivos").classList.remove('hidden');
+    $("aba-chaves").classList.add('hidden');
+  } else {
+    $("navChaves").classList.add('active');
+    $("aba-chaves").classList.remove('hidden');
+    $("aba-dispositivos").classList.add('hidden');
+    carregarChaves();
+  }
+  $("overlay").click();
+}
+
+async function deviceManage(action, extra = {}) {
+  const token = await auth.currentUser.getIdToken(true);
+  const r = await fetch(WORKER + "/device/manage", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tokenid: token, action, ...extra })
+  });
+  if (r.status === 403) {
+    const err = await r.json();
+    if (err.blocked) {
+      $("loading").classList.add("hidden"); $("app").classList.add("hidden"); $("blockedScreen").classList.remove("hidden");
+      throw new Error("Dispositivo bloqueado");
+    }
+  }
+  return await r.json();
+}
+
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.href = "/auth.html"; return; }
+  try {
+    await deviceManage("register");
+    const listRes = await deviceManage("list");
+    const meuDeviceKey = listRes.current_device_key;
+    const esteDevice = listRes.devices?.find(d => d.device_key === meuDeviceKey);
+    if (esteDevice && esteDevice.blocked) {
+      $("loading").classList.add("hidden"); $("app").classList.add("hidden"); $("blockedScreen").classList.remove("hidden");
+      return;
+    }
+    $("loading").classList.add("hidden"); $("app").classList.remove("hidden");
+    renderDispositivos(listRes.devices || [], meuDeviceKey);
+  } catch (e) { showStatus(e.message, "err"); }
+});
+
+function renderDispositivos(devices, meuDeviceKey) {
+  const html = devices.map(d => {
+    const isCurrent = d.device_key === meuDeviceKey, isBlocked = d.blocked;
+    const cls = "device" + (isCurrent ? " current" : "") + (isBlocked ? " blocked" : "");
+    let badge = isCurrent ? '<span class="badge badge-current">Este dispositivo</span>' : (isBlocked ? '<span class="badge badge-blocked">Bloqueado</span>' : '<span class="badge badge-active">Ativo</span>');
+    const nomeCurto = truncateName(d.device_name || 'Dispositivo');
+    const actionBtn = isCurrent ? '' : (isBlocked
+        ? `<button class="btn btn-outline" data-action="unblock" data-key="${d.device_key}">Desbloquear</button>`
+        : `<button class="btn btn-danger" data-action="block" data-key="${d.device_key}">Bloquear</button>`
+      );
+    return `
+      <div class="${cls}">
+        <div class="device-icon"><svg viewBox="0 0 24 24" stroke="var(--accent)" fill="none" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+        <div class="device-info"><h3>${nomeCurto} ${badge}</h3><p>IP: ${d.ip || '—'} • Último acesso: ${d.last_seen ? new Date(d.last_seen).toLocaleString("pt-BR") : "—"}</p></div>
+        <div class="device-actions">${actionBtn}</div>
+      </div>
+    `;
+  }).join("");
+  $("devicesList").innerHTML = html;
+  $("devicesList").querySelectorAll("[data-action]").forEach(btn => {
+    btn.onclick = () => executarAcaoDispositivo(btn.dataset.action, btn.dataset.key);
+  });
+}
+
+async function executarAcaoDispositivo(action, deviceKey) {
+  try {
+    showStatus("Solicitando biometria...", "info");
+    const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
+    const credential = await navigator.credentials.get({ publicKey: { challenge, timeout: 120000, userVerification: "preferred" } });
+    if (!credential) throw new Error("Biometria não confirmada.");
+    
+    const credentialResponse = {
+      clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
+      authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
+      signature: arrayBufferToBase64(credential.response.signature)
     };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
 
-    let eventSource = null;
-    let html5QrCode = null;
+    showStatus(action === "block" ? "Bloqueando..." : "Desbloqueando...", "info");
+    const token = await auth.currentUser.getIdToken(true);
+    const r = await fetch(WORKER + "/device/manage", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenid: token, action, device_key: deviceKey, webauthn_id: credential.id, credentialResponse })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      showStatus("Sucesso!", "ok");
+      const listRes = await deviceManage("list");
+      renderDispositivos(listRes.devices || [], listRes.current_device_key);
+      setTimeout(hideStatus, 3000);
+    } else throw new Error(data.erro);
+  } catch (err) { showStatus("Erro: " + err.message, "err"); }
+}
 
-    function arrayBufferToBase64(buffer) {
-      let binary = '';
-      const bytes = new Uint8Array(buffer);
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    }
+async function carregarChaves() {
+  $("keysList").innerHTML = '<div class="spinner" style="margin: 20px auto;"></div>';
+  try {
+    const token = await auth.currentUser.getIdToken(true);
+    const res = await fetch(WORKER + "/api/auth/list-bio", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenid: token })
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+      if (data.keys.length === 0) {
+        $("keysList").innerHTML = '<div class="empty" style="text-align:center; color: var(--text-2); padding: 20px;">Nenhuma chave cadastrada.</div>';
+        return;
+      }
+      $("keysList").innerHTML = data.keys.map(k => {
+        const nomeCurto = truncateName(k.deviceName);
+        return `
+        <div class="key-item" id="key-${k.webauthnId}">
+          <div class="key-info">
+            <h3>${nomeCurto} <span class="badge-ativa">Ativa</span></h3>
+            <p>Criada em: ${new Date(k.criadoEm).toLocaleString("pt-BR")}</p>
+          </div>
+          <button class="btn btn-outline" onclick="abrirModalDelete('${k.webauthnId}')" style="padding: 8px; color: var(--danger); border-color: var(--danger); flex-shrink: 0;">Deletar</button>
+        </div>
+      `}).join("");
+    } else { throw new Error(data.erro); }
+  } catch (e) {
+    $("keysList").innerHTML = `<div class="empty" style="color: var(--danger); text-align:center; padding: 20px;">Erro: ${e.message}</div>`;
+  }
+}
 
-    // DISPOSITIVO 1: GERAR ID
-    function gerarId() {
-      document.getElementById('btnGen').disabled = true;
-      document.getElementById('alerta-biometria').classList.add('hidden');
-      document.getElementById('qr-area').classList.remove('hidden');
-      document.getElementById('status-gen').textContent = "Conectando...";
-      document.getElementById('status-gen').className = "status loading";
+let keyToDelete = null;
+window.abrirModalDelete = (id) => {
+  keyToDelete = id;
+  $("deletePasswordInput").value = "";
+  $("modalOverlay").classList.add("show");
+};
 
-      eventSource = new EventSource(`${WORKER_URL}/api/generate-id-authentication`);
+$("btnCancelDelete").onclick = () => { $("modalOverlay").classList.remove("show"); keyToDelete = null; };
 
-      eventSource.addEventListener("id_gerado", (e) => {
-        const data = JSON.parse(e.data);
-        new QRious({
-          element: document.getElementById('qr-canvas'),
-          value: data.authId,
-          size: 220,
-          background: 'white',
-          foreground: '#0a0e1a'
-        });
-        document.getElementById('id-display').textContent = data.authId;
-        document.getElementById('status-gen').textContent = "Aguardando aprovação...";
+$("btnConfirmDelete").onclick = async () => {
+  const password = $("deletePasswordInput").value;
+  if (!password) return showStatus("Digite a senha para deletar.", "err");
+
+  $("btnConfirmDelete").disabled = true;
+  $("btnConfirmDelete").textContent = "Deletando...";
+
+  try {
+    const token = await auth.currentUser.getIdToken(true);
+    const res = await fetch(WORKER + "/api/auth/delete-bio", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenid: token, webauthnId: keyToDelete, email: auth.currentUser.email, password: password })
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+      const el = $("key-" + keyToDelete);
+      if (el) el.remove();
+      $("modalOverlay").classList.remove("show");
+      showStatus("Chave deletada com sucesso!", "ok");
+
+      if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
+          try {
+              const listRes = await fetch(WORKER + "/api/auth/list-bio", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ tokenid: token })
+              });
+              const listData = await listRes.json();
+
+              if (listData.ok) {
+                  const idsValidos = listData.keys.map(k => k.webauthnId);
+                  const userUid = auth.currentUser.uid;
+                  const encoder = new TextEncoder();
+                  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(userUid));
+                  const userIdBuffer = new Uint8Array(hashBuffer).slice(0, 16);
+                  const userIdB64 = btoa(String.fromCharCode(...userIdBuffer)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+                  await PublicKeyCredential.signalAllAcceptedCredentials({
+                      rpId: window.location.hostname,
+                      userId: userIdB64,
+                      allAcceptedCredentialIds: idsValidos
+                  });
+              }
+          } catch (signalError) {
+              console.warn("Falha ao sincronizar com o dispositivo:", signalError);
+          }
+      }
+
+      if ($("keysList").children.length === 0) {
+        $("keysList").innerHTML = '<div class="empty" style="text-align:center; color: var(--text-2); padding: 20px;">Nenhuma chave cadastrada.</div>';
+      }
+      setTimeout(hideStatus, 3000);
+    } else { throw new Error(data.erro); }
+  } catch (err) {
+    showStatus("Erro: " + err.message, "err");
+  } finally {
+    $("btnConfirmDelete").disabled = false;
+    $("btnConfirmDelete").textContent = "Deletar";
+  }
+};
+
+$("btnNextStep").onclick = () => {
+  const name = $("deviceNameInput").value.trim();
+  if (!name) return showStatus("Dê um nome.", "err");
+  hideStatus();
+  $("step1").classList.remove("active");
+  $("step2").classList.add("active");
+};
+
+$("btnBackStep").onclick = () => {
+  hideStatus();
+  $("step2").classList.remove("active");
+  $("step1").classList.add("active");
+};
+
+$("linkCriarSenha").onclick = async () => {
+  const email = auth.currentUser.email;
+  if (!email) return;
+  try {
+    await auth.sendPasswordResetEmail(email);
+    showStatus("Link para criar senha enviado para o e-mail.", "ok");
+  } catch (e) { showStatus("Erro ao enviar link: " + e.message, "err"); }
+};
+
+$("btnGenerateKey").onclick = async () => {
+  const deviceName = $("deviceNameInput").value.trim();
+  const password = $("passwordInput").value;
+  if (!password) return showStatus("Digite a senha.", "err");
+
+  try {
+    showStatus("Solicitando biometria...", "info");
+    
+    const userUid = auth.currentUser.uid;
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(userUid));
+    const userIdBuffer = new Uint8Array(hashBuffer).slice(0, 16);
+
+    const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
+    
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: challenge,
+        rp: { name: "Kloewa" },
+        user: { 
+          id: userIdBuffer, 
+          name: deviceName, 
+          displayName: deviceName 
+        },
+        pubKeyCredParams: [
+          { type: "public-key", alg: -7 },   
+          { type: "public-key", alg: -257 }  
+        ],
+        authenticatorSelection: { 
+          residentKey: "required", 
+          requireResidentKey: true,
+          userVerification: "preferred" 
+        },
+        hints: ["client-device", "hybrid", "security-key"], 
+        timeout: 120000, attestation: "none"
+      }
+    });
+
+    if (credential) {
+      showStatus("Validando senha...", "info");
+      const token = await auth.currentUser.getIdToken(true);
+      const publicKeyJwk = await exportPublicKeyJwk(credential);
+
+      const res = await fetch(WORKER + "/api/auth/register-bio", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tokenid: token, webauthnId: credential.id, publicKeyJwk, deviceName, email: auth.currentUser.email, password })
       });
-
-      eventSource.addEventListener("sucesso", async (e) => {
-        const data = JSON.parse(e.data);
-        eventSource.close();
-        
-        document.getElementById('status-gen').textContent = "Autenticado!";
-        document.getElementById('status-gen').className = "status ok";
-
-        try {
-          await auth.signInWithCustomToken(data.customToken);
-          document.getElementById('screen-gen').classList.add('hidden');
-          document.getElementById('screen-success').classList.remove('hidden');
-          setTimeout(() => { window.location.href = '/account/'; }, 1500);
-        } catch (error) {
-          document.getElementById('status-gen').textContent = "Erro: " + error.message;
-          document.getElementById('status-gen').className = "status err";
-        }
-      });
-
-      eventSource.addEventListener("erro", (e) => {
-        const data = JSON.parse(e.data);
-        eventSource.close();
-        document.getElementById('qr-area').classList.add('hidden');
-        document.getElementById('alerta-biometria').classList.remove('hidden');
-        document.getElementById('msg-biometria').textContent = data.mensagem;
-        document.getElementById('btnGen').disabled = false;
-      });
-    }
-
-    // DISPOSITIVO 2: LER QR
-    function mostrarLeitor() {
-      document.getElementById('screen-gen').classList.add('hidden');
-      document.getElementById('screen-read').classList.remove('hidden');
+      const data = await res.json();
       
-      auth.onAuthStateChanged(user => {
-        if (!user) {
-          document.getElementById('status-read').textContent = "Você precisa estar logado para aprovar.";
-          document.getElementById('status-read').className = "status err";
-          return;
-        }
-
-        document.getElementById('status-read').textContent = "Aponte a câmera para o QR Code.";
-        document.getElementById('status-read').className = "status loading";
-        document.getElementById('reader').style.display = 'block';
-
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          (textoLido) => {
-            html5QrCode.stop();
-            document.getElementById('reader').style.display = 'none';
-            confirmarAuth(textoLido);
-          },
-          () => {}
-        ).catch(err => {
-          document.getElementById('status-read').textContent = "Erro na câmera: " + err;
-          document.getElementById('status-read').className = "status err";
-        });
-      });
+      if (data.ok) {
+        showStatus("Chave de acesso criada com sucesso!", "ok");
+        $("deviceNameInput").value = ""; $("passwordInput").value = "";
+        $("step2").classList.remove("active");
+        $("step1").classList.add("active");
+        carregarChaves();
+        setTimeout(hideStatus, 3000);
+      } else { throw new Error(data.erro); }
     }
-
-    // ⭐ FUNÇÃO PARA CONFIRMAR O CÓDIGO DIGITADO MANUALMENTE
-    function confirmarCodigoManual() {
-      const codigo = document.getElementById('codigoManual').value.trim();
-      if (!codigo) return alert("Cole o código primeiro!");
-      if (codigo.length !== 90) return alert("O código deve ter exatamente 90 caracteres.");
-      
-      if (html5QrCode) html5QrCode.stop().catch(() => {});
-      document.getElementById('reader').style.display = 'none';
-      confirmarAuth(codigo);
-    }
-
-    async function confirmarAuth(authId) {
-      document.getElementById('status-read').textContent = "Solicitando biometria...";
-      document.getElementById('status-read').className = "status loading";
-
-      try {
-        // Pede para o usuário autenticar a biometria
-        const challenge = new Uint8Array(32);
-        crypto.getRandomValues(challenge);
-
-        const credential = await navigator.credentials.get({
-          publicKey: { challenge, timeout: 120000, userVerification: "preferred" }
-        });
-
-        if (!credential) throw new Error("Autenticação cancelada.");
-
-        const credentialResponse = {
-          clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
-          authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
-          signature: arrayBufferToBase64(credential.response.signature)
-        };
-
-        document.getElementById('status-read').textContent = "Validando...";
-        
-        const user = auth.currentUser;
-        const tokenid = await user.getIdToken();
-
-        const res = await fetch(`${WORKER_URL}/api/confirm-authentication`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            authId, 
-            tokenid,
-            webauthnId: credential.id,
-            credentialResponse
-          })
-        });
-
-        const data = await res.json();
-
-        if (data.ok) {
-          document.getElementById('status-read').textContent = "Transferência concluída!";
-          document.getElementById('status-read').className = "status ok";
-          setTimeout(() => { window.location.href = '/account/'; }, 2000);
-        } else {
-          throw new Error(data.erro || "Erro desconhecido");
-        }
-      } catch (error) {
-        document.getElementById('status-read').textContent = "Erro: " + error.message;
-        document.getElementById('status-read').className = "status err";
-        setTimeout(() => {
-          document.getElementById('screen-read').classList.add('hidden');
-          document.getElementById('screen-gen').classList.remove('hidden');
-          document.getElementById('btnGen').disabled = false;
-        }, 3000);
+  } catch (err) {
+    if (err.name === 'NotAllowedError' || err.message.includes('timed out')) {
+      showStatus("A biometria foi cancelada ou expirou.", "err");
+    } else {
+      showStatus("Erro: " + err.message, "err");
+      if (err.message.includes("Senha incorreta")) {
+        $("passwordInput").value = ""; $("passwordInput").focus();
       }
     }
+  }
+};
 
-    function cancelarLeitura() {
-      if (html5QrCode) html5QrCode.stop().catch(() => {});
-      document.getElementById('reader').style.display = 'none';
-      document.getElementById('screen-read').classList.add('hidden');
-      document.getElementById('screen-gen').classList.remove('hidden');
-    }
-  </script>
+$("btnLogout").onclick = async () => { if (confirm("Sair da conta?")) { await auth.signOut(); window.location.href = "/auth.html"; } };
+$("btnLogoutBlocked").onclick = async () => { await auth.signOut(); window.location.href = "/auth.html"; };
+</script>
+
+<!-- APP SHELL -->
+<script src="https://api.kloewa.ooguy.com/app-shell.js"></script>
+<script>
+  if (typeof AppShell !== "undefined") {
+    try { new AppShell().mount(); } catch (e) { console.error("Erro no AppShell:", e); }
+  }
+</script>
 </body>
 </html>
