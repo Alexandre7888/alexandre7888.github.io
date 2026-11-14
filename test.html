@@ -1,189 +1,223 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Desbloqueio Biométrico - Kloewa</title>
+  <title>Autenticação Rápida - Kloewa</title>
+  <link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; background: #0a0e1a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-    .box { background: #101626; padding: 30px; border-radius: 16px; border: 1px solid #1f2a44; width: 100%; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
-    h2 { margin-top: 0; color: #4f8cff; }
-    p { color: #8fa0bd; font-size: 14px; margin-bottom: 20px; }
-    input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #1f2a44; background: #05070f; color: #fff; box-sizing: border-box; margin-bottom: 10px; font-family: monospace; }
-    button { width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 16px; }
-    .btn-primary { background: #4f8cff; color: #fff; }
-    .btn-secondary { background: #1f2a44; color: #8fa0bd; }
-    .btn-success { background: #22c55e; color: #fff; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .status { font-size: 14px; margin-top: 20px; padding: 10px; border-radius: 8px; display: none; }
-    .sucesso { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
-    .erro { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background: #0a0e1a; color: #e8eef8; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { background: #101626; border: 1px solid #1f2a44; border-radius: 16px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    h1 { font-size: 1.4rem; margin-bottom: 10px; }
+    p { color: #8fa0bd; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4; }
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; background: #4f8cff; color: #fff; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn:hover { filter: brightness(1.1); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 1.5px solid #2d3b5c; color: #e8eef8; }
+    .btn-outline:hover { border-color: #4f8cff; }
+    .qr-box { background: #fff; padding: 15px; border-radius: 12px; display: inline-block; margin-bottom: 15px; }
+    .qr-box img, .qr-box canvas { display: block; max-width: 100%; }
+    .id-text { background: #05070f; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.75rem; color: #8fa0bd; word-break: break-all; margin-bottom: 20px; border: 1px solid #1f2a44; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; }
+    .status { margin-top: 15px; font-size: 0.85rem; font-weight: 600; min-height: 20px; }
+    .status.ok { color: #22c55e; }
+    .status.err { color: #ef4444; }
+    .status.loading { color: #4f8cff; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-  <div class="box">
-    <h2>Segurança Biométrica</h2>
-    <p>Use sua digital ou rosto para desbloquear ações sensíveis.</p>
-
-    <div id="loginSection">
-      <button class="btn-primary" id="btnLogin">Fazer Login com Google</button>
+  <div class="card">
+    <!-- TELA 1: GERAR ID -->
+    <div id="screen-gen">
+      <h1>Gerar Código</h1>
+      <p>Escaneie o QR Code com um dispositivo que já esteja logado para transferir a sessão.</p>
+      <button class="btn" id="btnGen" onclick="gerarId()">Gerar QR Code</button>
+      
+      <div id="qr-area" class="hidden">
+        <div class="qr-box" id="qrcode"></div>
+        <div class="id-text" id="id-display"></div>
+        <div class="status loading" id="status-gen">Aguardando outro dispositivo...</div>
+      </div>
     </div>
 
-    <div id="formSection" style="display: none;">
-      <input type="text" id="deviceName" placeholder="Nome do dispositivo (ex: Meu Celular)">
-      <button class="btn-secondary" id="btnRegistrar">1. Cadastrar Biometria</button>
-      <button class="btn-success" id="btnDesbloquear" disabled>2. Desbloquear com Biometria</button>
+    <!-- TELA 2: LER QR -->
+    <div id="screen-read" class="hidden">
+      <h1>Escanear Código</h1>
+      <p>Aponte a câmera para o QR Code no outro dispositivo.</p>
+      <div id="reader"></div>
+      <button class="btn btn-outline" id="btnCancelRead" onclick="cancelarLeitura()">Cancelar</button>
+      <div class="status" id="status-read"></div>
     </div>
 
-    <div id="status" class="status"></div>
+    <!-- TELA 3: SUCESSO -->
+    <div id="screen-success" class="hidden">
+      <h1>Autenticado!</h1>
+      <p>Sua sessão foi transferida com sucesso.</p>
+      <div class="status ok">Redirecionando...</div>
+    </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  <!-- Botão para alternar para o leitor (fica no canto da tela) -->
+  <button class="btn btn-outline" style="position: fixed; bottom: 20px; width: auto; padding: 10px 20px;" onclick="mostrarLeitor()">
+    Ler QR Code
+  </button>
 
+  <script>
+    const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+    
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
       projectId: "html-15e80",
       appId: "1:1068148640439:web:1ac651348e624f6be41b32"
     };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
+    let eventSource = null;
+    let html5QrCode = null;
 
-    const URL_REGISTRAR = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev/api/auth/register-bio";
-    const URL_VERIFICAR = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev/api/auth/verify-bio";
+    // ==========================================
+    // DISPOSITIVO 1: GERAR ID E ESCUTAR
+    // ==========================================
+    function gerarId() {
+      document.getElementById('btnGen').disabled = true;
+      document.getElementById('qr-area').classList.remove('hidden');
+      document.getElementById('status-gen').textContent = "Conectando...";
 
-    const btnLogin = document.getElementById('btnLogin');
-    const btnRegistrar = document.getElementById('btnRegistrar');
-    const btnDesbloquear = document.getElementById('btnDesbloquear');
-    const loginSection = document.getElementById('loginSection');
-    const formSection = document.getElementById('formSection');
-    const statusEl = document.getElementById('status');
-    const deviceNameInput = document.getElementById('deviceName');
+      // Conecta no SSE
+      eventSource = new EventSource(`${WORKER_URL}/api/generate-id-authentication`);
 
-    let currentUser = null;
+      eventSource.addEventListener("id_gerado", (e) => {
+        const data = JSON.parse(e.data);
+        
+        // Desenha o QR Code
+        QRCode.toCanvas(document.createElement('canvas'), data.authId, { width: 200, margin: 1 }, (err, canvas) => {
+          if (err) return console.error(err);
+          const qrBox = document.getElementById('qrcode');
+          qrBox.innerHTML = '';
+          qrBox.appendChild(canvas);
+        });
 
-    function mostrarStatus(msg, tipo) {
-      statusEl.style.display = "block";
-      statusEl.textContent = msg;
-      statusEl.className = "status " + tipo;
+        document.getElementById('id-display').textContent = data.authId;
+        document.getElementById('status-gen').textContent = "Aguardando outro dispositivo...";
+        document.getElementById('status-gen').className = "status loading";
+      });
+
+      eventSource.addEventListener("sucesso", async (e) => {
+        const data = JSON.parse(e.data);
+        eventSource.close();
+        
+        document.getElementById('status-gen').textContent = "Autenticado!";
+        document.getElementById('status-gen').className = "status ok";
+
+        try {
+          // Faz login com o customToken recebido
+          await auth.signInWithCustomToken(data.customToken);
+          document.getElementById('screen-gen').classList.add('hidden');
+          document.getElementById('screen-success').classList.remove('hidden');
+          setTimeout(() => { window.location.href = '/'; }, 1500);
+        } catch (error) {
+          document.getElementById('status-gen').textContent = "Erro ao logar: " + error.message;
+          document.getElementById('status-gen').className = "status err";
+        }
+      });
+
+      eventSource.addEventListener("erro", (e) => {
+        const data = JSON.parse(e.data);
+        eventSource.close();
+        document.getElementById('status-gen').textContent = data.mensagem;
+        document.getElementById('status-gen').className = "status err";
+        document.getElementById('btnGen').disabled = false;
+      });
+
+      eventSource.onerror = () => {
+        document.getElementById('status-gen').textContent = "Conexão perdida.";
+        document.getElementById('status-gen').className = "status err";
+        eventSource.close();
+      };
     }
 
-    btnLogin.onclick = async () => {
-      try { await signInWithPopup(auth, provider); } catch (err) { alert(err.message); }
-    };
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        loginSection.style.display = "none";
-        formSection.style.display = "block";
-      } else {
-        currentUser = null;
-        loginSection.style.display = "block";
-        formSection.style.display = "none";
-      }
-    });
-
     // ==========================================
-    // 1. CADASTRAR BIOMETRIA
+    // DISPOSITIVO 2: LER QR E CONFIRMAR
     // ==========================================
-    btnRegistrar.onclick = async () => {
-      const deviceName = deviceNameInput.value.trim();
-      if (!deviceName) return alert("Dê um nome para o dispositivo primeiro!");
+    function mostrarLeitor() {
+      document.getElementById('screen-gen').classList.add('hidden');
+      document.getElementById('screen-read').classList.remove('hidden');
+      
+      // Verifica se está logado para poder confirmar
+      auth.onAuthStateChanged(user => {
+        if (!user) {
+          document.getElementById('status-read').textContent = "Você precisa estar logado para confirmar.";
+          document.getElementById('status-read').className = "status err";
+          return;
+        }
+
+        document.getElementById('status-read').textContent = "Aponte a câmera para o QR Code.";
+        document.getElementById('status-read').className = "status loading";
+
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (textoLido) => {
+            // Parou de ler e confirmou
+            html5QrCode.stop();
+            document.getElementById('reader').style.display = 'none';
+            confirmarAuth(textoLido);
+          },
+          (errorMessage) => { /* Ignora erros de frame */ }
+        ).catch(err => {
+          document.getElementById('status-read').textContent = "Erro na câmera: " + err;
+          document.getElementById('status-read').className = "status err";
+        });
+      });
+    }
+
+    async function confirmarAuth(authId) {
+      document.getElementById('status-read').textContent = "Confirmando...";
+      document.getElementById('status-read').className = "status loading";
 
       try {
-        if (!window.PublicKeyCredential) throw new Error("WebAuthn não suportado.");
+        const user = auth.currentUser;
+        const tokenid = await user.getIdToken();
 
-        const challenge = new Uint8Array(32);
-        crypto.getRandomValues(challenge);
-
-        // Cria a credencial biométrica
-        const credential = await navigator.credentials.create({
-          publicKey: {
-            challenge: challenge,
-            rp: { name: "Kloewa" },
-            user: { id: new Uint8Array(16), name: currentUser.email, displayName: currentUser.displayName },
-            pubKeyCredParams: [{ type: "public-key", alg: -7 }],
-            authenticatorSelection: { userVerification: "preferred" },
-            timeout: 60000,
-            attestation: "none"
-          }
+        const res = await fetch(`${WORKER_URL}/api/confirm-authentication`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ authId, tokenid })
         });
 
-        if (credential) {
-          mostrarStatus("Salvando no servidor...", "sucesso");
-          const idToken = await currentUser.getIdToken();
+        const data = await res.json();
 
-          // Envia o ID da biometria e o Nome do Dispositivo para o Worker
-          const res = await fetch(URL_REGISTRAR, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              tokenid: idToken, 
-              webauthnId: credential.id,
-              deviceName: deviceName
-            })
-          });
-
-          const data = await res.json();
-          if (data.ok) {
-            mostrarStatus("Biometria cadastrada com sucesso!", "sucesso");
-            btnDesbloquear.disabled = false;
-          } else {
-            throw new Error(data.erro);
-          }
+        if (data.ok) {
+          document.getElementById('status-read').textContent = "Transferência concluída com sucesso!";
+          document.getElementById('status-read').className = "status ok";
+          setTimeout(() => { window.location.reload(); }, 2000);
+        } else {
+          throw new Error(data.erro || "Erro desconhecido");
         }
-      } catch (err) {
-        mostrarStatus("Erro: " + err.message, "erro");
+      } catch (error) {
+        document.getElementById('status-read').textContent = "Erro: " + error.message;
+        document.getElementById('status-read').className = "status err";
       }
-    };
+    }
 
-    // ==========================================
-    // 2. DESBLOQUEAR (VALIDAR BIOMETRIA)
-    // ==========================================
-    btnDesbloquear.onclick = async () => {
-      try {
-        mostrarStatus("Aguardando biometria...", "");
-        
-        const challenge = new Uint8Array(32);
-        crypto.getRandomValues(challenge);
-
-        // Pede para o usuário autenticar
-        const credential = await navigator.credentials.get({
-          publicKey: {
-            challenge: challenge,
-            timeout: 60000,
-            userVerification: "preferred"
-          }
-        });
-
-        if (credential) {
-          mostrarStatus("Validando no servidor...", "");
-          const idToken = await currentUser.getIdToken();
-
-          // Envia o ID de volta pro Worker conferir
-          const res = await fetch(URL_VERIFICAR, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tokenid: idToken, webauthnId: credential.id })
-          });
-
-          const data = await res.json();
-          if (data.ok) {
-            mostrarStatus(`✅ Desbloqueado com sucesso no dispositivo: ${data.deviceName}`, "sucesso");
-          } else {
-            throw new Error(data.erro);
-          }
-        }
-      } catch (err) {
-        mostrarStatus("Acesso Negado: " + err.message, "erro");
+    function cancelarLeitura() {
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
       }
-    };
+      document.getElementById('screen-read').classList.add('hidden');
+      document.getElementById('screen-gen').classList.remove('hidden');
+    }
   </script>
 </body>
 </html>
