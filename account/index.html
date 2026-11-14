@@ -15,7 +15,7 @@
   --accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);--danger:#ef4444;--success:#22c55e;
 }
 body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px; overflow-x: hidden;}
-.wrap{max-width:760px;margin: 0 auto; padding-top: 20px; padding-bottom: 100px; /* espaço para não sumir com o conteúdo no mobile */ }
+.wrap{max-width:760px;margin: 0 auto; padding-top: 20px; padding-bottom: 100px; }
 .header-page{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .header-page h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
 
@@ -40,14 +40,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .link-senha { display: inline-block; margin-top: 10px; font-size: 0.8rem; color: var(--accent-2); text-decoration: none; cursor: pointer; }
 .link-senha:hover { text-decoration: underline; }
 
-/* ⭐ CORREÇÃO DO NOME LONGO (TRUNCATE) */
 .key-item { display: flex; align-items: center; justify-content: space-between; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; transition: 0.3s; }
-.key-info { flex: 1; min-width: 0; margin-right: 10px; } /* Permite o encolhimento do texto */
-.key-info h3 { 
-  font-size: 0.95rem; margin-bottom: 4px; 
-  display: flex; align-items: center; gap: 8px; 
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* Trunca o texto */
-}
+.key-info { flex: 1; min-width: 0; margin-right: 10px; } 
+.key-info h3 { font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .key-info p { font-size: 0.75rem; color: var(--text-2); }
 .badge-ativa { background: rgba(34,197,94,.15); color: #6ee7a0; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; flex-shrink: 0; }
 
@@ -217,12 +212,9 @@ async function exportPublicKeyJwk(credential) {
   return json;
 }
 
-// Função para truncar o nome do dispositivo se passar de 15 caracteres
 function truncateName(name, maxLength = 15) {
   if (!name) return "Dispositivo";
-  if (name.length > maxLength) {
-    return name.substring(0, maxLength) + "...";
-  }
+  if (name.length > maxLength) return name.substring(0, maxLength) + "...";
   return name;
 }
 
@@ -285,10 +277,7 @@ function renderDispositivos(devices, meuDeviceKey) {
     const isCurrent = d.device_key === meuDeviceKey, isBlocked = d.blocked;
     const cls = "device" + (isCurrent ? " current" : "") + (isBlocked ? " blocked" : "");
     let badge = isCurrent ? '<span class="badge badge-current">Este dispositivo</span>' : (isBlocked ? '<span class="badge badge-blocked">Bloqueado</span>' : '<span class="badge badge-active">Ativo</span>');
-    
-    // Truncando o nome do dispositivo para não estourar
     const nomeCurto = truncateName(d.device_name || 'Dispositivo');
-
     const actionBtn = isCurrent ? '' : (isBlocked
         ? `<button class="btn btn-outline" data-action="unblock" data-key="${d.device_key}">Desbloquear</button>`
         : `<button class="btn btn-danger" data-action="block" data-key="${d.device_key}">Bloquear</button>`
@@ -352,9 +341,7 @@ async function carregarChaves() {
         return;
       }
       $("keysList").innerHTML = data.keys.map(k => {
-        // ⭐ Truncando o nome da chave
         const nomeCurto = truncateName(k.deviceName);
-
         return `
         <div class="key-item" id="key-${k.webauthnId}">
           <div class="key-info">
@@ -399,6 +386,38 @@ $("btnConfirmDelete").onclick = async () => {
       if (el) el.remove();
       $("modalOverlay").classList.remove("show");
       showStatus("Chave deletada com sucesso!", "ok");
+
+      // ⭐ SIGNAL API PARA LIMPAR O DISPOSITIVO
+      if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
+          try {
+              const listRes = await fetch(WORKER + "/api/auth/list-bio", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ tokenid: token })
+              });
+              const listData = await listRes.json();
+
+              if (listData.ok) {
+                  const idsValidos = listData.keys.map(k => k.webauthnId);
+                  
+                  const userUid = auth.currentUser.uid;
+                  const encoder = new TextEncoder();
+                  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(userUid));
+                  const userIdBuffer = new Uint8Array(hashBuffer).slice(0, 16);
+                  const userIdB64 = btoa(String.fromCharCode(...userIdBuffer)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+                  await PublicKeyCredential.signalAllAcceptedCredentials({
+                      rpId: window.location.hostname,
+                      userId: userIdB64,
+                      allAcceptedCredentialIds: idsValidos
+                  });
+                  console.log("Signal API enviada. Dispositivo sincronizado.");
+              }
+          } catch (signalError) {
+              console.warn("Falha ao sincronizar com o dispositivo:", signalError);
+          }
+      }
+
       if ($("keysList").children.length === 0) {
         $("keysList").innerHTML = '<div class="empty" style="text-align:center; color: var(--text-2); padding: 20px;">Nenhuma chave cadastrada.</div>';
       }
