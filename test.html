@@ -15,7 +15,7 @@
     .card { background: #101626; border: 1px solid #1f2a44; border-radius: 16px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     h1 { font-size: 1.4rem; margin-bottom: 10px; }
     p { color: #8fa0bd; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4; }
-    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; background: #4f8cff; color: #fff; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; background: #4f8cff; color: #fff; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; margin-bottom: 10px; }
     .btn:hover { filter: brightness(1.1); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-outline { background: transparent; border: 1.5px solid #2d3b5c; color: #e8eef8; }
@@ -32,6 +32,10 @@
     .biometria-alerta { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left; }
     .biometria-alerta h3 { color: #ef4444; font-size: 1rem; margin-bottom: 8px; }
     .biometria-alerta p { color: #fff; font-size: 0.85rem; margin-bottom: 15px; }
+    
+    /* Estilo do campo de texto para colar o código */
+    .input-codigo { width: 100%; padding: 12px; background: #05070f; border: 1px solid #1f2a44; border-radius: 8px; color: #fff; font-family: monospace; font-size: 0.85rem; margin-bottom: 10px; outline: none; }
+    .input-codigo:focus { border-color: #4f8cff; }
   </style>
 </head>
 <body>
@@ -59,12 +63,18 @@
       <button class="btn" id="btnGen" onclick="gerarId()">Gerar QR Code</button>
     </div>
 
-    <!-- TELA 2: LER QR -->
+    <!-- TELA 2: LER QR OU COLAR CÓDIGO -->
     <div id="screen-read" class="hidden">
       <h1>Aprovar Sessão</h1>
-      <p>Aponte a câmera para o QR Code no outro dispositivo.</p>
+      <p>Aponte a câmera para o QR Code ou digite o código manualmente.</p>
+      
       <div id="reader"></div>
-      <button class="btn btn-outline" id="btnCancelRead" onclick="cancelarLeitura()">Cancelar Leitura</button>
+      
+      <!-- ⭐ CAMPO PARA COLAR O CÓDIGO MANUALMENTE -->
+      <input type="text" id="codigoManual" class="input-codigo" placeholder="Cole o código de 90 caracteres aqui...">
+      <button class="btn btn-primary" onclick="confirmarCodigoManual()" style="margin-bottom: 10px;">Confirmar Código</button>
+
+      <button class="btn btn-outline" id="btnCancelRead" onclick="cancelarLeitura()">Voltar</button>
       <div class="status" id="status-read"></div>
     </div>
 
@@ -153,7 +163,7 @@
       });
     }
 
-    // DISPOSITIVO 2: LER QR E AUTENTICAR
+    // DISPOSITIVO 2: LER QR
     function mostrarLeitor() {
       document.getElementById('screen-gen').classList.add('hidden');
       document.getElementById('screen-read').classList.remove('hidden');
@@ -184,6 +194,17 @@
           document.getElementById('status-read').className = "status err";
         });
       });
+    }
+
+    // ⭐ FUNÇÃO PARA CONFIRMAR O CÓDIGO DIGITADO MANUALMENTE
+    function confirmarCodigoManual() {
+      const codigo = document.getElementById('codigoManual').value.trim();
+      if (!codigo) return alert("Cole o código primeiro!");
+      if (codigo.length !== 90) return alert("O código deve ter exatamente 90 caracteres.");
+      
+      if (html5QrCode) html5QrCode.stop().catch(() => {});
+      document.getElementById('reader').style.display = 'none';
+      confirmarAuth(codigo);
     }
 
     async function confirmarAuth(authId) {
