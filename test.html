@@ -4,23 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Autenticação Rápida - Kloewa</title>
-  <!-- Ícone do domínio oficial -->
   <link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
-  
-  <!-- Bibliotecas: QRious (Gerar QR) e Html5-Qrcode (Ler QR) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background: #0a0e1a; color: #e8eef8; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
     .card { background: #101626; border: 1px solid #1f2a44; border-radius: 16px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     h1 { font-size: 1.4rem; margin-bottom: 10px; }
     p { color: #8fa0bd; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4; }
-    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; background: #4f8cff; color: #fff; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; background: #4f8cff; color: #fff; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
     .btn:hover { filter: brightness(1.1); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-outline { background: transparent; border: 1.5px solid #2d3b5c; color: #e8eef8; }
@@ -29,11 +24,14 @@
     .qr-box canvas { display: block; max-width: 100%; border-radius: 8px; }
     .id-text { background: #05070f; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.75rem; color: #8fa0bd; word-break: break-all; margin-bottom: 20px; border: 1px solid #1f2a44; }
     #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; border: 2px solid #4f8cff; }
-    .status { margin-top: 15px; font-size: 0.85rem; font-weight: 600; min-height: 20px; }
+    .status { margin-top: 15px; font-size: 0.85rem; font-weight: 600; min-height: 20px; line-height: 1.4; }
     .status.ok { color: #22c55e; }
     .status.err { color: #ef4444; }
     .status.loading { color: #4f8cff; }
     .hidden { display: none !important; }
+    .biometria-alerta { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left; }
+    .biometria-alerta h3 { color: #ef4444; font-size: 1rem; margin-bottom: 8px; }
+    .biometria-alerta p { color: #fff; font-size: 0.85rem; margin-bottom: 15px; }
   </style>
 </head>
 <body>
@@ -44,6 +42,13 @@
       <h1>Transferir Sessão</h1>
       <p>Escaneie o QR Code abaixo com um dispositivo que já está logado na Kloewa.</p>
       
+      <!-- Alerta que aparece se não tiver biometria -->
+      <div id="alerta-biometria" class="biometria-alerta hidden">
+        <h3>Chave de Acesso Necessária</h3>
+        <p id="msg-biometria">Para usar o login rápido, você precisa criar uma chave de acesso (biometria) na sua conta.</p>
+        <a href="https://kloewa.ooguy.com/account/" class="btn" style="font-size: 0.9rem;">Criar Chave de Acesso Agora</a>
+      </div>
+
       <div id="qr-area" class="hidden">
         <div class="qr-box">
           <canvas id="qr-canvas"></canvas>
@@ -52,7 +57,7 @@
         <div class="status loading" id="status-gen">Aguardando outro dispositivo...</div>
       </div>
       
-      <button class="btn" id="btnGen" onclick="gerarId()" style="margin-top: 15px;">Gerar QR Code</button>
+      <button class="btn" id="btnGen" onclick="gerarId()">Gerar QR Code</button>
     </div>
 
     <!-- TELA 2: LER QR -->
@@ -72,7 +77,6 @@
     </div>
   </div>
 
-  <!-- Botão para alternar para o leitor (Dispositivo 2) -->
   <button class="btn btn-outline" style="position: fixed; bottom: 20px; width: auto; padding: 10px 20px;" onclick="mostrarLeitor()">
     Ler QR Code
   </button>
@@ -80,7 +84,6 @@
   <script>
     const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
     
-    // Configuração do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
       authDomain: "html-15e80.firebaseapp.com",
@@ -93,22 +96,18 @@
     let eventSource = null;
     let html5QrCode = null;
 
-    // ==========================================
-    // DISPOSITIVO 1: GERAR ID E ESCUTAR
-    // ==========================================
+    // DISPOSITIVO 1: GERAR ID
     function gerarId() {
       document.getElementById('btnGen').disabled = true;
+      document.getElementById('alerta-biometria').classList.add('hidden');
       document.getElementById('qr-area').classList.remove('hidden');
       document.getElementById('status-gen').textContent = "Conectando...";
       document.getElementById('status-gen').className = "status loading";
 
-      // Conecta no SSE
       eventSource = new EventSource(`${WORKER_URL}/api/generate-id-authentication`);
 
       eventSource.addEventListener("id_gerado", (e) => {
         const data = JSON.parse(e.data);
-        
-        // Desenha o QR Code usando a biblioteca QRious
         new QRious({
           element: document.getElementById('qr-canvas'),
           value: data.authId,
@@ -116,7 +115,6 @@
           background: 'white',
           foreground: '#0a0e1a'
         });
-
         document.getElementById('id-display').textContent = data.authId;
         document.getElementById('status-gen').textContent = "Aguardando aprovação...";
       });
@@ -132,11 +130,21 @@
           await auth.signInWithCustomToken(data.customToken);
           document.getElementById('screen-gen').classList.add('hidden');
           document.getElementById('screen-success').classList.remove('hidden');
-          setTimeout(() => { window.location.href = '/account/'; }, 1500); // Redireciona após logar
+          setTimeout(() => { window.location.href = '/account/'; }, 1500);
         } catch (error) {
-          document.getElementById('status-gen').textContent = "Erro ao logar: " + error.message;
+          document.getElementById('status-gen').textContent = "Erro: " + error.message;
           document.getElementById('status-gen').className = "status err";
         }
+      });
+
+      // ⭐ ESCUTA O ERRO DE FALTA DE BIOMETRIA
+      eventSource.addEventListener("erro_sem_biometria", (e) => {
+        const data = JSON.parse(e.data);
+        eventSource.close();
+        document.getElementById('qr-area').classList.add('hidden');
+        document.getElementById('alerta-biometria').classList.remove('hidden');
+        document.getElementById('msg-biometria').textContent = data.mensagem;
+        document.getElementById('btnGen').disabled = false;
       });
 
       eventSource.addEventListener("erro", (e) => {
@@ -146,24 +154,16 @@
         document.getElementById('status-gen').className = "status err";
         document.getElementById('btnGen').disabled = false;
       });
-
-      eventSource.onerror = () => {
-        document.getElementById('status-gen').textContent = "Conexão com o servidor perdida.";
-        document.getElementById('status-gen').className = "status err";
-        eventSource.close();
-      };
     }
 
-    // ==========================================
-    // DISPOSITIVO 2: LER QR E CONFIRMAR
-    // ==========================================
+    // DISPOSITIVO 2: LER QR
     function mostrarLeitor() {
       document.getElementById('screen-gen').classList.add('hidden');
       document.getElementById('screen-read').classList.remove('hidden');
       
       auth.onAuthStateChanged(user => {
         if (!user) {
-          document.getElementById('status-read').textContent = "Você precisa estar logado neste dispositivo para aprovar.";
+          document.getElementById('status-read').textContent = "Você precisa estar logado para aprovar.";
           document.getElementById('status-read').className = "status err";
           return;
         }
@@ -181,7 +181,7 @@
             document.getElementById('reader').style.display = 'none';
             confirmarAuth(textoLido);
           },
-          (errorMessage) => { /* Ignora erros de frame */ }
+          () => {}
         ).catch(err => {
           document.getElementById('status-read').textContent = "Erro na câmera: " + err;
           document.getElementById('status-read').className = "status err";
@@ -215,13 +215,16 @@
       } catch (error) {
         document.getElementById('status-read').textContent = "Erro: " + error.message;
         document.getElementById('status-read').className = "status err";
+        setTimeout(() => {
+          document.getElementById('screen-read').classList.add('hidden');
+          document.getElementById('screen-gen').classList.remove('hidden');
+          document.getElementById('btnGen').disabled = false;
+        }, 3000);
       }
     }
 
     function cancelarLeitura() {
-      if (html5QrCode) {
-        html5QrCode.stop().catch(() => {});
-      }
+      if (html5QrCode) html5QrCode.stop().catch(() => {});
       document.getElementById('reader').style.display = 'none';
       document.getElementById('screen-read').classList.add('hidden');
       document.getElementById('screen-gen').classList.remove('hidden');
