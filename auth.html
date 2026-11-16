@@ -4,10 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>kloewa • Autenticação</title>
+  <link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
+  
+  <!-- Bibliotecas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
-    .auth-container{width:100%;max-width:480px;background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s}
+    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px; gap: 24px;}
+    
+    /* Container principal que segura as duas colunas */
+    .main-wrapper {
+      display: flex;
+      width: 100%;
+      max-width: 1000px;
+      gap: 24px;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    /* Coluna do formulário (Esquerda) */
+    .auth-container{width:100%; max-width:480px; background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s; flex-shrink: 0;}
+    
     @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     .auth-header{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;padding:25px;text-align:center}
     .auth-header h1{font-size:24px;margin-bottom:5px}
@@ -42,6 +62,52 @@
     .home-btn{background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;transition:0.3s;backdrop-filter:blur(10px);display:flex;align-items:center;gap:8px;}
     .home-btn:hover{background:rgba(255,255,255,0.2)}
     .home-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+    /* =========================================
+       PAINEL DO QR CODE (Só aparece no Desktop)
+       ========================================= */
+    .qr-panel {
+      display: none; /* Escondido por padrão no mobile */
+      background: rgba(20,25,45,0.95);
+      border-radius: 20px;
+      border: 1px solid rgba(67,97,238,0.2);
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 1;
+      max-width: 380px;
+      animation: fadeIn 0.5s;
+    }
+
+    .qr-panel .icon-computer {
+      width: 48px; height: 48px;
+      stroke: #4cc9f0;
+      fill: none; stroke-width: 2;
+      margin-bottom: 16px;
+    }
+
+    .qr-panel h2 { font-size: 1.2rem; color: #e2e9f0; margin-bottom: 8px; }
+    .qr-panel p { font-size: 0.85rem; color: #a0b3c9; margin-bottom: 24px; line-height: 1.4; }
+
+    .qr-box { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 16px; }
+    .qr-box canvas { display: block; max-width: 100%; border-radius: 8px; }
+
+    .qr-status {
+      font-size: 0.85rem; font-weight: 600; color: #4f8cff;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(79,140,255,0.2); border-top-color: #4f8cff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Exibe o painel apenas em telas maiores que 900px */
+    @media(min-width: 900px) {
+      .qr-panel { display: flex; }
+    }
+
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -54,69 +120,87 @@
     </button>
   </div>
 
-  <div class="auth-container">
-    <div class="auth-header">
-      <h1>Bem-vindo ao Kloewa</h1>
-      <p>Faça login com sua conta</p>
-    </div>
-
-    <div id="global-error" class="error-message"></div>
-    <div id="global-success" class="success-message" style="display:none;"></div>
-
-    <div class="tabs">
-      <div class="tab active" id="tab-login" onclick="switchTab('login')">
-        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-        Entrar
+  <div class="main-wrapper">
+    <!-- COLUNA 1: LOGIN NORMAL -->
+    <div class="auth-container">
+      <div class="auth-header">
+        <h1>Bem-vindo ao Kloewa</h1>
+        <p>Faça login com sua conta</p>
       </div>
-      <div class="tab" id="tab-register" onclick="switchTab('register')">
-        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-        Criar Conta
-      </div>
-    </div>
 
-    <div id="login-tab" class="tab-content active">
-      <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" class="form-control" placeholder="digite seu email"></div>
-      <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
-      
-      <button class="btn btn-primary" id="login-btn" onclick="login()">
-        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        Entrar
-      </button>
-      
-      <div style="margin-top:10px;">
-        <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">
-          <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-          Esqueci minha senha
+      <div id="global-error" class="error-message"></div>
+      <div id="global-success" class="success-message" style="display:none;"></div>
+
+      <div class="tabs">
+        <div class="tab active" id="tab-login" onclick="switchTab('login')">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Entrar
+        </div>
+        <div class="tab" id="tab-register" onclick="switchTab('register')">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Criar Conta
+        </div>
+      </div>
+
+      <div id="login-tab" class="tab-content active">
+        <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" class="form-control" placeholder="digite seu email"></div>
+        <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" class="form-control" placeholder="digite sua senha"></div>
+
+        <button class="btn btn-primary" id="login-btn" onclick="login()">
+          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Entrar
         </button>
+
+        <div style="margin-top:10px;">
+          <button class="btn btn-secondary" onclick="resetPassword()" style="font-size:12px;padding:8px;">
+            <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            Esqueci minha senha
+          </button>
+        </div>
+
+        <div class="divider">ou</div>
+
+        <button class="btn btn-google" onclick="loginWithGoogle()">
+          <svg width="20" height="20" viewBox="-3 0 262 262" xmlns="http://www.w3.org/2000/svg">
+            <path d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027" fill="#4285F4"></path>
+            <path d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1" fill="#34A853"></path>
+            <path d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782" fill="#FBBC05"></path>
+            <path d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251" fill="#EB4335"></path>
+          </svg> 
+          Google
+        </button>
+
+        <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
       </div>
-      
-      <div class="divider">ou</div>
-      
-      <button class="btn btn-google" onclick="loginWithGoogle()">
-        <svg width="20" height="20" viewBox="-3 0 262 262" xmlns="http://www.w3.org/2000/svg">
-          <path d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027" fill="#4285F4"></path>
-          <path d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1" fill="#34A853"></path>
-          <path d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782" fill="#FBBC05"></path>
-          <path d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251" fill="#EB4335"></path>
-        </svg> 
-        Google
-      </button>
-      
-      <div class="footer-text">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></div>
+
+      <div id="register-tab" class="tab-content">
+        <div class="form-group"><label for="register-username">Usuário</label><input type="text" id="register-username" class="form-control" placeholder="ex: dev123"></div>
+        <div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" class="form-control" placeholder="seu email"></div>
+        <div class="form-group"><label for="register-password">Senha</label><input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres"></div>
+        <div class="form-group"><label for="register-confirm-password">Confirmar</label><input type="password" id="register-confirm-password" class="form-control" placeholder="confirme"></div>
+
+        <button class="btn btn-primary" id="register-btn" onclick="register()">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>
+          Criar Conta
+        </button>
+
+        <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
+      </div>
     </div>
 
-    <div id="register-tab" class="tab-content">
-      <div class="form-group"><label for="register-username">Usuário</label><input type="text" id="register-username" class="form-control" placeholder="ex: dev123"></div>
-      <div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" class="form-control" placeholder="seu email"></div>
-      <div class="form-group"><label for="register-password">Senha</label><input type="password" id="register-password" class="form-control" placeholder="mín. 6 caracteres"></div>
-      <div class="form-group"><label for="register-confirm-password">Confirmar</label><input type="password" id="register-confirm-password" class="form-control" placeholder="confirme"></div>
+    <!-- COLUNA 2: GERADOR DE QR CODE AUTOMÁTICO (Só Desktop) -->
+    <div class="qr-panel" id="qrPanel">
+      <svg class="icon-computer" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <h2>Login Rápido</h2>
+      <p>Use a câmera do seu celular para escanear o código e entrar instantaneamente.</p>
       
-      <button class="btn btn-primary" id="register-btn" onclick="register()">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>
-        Criar Conta
-      </button>
+      <div class="qr-box">
+        <canvas id="qrCanvas"></canvas>
+      </div>
       
-      <div class="footer-text">Já tem conta? <a onclick="switchTab('login')">Faça login</a></div>
+      <div class="qr-status" id="qrStatus">
+        <div class="spinner"></div> Gerando código...
+      </div>
     </div>
   </div>
 
@@ -312,6 +396,55 @@
         if (error.code !== 'auth/popup-closed-by-user') showError('Erro ao fazer login com Google');
       }
     };
+
+    // ==========================================
+    // GERADOR AUTOMÁTICO DE QR CODE (APENAS DESKTOP)
+    // ==========================================
+    const qrCanvas = document.getElementById('qrCanvas');
+    const qrStatus = document.getElementById('qrStatus');
+    let eventSource = null;
+
+    // Só executa se o canvas existir (ou seja, se estiver visível no desktop)
+    if (qrCanvas) {
+      eventSource = new EventSource(`${WORKER_URL}/api/generate-id-authentication`);
+
+      eventSource.addEventListener("id_gerado", (e) => {
+        const data = JSON.parse(e.data);
+        
+        new QRious({
+          element: qrCanvas,
+          value: data.authId,
+          size: 200,
+          background: 'white',
+          foreground: '#0b1120'
+        });
+
+        qrStatus.innerHTML = `<div class="spinner"></div> Aguardando celular...`;
+      });
+
+      eventSource.addEventListener("sucesso", async (e) => {
+        const data = JSON.parse(e.data);
+        eventSource.close();
+        
+        qrStatus.innerHTML = `✅ Autenticado! Redirecionando...`;
+        qrStatus.style.color = "#22c55e";
+
+        try {
+          await auth.signInWithCustomToken(data.customToken);
+          window.location.href = "index.html";
+        } catch (error) {
+          qrStatus.innerHTML = `❌ Erro: ${error.message}`;
+          qrStatus.style.color = "#ef4444";
+        }
+      });
+
+      eventSource.addEventListener("erro", (e) => {
+        const data = JSON.parse(e.data);
+        eventSource.close();
+        qrStatus.innerHTML = `❌ ${data.mensagem}`;
+        qrStatus.style.color = "#ef4444";
+      });
+    }
   </script>
 </body>
 </html>
