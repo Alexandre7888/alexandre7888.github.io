@@ -15,17 +15,8 @@
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px; gap: 24px;}
     
-    /* Container principal que segura as duas colunas */
-    .main-wrapper {
-      display: flex;
-      width: 100%;
-      max-width: 1000px;
-      gap: 24px;
-      align-items: stretch;
-      justify-content: center;
-    }
+    .main-wrapper { display: flex; width: 100%; max-width: 1000px; gap: 24px; align-items: stretch; justify-content: center; }
 
-    /* Coluna do formulário (Esquerda) */
     .auth-container{width:100%; max-width:480px; background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s; flex-shrink: 0;}
     
     @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
@@ -63,51 +54,22 @@
     .home-btn:hover{background:rgba(255,255,255,0.2)}
     .home-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
 
-    /* =========================================
-       PAINEL DO QR CODE (Só aparece no Desktop)
-       ========================================= */
+    /* Painel do QR Code (Desktop) */
     .qr-panel {
-      display: none; /* Escondido por padrão no mobile */
-      background: rgba(20,25,45,0.95);
-      border-radius: 20px;
-      border: 1px solid rgba(67,97,238,0.2);
-      padding: 30px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      flex: 1;
-      max-width: 380px;
-      animation: fadeIn 0.5s;
+      display: none; background: rgba(20,25,45,0.95); border-radius: 20px; border: 1px solid rgba(67,97,238,0.2);
+      padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; flex: 1; max-width: 380px; animation: fadeIn 0.5s;
     }
-
-    .qr-panel .icon-computer {
-      width: 48px; height: 48px;
-      stroke: #4cc9f0;
-      fill: none; stroke-width: 2;
-      margin-bottom: 16px;
-    }
-
+    .qr-panel .icon-computer { width: 48px; height: 48px; stroke: #4cc9f0; fill: none; stroke-width: 2; margin-bottom: 16px; }
     .qr-panel h2 { font-size: 1.2rem; color: #e2e9f0; margin-bottom: 8px; }
     .qr-panel p { font-size: 0.85rem; color: #a0b3c9; margin-bottom: 24px; line-height: 1.4; }
-
     .qr-box { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 16px; }
     .qr-box canvas { display: block; max-width: 100%; border-radius: 8px; }
-
-    .qr-status {
-      font-size: 0.85rem; font-weight: 600; color: #4f8cff;
-      display: flex; align-items: center; gap: 8px;
-    }
-
+    .qr-status { font-size: 0.85rem; font-weight: 600; color: #4f8cff; display: flex; align-items: center; gap: 8px; }
     .spinner { width: 16px; height: 16px; border: 2px solid rgba(79,140,255,0.2); border-top-color: #4f8cff; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Exibe o painel apenas em telas maiores que 900px */
-    @media(min-width: 900px) {
-      .qr-panel { display: flex; }
-    }
-
+    @media(min-width: 900px) { .qr-panel { display: flex; } }
     @media(max-width:480px){.auth-container{border-radius:12px}.auth-header{padding:20px}.tab-content{padding:20px}}
   </style>
 </head>
@@ -121,7 +83,7 @@
   </div>
 
   <div class="main-wrapper">
-    <!-- COLUNA 1: LOGIN NORMAL -->
+    <!-- LOGIN NORMAL -->
     <div class="auth-container">
       <div class="auth-header">
         <h1>Bem-vindo ao Kloewa</h1>
@@ -188,19 +150,21 @@
       </div>
     </div>
 
-    <!-- COLUNA 2: GERADOR DE QR CODE AUTOMÁTICO (Só Desktop) -->
-    <div class="qr-panel" id="qrPanel">
+    <!-- GERADOR DE QR CODE -->
+    <div class="qr-panel">
       <svg class="icon-computer" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       <h2>Login Rápido</h2>
       <p>Use a câmera do seu celular para escanear o código e entrar instantaneamente.</p>
       
-      <div class="qr-box">
+      <div class="qr-box" id="qr-box">
         <canvas id="qrCanvas"></canvas>
       </div>
       
       <div class="qr-status" id="qrStatus">
         <div class="spinner"></div> Gerando código...
       </div>
+
+      <button class="btn btn-primary" id="btnRefreshQr" style="display: none; margin-top: 15px; font-size: 14px; padding: 10px;">Gerar Novo QR Code</button>
     </div>
   </div>
 
@@ -219,103 +183,12 @@
     };
 
     const WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    function showError(m) {
-      const e = document.getElementById('global-error');
-      e.textContent = m;
-      e.classList.add('show');
-    }
-
-    function showSuccess(m) {
-      const e = document.getElementById('global-success');
-      e.textContent = m;
-      e.style.display = 'block';
-    }
-
-    function detectDeviceName() {
-      const ua = navigator.userAgent;
-      let browser = "Navegador", os = "Dispositivo";
-      if (ua.includes("Firefox")) browser = "Firefox";
-      else if (ua.includes("Edg")) browser = "Edge";
-      else if (ua.includes("Chrome")) browser = "Chrome";
-      else if (ua.includes("Safari")) browser = "Safari";
-      else if (ua.includes("Opera") || ua.includes("OPR")) browser = "Opera";
-
-      if (ua.includes("Windows")) os = "Windows";
-      else if (ua.includes("Mac")) os = "Mac";
-      else if (ua.includes("Android")) os = "Android";
-      else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
-      else if (ua.includes("Linux")) os = "Linux";
-
-      return `${browser} no ${os}`;
-    }
-
-    async function redirectAfterAuth(user) {
-      try {
-        showSuccess(`Autenticado! Enviando notificação...`);
-
-        const token = await user.getIdToken(true);
-
-        document.cookie = `firebaseToken=${token}; Domain=.kloewa.ooguy.com; Path=/; SameSite=Lax; Secure`;
-
-        const deviceName = detectDeviceName();
-        const platform   = navigator.platform || "Desconhecido";
-        const language   = navigator.language || "Desconhecido";
-
-        let currentSubId = null;
-        try {
-          const os = window.__OneSignal;
-          currentSubId = os?.User?.PushSubscription?.id || null;
-        } catch {}
-
-        if (WORKER_URL && !WORKER_URL.includes("SEU-WORKER")) {
-          try {
-            const r = await fetch(`${WORKER_URL}/NotifyNewLogin?tokenid=${encodeURIComponent(token)}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                device_name: deviceName,
-                platform,
-                language,
-                user_agent: navigator.userAgent,
-                current_subscription_id: currentSubId,
-                title: "Bem-vindo de volta!",
-                message: `Você entrou na sua conta pelo ${deviceName}. Se não foi você, troque sua senha.`
-              })
-            });
-
-            const data = await r.json();
-
-            if (data.ok) {
-              showSuccess(data.mensagem || "Bem-vindo!");
-            } else {
-              console.warn("[Auth] Worker erro:", data);
-              showSuccess("Autenticado!");
-            }
-          } catch (e){
-            console.warn("[Auth] Worker falhou:", e.message);
-            showSuccess("Autenticado!");
-          }
-        } else {
-          showSuccess("Autenticado!");
-        }
-
-        setTimeout(() => {
-          window.location.href = "index.html";
-        }, 1400);
-
-      } catch (e) {
-        console.error(e);
-        showError("Erro ao validar sessão");
-      }
-    }
-
+    // Funções de Login Normal
     window.goToIndex = () => window.location.href = 'index.html';
-
     window.switchTab = (id) => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -324,93 +197,66 @@
       document.getElementById('global-error').classList.remove('show');
       document.getElementById('global-success').style.display = 'none';
     };
-
     window.resetPassword = async () => {
       const email = document.getElementById('login-email').value.trim();
       if (!email) return showError('Digite seu email');
-      try {
-        await sendPasswordResetEmail(auth, email);
-        showSuccess(`Email de recuperação enviado.`);
-      } catch (error) {
-        showError('Erro ao enviar email');
-      }
+      try { await sendPasswordResetEmail(auth, email); showSuccess(`Email de recuperação enviado.`); } catch (error) { showError('Erro ao enviar email'); }
     };
-
     window.register = async () => {
-      document.getElementById('global-error').classList.remove('show');
-      document.getElementById('global-success').style.display = 'none';
-
+      document.getElementById('global-error').classList.remove('show'); document.getElementById('global-success').style.display = 'none';
       const username = document.getElementById('register-username').value.trim();
       const email = document.getElementById('register-email').value.trim();
       const password = document.getElementById('register-password').value;
       const confirm = document.getElementById('register-confirm-password').value;
-
       if (!username || !email) return showError('Preencha todos os campos');
       if (password.length < 6) return showError('Senha: mín. 6 caracteres');
       if (password !== confirm) return showError('Senhas não coincidem');
-
-      const btn = document.getElementById('register-btn');
-      btn.disabled = true; btn.textContent = 'Criando...';
-
-      try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        redirectAfterAuth(auth.currentUser);
-      } catch (error) {
-        let msg = 'Erro ao criar conta';
-        if (error.code === 'auth/email-already-in-use') msg = 'Email já em uso.';
-        else if (error.code === 'auth/weak-password') msg = 'Senha muito fraca.';
-        showError(msg);
-        btn.disabled = false; btn.textContent = 'Criar Conta';
+      const btn = document.getElementById('register-btn'); btn.disabled = true; btn.textContent = 'Criando...';
+      try { await createUserWithEmailAndPassword(auth, email, password); redirectAfterAuth(auth.currentUser); } catch (error) {
+        let msg = 'Erro ao criar conta'; if (error.code === 'auth/email-already-in-use') msg = 'Email já em uso.'; else if (error.code === 'auth/weak-password') msg = 'Senha muito fraca.';
+        showError(msg); btn.disabled = false; btn.textContent = 'Criar Conta';
       }
     };
-
     window.login = async () => {
-      document.getElementById('global-error').classList.remove('show');
-      document.getElementById('global-success').style.display = 'none';
-
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value;
+      document.getElementById('global-error').classList.remove('show'); document.getElementById('global-success').style.display = 'none';
+      const email = document.getElementById('login-email').value.trim(); const password = document.getElementById('login-password').value;
       if (!email || !password) return showError('Preencha todos os campos');
-
-      const btn = document.getElementById('login-btn');
-      btn.disabled = true; btn.textContent = 'Entrando...';
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        redirectAfterAuth(auth.currentUser);
-      } catch (error) {
-        let msg = 'Email ou senha incorretos.';
-        showError(msg);
-        btn.disabled = false; btn.textContent = 'Entrar';
-      }
+      const btn = document.getElementById('login-btn'); btn.disabled = true; btn.textContent = 'Entrando...';
+      try { await signInWithEmailAndPassword(auth, email, password); redirectAfterAuth(auth.currentUser); } catch (error) { showError('Email ou senha incorretos.'); btn.disabled = false; btn.textContent = 'Entrar'; }
     };
-
     window.loginWithGoogle = async () => {
-      document.getElementById('global-error').classList.remove('show');
-      document.getElementById('global-success').style.display = 'none';
-
-      try {
-        await signInWithPopup(auth, provider);
-        redirectAfterAuth(auth.currentUser);
-      } catch (error) {
-        if (error.code !== 'auth/popup-closed-by-user') showError('Erro ao fazer login com Google');
-      }
+      document.getElementById('global-error').classList.remove('show'); document.getElementById('global-success').style.display = 'none';
+      try { await signInWithPopup(auth, provider); redirectAfterAuth(auth.currentUser); } catch (error) { if (error.code !== 'auth/popup-closed-by-user') showError('Erro ao fazer login com Google'); }
     };
+    function showError(m) { const e = document.getElementById('global-error'); e.textContent = m; e.classList.add('show'); }
+    function showSuccess(m) { const e = document.getElementById('global-success'); e.textContent = m; e.style.display = 'block'; }
+    async function redirectAfterAuth(user) {
+      showSuccess(`Autenticado! Redirecionando...`);
+      const token = await user.getIdToken(true);
+      document.cookie = `firebaseToken=${token}; Domain=.kloewa.ooguy.com; Path=/; SameSite=Lax; Secure`;
+      setTimeout(() => { window.location.href = "index.html"; }, 1400);
+    }
 
     // ==========================================
-    // GERADOR AUTOMÁTICO DE QR CODE (APENAS DESKTOP)
+    // GERADOR AUTOMÁTICO DE QR CODE
     // ==========================================
     const qrCanvas = document.getElementById('qrCanvas');
     const qrStatus = document.getElementById('qrStatus');
+    const btnRefreshQr = document.getElementById('btnRefreshQr');
     let eventSource = null;
 
-    // Só executa se o canvas existir (ou seja, se estiver visível no desktop)
-    if (qrCanvas) {
+    function iniciarSSE() {
+      if (eventSource) eventSource.close();
+      
+      qrStatus.innerHTML = `<div class="spinner"></div> Gerando código...`;
+      qrStatus.style.color = "#4f8cff";
+      btnRefreshQr.style.display = 'none';
+      qrCanvas.style.display = 'block';
+
       eventSource = new EventSource(`${WORKER_URL}/api/generate-id-authentication`);
 
       eventSource.addEventListener("id_gerado", (e) => {
         const data = JSON.parse(e.data);
-        
         new QRious({
           element: qrCanvas,
           value: data.authId,
@@ -418,32 +264,38 @@
           background: 'white',
           foreground: '#0b1120'
         });
-
         qrStatus.innerHTML = `<div class="spinner"></div> Aguardando celular...`;
       });
 
       eventSource.addEventListener("sucesso", async (e) => {
         const data = JSON.parse(e.data);
         eventSource.close();
-        
         qrStatus.innerHTML = `✅ Autenticado! Redirecionando...`;
         qrStatus.style.color = "#22c55e";
-
         try {
           await auth.signInWithCustomToken(data.customToken);
           window.location.href = "index.html";
-        } catch (error) {
-          qrStatus.innerHTML = `❌ Erro: ${error.message}`;
-          qrStatus.style.color = "#ef4444";
-        }
+        } catch (error) { qrStatus.innerHTML = `❌ Erro: ${error.message}`; qrStatus.style.color = "#ef4444"; }
       });
 
       eventSource.addEventListener("erro", (e) => {
         const data = JSON.parse(e.data);
         eventSource.close();
-        qrStatus.innerHTML = `❌ ${data.mensagem}`;
+        qrCanvas.style.display = 'none';
+        qrStatus.innerHTML = `⏰ Tempo esgotado`;
         qrStatus.style.color = "#ef4444";
+        btnRefreshQr.style.display = 'block'; // Mostra o botão
       });
+    }
+
+    // Inicia automaticamente ao carregar (se o canvas existir no desktop)
+    if (qrCanvas) {
+      iniciarSSE();
+      
+      // ⭐ BOTÃO DE ATUALIZAR QR CODE
+      btnRefreshQr.onclick = () => {
+        iniciarSSE();
+      };
     }
   </script>
 </body>
