@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Minha Conta · kloewa</title>
 <link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
@@ -19,8 +20,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .header-page{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .header-page h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
 
-.btn{padding:11px 18px;border:none;border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
-.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 6px 20px var(--accent-glow)}
+.btn{padding:11px 18px;border:none;border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 6px 20px var(--accent-glow); width: 100%; margin-top: 10px;}
 .btn-danger{background:var(--danger);color:#fff}
 .btn-outline{background:transparent;border:1.5px solid var(--border-strong);color:var(--text)}
 .btn-outline:hover{border-color:var(--accent);color:var(--accent-2)}
@@ -88,6 +89,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .modal h3 { margin-bottom: 12px; }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .modal-actions .btn { flex: 1; justify-content: center; }
+
+/* Estilos específicos do QR Code */
+.qr-container { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px 0; }
+.qr-reader-box { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 16px; border: 2px solid var(--accent); display: none; }
+.qr-input { width: 100%; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: monospace; font-size: 0.85rem; margin-bottom: 10px; outline: none; }
 </style>
 </head>
 <body>
@@ -111,6 +117,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
   <div class="sidebar-nav">
     <button class="nav-circle-btn active" id="navDispositivos" onclick="mudarAba('dispositivos')">Dispositivos</button>
     <button class="nav-circle-btn" id="navChaves" onclick="mudarAba('chaves')">Chaves de Acesso</button>
+    <!-- ⭐ NOVA ABA DE QR CODE (Apenas para Desktop) -->
+    <button class="nav-circle-btn" id="navQr" onclick="mudarAba('qr')" style="display: none;">Login Rápido (QR)</button>
   </div>
 </div>
 
@@ -159,6 +167,22 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
       </div>
     </div>
   </div>
+
+  <!-- ⭐ ABA DO QR CODE (Para ler o código e aprovar o login) -->
+  <div id="aba-qr" class="hidden">
+    <div class="card">
+      <h2>Login Rápido (QR Code)</h2>
+      <div class="qr-container">
+        <p style="color: var(--text-2); margin-bottom: 20px;">Aponte a câmera para o QR Code no outro dispositivo ou cole o código abaixo.</p>
+        
+        <div class="qr-reader-box" id="readerAccount"></div>
+        
+        <input type="text" id="codigoManualAccount" class="qr-input" placeholder="Cole o código de 90 caracteres...">
+        <button class="btn btn-primary" onclick="confirmarCodigoManualAccount()">Confirmar Código</button>
+        <button class="btn btn-outline" id="btnIniciarCamera" style="margin-top: 10px;">Abrir Câmera</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="modalOverlay">
@@ -189,6 +213,8 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
+
+let html5QrCodeAccount = null;
 
 function arrayBufferToBase64(buffer) {
   let binary = '';
@@ -227,19 +253,100 @@ $("overlay").onclick = () => { $("sidebar").classList.remove("open"); $("overlay
 
 function mudarAba(aba) {
   document.querySelectorAll('.nav-circle-btn').forEach(b => b.classList.remove('active'));
+  $("aba-dispositivos").classList.add('hidden');
+  $("aba-chaves").classList.add('hidden');
+  $("aba-qr").classList.add('hidden');
+
   if (aba === 'dispositivos') {
     $("navDispositivos").classList.add('active');
     $("aba-dispositivos").classList.remove('hidden');
-    $("aba-chaves").classList.add('hidden');
-  } else {
+  } else if (aba === 'chaves') {
     $("navChaves").classList.add('active');
     $("aba-chaves").classList.remove('hidden');
-    $("aba-dispositivos").classList.add('hidden');
     carregarChaves();
+  } else if (aba === 'qr') {
+    $("navQr").classList.add('active');
+    $("aba-qr").classList.remove('hidden');
   }
-  $("overlay").click();
+
+  if (window.innerWidth < 800) $("overlay").click();
 }
 
+// Inicia a câmera para ler o QR Code
+$("btnIniciarCamera").onclick = () => {
+  $("readerAccount").style.display = 'block';
+  html5QrCodeAccount = new Html5Qrcode("readerAccount");
+  html5QrCodeAccount.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    (textoLido) => {
+      html5QrCodeAccount.stop();
+      $("readerAccount").style.display = 'none';
+      confirmarAuthAccount(textoLido);
+    },
+    () => {}
+  ).catch(err => alert("Erro na câmera: " + err));
+};
+
+function confirmarCodigoManualAccount() {
+  const codigo = $("codigoManualAccount").value.trim();
+  if (!codigo) return alert("Cole o código primeiro!");
+  if (codigo.length !== 90) return alert("O código deve ter exatamente 90 caracteres.");
+  
+  if (html5QrCodeAccount) html5QrCodeAccount.stop().catch(() => {});
+  $("readerAccount").style.display = 'none';
+  confirmarAuthAccount(codigo);
+}
+
+async function confirmarAuthAccount(authId) {
+  showStatus("Solicitando biometria...", "info");
+
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+
+    const credential = await navigator.credentials.get({
+      publicKey: { challenge, timeout: 120000, userVerification: "preferred" }
+    });
+
+    if (!credential) throw new Error("Autenticação cancelada.");
+
+    const credentialResponse = {
+      clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
+      authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
+      signature: arrayBufferToBase64(credential.response.signature)
+    };
+
+    showStatus("Validando...", "info");
+    
+    const user = auth.currentUser;
+    const tokenid = await user.getIdToken();
+
+    const res = await fetch(`${WORKER}/api/confirm-authentication`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        authId, 
+        tokenid,
+        webauthnId: credential.id,
+        credentialResponse
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+      showStatus("Transferência concluída!", "ok");
+      setTimeout(() => { window.location.href = '/account/'; }, 2000);
+    } else {
+      throw new Error(data.erro || "Erro desconhecido");
+    }
+  } catch (error) {
+    showStatus("Erro: " + error.message, "err");
+  }
+}
+
+// Lógica normal da conta (Dispositivos, Chaves, Logout)
 async function deviceManage(action, extra = {}) {
   const token = await auth.currentUser.getIdToken(true);
   const r = await fetch(WORKER + "/device/manage", {
@@ -258,6 +365,12 @@ async function deviceManage(action, extra = {}) {
 
 auth.onAuthStateChanged(async (user) => {
   if (!user) { window.location.href = "/auth.html"; return; }
+
+  // Mostra a aba de QR Code apenas no desktop
+  if (window.innerWidth >= 800) {
+    $("navQr").style.display = "flex";
+  }
+
   try {
     await deviceManage("register");
     const listRes = await deviceManage("list");
@@ -269,6 +382,8 @@ auth.onAuthStateChanged(async (user) => {
     }
     $("loading").classList.add("hidden"); $("app").classList.remove("hidden");
     renderDispositivos(listRes.devices || [], meuDeviceKey);
+
+    if (window.location.hash === "#qr") mudarAba('qr');
   } catch (e) { showStatus(e.message, "err"); }
 });
 
@@ -302,7 +417,7 @@ async function executarAcaoDispositivo(action, deviceKey) {
     const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
     const credential = await navigator.credentials.get({ publicKey: { challenge, timeout: 120000, userVerification: "preferred" } });
     if (!credential) throw new Error("Biometria não confirmada.");
-    
+
     const credentialResponse = {
       clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
       authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
@@ -387,19 +502,16 @@ $("btnConfirmDelete").onclick = async () => {
       $("modalOverlay").classList.remove("show");
       showStatus("Chave deletada com sucesso!", "ok");
 
-      // ⭐ SIGNAL API PARA LIMPAR O DISPOSITIVO
       if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
           try {
               const listRes = await fetch(WORKER + "/api/auth/list-bio", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
+                  method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ tokenid: token })
               });
               const listData = await listRes.json();
 
               if (listData.ok) {
                   const idsValidos = listData.keys.map(k => k.webauthnId);
-                  
                   const userUid = auth.currentUser.uid;
                   const encoder = new TextEncoder();
                   const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(userUid));
@@ -411,11 +523,8 @@ $("btnConfirmDelete").onclick = async () => {
                       userId: userIdB64,
                       allAcceptedCredentialIds: idsValidos
                   });
-                  console.log("Signal API enviada. Dispositivo sincronizado.");
               }
-          } catch (signalError) {
-              console.warn("Falha ao sincronizar com o dispositivo:", signalError);
-          }
+          } catch (signalError) { console.warn("Falha ao sincronizar:", signalError); }
       }
 
       if ($("keysList").children.length === 0) {
@@ -448,10 +557,7 @@ $("btnBackStep").onclick = () => {
 $("linkCriarSenha").onclick = async () => {
   const email = auth.currentUser.email;
   if (!email) return;
-  try {
-    await auth.sendPasswordResetEmail(email);
-    showStatus("Link para criar senha enviado para o e-mail.", "ok");
-  } catch (e) { showStatus("Erro ao enviar link: " + e.message, "err"); }
+  try { await auth.sendPasswordResetEmail(email); showStatus("Link para criar senha enviado.", "ok"); } catch (e) { showStatus("Erro: " + e.message, "err"); }
 };
 
 $("btnGenerateKey").onclick = async () => {
@@ -461,7 +567,6 @@ $("btnGenerateKey").onclick = async () => {
 
   try {
     showStatus("Solicitando biometria...", "info");
-    
     const userUid = auth.currentUser.uid;
     const encoder = new TextEncoder();
     const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(userUid));
@@ -473,20 +578,9 @@ $("btnGenerateKey").onclick = async () => {
       publicKey: {
         challenge: challenge,
         rp: { name: "Kloewa" },
-        user: { 
-          id: userIdBuffer, 
-          name: deviceName, 
-          displayName: deviceName 
-        },
-        pubKeyCredParams: [
-          { type: "public-key", alg: -7 },   
-          { type: "public-key", alg: -257 }  
-        ],
-        authenticatorSelection: { 
-          residentKey: "required", 
-          requireResidentKey: true,
-          userVerification: "preferred" 
-        },
+        user: { id: userIdBuffer, name: deviceName, displayName: deviceName },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: { residentKey: "required", requireResidentKey: true, userVerification: "preferred" },
         hints: ["client-device", "hybrid", "security-key"], 
         timeout: 120000, attestation: "none"
       }
@@ -513,13 +607,10 @@ $("btnGenerateKey").onclick = async () => {
       } else { throw new Error(data.erro); }
     }
   } catch (err) {
-    if (err.name === 'NotAllowedError' || err.message.includes('timed out')) {
-      showStatus("A biometria foi cancelada ou expirou.", "err");
-    } else {
+    if (err.name === 'NotAllowedError' || err.message.includes('timed out')) showStatus("A biometria foi cancelada ou expirou.", "err");
+    else {
       showStatus("Erro: " + err.message, "err");
-      if (err.message.includes("Senha incorreta")) {
-        $("passwordInput").value = ""; $("passwordInput").focus();
-      }
+      if (err.message.includes("Senha incorreta")) { $("passwordInput").value = ""; $("passwordInput").focus(); }
     }
   }
 };
