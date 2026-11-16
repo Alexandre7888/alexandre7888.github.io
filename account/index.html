@@ -123,7 +123,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
   <div class="sidebar-nav">
     <button class="nav-circle-btn active" id="navDispositivos" onclick="mudarAba('dispositivos')">Dispositivos</button>
     <button class="nav-circle-btn" id="navChaves" onclick="mudarAba('chaves')">Chaves de Acesso</button>
-    <!-- ⭐ Nova aba de Leitor QR -->
     <button class="nav-circle-btn" id="navQr" onclick="mudarAba('qr')">Ler QR Code</button>
   </div>
 </div>
@@ -174,13 +173,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
     </div>
   </div>
 
-  <!-- ⭐ ABA DO LEITOR DE QR CODE (SÓ CÂMERA) -->
+  <!-- ⭐ ABA DO LEITOR DE QR CODE -->
   <div id="aba-qr" class="hidden">
     <div class="card">
       <h2>Ler QR Code</h2>
       <div class="qr-container">
         
-        <!-- Aviso de Wi-Fi -->
         <div class="wifi-alert" id="wifiAlert">
           <h3><svg viewBox="0 0 24 24" width="18" height="18" stroke="#f59e0b" fill="none" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> Rede Wi-Fi Detectada</h3>
           <p>Este código é de uma rede Wi-Fi. Abra as configurações do seu dispositivo para se conectar.</p>
@@ -188,10 +186,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
         </div>
 
         <p style="color: var(--text-2); margin-bottom: 20px;" id="qrInstrucao">Aponte a câmera do seu dispositivo para o QR Code.</p>
-        
-        <!-- Área da Câmera -->
         <div class="qr-reader-box" id="readerAccount"></div>
-        
         <button class="btn btn-primary" id="btnIniciarCamera" style="margin-top: 10px;">Abrir Câmera</button>
       </div>
     </div>
@@ -236,18 +231,40 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
+// ⭐ EXTRAÇÃO CORRETA DO X E Y DA CHAVE PÚBLICA (JWK)
 async function exportPublicKeyJwk(credential) {
   const publicKey = credential.response.getPublicKey();
   const coseKey = new Uint8Array(publicKey);
-  const json = { kty: "EC", crv: "P-256", ext: true };
-  let offset = 1; 
-  while (offset < coseKey.length) {
-    const label = coseKey[offset++];
-    const length = coseKey[offset++];
-    if (label === -2) json.x = arrayBufferToBase64(coseKey.slice(offset, offset + length));
-    else if (label === -3) json.y = arrayBufferToBase64(coseKey.slice(offset, offset + length));
-    offset += length;
+  
+  let offset = 0;
+  const readByte = () => coseKey[offset++];
+  const readLength = () => {
+    let byte = readByte();
+    if (byte < 24) return byte;
+    if (byte === 24) return readByte();
+    if (byte === 25) { let val = (coseKey[offset] << 8) | coseKey[offset+1]; offset += 2; return val; }
+    if (byte === 26) { let val = (coseKey[offset] << 24) | (coseKey[offset+1] << 16) | (coseKey[offset+2] << 8) | coseKey[offset+3]; offset += 4; return val; }
+    return 0;
+  };
+
+  const json = { ext: true };
+  offset = 1; // Pula o mapa CBOR
+  const len = readLength() / 2; 
+  
+  for (let i = 0; i < len; i++) {
+    const label = readLength();
+    readByte(); // Pula o tipo
+    const valueLength = readLength();
+    
+    if (label === 1) json.kty = "EC";
+    if (label === 3) json.alg = -7; 
+    if (label === -1) json.crv = "P-256";
+    if (label === -2) json.x = arrayBufferToBase64(coseKey.slice(offset, offset + valueLength));
+    if (label === -3) json.y = arrayBufferToBase64(coseKey.slice(offset, offset + valueLength));
+    
+    offset += valueLength;
   }
+  
   return json;
 }
 
@@ -281,7 +298,6 @@ function mudarAba(aba) {
     $("navQr").classList.add('active');
     $("aba-qr").classList.remove('hidden');
     $("wifiAlert").style.display = 'none';
-    // Esconde a câmera se estava aberta
     if (html5QrCodeAccount) {
        html5QrCodeAccount.stop().catch(()=>{});
        $("readerAccount").style.display = 'none';
@@ -291,19 +307,16 @@ function mudarAba(aba) {
   if (window.innerWidth < 800) $("overlay").click();
 }
 
-// ⭐ LÓGICA DO LEITOR INTELIGENTE
 function processarQRCode(texto) {
   if (html5QrCodeAccount) html5QrCodeAccount.stop().catch(() => {});
   $("readerAccount").style.display = 'none';
 
-  // 1. Wi-Fi
   if (texto.startsWith('WIFI:')) {
     $("wifiAlert").style.display = 'block';
     $("qrInstrucao").style.display = 'none';
     return;
   }
 
-  // 2. URL que contém authid
   if (texto.includes('authid=')) {
     const urlParams = new URLSearchParams(texto.split('?')[1]);
     const authId = urlParams.get('authid');
@@ -315,13 +328,11 @@ function processarQRCode(texto) {
     }
   }
 
-  // 3. Link normal
   if (texto.startsWith('http://') || texto.startsWith('https://')) {
     window.open(texto, '_blank');
     return;
   }
 
-  // 4. ID puro (90 caracteres)
   if (texto.length === 90) {
     $("wifiAlert").style.display = 'none';
     $("qrInstrucao").style.display = 'block';
@@ -371,12 +382,6 @@ async function confirmarAuthAccount(authId) {
 
     if (!credential) throw new Error("Autenticação cancelada.");
 
-    const credentialResponse = {
-      clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
-      authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
-      signature: arrayBufferToBase64(credential.response.signature)
-    };
-
     showStatus("Validando...", "info");
     
     const user = auth.currentUser;
@@ -388,8 +393,7 @@ async function confirmarAuthAccount(authId) {
       body: JSON.stringify({ 
         authId, 
         tokenid,
-        webauthnId: credential.id,
-        credentialResponse
+        webauthnId: credential.id
       })
     });
 
@@ -406,7 +410,6 @@ async function confirmarAuthAccount(authId) {
   }
 }
 
-// Lógica normal da conta
 async function deviceManage(action, extra = {}) {
   const token = await auth.currentUser.getIdToken(true);
   const r = await fetch(WORKER + "/device/manage", {
@@ -438,7 +441,6 @@ auth.onAuthStateChanged(async (user) => {
     $("loading").classList.add("hidden"); $("app").classList.remove("hidden");
     renderDispositivos(listRes.devices || [], meuDeviceKey);
 
-    // Verifica se veio o authid pela URL
     const urlParams = new URLSearchParams(window.location.search);
     const authIdFromUrl = urlParams.get('authid');
     if (authIdFromUrl) {
@@ -481,17 +483,11 @@ async function executarAcaoDispositivo(action, deviceKey) {
     const credential = await navigator.credentials.get({ publicKey: { challenge, timeout: 120000, userVerification: "preferred" } });
     if (!credential) throw new Error("Biometria não confirmada.");
 
-    const credentialResponse = {
-      clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
-      authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
-      signature: arrayBufferToBase64(credential.response.signature)
-    };
-
     showStatus(action === "block" ? "Bloqueando..." : "Desbloqueando...", "info");
     const token = await auth.currentUser.getIdToken(true);
     const r = await fetch(WORKER + "/device/manage", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token, action, device_key: deviceKey, webauthn_id: credential.id, credentialResponse })
+      body: JSON.stringify({ tokenid: token, action, device_key: deviceKey, webauthn_id: credential.id })
     });
     const data = await r.json();
     if (data.ok) {
