@@ -94,6 +94,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .qr-container { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px 0; }
 .qr-reader-box { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 16px; border: 2px solid var(--accent); display: none; }
 .qr-input { width: 100%; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: monospace; font-size: 0.85rem; margin-bottom: 10px; outline: none; }
+
+/* Aviso de Wi-Fi */
+.wifi-alert {
+  background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: left; display: none;
+}
+.wifi-alert h3 { color: #f59e0b; font-size: 1rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.wifi-alert p { font-size: 0.85rem; color: #fff; line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -117,7 +124,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
   <div class="sidebar-nav">
     <button class="nav-circle-btn active" id="navDispositivos" onclick="mudarAba('dispositivos')">Dispositivos</button>
     <button class="nav-circle-btn" id="navChaves" onclick="mudarAba('chaves')">Chaves de Acesso</button>
-    <!-- ⭐ NOVA ABA DE QR CODE (Apenas para Desktop) -->
     <button class="nav-circle-btn" id="navQr" onclick="mudarAba('qr')" style="display: none;">Login Rápido (QR)</button>
   </div>
 </div>
@@ -168,12 +174,20 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
     </div>
   </div>
 
-  <!-- ⭐ ABA DO QR CODE (Para ler o código e aprovar o login) -->
+  <!-- ⭐ ABA DO QR CODE -->
   <div id="aba-qr" class="hidden">
     <div class="card">
       <h2>Login Rápido (QR Code)</h2>
       <div class="qr-container">
-        <p style="color: var(--text-2); margin-bottom: 20px;">Aponte a câmera para o QR Code no outro dispositivo ou cole o código abaixo.</p>
+        
+        <!-- Aviso de Wi-Fi -->
+        <div class="wifi-alert" id="wifiAlert">
+          <h3><svg viewBox="0 0 24 24" width="18" height="18" stroke="#f59e0b" fill="none" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> Rede Wi-Fi Detectada</h3>
+          <p>Este código é de uma rede Wi-Fi. Abra as configurações do seu dispositivo para se conectar.</p>
+          <button class="btn btn-outline" onclick="abrirConfigWifi()" style="width: auto; margin-top: 10px;">Abrir Configurações</button>
+        </div>
+
+        <p style="color: var(--text-2); margin-bottom: 20px;" id="qrInstrucao">Aponte a câmera para o QR Code no outro dispositivo ou cole o código abaixo.</p>
         
         <div class="qr-reader-box" id="readerAccount"></div>
         
@@ -267,22 +281,72 @@ function mudarAba(aba) {
   } else if (aba === 'qr') {
     $("navQr").classList.add('active');
     $("aba-qr").classList.remove('hidden');
+    $("wifiAlert").style.display = 'none';
   }
 
   if (window.innerWidth < 800) $("overlay").click();
 }
 
-// Inicia a câmera para ler o QR Code
+// ⭐ LÓGICA DO LEITOR INTELIGENTE
+function processarQRCode(texto) {
+  if (html5QrCodeAccount) html5QrCodeAccount.stop().catch(() => {});
+  $("readerAccount").style.display = 'none';
+
+  // 1. Wi-Fi
+  if (texto.startsWith('WIFI:')) {
+    $("wifiAlert").style.display = 'block';
+    $("qrInstrucao").style.display = 'none';
+    return;
+  }
+
+  // 2. URL que contém authid (Vindo do QR Code novo)
+  if (texto.includes('authid=')) {
+    const urlParams = new URLSearchParams(texto.split('?')[1]);
+    const authId = urlParams.get('authid');
+    if (authId) {
+      $("wifiAlert").style.display = 'none';
+      $("qrInstrucao").style.display = 'block';
+      confirmarAuthAccount(authId);
+      return;
+    }
+  }
+
+  // 3. Link normal
+  if (texto.startsWith('http://') || texto.startsWith('https://')) {
+    window.open(texto, '_blank');
+    return;
+  }
+
+  // 4. ID puro (90 caracteres)
+  if (texto.length === 90) {
+    $("wifiAlert").style.display = 'none';
+    $("qrInstrucao").style.display = 'block';
+    confirmarAuthAccount(texto);
+    return;
+  }
+
+  alert("Código não reconhecido: " + texto);
+}
+
+function abrirConfigWifi() {
+  if (navigator.userAgent.includes('Android')) {
+    window.location.href = 'intent://settings/wifi#Intent;end';
+  } else {
+    alert("Vá até as configurações do seu dispositivo e conecte-se à rede Wi-Fi.");
+  }
+}
+
 $("btnIniciarCamera").onclick = () => {
   $("readerAccount").style.display = 'block';
+  $("wifiAlert").style.display = 'none';
+  $("qrInstrucao").style.display = 'block';
+  
   html5QrCodeAccount = new Html5Qrcode("readerAccount");
   html5QrCodeAccount.start(
     { facingMode: "environment" },
     { fps: 10, qrbox: { width: 250, height: 250 } },
     (textoLido) => {
-      html5QrCodeAccount.stop();
-      $("readerAccount").style.display = 'none';
-      confirmarAuthAccount(textoLido);
+      processarQRCode(textoLido);
     },
     () => {}
   ).catch(err => alert("Erro na câmera: " + err));
@@ -291,11 +355,7 @@ $("btnIniciarCamera").onclick = () => {
 function confirmarCodigoManualAccount() {
   const codigo = $("codigoManualAccount").value.trim();
   if (!codigo) return alert("Cole o código primeiro!");
-  if (codigo.length !== 90) return alert("O código deve ter exatamente 90 caracteres.");
-  
-  if (html5QrCodeAccount) html5QrCodeAccount.stop().catch(() => {});
-  $("readerAccount").style.display = 'none';
-  confirmarAuthAccount(codigo);
+  processarQRCode(codigo);
 }
 
 async function confirmarAuthAccount(authId) {
@@ -346,7 +406,7 @@ async function confirmarAuthAccount(authId) {
   }
 }
 
-// Lógica normal da conta (Dispositivos, Chaves, Logout)
+// Lógica normal da conta
 async function deviceManage(action, extra = {}) {
   const token = await auth.currentUser.getIdToken(true);
   const r = await fetch(WORKER + "/device/manage", {
@@ -366,7 +426,6 @@ async function deviceManage(action, extra = {}) {
 auth.onAuthStateChanged(async (user) => {
   if (!user) { window.location.href = "/auth.html"; return; }
 
-  // Mostra a aba de QR Code apenas no desktop
   if (window.innerWidth >= 800) {
     $("navQr").style.display = "flex";
   }
@@ -383,7 +442,15 @@ auth.onAuthStateChanged(async (user) => {
     $("loading").classList.add("hidden"); $("app").classList.remove("hidden");
     renderDispositivos(listRes.devices || [], meuDeviceKey);
 
-    if (window.location.hash === "#qr") mudarAba('qr');
+    // ⭐ VERIFICA SE VEIO O authid PELA URL (Escaneamento nativo da câmera)
+    const urlParams = new URLSearchParams(window.location.search);
+    const authIdFromUrl = urlParams.get('authid');
+    if (authIdFromUrl) {
+      mudarAba('qr');
+      confirmarAuthAccount(authIdFromUrl);
+    } else if (window.location.hash === "#qr") {
+      mudarAba('qr');
+    }
   } catch (e) { showStatus(e.message, "err"); }
 });
 
