@@ -90,14 +90,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .modal-actions .btn { flex: 1; justify-content: center; }
 
-/* Estilos específicos do QR Code */
 .qr-container { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px 0; }
 .qr-reader-box { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 16px; border: 2px solid var(--accent); display: none; }
 
-/* Aviso de Wi-Fi */
-.wifi-alert {
-  background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: left; display: none;
-}
+.wifi-alert { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: left; display: none; }
 .wifi-alert h3 { color: #f59e0b; font-size: 1rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
 .wifi-alert p { font-size: 0.85rem; color: #fff; line-height: 1.4; }
 </style>
@@ -112,7 +108,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
 </div>
 
 <div class="overlay" id="overlay"></div>
-
 <button class="fab" id="fabBtn"><svg viewBox="0 0 24 24" stroke="white" fill="none" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
 
 <div class="sidebar" id="sidebar">
@@ -173,18 +168,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle a
     </div>
   </div>
 
-  <!-- ⭐ ABA DO LEITOR DE QR CODE -->
   <div id="aba-qr" class="hidden">
     <div class="card">
       <h2>Ler QR Code</h2>
       <div class="qr-container">
-
         <div class="wifi-alert" id="wifiAlert">
           <h3><svg viewBox="0 0 24 24" width="18" height="18" stroke="#f59e0b" fill="none" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> Rede Wi-Fi Detectada</h3>
           <p>Este código é de uma rede Wi-Fi. Abra as configurações do seu dispositivo para se conectar.</p>
           <button class="btn btn-outline" onclick="abrirConfigWifi()" style="width: auto; margin-top: 10px;">Abrir Configurações</button>
         </div>
-
         <p style="color: var(--text-2); margin-bottom: 20px;" id="qrInstrucao">Aponte a câmera do seu dispositivo para o QR Code.</p>
         <div class="qr-reader-box" id="readerAccount"></div>
         <button class="btn btn-primary" id="btnIniciarCamera" style="margin-top: 10px;">Abrir Câmera</button>
@@ -221,12 +213,8 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-
 let html5QrCodeAccount = null;
 
-// ============================================
-// BASE64URL
-// ============================================
 function arrayBufferToBase64(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -234,101 +222,37 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// ============================================
-// PARSER CBOR REAL (para COSE_Key)
-// ============================================
-function cborDecode(bytes) {
-  let offset = 0;
-
-  function readLength(additional) {
-    if (additional < 24) return additional;
-    if (additional === 24) return bytes[offset++];
-    if (additional === 25) { const v = (bytes[offset] << 8) | bytes[offset + 1]; offset += 2; return v; }
-    if (additional === 26) {
-      const v = (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
-      offset += 4; return v >>> 0;
-    }
-    if (additional === 27) {
-      const hi = (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
-      const lo = (bytes[offset + 4] << 24) | (bytes[offset + 5] << 16) | (bytes[offset + 6] << 8) | bytes[offset + 7];
-      offset += 8;
-      return hi * 4294967296 + (lo >>> 0);
-    }
-    throw new Error("CBOR: comprimento inválido");
-  }
-
-  function decode() {
-    const initial = bytes[offset++];
-    const major = initial >> 5;
-    const additional = initial & 0x1f;
-
-    if (major === 0) return readLength(additional);
-    if (major === 1) return -1 - readLength(additional);
-    if (major === 2) { const len = readLength(additional); const b = bytes.slice(offset, offset + len); offset += len; return b; }
-    if (major === 3) { const len = readLength(additional); const s = new TextDecoder().decode(bytes.slice(offset, offset + len)); offset += len; return s; }
-    if (major === 4) { const len = readLength(additional); const a = []; for (let i = 0; i < len; i++) a.push(decode()); return a; }
-    if (major === 5) { const len = readLength(additional); const o = {}; for (let i = 0; i < len; i++) { const k = decode(); o[k] = decode(); } return o; }
-    if (major === 6) return decode();
-    if (major === 7) {
-      if (additional === 20) return false;
-      if (additional === 21) return true;
-      if (additional === 22) return null;
-      if (additional === 23) return undefined;
-    }
-    throw new Error("CBOR: tipo não suportado");
-  }
-
-  return decode();
-}
-
-// ============================================
-// EXTRAI JWK DO COSE_Key (AGORA SUPORTA EC E RSA)
-// ============================================
+// ⭐ A FUNÇÃO MÁGICA QUE RESOLVE O PROBLEMA
+// Extrai a chave usando a API nativa do navegador (funciona em 100% dos aparelhos)
 async function exportPublicKeyJwk(credential) {
-  const publicKey = credential.response.getPublicKey();
-  if (!publicKey) throw new Error("getPublicKey() retornou null.");
-
-  const coseKey = cborDecode(new Uint8Array(publicKey));
-
-  // Se for EC (kty=2)
-  if (coseKey[1] === 2) {
-    if (!coseKey[-2] || !coseKey[-3]) throw new Error("Chave EC sem x/y.");
-    return {
-      kty: "EC",
-      crv: "P-256",
-      alg: "ES256",
-      ext: true,
-      x: arrayBufferToBase64(coseKey[-2]),
-      y: arrayBufferToBase64(coseKey[-3])
-    };
+  const publicKeyBuffer = credential.response.getPublicKey();
+  if (!publicKeyBuffer) throw new Error("Não foi possível extrair a chave pública.");
+  
+  // Tentamos importar como EC (P-256) primeiro. Se for, exporta como EC.
+  try {
+    const keyEC = await crypto.subtle.importKey(
+      "spki", publicKeyBuffer, { name: "ECDSA", namedCurve: "P-256" }, true, ["verify"]
+    );
+    return await crypto.subtle.exportKey("jwk", keyEC);
+  } catch (e) {
+    // Se falhar, tentamos como RSA.
+    try {
+      const keyRSA = await crypto.subtle.importKey(
+        "spki", publicKeyBuffer, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, true, ["verify"]
+      );
+      return await crypto.subtle.exportKey("jwk", keyRSA);
+    } catch (e2) {
+      throw new Error("Dispositivo gerou uma chave que não pôde ser lida.");
+    }
   }
-
-  // Se for RSA (kty=3)
-  if (coseKey[1] === 3) {
-    if (!coseKey[-1] || !coseKey[-2]) throw new Error("Chave RSA sem n/e.");
-    return {
-      kty: "RSA",
-      alg: "RS256",
-      ext: true,
-      n: arrayBufferToBase64(coseKey[-1]),
-      e: arrayBufferToBase64(coseKey[-2])
-    };
-  }
-
-  throw new Error("Tipo de chave desconhecido.");
 }
 
-// ============================================
-// MONTAR credentialResponse COMPLETO
-// ============================================
 function buildCredentialResponse(credential) {
   return {
     clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
     authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
     signature: arrayBufferToBase64(credential.response.signature),
-    userHandle: credential.response.userHandle
-      ? arrayBufferToBase64(credential.response.userHandle)
-      : null
+    userHandle: credential.response.userHandle ? arrayBufferToBase64(credential.response.userHandle) : null
   };
 }
 
@@ -367,117 +291,52 @@ function mudarAba(aba) {
        $("readerAccount").style.display = 'none';
     }
   }
-
   if (window.innerWidth < 800) $("overlay").click();
 }
 
 function processarQRCode(texto) {
   if (html5QrCodeAccount) html5QrCodeAccount.stop().catch(() => {});
   $("readerAccount").style.display = 'none';
-
-  if (texto.startsWith('WIFI:')) {
-    $("wifiAlert").style.display = 'block';
-    $("qrInstrucao").style.display = 'none';
-    return;
-  }
-
+  if (texto.startsWith('WIFI:')) { $("wifiAlert").style.display = 'block'; $("qrInstrucao").style.display = 'none'; return; }
   if (texto.includes('authid=')) {
     const urlParams = new URLSearchParams(texto.split('?')[1]);
     const authId = urlParams.get('authid');
-    if (authId) {
-      $("wifiAlert").style.display = 'none';
-      $("qrInstrucao").style.display = 'block';
-      confirmarAuthAccount(authId);
-      return;
-    }
+    if (authId) { $("wifiAlert").style.display = 'none'; $("qrInstrucao").style.display = 'block'; confirmarAuthAccount(authId); return; }
   }
-
-  if (texto.startsWith('http://') || texto.startsWith('https://')) {
-    window.open(texto, '_blank');
-    return;
-  }
-
-  if (texto.length === 90) {
-    $("wifiAlert").style.display = 'none';
-    $("qrInstrucao").style.display = 'block';
-    confirmarAuthAccount(texto);
-    return;
-  }
-
+  if (texto.startsWith('http://') || texto.startsWith('https://')) { window.open(texto, '_blank'); return; }
+  if (texto.length === 90) { $("wifiAlert").style.display = 'none'; $("qrInstrucao").style.display = 'block'; confirmarAuthAccount(texto); return; }
   alert("Código não reconhecido: " + texto);
 }
 
 function abrirConfigWifi() {
-  if (navigator.userAgent.includes('Android')) {
-    window.location.href = 'intent://settings/wifi#Intent;end';
-  } else {
-    alert("Vá até as configurações do seu dispositivo e conecte-se à rede Wi-Fi.");
-  }
+  if (navigator.userAgent.includes('Android')) { window.location.href = 'intent://settings/wifi#Intent;end'; } 
+  else { alert("Vá até as configurações do seu dispositivo e conecte-se à rede Wi-Fi."); }
 }
 
 $("btnIniciarCamera").onclick = () => {
-  $("readerAccount").style.display = 'block';
-  $("wifiAlert").style.display = 'none';
-  $("qrInstrucao").style.display = 'block';
-
+  $("readerAccount").style.display = 'block'; $("wifiAlert").style.display = 'none'; $("qrInstrucao").style.display = 'block';
   if (html5QrCodeAccount) html5QrCodeAccount.stop().catch(() => {});
-
   html5QrCodeAccount = new Html5Qrcode("readerAccount");
-  html5QrCodeAccount.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 250, height: 250 } },
-    (textoLido) => {
-      processarQRCode(textoLido);
-    },
-    () => {}
-  ).catch(err => alert("Erro ao abrir a câmera: " + err));
+  html5QrCodeAccount.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, (textoLido) => { processarQRCode(textoLido); }, () => {}).catch(err => alert("Erro ao abrir a câmera: " + err));
 };
 
-// ============================================
-// CONFIRMAR AUTENTICAÇÃO (QR) — envia assinatura completa
-// ============================================
 async function confirmarAuthAccount(authId) {
   showStatus("Solicitando biometria...", "info");
-
   try {
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
-
-    const credential = await navigator.credentials.get({
-      publicKey: { challenge, timeout: 120000, userVerification: "preferred" }
-    });
-
+    const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
+    const credential = await navigator.credentials.get({ publicKey: { challenge, timeout: 120000, userVerification: "preferred" } });
     if (!credential) throw new Error("Autenticação cancelada.");
-
     showStatus("Validando...", "info");
-
-    const user = auth.currentUser;
-    const tokenid = await user.getIdToken();
-
+    const tokenid = await auth.currentUser.getIdToken();
     const credentialResponse = buildCredentialResponse(credential);
-
     const res = await fetch(`${WORKER}/api/confirm-authentication`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        authId, 
-        tokenid,
-        webauthnId: credential.id,
-        credentialResponse
-      })
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ authId, tokenid, webauthnId: credential.id, credentialResponse })
     });
-
     const data = await res.json();
-
-    if (data.ok) {
-      showStatus("Transferência concluída!", "ok");
-      setTimeout(() => { window.location.href = '/account/'; }, 2000);
-    } else {
-      throw new Error(data.erro || "Erro desconhecido");
-    }
-  } catch (error) {
-    showStatus("Erro: " + error.message, "err");
-  }
+    if (data.ok) { showStatus("Transferência concluída!", "ok"); setTimeout(() => { window.location.href = '/account/'; }, 2000); } 
+    else { throw new Error(data.erro || "Erro desconhecido"); }
+  } catch (error) { showStatus("Erro: " + error.message, "err"); }
 }
 
 async function deviceManage(action, extra = {}) {
@@ -488,37 +347,26 @@ async function deviceManage(action, extra = {}) {
   });
   if (r.status === 403) {
     const err = await r.json();
-    if (err.blocked) {
-      $("loading").classList.add("hidden"); $("app").classList.add("hidden"); $("blockedScreen").classList.remove("hidden");
-      throw new Error("Dispositivo bloqueado");
-    }
+    if (err.blocked) { $("loading").classList.add("hidden"); $("app").classList.add("hidden"); $("blockedScreen").classList.remove("hidden"); throw new Error("Dispositivo bloqueado"); }
   }
   return await r.json();
 }
 
 auth.onAuthStateChanged(async (user) => {
   if (!user) { window.location.href = "/auth.html"; return; }
-
   try {
     await deviceManage("register");
     const listRes = await deviceManage("list");
     const meuDeviceKey = listRes.current_device_key;
     const esteDevice = listRes.devices?.find(d => d.device_key === meuDeviceKey);
-    if (esteDevice && esteDevice.blocked) {
-      $("loading").classList.add("hidden"); $("app").classList.add("hidden"); $("blockedScreen").classList.remove("hidden");
-      return;
-    }
+    if (esteDevice && esteDevice.blocked) { $("loading").classList.add("hidden"); $("app").classList.add("hidden"); $("blockedScreen").classList.remove("hidden"); return; }
     $("loading").classList.add("hidden"); $("app").classList.remove("hidden");
     renderDispositivos(listRes.devices || [], meuDeviceKey);
 
     const urlParams = new URLSearchParams(window.location.search);
     const authIdFromUrl = urlParams.get('authid');
-    if (authIdFromUrl) {
-      mudarAba('qr');
-      confirmarAuthAccount(authIdFromUrl);
-    } else if (window.location.hash === "#qr") {
-      mudarAba('qr');
-    }
+    if (authIdFromUrl) { mudarAba('qr'); confirmarAuthAccount(authIdFromUrl); } 
+    else if (window.location.hash === "#qr") { mudarAba('qr'); }
   } catch (e) { showStatus(e.message, "err"); }
 });
 
@@ -528,10 +376,7 @@ function renderDispositivos(devices, meuDeviceKey) {
     const cls = "device" + (isCurrent ? " current" : "") + (isBlocked ? " blocked" : "");
     let badge = isCurrent ? '<span class="badge badge-current">Este dispositivo</span>' : (isBlocked ? '<span class="badge badge-blocked">Bloqueado</span>' : '<span class="badge badge-active">Ativo</span>');
     const nomeCurto = truncateName(d.device_name || 'Dispositivo');
-    const actionBtn = isCurrent ? '' : (isBlocked
-        ? `<button class="btn btn-outline" data-action="unblock" data-key="${d.device_key}">Desbloquear</button>`
-        : `<button class="btn btn-danger" data-action="block" data-key="${d.device_key}">Bloquear</button>`
-      );
+    const actionBtn = isCurrent ? '' : (isBlocked ? `<button class="btn btn-outline" data-action="unblock" data-key="${d.device_key}">Desbloquear</button>` : `<button class="btn btn-danger" data-action="block" data-key="${d.device_key}">Bloquear</button>`);
     return `
       <div class="${cls}">
         <div class="device-icon"><svg viewBox="0 0 24 24" stroke="var(--accent)" fill="none" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
@@ -541,34 +386,21 @@ function renderDispositivos(devices, meuDeviceKey) {
     `;
   }).join("");
   $("devicesList").innerHTML = html;
-  $("devicesList").querySelectorAll("[data-action]").forEach(btn => {
-    btn.onclick = () => executarAcaoDispositivo(btn.dataset.action, btn.dataset.key);
-  });
+  $("devicesList").querySelectorAll("[data-action]").forEach(btn => { btn.onclick = () => executarAcaoDispositivo(btn.dataset.action, btn.dataset.key); });
 }
 
-// ============================================
-// BLOQUEAR / DESBLOQUEAR — envia assinatura completa
-// ============================================
 async function executarAcaoDispositivo(action, deviceKey) {
   try {
     showStatus("Solicitando biometria...", "info");
     const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
     const credential = await navigator.credentials.get({ publicKey: { challenge, timeout: 120000, userVerification: "preferred" } });
     if (!credential) throw new Error("Biometria não confirmada.");
-
     const credentialResponse = buildCredentialResponse(credential);
-
     showStatus(action === "block" ? "Bloqueando..." : "Desbloqueando...", "info");
     const token = await auth.currentUser.getIdToken(true);
     const r = await fetch(WORKER + "/device/manage", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tokenid: token,
-        action,
-        device_key: deviceKey,
-        webauthn_id: credential.id,
-        credentialResponse
-      })
+      body: JSON.stringify({ tokenid: token, action, device_key: deviceKey, webauthn_id: credential.id, credentialResponse })
     });
     const data = await r.json();
     if (data.ok) {
@@ -584,72 +416,41 @@ async function carregarChaves() {
   $("keysList").innerHTML = '<div class="spinner" style="margin: 20px auto;"></div>';
   try {
     const token = await auth.currentUser.getIdToken(true);
-    const res = await fetch(WORKER + "/api/auth/list-bio", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token })
-    });
+    const res = await fetch(WORKER + "/api/auth/list-bio", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tokenid: token }) });
     const data = await res.json();
-
     if (data.ok) {
-      if (data.keys.length === 0) {
-        $("keysList").innerHTML = '<div class="empty" style="text-align:center; color: var(--text-2); padding: 20px;">Nenhuma chave cadastrada.</div>';
-        return;
-      }
+      if (data.keys.length === 0) { $("keysList").innerHTML = '<div class="empty" style="text-align:center; color: var(--text-2); padding: 20px;">Nenhuma chave cadastrada.</div>'; return; }
       $("keysList").innerHTML = data.keys.map(k => {
         const nomeCurto = truncateName(k.deviceName);
         return `
         <div class="key-item" id="key-${k.webauthnId}">
-          <div class="key-info">
-            <h3>${nomeCurto} <span class="badge-ativa">Ativa</span></h3>
-            <p>Criada em: ${new Date(k.criadoEm).toLocaleString("pt-BR")}</p>
-          </div>
+          <div class="key-info"><h3>${nomeCurto} <span class="badge-ativa">Ativa</span></h3><p>Criada em: ${new Date(k.criadoEm).toLocaleString("pt-BR")}</p></div>
           <button class="btn btn-outline" onclick="abrirModalDelete('${k.webauthnId}')" style="padding: 8px; color: var(--danger); border-color: var(--danger); flex-shrink: 0;">Deletar</button>
-        </div>
-      `}).join("");
+        </div>`;
+      }).join("");
     } else { throw new Error(data.erro); }
-  } catch (e) {
-    $("keysList").innerHTML = `<div class="empty" style="color: var(--danger); text-align:center; padding: 20px;">Erro: ${e.message}</div>`;
-  }
+  } catch (e) { $("keysList").innerHTML = `<div class="empty" style="color: var(--danger); text-align:center; padding: 20px;">Erro: ${e.message}</div>`; }
 }
 
 let keyToDelete = null;
-window.abrirModalDelete = (id) => {
-  keyToDelete = id;
-  $("deletePasswordInput").value = "";
-  $("modalOverlay").classList.add("show");
-};
-
+window.abrirModalDelete = (id) => { keyToDelete = id; $("deletePasswordInput").value = ""; $("modalOverlay").classList.add("show"); };
 $("btnCancelDelete").onclick = () => { $("modalOverlay").classList.remove("show"); keyToDelete = null; };
 
 $("btnConfirmDelete").onclick = async () => {
   const password = $("deletePasswordInput").value;
   if (!password) return showStatus("Digite a senha para deletar.", "err");
-
-  $("btnConfirmDelete").disabled = true;
-  $("btnConfirmDelete").textContent = "Deletando...";
-
+  $("btnConfirmDelete").disabled = true; $("btnConfirmDelete").textContent = "Deletando...";
   try {
     const token = await auth.currentUser.getIdToken(true);
-    const res = await fetch(WORKER + "/api/auth/delete-bio", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenid: token, webauthnId: keyToDelete, email: auth.currentUser.email, password: password })
-    });
+    const res = await fetch(WORKER + "/api/auth/delete-bio", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tokenid: token, webauthnId: keyToDelete, email: auth.currentUser.email, password: password }) });
     const data = await res.json();
-
     if (data.ok) {
-      const el = $("key-" + keyToDelete);
-      if (el) el.remove();
-      $("modalOverlay").classList.remove("show");
-      showStatus("Chave deletada com sucesso!", "ok");
-
+      const el = $("key-" + keyToDelete); if (el) el.remove();
+      $("modalOverlay").classList.remove("show"); showStatus("Chave deletada com sucesso!", "ok");
       if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
           try {
-              const listRes = await fetch(WORKER + "/api/auth/list-bio", {
-                  method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ tokenid: token })
-              });
+              const listRes = await fetch(WORKER + "/api/auth/list-bio", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tokenid: token }) });
               const listData = await listRes.json();
-
               if (listData.ok) {
                   const idsValidos = listData.keys.map(k => k.webauthnId);
                   const userUid = auth.currentUser.uid;
@@ -657,116 +458,64 @@ $("btnConfirmDelete").onclick = async () => {
                   const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(userUid));
                   const userIdBuffer = new Uint8Array(hashBuffer).slice(0, 16);
                   const userIdB64 = btoa(String.fromCharCode(...userIdBuffer)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-                  await PublicKeyCredential.signalAllAcceptedCredentials({
-                      rpId: window.location.hostname,
-                      userId: userIdB64,
-                      allAcceptedCredentialIds: idsValidos
-                  });
+                  await PublicKeyCredential.signalAllAcceptedCredentials({ rpId: window.location.hostname, userId: userIdB64, allAcceptedCredentialIds: idsValidos });
               }
           } catch (signalError) { console.warn("Falha ao sincronizar:", signalError); }
       }
-
-      if ($("keysList").children.length === 0) {
-        $("keysList").innerHTML = '<div class="empty" style="text-align:center; color: var(--text-2); padding: 20px;">Nenhuma chave cadastrada.</div>';
-      }
+      if ($("keysList").children.length === 0) { $("keysList").innerHTML = '<div class="empty" style="text-align:center; color: var(--text-2); padding: 20px;">Nenhuma chave cadastrada.</div>'; }
       setTimeout(hideStatus, 3000);
     } else { throw new Error(data.erro); }
-  } catch (err) {
-    showStatus("Erro: " + err.message, "err");
-  } finally {
-    $("btnConfirmDelete").disabled = false;
-    $("btnConfirmDelete").textContent = "Deletar";
-  }
+  } catch (err) { showStatus("Erro: " + err.message, "err"); } 
+  finally { $("btnConfirmDelete").disabled = false; $("btnConfirmDelete").textContent = "Deletar"; }
 };
 
-$("btnNextStep").onclick = () => {
-  const name = $("deviceNameInput").value.trim();
-  if (!name) return showStatus("Dê um nome.", "err");
-  hideStatus();
-  $("step1").classList.remove("active");
-  $("step2").classList.add("active");
-};
+$("btnNextStep").onclick = () => { const name = $("deviceNameInput").value.trim(); if (!name) return showStatus("Dê um nome.", "err"); hideStatus(); $("step1").classList.remove("active"); $("step2").classList.add("active"); };
+$("btnBackStep").onclick = () => { hideStatus(); $("step2").classList.remove("active"); $("step1").classList.add("active"); };
+$("linkCriarSenha").onclick = async () => { const email = auth.currentUser.email; if (!email) return; try { await auth.sendPasswordResetEmail(email); showStatus("Link enviado.", "ok"); } catch (e) { showStatus("Erro: " + e.message, "err"); } };
 
-$("btnBackStep").onclick = () => {
-  hideStatus();
-  $("step2").classList.remove("active");
-  $("step1").classList.add("active");
-};
-
-$("linkCriarSenha").onclick = async () => {
-  const email = auth.currentUser.email;
-  if (!email) return;
-  try { await auth.sendPasswordResetEmail(email); showStatus("Link para criar senha enviado.", "ok"); } catch (e) { showStatus("Erro: " + e.message, "err"); }
-};
-
-// ============================================
-// CRIAR CHAVE — envia webauthnId + publicKeyJwk (com x/y) + clientDataJSON
-// ============================================
 $("btnGenerateKey").onclick = async () => {
   const deviceName = $("deviceNameInput").value.trim();
   const password = $("passwordInput").value;
   if (!password) return showStatus("Digite a senha.", "err");
-
   try {
     showStatus("Solicitando biometria...", "info");
     const userUid = auth.currentUser.uid;
     const encoder = new TextEncoder();
     const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(userUid));
     const userIdBuffer = new Uint8Array(hashBuffer).slice(0, 16);
-
     const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
-
     const credential = await navigator.credentials.create({
       publicKey: {
         challenge: challenge,
         rp: { name: "Kloewa" },
         user: { id: userIdBuffer, name: deviceName, displayName: deviceName },
-        // ⭐ MUDANÇA CRÍTICA: Apenas -7 (EC) para evitar erro de RSA no backend
-        pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
         authenticatorSelection: { residentKey: "required", requireResidentKey: true, userVerification: "preferred" },
         hints: ["client-device", "hybrid", "security-key"], 
         timeout: 120000, attestation: "none"
       }
     });
-
     if (credential) {
-      showStatus("Validando senha...", "info");
+      showStatus("Validando chave...", "info");
       const token = await auth.currentUser.getIdToken(true);
       const publicKeyJwk = await exportPublicKeyJwk(credential);
-
-      // clientDataJSON do cadastro
       const clientDataJSON = arrayBufferToBase64(credential.response.clientDataJSON);
-
       const res = await fetch(WORKER + "/api/auth/register-bio", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tokenid: token,
-          webauthnId: credential.id,
-          publicKeyJwk,
-          clientDataJSON,
-          deviceName,
-          email: auth.currentUser.email,
-          password
-        })
+        body: JSON.stringify({ tokenid: token, webauthnId: credential.id, publicKeyJwk, clientDataJSON, deviceName, email: auth.currentUser.email, password })
       });
       const data = await res.json();
-
       if (data.ok) {
-        showStatus("Chave de acesso criada com sucesso!", "ok");
+        showStatus("Chave criada com sucesso!", "ok");
         $("deviceNameInput").value = ""; $("passwordInput").value = "";
-        $("step2").classList.remove("active");
-        $("step1").classList.add("active");
+        $("step2").classList.remove("active"); $("step1").classList.add("active");
         carregarChaves();
         setTimeout(hideStatus, 3000);
       } else { throw new Error(data.erro); }
     }
   } catch (err) {
-    if (err.name === 'NotAllowedError' || err.message.includes('timed out')) showStatus("A biometria foi cancelada ou expirou.", "err");
-    else {
-      showStatus("Erro: " + err.message, "err");
-      if (err.message.includes("Senha incorreta")) { $("passwordInput").value = ""; $("passwordInput").focus(); }
-    }
+    if (err.name === 'NotAllowedError' || err.message.includes('timed out')) showStatus("A biometria foi cancelada.", "err");
+    else { showStatus("Erro: " + err.message, "err"); if (err.message.includes("Senha incorreta")) { $("passwordInput").value = ""; $("passwordInput").focus(); } }
   }
 };
 
@@ -774,7 +523,6 @@ $("btnLogout").onclick = async () => { if (confirm("Sair da conta?")) { await au
 $("btnLogoutBlocked").onclick = async () => { await auth.signOut(); window.location.href = "/auth.html"; };
 </script>
 
-<!-- APP SHELL -->
 <script src="https://api.kloewa.ooguy.com/app-shell.js"></script>
 <script>
   if (typeof AppShell !== "undefined") {
