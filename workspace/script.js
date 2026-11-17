@@ -1,9 +1,6 @@
 window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 window.VERCEL_URL = "https://api.kloewa.ooguy.com";
 
-// ==========================================
-// 1. SISTEMA DE NOTIFICAÇÕES E UI
-// ==========================================
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
@@ -34,12 +31,8 @@ window.fecharModal = function(id) {
   if (modal) modal.classList.remove('active');
 };
 
-// ==========================================
-// 2. FIREBASE & ESTADO GLOBAL
-// ==========================================
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-// Usa a instância do AppShell se ela existir, senão inicializa do zero
 let auth;
 let currentToken = null;
 let pastasGlobais = [];
@@ -47,12 +40,10 @@ let itemSelecionado = null;
 let isCarregando = false;
 
 try {
-  // Tenta pegar a instância do AppShell para não criar duas
   const firebaseApp = window.firebaseApp || (typeof firebase !== 'undefined' ? firebase.app() : null);
   if (firebaseApp) auth = getAuth(firebaseApp);
 } catch (e) {}
 
-// Fallback seguro caso o AppShell não tenha inicializado
 if (!auth) {
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", projectId: "html-15e80", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
@@ -61,9 +52,6 @@ if (!auth) {
 
 const filesGrid = document.getElementById('filesGrid');
 
-// ==========================================
-// 3. CONSTANTES VISUAIS
-// ==========================================
 const SVG_FOLDER = `<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
 const SVG_PDF = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>`;
 const SVG_TRASH = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
@@ -71,9 +59,6 @@ const SVG_LOCK = `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height=
 const SVG_GLOBE = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
 const SVG_USERS = `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
 
-// ==========================================
-// 4. INICIALIZAÇÃO E ESTADO DE LOGIN
-// ==========================================
 function getPastaAtual() { 
   return decodeURIComponent(window.location.hash.replace('#', '').replace(/\/$/, '')) || "root"; 
 }
@@ -89,7 +74,6 @@ onAuthStateChanged(auth, async (user) => {
     await carregarArquivosAPI();
     carregarNotificacoes();
     
-    // ✅ FIX: Evita vazamento de memória adicionando o listener apenas 1 vez
     if (!window.__hashListenerAdded) {
       window.addEventListener('hashchange', carregarArquivosAPI);
       window.__hashListenerAdded = true;
@@ -122,11 +106,8 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// ==========================================
-// 5. CARREGAMENTO DE ARQUIVOS E NOTIFICAÇÕES
-// ==========================================
 async function carregarArquivosAPI() {
-  if (isCarregando) return; // Evita requisições duplicadas
+  if (isCarregando) return;
   isCarregando = true;
   
   const pasta = getPastaAtual();
@@ -148,7 +129,7 @@ async function carregarArquivosAPI() {
   } catch (e) { 
     filesGrid.innerHTML = '<p style="color: red; text-align: center; grid-column: 1/-1;">Erro ao carregar.</p>'; 
   } finally {
-    isCarregando = false; // ✅ FIX: Sempre libera o loading
+    isCarregando = false;
   }
 }
 
@@ -169,9 +150,6 @@ async function carregarNotificacoes() {
   } catch (e) {}
 }
 
-// ==========================================
-// 6. UPLOAD DE ARQUIVOS
-// ==========================================
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => e.preventDefault());
 
@@ -191,7 +169,7 @@ async function uploadMultiplosArquivos(files) {
   const spinnerText = document.getElementById('uploadFileName');
   spinner.classList.add('active');
 
-  try { // ✅ FIX: try/finally garante que o spinner suma mesmo se der erro
+  try {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       spinnerText.textContent = `Enviando ${i + 1} de ${files.length}: ${file.name}`;
@@ -211,9 +189,6 @@ async function uploadMultiplosArquivos(files) {
   }
 }
 
-// ==========================================
-// 7. RENDERIZAÇÃO (PASTAS E ARQUIVOS)
-// ==========================================
 function configurarCliqueDireito(el, item) {
   el.addEventListener('contextmenu', (e) => {
     e.preventDefault(); 
@@ -254,9 +229,6 @@ function renderizarArquivo(file) {
   filesGrid.prepend(el);
 }
 
-// ==========================================
-// 8. AÇÕES GLOBAIS (WINDOW) - Menu, Modais e Ações
-// ==========================================
 window.filtrarItens = function() {
   const termo = document.getElementById('searchInput').value.toLowerCase();
   document.querySelectorAll('.file-card, .folder-card').forEach(card => { 
@@ -275,11 +247,11 @@ window.aceitarCompartilhamento = async function(fileId) {
 };
 
 window.abrirVisualizador = function() { 
-  if (itemSelecionado) window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.isFolder ? encodeURIComponent(itemSelecionado.name) : itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}&type=${itemSelecionado.isFolder ? 'folder' : 'file'}`, '_blank'); 
+  if (itemSelecionado) window.open(`${window.VERCEL_URL}/api?action=view&id=${itemSelecionado.isFolder ? encodeURIComponent(itemSelecionado.name) : itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}&type=${itemSelecionado.isFolder ? 'folder' : 'file'}`, '_blank'); 
 };
 
 window.baixarArquivo = function() { 
-  if (itemSelecionado && !itemSelecionado.isFolder) window.open(`https://api.codehub.giize.com/api?action=stream&id=${itemSelecionado.id}&token=${currentToken}&download=true`, '_blank'); 
+  if (itemSelecionado && !itemSelecionado.isFolder) window.open(`${window.VERCEL_URL}/api?action=stream&id=${itemSelecionado.id}&token=${currentToken}&download=true`, '_blank'); 
 };
 
 window.abrirModalNovaPasta = function() { 
@@ -328,17 +300,37 @@ window.abrirModalPrivacidade = function() {
   document.getElementById('privacyModal').classList.add('active'); 
 };
 
-window.selecionarPrivacidade = async function(novaPrivacidade) { 
+// ✅ CORREÇÃO DO BUG DE PRIVACIDADE COM SPINNER
+window.selecionarPrivacidade = async function(novaPrivacidade) {
+  const optionEl = document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`);
+  
+  // Atualiza a UI imediatamente
   document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); 
-  document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`).classList.add('active'); 
+  optionEl.classList.add('active');
+  
+  // Adiciona o Spinner no elemento
+  const originalHTML = optionEl.innerHTML;
+  optionEl.innerHTML = `<div class="spinner" style="width:20px;height:20px;border-width:2px;margin-right:15px;"></div> <div><h4>Atualizando...</h4><p>Aguarde a confirmação</p></div>`;
+  
   try { 
     const body = { tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy: novaPrivacidade }; 
     if (!itemSelecionado.isFolder) body.folderKey = itemSelecionado.folder; 
-    await fetch(window.WORKER_URL + '/api/workspace/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); 
+    
+    const res = await fetch(window.WORKER_URL + '/api/workspace/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); 
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.erro);
+
     showToast("Privacidade atualizada!", "success"); 
     itemSelecionado.privacy = novaPrivacidade; 
+    
+    // Fecha e recarrega
     setTimeout(() => { fecharModal('privacyModal'); carregarArquivosAPI(); }, 500); 
-  } catch (e) { showToast("Erro ao atualizar.", "error"); } 
+  } catch (e) { 
+    // Se der erro, volta ao estado original
+    optionEl.innerHTML = originalHTML;
+    optionEl.classList.remove('active');
+    showToast("Erro ao atualizar: " + e.message, "error"); 
+  } 
 };
 
 window.abrirModalMover = function() { 
