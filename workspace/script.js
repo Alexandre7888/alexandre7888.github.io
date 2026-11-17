@@ -1,5 +1,5 @@
 window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-window.VERCEL_URL = "https://api.codehub.giize.com";
+window.VERCEL_URL = "https://api.kloewa.ooguy.com";
 let itemSelecionado = null;
 
 function showToast(message, type = 'info') {
