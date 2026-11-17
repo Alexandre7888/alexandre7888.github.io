@@ -282,7 +282,7 @@ function cborDecode(bytes) {
 }
 
 // ============================================
-// EXTRAI JWK (kty, crv, x, y) DO COSE_Key
+// EXTRAI JWK DO COSE_Key (AGORA SUPORTA EC E RSA)
 // ============================================
 async function exportPublicKeyJwk(credential) {
   const publicKey = credential.response.getPublicKey();
@@ -290,19 +290,32 @@ async function exportPublicKeyJwk(credential) {
 
   const coseKey = cborDecode(new Uint8Array(publicKey));
 
-  // COSE_Key: {1:kty, 3:alg, -1:crv, -2:x, -3:y}
-  if (coseKey[1] !== 2) throw new Error("Apenas EC (kty=2) suportado.");
-  if (coseKey[-1] !== 1) throw new Error("Apenas P-256 (crv=1) suportado.");
-  if (!coseKey[-2] || !coseKey[-3]) throw new Error("Chave sem x/y.");
+  // Se for EC (kty=2)
+  if (coseKey[1] === 2) {
+    if (!coseKey[-2] || !coseKey[-3]) throw new Error("Chave EC sem x/y.");
+    return {
+      kty: "EC",
+      crv: "P-256",
+      alg: "ES256",
+      ext: true,
+      x: arrayBufferToBase64(coseKey[-2]),
+      y: arrayBufferToBase64(coseKey[-3])
+    };
+  }
 
-  return {
-    kty: "EC",
-    crv: "P-256",
-    alg: "ES256",
-    ext: true,
-    x: arrayBufferToBase64(coseKey[-2]),
-    y: arrayBufferToBase64(coseKey[-3])
-  };
+  // Se for RSA (kty=3)
+  if (coseKey[1] === 3) {
+    if (!coseKey[-1] || !coseKey[-2]) throw new Error("Chave RSA sem n/e.");
+    return {
+      kty: "RSA",
+      alg: "RS256",
+      ext: true,
+      n: arrayBufferToBase64(coseKey[-1]),
+      e: arrayBufferToBase64(coseKey[-2])
+    };
+  }
+
+  throw new Error("Tipo de chave desconhecido.");
 }
 
 // ============================================
@@ -441,7 +454,6 @@ async function confirmarAuthAccount(authId) {
     const user = auth.currentUser;
     const tokenid = await user.getIdToken();
 
-    // ⭐ Envia o credentialResponse COMPLETO, com signature
     const credentialResponse = buildCredentialResponse(credential);
 
     const res = await fetch(`${WORKER}/api/confirm-authentication`, {
@@ -544,7 +556,6 @@ async function executarAcaoDispositivo(action, deviceKey) {
     const credential = await navigator.credentials.get({ publicKey: { challenge, timeout: 120000, userVerification: "preferred" } });
     if (!credential) throw new Error("Biometria não confirmada.");
 
-    // ⭐ credentialResponse completo com signature
     const credentialResponse = buildCredentialResponse(credential);
 
     showStatus(action === "block" ? "Bloqueando..." : "Desbloqueando...", "info");
