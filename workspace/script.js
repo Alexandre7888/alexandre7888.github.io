@@ -1,9 +1,12 @@
 window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 window.VERCEL_URL = "https://api.kloewa.ooguy.com";
-let itemSelecionado = null;
 
+// ==========================================
+// 1. SISTEMA DE NOTIFICAÇÕES E UI
+// ==========================================
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.textContent = message;
@@ -13,26 +16,54 @@ function showToast(message, type = 'info') {
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
-window.toggleNotif = function(e) { e.stopPropagation(); document.getElementById('notifDropdown').classList.toggle('active'); };
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#notifDropdown') && !e.target.closest('.btn-notif')) document.getElementById('notifDropdown').classList.remove('active');
-  document.getElementById('contextMenu').classList.remove('active');
-});
-window.fecharModal = function(id) { document.getElementById(id).classList.remove('active'); };
+window.toggleNotif = function(e) {
+  e.stopPropagation();
+  document.getElementById('notifDropdown').classList.toggle('active');
+};
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#notifDropdown') && !e.target.closest('.btn-notif')) {
+    document.getElementById('notifDropdown').classList.remove('active');
+  }
+  const contextMenu = document.getElementById('contextMenu');
+  if (contextMenu) contextMenu.classList.remove('active');
+});
+
+window.fecharModal = function(id) {
+  const modal = document.getElementById(id);
+  if (modal) modal.classList.remove('active');
+};
+
+// ==========================================
+// 2. FIREBASE & ESTADO GLOBAL
+// ==========================================
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", projectId: "html-15e80", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
-const app = initializeApp(cfg);
-const auth = getAuth(app);
-
+// Usa a instância do AppShell se ela existir, senão inicializa do zero
+let auth;
 let currentToken = null;
 let pastasGlobais = [];
+let itemSelecionado = null;
+let isCarregando = false;
+
+try {
+  // Tenta pegar a instância do AppShell para não criar duas
+  const firebaseApp = window.firebaseApp || (typeof firebase !== 'undefined' ? firebase.app() : null);
+  if (firebaseApp) auth = getAuth(firebaseApp);
+} catch (e) {}
+
+// Fallback seguro caso o AppShell não tenha inicializado
+if (!auth) {
+  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", projectId: "html-15e80", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
+  auth = getAuth(initializeApp(cfg));
+}
+
 const filesGrid = document.getElementById('filesGrid');
 
-if (typeof AppShell !== "undefined") { try { new AppShell().mount(); } catch (e) {} }
-
+// ==========================================
+// 3. CONSTANTES VISUAIS
+// ==========================================
 const SVG_FOLDER = `<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
 const SVG_PDF = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>`;
 const SVG_TRASH = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
@@ -40,7 +71,12 @@ const SVG_LOCK = `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height=
 const SVG_GLOBE = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
 const SVG_USERS = `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
 
-function getPastaAtual() { return decodeURIComponent(window.location.hash.replace('#', '').replace(/\/$/, '')) || "root"; }
+// ==========================================
+// 4. INICIALIZAÇÃO E ESTADO DE LOGIN
+// ==========================================
+function getPastaAtual() { 
+  return decodeURIComponent(window.location.hash.replace('#', '').replace(/\/$/, '')) || "root"; 
+}
 
 const urlParams = new URLSearchParams(window.location.search);
 const targetFileId = urlParams.get('id');
@@ -52,14 +88,18 @@ onAuthStateChanged(auth, async (user) => {
     currentToken = await user.getIdToken();
     await carregarArquivosAPI();
     carregarNotificacoes();
-    window.addEventListener('hashchange', carregarArquivosAPI);
+    
+    // ✅ FIX: Evita vazamento de memória adicionando o listener apenas 1 vez
+    if (!window.__hashListenerAdded) {
+      window.addEventListener('hashchange', carregarArquivosAPI);
+      window.__hashListenerAdded = true;
+    }
     
     if (targetFileId) {
       showToast("Salvando no Workspace...", "info");
       try {
         const res = await fetch(`${window.WORKER_URL}/api/workspace/add-reference`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tokenid: currentToken, fileId: targetFileId, ownerUid: targetOwner || 'root', itemType: targetType })
         });
         const data = await res.json();
@@ -82,7 +122,13 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// ==========================================
+// 5. CARREGAMENTO DE ARQUIVOS E NOTIFICAÇÕES
+// ==========================================
 async function carregarArquivosAPI() {
+  if (isCarregando) return; // Evita requisições duplicadas
+  isCarregando = true;
+  
   const pasta = getPastaAtual();
   document.getElementById('folderTitle').textContent = pasta === "root" ? "Meus Arquivos" : pasta;
   filesGrid.innerHTML = '<div style="grid-column: 1/-1; display: flex; justify-content: center; padding: 40px;"><div class="spinner" style="width: 40px; height: 40px;"></div></div>';
@@ -99,7 +145,11 @@ async function carregarArquivosAPI() {
     }
     data.folders.forEach(f => renderizarPasta(f));
     data.files.forEach(f => renderizarArquivo(f));
-  } catch (e) { filesGrid.innerHTML = '<p style="color: red; text-align: center; grid-column: 1/-1;">Erro ao carregar.</p>'; }
+  } catch (e) { 
+    filesGrid.innerHTML = '<p style="color: red; text-align: center; grid-column: 1/-1;">Erro ao carregar.</p>'; 
+  } finally {
+    isCarregando = false; // ✅ FIX: Sempre libera o loading
+  }
 }
 
 async function carregarNotificacoes() {
@@ -119,39 +169,56 @@ async function carregarNotificacoes() {
   } catch (e) {}
 }
 
+// ==========================================
+// 6. UPLOAD DE ARQUIVOS
+// ==========================================
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => e.preventDefault());
 
 const dropZone = document.getElementById('dropZone');
-window.addEventListener('dragenter', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
-dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); if (e.relatedTarget === null) dropZone.classList.remove('active'); });
-dropZone.addEventListener('drop', async (e) => { e.preventDefault(); dropZone.classList.remove('active'); if (e.dataTransfer.files.length > 0) await uploadMultiplosArquivos(e.dataTransfer.files); });
+if (dropZone) {
+  window.addEventListener('dragenter', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
+  dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); if (e.relatedTarget === null) dropZone.classList.remove('active'); });
+  dropZone.addEventListener('drop', async (e) => { 
+    e.preventDefault(); 
+    dropZone.classList.remove('active'); 
+    if (e.dataTransfer.files.length > 0) await uploadMultiplosArquivos(e.dataTransfer.files); 
+  });
+}
 
 async function uploadMultiplosArquivos(files) {
   const spinner = document.getElementById('uploadSpinner');
   const spinnerText = document.getElementById('uploadFileName');
   spinner.classList.add('active');
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    spinnerText.textContent = `Enviando ${i + 1} de ${files.length}: ${file.name}`;
-    const formData = new FormData();
-    formData.append('tokenid', currentToken); formData.append('file', file);
-    formData.append('filename', file.name); formData.append('filetype', file.type); formData.append('folder', getPastaAtual());
-    try {
-      const res = await fetch(window.WORKER_URL + '/api/workspace/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.erro);
-      showToast(`"${file.name}" enviado com sucesso!`, "success");
-    } catch (e) { showToast(`Erro ao enviar "${file.name}": ${e.message}`, "error"); }
+  try { // ✅ FIX: try/finally garante que o spinner suma mesmo se der erro
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      spinnerText.textContent = `Enviando ${i + 1} de ${files.length}: ${file.name}`;
+      const formData = new FormData();
+      formData.append('tokenid', currentToken); formData.append('file', file);
+      formData.append('filename', file.name); formData.append('filetype', file.type); formData.append('folder', getPastaAtual());
+      try {
+        const res = await fetch(window.WORKER_URL + '/api/workspace/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.erro);
+        showToast(`"${file.name}" enviado com sucesso!`, "success");
+      } catch (e) { showToast(`Erro ao enviar "${file.name}": ${e.message}`, "error"); }
+    }
+  } finally {
+    spinner.classList.remove('active');
+    carregarArquivosAPI();
   }
-  spinner.classList.remove('active');
-  carregarArquivosAPI();
 }
 
+// ==========================================
+// 7. RENDERIZAÇÃO (PASTAS E ARQUIVOS)
+// ==========================================
 function configurarCliqueDireito(el, item) {
   el.addEventListener('contextmenu', (e) => {
-    e.preventDefault(); itemSelecionado = item;
+    e.preventDefault(); 
+    e.stopPropagation();
+    itemSelecionado = item;
     const menu = document.getElementById('contextMenu');
     menu.style.top = `${e.pageY}px`; menu.style.left = `${e.pageX}px`; menu.classList.add('active');
   });
@@ -187,9 +254,14 @@ function renderizarArquivo(file) {
   filesGrid.prepend(el);
 }
 
+// ==========================================
+// 8. AÇÕES GLOBAIS (WINDOW) - Menu, Modais e Ações
+// ==========================================
 window.filtrarItens = function() {
   const termo = document.getElementById('searchInput').value.toLowerCase();
-  document.querySelectorAll('.file-card, .folder-card').forEach(card => { card.style.display = card.querySelector('.file-name').textContent.toLowerCase().includes(termo) ? 'block' : 'none'; });
+  document.querySelectorAll('.file-card, .folder-card').forEach(card => { 
+    card.style.display = card.querySelector('.file-name').textContent.toLowerCase().includes(termo) ? 'block' : 'none'; 
+  });
 };
 
 window.aceitarCompartilhamento = async function(fileId) {
@@ -202,20 +274,143 @@ window.aceitarCompartilhamento = async function(fileId) {
   } catch (e) { showToast("Erro ao aceitar: " + e.message, "error"); }
 };
 
-window.abrirVisualizador = function() { if (itemSelecionado) window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.isFolder ? encodeURIComponent(itemSelecionado.name) : itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}&type=${itemSelecionado.isFolder ? 'folder' : 'file'}`, '_blank'); };
-window.baixarArquivo = function() { if (itemSelecionado && !itemSelecionado.isFolder) window.open(`https://api.codehub.giize.com/api?action=stream&id=${itemSelecionado.id}&token=${currentToken}&download=true`, '_blank'); };
-window.abrirModalNovaPasta = function() { document.getElementById('newFolderName').value = ''; document.getElementById('newFolderModal').classList.add('active'); document.getElementById('newFolderName').focus(); };
-window.salvarNovaPasta = async function() { const nome = document.getElementById('newFolderName').value.trim(); if (!nome) return showToast("Digite um nome.", "error"); try { await fetch(window.WORKER_URL + '/api/workspace/folder/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() }) }); showToast("Pasta criada!", "success"); fecharModal('newFolderModal'); carregarArquivosAPI(); } catch (e) { showToast("Erro ao criar pasta.", "error"); } };
-window.abrirModalRename = function() { document.getElementById('renameInput').value = itemSelecionado.name; document.getElementById('renameModal').classList.add('active'); document.getElementById('renameInput').focus(); };
-window.salvarRename = async function() { const novo = document.getElementById('renameInput').value.trim(); if (!novo || novo === itemSelecionado.name) return fecharModal('renameModal'); try { const body = { tokenid: currentToken, id: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', newName: novo, parent: itemSelecionado.parent || getPastaAtual() }; if (!itemSelecionado.isFolder) body.folderKey = itemSelecionado.folder; await fetch(window.WORKER_URL + '/api/workspace/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); showToast("Renomeado!", "success"); fecharModal('renameModal'); carregarArquivosAPI(); } catch (e) { showToast("Erro ao renomear.", "error"); } };
-window.abrirModalPrivacidade = function() { const p = itemSelecionado.privacy || 'private'; document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); document.getElementById(`opt${p.charAt(0).toUpperCase() + p.slice(1)}`).classList.add('active'); document.getElementById('privacyModal').classList.add('active'); };
-window.selecionarPrivacidade = async function(novaPrivacidade) { document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`).classList.add('active'); try { const body = { tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy: novaPrivacidade }; if (!itemSelecionado.isFolder) body.folderKey = itemSelecionado.folder; await fetch(window.WORKER_URL + '/api/workspace/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); showToast("Privacidade atualizada!", "success"); itemSelecionado.privacy = novaPrivacidade; setTimeout(() => { fecharModal('privacyModal'); carregarArquivosAPI(); }, 500); } catch (e) { showToast("Erro ao atualizar.", "error"); } };
-window.abrirModalMover = function() { const select = document.getElementById('targetFolderSelect'); select.innerHTML = '<option value="root">/ (Raiz)</option>'; pastasGlobais.forEach(p => { if (p.name !== itemSelecionado.name) select.innerHTML += `<option value="${p.name}">${p.name}</option>`; }); document.getElementById('moveModal').classList.add('active'); };
-window.confirmarMover = async function() { const target = document.getElementById('targetFolderSelect').value; try { await fetch(window.WORKER_URL + '/api/workspace/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, itemType: itemSelecionado.isFolder ? 'folder' : 'file', targetFolderId: target }) }); showToast("Item movido!", "success"); fecharModal('moveModal'); carregarArquivosAPI(); } catch (e) { showToast("Erro ao mover.", "error"); } };
-window.abrirModalCompartilhar = async function() { if (!itemSelecionado) return; if (itemSelecionado.privacy !== 'public') { showToast("Mude a privacidade para 'Público' primeiro!", "error"); return; } try { const res = await fetch(window.WORKER_URL + '/api/workspace/public-share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file' }) }); const data = await res.json(); if (!data.ok) throw new Error(data.erro); document.getElementById('publicUrl').value = data.shareUrl; document.getElementById('shareModal').classList.add('active'); } catch (e) { showToast(e.message, "error"); } };
-window.copiarLink = function() { const input = document.getElementById('publicUrl'); input.select(); document.execCommand("copy"); showToast("Link copiado!", "success"); };
-window.abrirModalEmail = function() { if (!itemSelecionado) return; if (itemSelecionado.privacy !== 'private') { showToast("Mude a privacidade para 'Privado' primeiro!", "error"); return; } document.getElementById('shareEmail').value = ''; document.getElementById('shareEmailModal').classList.add('active'); };
-window.compartilharEmail = async function() { const email = document.getElementById('shareEmail').value.trim(); if (!email) return; try { const res = await fetch(window.WORKER_URL + '/api/workspace/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId: itemSelecionado.id, email }) }); const data = await res.json(); if (!data.ok) throw new Error(data.erro); showToast("Compartilhado com sucesso!", "success"); fecharModal('shareEmailModal'); } catch (e) { showToast("Erro: " + e.message, "error"); } };
-window.deletarItem = function() { if (!itemSelecionado.isFolder) deletarItemDireto(itemSelecionado.id, itemSelecionado.ikFileId); };
-window.deletarItemDireto = async function(fileId, ikFileId) { if (!confirm("Tem certeza que deseja apagar este item?")) return; try { await fetch(window.WORKER_URL + '/api/workspace/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId, ikFileId }) }); showToast("Item apagado.", "success"); carregarArquivosAPI(); } catch (e) { showToast("Erro ao apagar.", "error"); } };
-window.fazerUpload = function(input) { if (input.files.length > 0) uploadMultiplosArquivos(input.files); input.value = ''; };
+window.abrirVisualizador = function() { 
+  if (itemSelecionado) window.open(`https://api.codehub.giize.com/api?action=view&id=${itemSelecionado.isFolder ? encodeURIComponent(itemSelecionado.name) : itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}&type=${itemSelecionado.isFolder ? 'folder' : 'file'}`, '_blank'); 
+};
+
+window.baixarArquivo = function() { 
+  if (itemSelecionado && !itemSelecionado.isFolder) window.open(`https://api.codehub.giize.com/api?action=stream&id=${itemSelecionado.id}&token=${currentToken}&download=true`, '_blank'); 
+};
+
+window.abrirModalNovaPasta = function() { 
+  document.getElementById('newFolderName').value = ''; 
+  document.getElementById('newFolderModal').classList.add('active'); 
+  document.getElementById('newFolderName').focus(); 
+};
+
+window.salvarNovaPasta = async function() { 
+  const nome = document.getElementById('newFolderName').value.trim(); 
+  if (!nome) return showToast("Digite um nome.", "error"); 
+  try { 
+    await fetch(window.WORKER_URL + '/api/workspace/folder/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() }) }); 
+    showToast("Pasta criada!", "success"); 
+    fecharModal('newFolderModal'); 
+    carregarArquivosAPI(); 
+  } catch (e) { showToast("Erro ao criar pasta.", "error"); } 
+};
+
+window.abrirModalRename = function() { 
+  if (!itemSelecionado) return;
+  document.getElementById('renameInput').value = itemSelecionado.name; 
+  document.getElementById('renameModal').classList.add('active'); 
+  document.getElementById('renameInput').focus(); 
+};
+
+window.salvarRename = async function() { 
+  const novo = document.getElementById('renameInput').value.trim(); 
+  if (!novo || novo === itemSelecionado.name) return fecharModal('renameModal'); 
+  try { 
+    const body = { tokenid: currentToken, id: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', newName: novo, parent: itemSelecionado.parent || getPastaAtual() }; 
+    if (!itemSelecionado.isFolder) body.folderKey = itemSelecionado.folder; 
+    await fetch(window.WORKER_URL + '/api/workspace/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); 
+    showToast("Renomeado!", "success"); 
+    fecharModal('renameModal'); 
+    carregarArquivosAPI(); 
+  } catch (e) { showToast("Erro ao renomear.", "error"); } 
+};
+
+window.abrirModalPrivacidade = function() { 
+  if (!itemSelecionado) return;
+  const p = itemSelecionado.privacy || 'private'; 
+  document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); 
+  const optEl = document.getElementById(`opt${p.charAt(0).toUpperCase() + p.slice(1)}`);
+  if (optEl) optEl.classList.add('active'); 
+  document.getElementById('privacyModal').classList.add('active'); 
+};
+
+window.selecionarPrivacidade = async function(novaPrivacidade) { 
+  document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); 
+  document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`).classList.add('active'); 
+  try { 
+    const body = { tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy: novaPrivacidade }; 
+    if (!itemSelecionado.isFolder) body.folderKey = itemSelecionado.folder; 
+    await fetch(window.WORKER_URL + '/api/workspace/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); 
+    showToast("Privacidade atualizada!", "success"); 
+    itemSelecionado.privacy = novaPrivacidade; 
+    setTimeout(() => { fecharModal('privacyModal'); carregarArquivosAPI(); }, 500); 
+  } catch (e) { showToast("Erro ao atualizar.", "error"); } 
+};
+
+window.abrirModalMover = function() { 
+  if (!itemSelecionado) return;
+  const select = document.getElementById('targetFolderSelect'); 
+  select.innerHTML = '<option value="root">/ (Raiz)</option>'; 
+  pastasGlobais.forEach(p => { if (p.name !== itemSelecionado.name) select.innerHTML += `<option value="${p.name}">${p.name}</option>`; }); 
+  document.getElementById('moveModal').classList.add('active'); 
+};
+
+window.confirmarMover = async function() { 
+  const target = document.getElementById('targetFolderSelect').value; 
+  try { 
+    await fetch(window.WORKER_URL + '/api/workspace/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, itemType: itemSelecionado.isFolder ? 'folder' : 'file', targetFolderId: target }) }); 
+    showToast("Item movido!", "success"); 
+    fecharModal('moveModal'); 
+    carregarArquivosAPI(); 
+  } catch (e) { showToast("Erro ao mover.", "error"); } 
+};
+
+window.abrirModalCompartilhar = async function() { 
+  if (!itemSelecionado) return; 
+  if (itemSelecionado.privacy !== 'public') { showToast("Mude a privacidade para 'Público' primeiro!", "error"); return; } 
+  try { 
+    const res = await fetch(window.WORKER_URL + '/api/workspace/public-share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file' }) }); 
+    const data = await res.json(); 
+    if (!data.ok) throw new Error(data.erro); 
+    document.getElementById('publicUrl').value = data.shareUrl; 
+    document.getElementById('shareModal').classList.add('active'); 
+  } catch (e) { showToast(e.message, "error"); } 
+};
+
+window.copiarLink = function() { 
+  const input = document.getElementById('publicUrl'); 
+  input.select(); 
+  document.execCommand("copy"); 
+  showToast("Link copiado!", "success"); 
+};
+
+window.abrirModalEmail = function() { 
+  if (!itemSelecionado) return; 
+  if (itemSelecionado.privacy !== 'private') { showToast("Mude a privacidade para 'Privado' primeiro!", "error"); return; } 
+  document.getElementById('shareEmail').value = ''; 
+  document.getElementById('shareEmailModal').classList.add('active'); 
+};
+
+window.compartilharEmail = async function() { 
+  const email = document.getElementById('shareEmail').value.trim(); 
+  if (!email) return; 
+  try { 
+    const res = await fetch(window.WORKER_URL + '/api/workspace/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId: itemSelecionado.id, email }) }); 
+    const data = await res.json(); 
+    if (!data.ok) throw new Error(data.erro); 
+    showToast("Compartilhado com sucesso!", "success"); 
+    fecharModal('shareEmailModal'); 
+  } catch (e) { showToast("Erro: " + e.message, "error"); } 
+};
+
+window.deletarItem = function() { 
+  if (itemSelecionado && !itemSelecionado.isFolder) deletarItemDireto(itemSelecionado.id, itemSelecionado.ikFileId); 
+};
+
+window.deletarItemDireto = async function(fileId, ikFileId) { 
+  if (!confirm("Tem certeza que deseja apagar este item?")) return; 
+  try { 
+    await fetch(window.WORKER_URL + '/api/workspace/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId, ikFileId }) }); 
+    showToast("Item apagado.", "success"); 
+    carregarArquivosAPI(); 
+  } catch (e) { showToast("Erro ao apagar.", "error"); } 
+};
+
+window.fazerUpload = function(input) { 
+  if (input.files.length > 0) uploadMultiplosArquivos(input.files); 
+  input.value = ''; 
+};
