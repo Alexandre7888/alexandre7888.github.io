@@ -5,20 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>kloewa • Autenticação</title>
   <link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
-  
+
   <!-- Bibliotecas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0b1120,#1a1f35);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px; gap: 24px;}
-    
+
     .main-wrapper { display: flex; width: 100%; max-width: 1000px; gap: 24px; align-items: stretch; justify-content: center; }
 
     .auth-container{width:100%; max-width:480px; background:rgba(20,25,45,0.95);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid rgba(67,97,238,0.2);animation:fadeIn 0.5s; flex-shrink: 0;}
-    
+
     @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     .auth-header{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;padding:25px;text-align:center}
     .auth-header h1{font-size:24px;margin-bottom:5px}
@@ -155,11 +153,11 @@
       <svg class="icon-computer" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       <h2>Login Rápido</h2>
       <p>Use a câmera do seu celular para escanear o código e entrar instantaneamente.</p>
-      
+
       <div class="qr-box" id="qr-box">
         <canvas id="qrCanvas"></canvas>
       </div>
-      
+
       <div class="qr-status" id="qrStatus">
         <div class="spinner"></div> Gerando código...
       </div>
@@ -170,7 +168,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    // ⭐ ADICIONADO O signInWithCustomToken AQUI
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -247,7 +246,7 @@
 
     function iniciarSSE() {
       if (eventSource) eventSource.close();
-      
+
       qrStatus.innerHTML = `<div class="spinner"></div> Gerando código...`;
       qrStatus.style.color = "#4f8cff";
       btnRefreshQr.style.display = 'none';
@@ -273,7 +272,8 @@
         qrStatus.innerHTML = `✅ Autenticado! Redirecionando...`;
         qrStatus.style.color = "#22c55e";
         try {
-          await auth.signInWithCustomToken(data.customToken);
+          // ⭐ AQUI ESTÁ A CORREÇÃO: usar a função importada e passar o auth
+          await signInWithCustomToken(auth, data.customToken);
           window.location.href = "index.html";
         } catch (error) { qrStatus.innerHTML = `❌ Erro: ${error.message}`; qrStatus.style.color = "#ef4444"; }
       });
@@ -291,7 +291,7 @@
     // Inicia automaticamente ao carregar (se o canvas existir no desktop)
     if (qrCanvas) {
       iniciarSSE();
-      
+
       // ⭐ BOTÃO DE ATUALIZAR QR CODE
       btnRefreshQr.onclick = () => {
         iniciarSSE();
