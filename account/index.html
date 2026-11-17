@@ -441,7 +441,7 @@ async function confirmarAuthAccount(authId) {
     const user = auth.currentUser;
     const tokenid = await user.getIdToken();
 
-    // ⭐ Agora enviamos o credentialResponse COMPLETO, com signature
+    // ⭐ Envia o credentialResponse COMPLETO, com signature
     const credentialResponse = buildCredentialResponse(credential);
 
     const res = await fetch(`${WORKER}/api/confirm-authentication`, {
@@ -711,7 +711,8 @@ $("btnGenerateKey").onclick = async () => {
         challenge: challenge,
         rp: { name: "Kloewa" },
         user: { id: userIdBuffer, name: deviceName, displayName: deviceName },
-        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        // ⭐ MUDANÇA CRÍTICA: Apenas -7 (EC) para evitar erro de RSA no backend
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }],
         authenticatorSelection: { residentKey: "required", requireResidentKey: true, userVerification: "preferred" },
         hints: ["client-device", "hybrid", "security-key"], 
         timeout: 120000, attestation: "none"
@@ -723,7 +724,7 @@ $("btnGenerateKey").onclick = async () => {
       const token = await auth.currentUser.getIdToken(true);
       const publicKeyJwk = await exportPublicKeyJwk(credential);
 
-      // ⭐ clientDataJSON do cadastro (útil pro backend validar type=webauthn.create)
+      // clientDataJSON do cadastro
       const clientDataJSON = arrayBufferToBase64(credential.response.clientDataJSON);
 
       const res = await fetch(WORKER + "/api/auth/register-bio", {
