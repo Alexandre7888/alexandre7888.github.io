@@ -78,7 +78,7 @@ main{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160
 <body>
 
 <!-- LOGIN -->
-<section id="login" class="hidden">
+<section id="login">
   <div class="lbox">
     <h1>CodeHUB Workspace</h1>
     <p>Entre para acessar seus arquivos.</p>
@@ -111,15 +111,17 @@ main{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// HTML1
-apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
-authDomain: "html-15e80.firebaseapp.com",
-databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
-projectId: "html-15e80",
-storageBucket: "html-15e80.firebasestorage.app",
-messagingSenderId: "1068148640439",
-appId: "1:1068148640439:web:1ac651348e624f6be41b32",
-measurementId: "G-7E1VWN07GM"
+/* ============ CONFIG ============ */
+// TODO: cole aqui a configuração do seu projeto Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+  authDomain: "html-15e80.firebaseapp.com",
+  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+  projectId: "html-15e80",
+  storageBucket: "html-15e80.firebasestorage.app",
+  messagingSenderId: "1068148640439",
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32",
+  measurementId: "G-7E1VWN07GM"
 };
 const API = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 const auth = getAuth(initializeApp(firebaseConfig));
