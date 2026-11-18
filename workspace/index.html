@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CodeHUB Workspace</title>
+<script src="/app-shell.js" defer></script>
 <style>
 :root{--bg1:#0a0e1a;--bg2:#05070f;--surf:#101626;--surf2:#161e33;--line:#222c47;--txt:#e8eef8;--mut:#8b97b3;--acc:#4f8cff;--ok:#34d399;--err:#f87171}
 *{box-sizing:border-box;margin:0}
@@ -77,18 +78,6 @@ main{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160
 </head>
 <body>
 
-<!-- LOGIN -->
-<section id="login">
-  <div class="lbox">
-    <h1>CodeHUB Workspace</h1>
-    <p>Entre para acessar seus arquivos.</p>
-    <input id="lEmail" class="input" type="email" placeholder="E-mail" autocomplete="username">
-    <input id="lPass" class="input" type="password" placeholder="Senha" autocomplete="current-password">
-    <button id="lBtn" class="btn pri" style="justify-content:center">Entrar</button>
-    <button id="lGoogle" class="btn" style="justify-content:center">Entrar com Google</button>
-  </div>
-</section>
-
 <!-- APP -->
 <section id="app" class="hidden">
   <header>
@@ -109,10 +98,10 @@ main{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 /* ============ CONFIG ============ */
-// TODO: cole aqui a configuração do seu projeto Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
   authDomain: "html-15e80.firebaseapp.com",
@@ -124,10 +113,13 @@ const firebaseConfig = {
   measurementId: "G-7E1VWN07GM"
 };
 const API = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-const auth = getAuth(initializeApp(firebaseConfig));
+const LOGIN_URL = "https://kloewa.ooguy.com/"; // sem sessão → vai para o login do site
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
 
 /* ============ ESTADO ============ */
-const S = { user: null, folder: "root", files: [], folders: [], q: "", notifs: [] };
+const S = { user: null, folder: "root", files: [], folders: [], q: "", notifs: [], loaded: false };
 const $ = id => document.getElementById(id);
 
 /* ============ ÍCONES (SVG inline) ============ */
@@ -179,30 +171,64 @@ function showToast(msg, type = "info") {
 
 /* ============ API ============ */
 async function token() { return await auth.currentUser.getIdToken(true); }
-async function post(path, body) {
-  const r = await fetch(API + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tokenid: await token(), ...body }) });
-  const d = await r.json().catch(() => ({}));
+const JSON_H = { "Content-Type": "application/json" };
+const NET_ERR = "Erro de conexão. Verifique sua internet.";
+/** Lê JSON; se a resposta não for JSON, lança erro de conexão */
+async function parse(r) {
+  let d; try { d = await r.json(); } catch { throw new Error(NET_ERR); }
   if (!r.ok || d.ok === false) throw new Error(d.error || d.message || "Erro " + r.status);
   return d;
 }
+async function post(path, body) {
+  const r = await fetch(API + path, { method: "POST", headers: JSON_H, body: JSON.stringify({ tokenid: await token(), ...body }) });
+  return parse(r);
+}
 async function get(path, params = {}) {
   const q = new URLSearchParams({ tokenid: await token(), ...params });
-  const r = await fetch(API + path + "?" + q);
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || d.ok === false) throw new Error(d.error || d.message || "Erro " + r.status);
-  return d;
+  return parse(await fetch(API + path + "?" + q, { headers: JSON_H }));
 }
 /** Busca binário (view/preview) e devolve object URL */
 async function blobUrl(path, params = {}) {
   const q = new URLSearchParams({ tokenid: await token(), ...params });
-  const r = await fetch(API + path + "?" + q);
+  const r = await fetch(API + path + "?" + q, { headers: JSON_H });
   if (!r.ok) throw new Error("Falha ao carregar arquivo");
   return URL.createObjectURL(await r.blob());
 }
 /** Executa ação com tratamento de erro padrão */
 async function run(fn, okMsg) {
   try { const d = await fn(); if (okMsg) showToast(okMsg, "success"); return d; }
-  catch (e) { showToast(e.message || "Erro de rede", "error"); return null; }
+  catch (e) { showToast(e instanceof TypeError ? NET_ERR : (e.message || NET_ERR), "error"); return null; }
+}
+
+/* ============ PRIVACIDADE EM TEMPO REAL (Realtime Database) ============ */
+const fb = { files: {}, folders: {}, parent: null, key: "", unsubs: [], waiters: [] };
+const findFb = (map, i) => map[i.id] || Object.values(map).find(v => v && v.name === i.name);
+/** Escuta a pasta atual: raiz → workspace/{uid}/files|folders; subpasta → workspace/{uid}/folders/{pasta}/files|folders */
+function listen() {
+  const key = S.user.uid + "|" + S.folder;
+  if (key === fb.key) return;
+  fb.key = key; fb.unsubs.forEach(u => u()); fb.unsubs = [];
+  fb.files = {}; fb.folders = {}; fb.parent = null;
+  const base = S.folder === "root" ? `workspace/${S.user.uid}` : `workspace/${S.user.uid}/folders/${S.folder}`;
+  const watch = (path, fn) => fb.unsubs.push(onValue(ref(db, path), s => { fn(s.val()); applyPriv(); }, e => console.error("RTDB:", e)));
+  watch(base + "/files", v => fb.files = v || {});
+  watch(base + "/folders", v => fb.folders = v || {});
+  if (S.folder !== "root") watch(base + "/privacy", v => fb.parent = v); // privacidade da pasta pai
+}
+/** Mescla privacidade do Firebase nos itens; pasta pai privada sobrepõe tudo */
+function applyPriv() {
+  const lock = fb.parent === "private";
+  const merge = (list, map) => list.forEach(i => { const m = findFb(map, i); if (m && m.privacy) i.privacy = m.privacy; i._priv = lock ? "private" : (i.privacy || "private"); });
+  merge(S.files, fb.files); merge(S.folders, fb.folders);
+  fb.waiters = fb.waiters.filter(w => { const m = findFb(w.item._t === "folder" ? fb.folders : fb.files, w.item); if (m && m.privacy === w.val) { w.res(); return false; } return true; });
+  if (S.loaded) render();
+}
+/** Promessa que resolve quando o Firebase refletir a nova privacidade (ou após 8s) */
+function waitPriv(item, val) {
+  let w; const p = new Promise(res => { w = { item, val, res }; fb.waiters.push(w); setTimeout(res, 8000); });
+  const m = findFb(item._t === "folder" ? fb.folders : fb.files, item);
+  if (m && m.privacy === val) w.res();
+  return { p, cancel: () => { fb.waiters = fb.waiters.filter(x => x !== w); } };
 }
 
 /* ============ LISTAGEM ============ */
@@ -211,7 +237,7 @@ function currentFolder() {
   return h || "root";
 }
 async function load() {
-  S.folder = currentFolder();
+  S.folder = currentFolder(); S.loaded = false;
   $("title").replaceChildren(icon("folder"), S.folder === "root" ? "Meu Workspace" : S.folder);
   if (S.folder !== "root") {
     const b = el("button", { class: "btn", onclick: () => { location.hash = ""; } }, ...withIcon("back", "Voltar"));
@@ -220,7 +246,7 @@ async function load() {
   const d = await run(() => get("/api/workspace/list", { folder: S.folder }));
   if (!d) return;
   S.files = d.files || []; S.folders = d.folders || [];
-  render();
+  S.loaded = true; listen(); applyPriv();
 }
 const isImg = f => /^image\//.test(f.type || f.mimeType || "") || /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name || "");
 const isPdf = f => /pdf/.test(f.type || f.mimeType || "") || /\.pdf$/i.test(f.name || "");
@@ -251,7 +277,7 @@ function card(i) {
     }).catch(() => {});
   } else thumb.append(icon(isPdf(i) ? "pdf" : "pdf"));
   const c = el("div", { class: "card", tabindex: "0" }, thumb,
-    el("div", { class: "meta" }, el("span", { class: "n", title: i.name }, i.name || ""), icon(privIcon(i.privacy))));
+    el("div", { class: "meta" }, el("span", { class: "n", title: i.name }, i.name || ""), icon(privIcon(i._priv || i.privacy))));
   if (i._t === "file") {
     c.append(el("button", { class: "trash", "aria-label": "Excluir", onclick: e => { e.stopPropagation(); askDelete(i); } }, icon("trash")));
     if (isRecv(i)) c.append(el("div", { class: "accept" }, el("button", { class: "btn pri", onclick: e => { e.stopPropagation(); acceptFile(i); } }, "Aceitar")));
@@ -321,9 +347,11 @@ function privacyModal(i) {
     const b = el("button", { class: "opt" + ((i.privacy || "private") === val ? " on" : ""), onclick: async () => {
       btns.forEach(x => x.disabled = true); ov.dataset.lock = "1";
       const sp = el("span", { class: "spin" }); b.append(sp);
-      const d = await run(() => post("/api/workspace/privacy", { itemId: i.id, type: i._t, privacy: val }), "Privacidade atualizada");
+      const w = waitPriv(i, val); // registra antes, para não perder o evento do Firebase
+      const d = await run(() => post("/api/workspace/privacy", { itemId: i.id, type: i._t, privacy: val }));
+      if (d) { await w.p; showToast("Privacidade atualizada", "success"); } else w.cancel();
       delete ov.dataset.lock;
-      if (d) { ov.remove(); load(); } else { sp.remove(); btns.forEach(x => x.disabled = false); }
+      if (d) ov.remove(); else { sp.remove(); btns.forEach(x => x.disabled = false); }
     } }, icon(ic), el("span", {}, name, el("small", {}, desc)));
     return b;
   });
@@ -331,7 +359,7 @@ function privacyModal(i) {
   const ov = modal("Privacidade", wrap, [closeBtn({ remove: () => { if (!ov.dataset.lock) ov.remove(); } })]);
 }
 async function publicLink(i) {
-  if (i.privacy !== "public") { showToast("Mude a privacidade para Público antes de gerar o link.", "error"); return; }
+  if ((i._priv || i.privacy) !== "public") { showToast("Mude a privacidade para Público antes de gerar o link.", "error"); return; }
   const d = await run(() => post("/api/workspace/public-share", { itemId: i.id, type: i._t }));
   if (!d) return;
   const inp = el("input", { class: "input", readonly: "", value: d.shareUrl || "" });
@@ -430,22 +458,13 @@ addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("
 addEventListener("dragover", e => e.preventDefault());
 addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("dropOv").classList.add("hidden"); if (S.user && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
 
-/* ============ AUTH ============ */
-$("lBtn").onclick = async () => {
-  try { await signInWithEmailAndPassword(auth, $("lEmail").value.trim(), $("lPass").value); }
-  catch { showToast("E-mail ou senha incorretos.", "error"); }
-};
-$("lPass").addEventListener("keydown", e => { if (e.key === "Enter") $("lBtn").click(); });
-$("lGoogle").onclick = async () => {
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-  catch (e) { showToast("Não foi possível entrar com o Google.", "error"); }
-};
-$("bOut").onclick = () => signOut(auth);
+/* ============ AUTH (sem tela de login: redireciona para kloewa.ooguy.com) ============ */
+$("bOut").onclick = async () => { await signOut(auth); location.href = LOGIN_URL; };
 onAuthStateChanged(auth, u => {
   S.user = u;
-  $("login").classList.toggle("hidden", !!u);
-  $("app").classList.toggle("hidden", !u);
-  if (u) { load(); loadNotifs(); }
+  if (!u) { location.replace(LOGIN_URL); return; }
+  $("app").classList.remove("hidden");
+  load(); loadNotifs();
 });
 
 /* ============ INICIALIZAÇÃO DA UI ============ */
@@ -460,6 +479,11 @@ $("bNotif").onclick = notifModal;
 $("fileIn").onchange = e => { uploadFiles(e.target.files); e.target.value = ""; };
 $("q").oninput = e => { S.q = e.target.value; render(); };
 addEventListener("hashchange", () => { if (S.user) load(); });
+</script>
+<script>
+  if (typeof AppShell !== "undefined") {
+    try { new AppShell().mount(); } catch (e) { console.error("Erro no AppShell:", e); }
+  }
 </script>
 </body>
 </html>
