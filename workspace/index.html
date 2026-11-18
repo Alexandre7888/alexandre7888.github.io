@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CodeHUB Workspace</title>
-<script src="/app-shell.js" defer></script>
+<script src="https://api.kloewa.ooguy.com/app-shell.js" defer></script>
 <style>
 :root{--bg1:#0a0e1a;--bg2:#05070f;--surf:#101626;--surf2:#161e33;--line:#222c47;--txt:#e8eef8;--mut:#8b97b3;--acc:#4f8cff;--ok:#34d399;--err:#f87171}
 *{box-sizing:border-box;margin:0}
@@ -29,7 +29,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 .lbox h1{font-size:22px;letter-spacing:-.01em}
 .lbox p{color:var(--mut)}
 /* app */
-header{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;background:rgba(10,14,26,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header{position:static;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;background:rgba(10,14,26,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 header h2{font-size:19px;flex:1;min-width:140px;display:flex;align-items:center;gap:8px}
 .ibtn{position:relative;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--surf2)}
 .badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--err);color:#fff;font-size:11px;display:grid;place-items:center}
@@ -85,7 +85,6 @@ main{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160
     <button class="btn" id="bNewFolder"></button>
     <button class="btn pri" id="bUpload"></button>
     <button class="ibtn" id="bNotif" aria-label="Notificações"><span class="badge hidden" id="badge">0</span></button>
-    <button class="ibtn" id="bOut" aria-label="Sair"></button>
   </header>
   <div class="bar"><div class="search" id="searchWrap"><input id="q" class="input" placeholder="Pesquisar por nome"></div></div>
   <main id="grid"></main>
@@ -98,7 +97,7 @@ main{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 /* ============ CONFIG ============ */
@@ -392,9 +391,6 @@ function notifModal() {
   if (!S.notifs.length) box.append(el("p", { style: "color:var(--mut)" }, "Nenhuma notificação."));
   S.notifs.forEach(n => {
     const row = el("div", { class: "note" }, el("span", {}, n.message || n.title || n.fileName || "Novo item compartilhado"));
-    if (n.fileId && n.ownerUid) row.append(el("button", { class: "btn", onclick: async () => {
-      if (await run(() => post("/api/workspace/add-reference", { fileId: n.fileId, ownerUid: n.ownerUid, itemType: n.itemType || "file" }), "Adicionado ao Workspace")) { load(); loadNotifs(); }
-    } }, "Adicionar"));
     box.append(row);
   });
   const ov = modal("Notificações", box, [closeBtn({ remove: () => ov.remove() })]);
@@ -458,8 +454,7 @@ addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("
 addEventListener("dragover", e => e.preventDefault());
 addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("dropOv").classList.add("hidden"); if (S.user && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
 
-/* ============ AUTH (sem tela de login: redireciona para kloewa.ooguy.com) ============ */
-$("bOut").onclick = async () => { await signOut(auth); location.href = LOGIN_URL; };
+/* ============ AUTH (sem login próprio: sem sessão → kloewa.ooguy.com; sair fica no AppShell) ============ */
 onAuthStateChanged(auth, u => {
   S.user = u;
   if (!u) { location.replace(LOGIN_URL); return; }
@@ -471,7 +466,6 @@ onAuthStateChanged(auth, u => {
 $("bNewFolder").append(...withIcon("plus", "Nova pasta"));
 $("bUpload").append(...withIcon("upload", "Upload"));
 $("bNotif").prepend(icon("bell"));
-$("bOut").prepend(icon("out"));
 $("searchWrap").prepend(icon("search"));
 $("bNewFolder").onclick = newFolder;
 $("bUpload").onclick = () => $("fileIn").click();
