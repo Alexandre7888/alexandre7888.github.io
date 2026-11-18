@@ -259,12 +259,18 @@ function privacyModal(i) {
   wrap.append(...btns);
   const ov = modal("Privacidade", wrap, [closeBtn({ remove: () => { if (!ov.dataset.lock) ov.remove(); } })]);
 }
+/** Link público: só para itens públicos; mostra o shareUrl devolvido pelo Worker em #publicUrl */
 async function publicLink(i) {
   if ((i._priv || i.privacy) !== "public") { showToast("Mude a privacidade para Público antes de gerar o link.", "error"); return; }
   const d = await run(() => post("/api/workspace/public-share", { itemId: i.id, type: i._t }));
   if (!d) return;
-  const inp = el("input", { class: "input", readonly: "", value: d.shareUrl || "" });
-  const cp = el("button", { class: "btn pri", onclick: async () => { try { await navigator.clipboard.writeText(inp.value); } catch { inp.select(); document.execCommand("copy"); } showToast("Link copiado", "success"); } }, ...withIcon("link", "Copiar"));
+  if (!d.shareUrl) { showToast("O servidor não devolveu o link público.", "error"); return; }
+  const inp = el("input", { class: "input", id: "publicUrl", readonly: "", value: d.shareUrl });
+  const cp = el("button", { class: "btn pri", onclick: async () => {
+    try { await navigator.clipboard.writeText(inp.value); }
+    catch { inp.select(); document.execCommand("copy"); }
+    showToast("Link copiado!", "success");
+  } }, ...withIcon("link", "Copiar Link"));
   const ov = modal("Link público", inp, [closeBtn({ remove: () => ov.remove() }), cp]);
 }
 function shareMail(i) {
