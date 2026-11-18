@@ -1,408 +1,377 @@
-window.WORKER_URL = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-window.VERCEL_URL = "https://api.kloewa.ooguy.com";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  void toast.offsetWidth;
-  toast.classList.add('show');
-  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+  authDomain: "html-15e80.firebaseapp.com",
+  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+  projectId: "html-15e80",
+  storageBucket: "html-15e80.firebasestorage.app",
+  messagingSenderId: "1068148640439",
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32",
+  measurementId: "G-7E1VWN07GM"
+};
+const API = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+const LOGIN_URL = "https://kloewa.ooguy.com/"; // sem sessão → vai para o login do site
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+/* ============ ESTADO ============ */
+const S = { user: null, folder: "root", files: [], folders: [], q: "", notifs: [], loaded: false };
+const $ = id => document.getElementById(id);
+
+/* ============ ÍCONES (SVG inline) ============ */
+const P = {
+  folder: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+  image: "M4 5h16v14H4zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM20 15l-5-5-9 9",
+  pdf: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4",
+  lock: "M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3",
+  globe: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18",
+  users: "M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM21 20v-1a4 4 0 0 0-3-3.9M16 4.1a3.5 3.5 0 0 1 0 6.8",
+  trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
+  upload: "M12 16V4M7 9l5-5 5 5M4 20h16",
+  plus: "M12 5v14M5 12h14",
+  bell: "M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4",
+  search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5",
+  back: "M15 18l-6-6 6-6",
+  eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+  down: "M12 4v12M7 11l5 5 5-5M4 20h16",
+  move: "M5 12h14M13 6l6 6-6 6",
+  edit: "M4 20h4L19 9l-4-4L4 16zM13 7l4 4",
+  link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  mail: "M3 6h18v12H3zM3 7l9 7 9-7",
+  out: "M9 4H5v16h4M16 8l4 4-4 4M20 12H9"
+};
+function icon(name) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 24 24");
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", P[name]); s.appendChild(p); return s;
+}
+/** Cria elemento com atributos/filhos */
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  kids.flat().forEach(k => e.append(k));
+  return e;
+}
+const withIcon = (name, text) => [icon(name), text];
+
+/* ============ TOAST ============ */
+function showToast(msg, type = "info") {
+  const t = el("div", { class: "toast " + type, role: "status" }, msg);
+  $("toasts").append(t); setTimeout(() => t.remove(), 3800);
 }
 
-window.toggleNotif = function(e) {
-  e.stopPropagation();
-  document.getElementById('notifDropdown').classList.toggle('active');
-};
+/* ============ API ============ */
+async function token() { return await auth.currentUser.getIdToken(true); }
+const JSON_H = { "Content-Type": "application/json" };
+const NET_ERR = "Erro de conexão. Verifique sua internet.";
+/** Lê JSON; se a resposta não for JSON, lança erro de conexão */
+async function parse(r) {
+  let d; try { d = await r.json(); } catch { throw new Error(NET_ERR); }
+  if (!r.ok || d.ok === false) throw new Error(d.error || d.message || "Erro " + r.status);
+  return d;
+}
+async function post(path, body) {
+  const r = await fetch(API + path, { method: "POST", headers: JSON_H, body: JSON.stringify({ tokenid: await token(), ...body }) });
+  return parse(r);
+}
+async function get(path, params = {}) {
+  const q = new URLSearchParams({ tokenid: await token(), ...params });
+  return parse(await fetch(API + path + "?" + q, { headers: JSON_H }));
+}
+/** Busca binário (view/preview) e devolve object URL */
+async function blobUrl(path, params = {}) {
+  const q = new URLSearchParams({ tokenid: await token(), ...params });
+  const r = await fetch(API + path + "?" + q, { headers: JSON_H });
+  if (!r.ok) throw new Error("Falha ao carregar arquivo");
+  return URL.createObjectURL(await r.blob());
+}
+/** Executa ação com tratamento de erro padrão */
+async function run(fn, okMsg) {
+  try { const d = await fn(); if (okMsg) showToast(okMsg, "success"); return d; }
+  catch (e) { showToast(e instanceof TypeError ? NET_ERR : (e.message || NET_ERR), "error"); return null; }
+}
 
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#notifDropdown') && !e.target.closest('.btn-notif')) {
-    document.getElementById('notifDropdown').classList.remove('active');
+/* ============ PRIVACIDADE EM TEMPO REAL (Realtime Database) ============ */
+const fb = { files: {}, folders: {}, parent: null, key: "", unsubs: [], waiters: [] };
+const findFb = (map, i) => map[i.id] || Object.values(map).find(v => v && v.name === i.name);
+/** Escuta a pasta atual: raiz → workspace/{uid}/files|folders; subpasta → workspace/{uid}/folders/{pasta}/files|folders */
+function listen() {
+  const key = S.user.uid + "|" + S.folder;
+  if (key === fb.key) return;
+  fb.key = key; fb.unsubs.forEach(u => u()); fb.unsubs = [];
+  fb.files = {}; fb.folders = {}; fb.parent = null;
+  const base = S.folder === "root" ? `workspace/${S.user.uid}` : `workspace/${S.user.uid}/folders/${S.folder}`;
+  const watch = (path, fn) => fb.unsubs.push(onValue(ref(db, path), s => { fn(s.val()); applyPriv(); }, e => console.error("RTDB:", e)));
+  watch(base + "/files", v => fb.files = v || {});
+  watch(base + "/folders", v => fb.folders = v || {});
+  if (S.folder !== "root") watch(base + "/privacy", v => fb.parent = v); // privacidade da pasta pai
+}
+/** Mescla privacidade do Firebase nos itens; pasta pai privada sobrepõe tudo */
+function applyPriv() {
+  const lock = fb.parent === "private";
+  const merge = (list, map) => list.forEach(i => { const m = findFb(map, i); if (m && m.privacy) i.privacy = m.privacy; i._priv = lock ? "private" : (i.privacy || "private"); });
+  merge(S.files, fb.files); merge(S.folders, fb.folders);
+  fb.waiters = fb.waiters.filter(w => { const m = findFb(w.item._t === "folder" ? fb.folders : fb.files, w.item); if (m && m.privacy === w.val) { w.res(); return false; } return true; });
+  if (S.loaded) render();
+}
+/** Promessa que resolve quando o Firebase refletir a nova privacidade (ou após 8s) */
+function waitPriv(item, val) {
+  let w; const p = new Promise(res => { w = { item, val, res }; fb.waiters.push(w); setTimeout(res, 8000); });
+  const m = findFb(item._t === "folder" ? fb.folders : fb.files, item);
+  if (m && m.privacy === val) w.res();
+  return { p, cancel: () => { fb.waiters = fb.waiters.filter(x => x !== w); } };
+}
+
+/* ============ LISTAGEM ============ */
+function currentFolder() {
+  const h = decodeURIComponent(location.hash.slice(1)).replace(/\/+$/, "");
+  return h || "root";
+}
+async function load() {
+  S.folder = currentFolder(); S.loaded = false;
+  $("title").replaceChildren(icon("folder"), S.folder === "root" ? "Meu Workspace" : S.folder);
+  if (S.folder !== "root") {
+    const b = el("button", { class: "btn", onclick: () => { location.hash = ""; } }, ...withIcon("back", "Voltar"));
+    $("title").prepend(b);
   }
-  const contextMenu = document.getElementById('contextMenu');
-  if (contextMenu) contextMenu.classList.remove('active');
+  const d = await run(() => get("/api/workspace/list", { folder: S.folder }));
+  if (!d) return;
+  S.files = d.files || []; S.folders = d.folders || [];
+  S.loaded = true; listen(); applyPriv();
+}
+const isImg = f => /^image\//.test(f.type || f.mimeType || "") || /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name || "");
+const isPdf = f => /pdf/.test(f.type || f.mimeType || "") || /\.pdf$/i.test(f.name || "");
+const isRecv = f => f.received && !f.accepted;
+const privIcon = p => p === "public" ? "globe" : p === "restricted" ? "users" : "lock";
+
+function render() {
+  const q = S.q.toLowerCase();
+  const items = [
+    ...S.folders.map(x => ({ ...x, _t: "folder" })),
+    ...S.files.map(x => ({ ...x, _t: "file" }))
+  ].filter(i => (i.name || "").toLowerCase().includes(q));
+  const g = $("grid"); g.replaceChildren();
+  if (!items.length) {
+    g.append(el("div", { class: "empty" }, S.q ? "Nenhum item encontrado." : "Pasta vazia. Envie arquivos ou crie uma pasta."));
+    return;
+  }
+  items.forEach(i => g.append(card(i)));
+}
+function card(i) {
+  const thumb = el("div", { class: "thumb" });
+  if (i._t === "folder") thumb.append(icon("folder"));
+  else if (isImg(i)) {
+    thumb.append(icon("image"));
+    const path = isRecv(i) ? "/api/workspace/preview/" + i.id : "/api/workspace/view/" + i.id;
+    blobUrl(path, { owner: i.ownerUid || "", type: "file" }).then(u => {
+      const im = el("img", { src: u, alt: "", class: isRecv(i) ? "blur" : "" }); thumb.replaceChildren(im);
+    }).catch(() => {});
+  } else thumb.append(icon(isPdf(i) ? "pdf" : "pdf"));
+  const c = el("div", { class: "card", tabindex: "0" }, thumb,
+    el("div", { class: "meta" }, el("span", { class: "n", title: i.name }, i.name || ""), icon(privIcon(i._priv || i.privacy))));
+  if (i._t === "file") {
+    c.append(el("button", { class: "trash", "aria-label": "Excluir", onclick: e => { e.stopPropagation(); askDelete(i); } }, icon("trash")));
+    if (isRecv(i)) c.append(el("div", { class: "accept" }, el("button", { class: "btn pri", onclick: e => { e.stopPropagation(); acceptFile(i); } }, "Aceitar")));
+  }
+  c.addEventListener("click", () => open(i));
+  c.addEventListener("keydown", e => { if (e.key === "Enter") open(i); });
+  c.addEventListener("contextmenu", e => { e.preventDefault(); showCtx(e.clientX, e.clientY, i); });
+  return c;
+}
+function open(i) {
+  if (i._t === "folder") { location.hash = encodeURIComponent(i.name) + "/"; return; }
+  if (isRecv(i)) { showToast("Aceite o arquivo para visualizar.", "info"); return; }
+  viewFile(i);
+}
+
+/* ============ MODAIS ============ */
+function modal(title, body, actions = []) {
+  const ov = el("div", { class: "ov", onmousedown: e => { if (e.target === ov && !ov.dataset.lock) ov.remove(); } });
+  const m = el("div", { class: "modal", role: "dialog", "aria-label": title }, el("h3", {}, title), body, el("div", { class: "row" }, actions));
+  ov.append(m); document.body.append(ov);
+  const f = m.querySelector("input,button"); if (f) f.focus();
+  return ov;
+}
+const closeBtn = ov => el("button", { class: "btn", onclick: () => ov.remove() }, "Cancelar");
+
+/** Modal genérico com um campo de texto */
+function promptModal(title, label, value, confirmText, onOk) {
+  const inp = el("input", { class: "input", value: value || "", placeholder: label });
+  let ov; const ok = el("button", { class: "btn pri", onclick: async () => { const v = inp.value.trim(); if (!v) return; ok.disabled = true; await onOk(v); ov.remove(); } }, confirmText);
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") ok.click(); });
+  ov = modal(title, inp, [closeBtn({ remove: () => ov.remove() }), ok]);
+  inp.select();
+}
+function newFolder() {
+  promptModal("Nova pasta", "Nome da pasta", "", "Criar", async name => {
+    if (await run(() => post("/api/workspace/folder/create", { folderName: name, parent: S.folder }), "Pasta criada")) load();
+  });
+}
+function rename(i) {
+  promptModal("Renomear", "Novo nome", i.name, "Salvar", async name => {
+    if (await run(() => post("/api/workspace/rename", { id: i.id, type: i._t, newName: name, parent: S.folder }), "Renomeado")) load();
+  });
+}
+function moveItem(i) {
+  const sel = el("select", { class: "input" });
+  sel.append(el("option", { value: "root" }, "Raiz"));
+  S.folders.filter(f => f.id !== i.id).forEach(f => sel.append(el("option", { value: f.id }, f.name)));
+  const ok = el("button", { class: "btn pri", onclick: async () => {
+    ok.disabled = true;
+    if (await run(() => post("/api/workspace/move", { itemId: i.id, itemType: i._t, targetFolderId: sel.value }), "Item movido")) { ov.remove(); load(); } else ok.disabled = false;
+  } }, "Mover");
+  const ov = modal("Mover para", sel, [closeBtn({ remove: () => ov.remove() }), ok]);
+}
+function askDelete(i) {
+  if (i._t === "folder") { showToast("A exclusão de pastas não está disponível.", "info"); return; }
+  const ok = el("button", { class: "btn pri", style: "background:var(--err);border-color:var(--err)", onclick: async () => {
+    ok.disabled = true;
+    if (await run(() => post("/api/workspace/delete", { fileId: i.id, ikFileId: i.ikFileId }), "Arquivo excluído")) { ov.remove(); load(); } else ok.disabled = false;
+  } }, "Excluir");
+  const ov = modal("Excluir arquivo", el("p", {}, `Excluir "${i.name}"? Esta ação não pode ser desfeita.`), [closeBtn({ remove: () => ov.remove() }), ok]);
+}
+/** Privacidade: spinner no botão e modal travado até { ok: true } */
+function privacyModal(i) {
+  const defs = [["private", "lock", "Privado", "Só você acessa"], ["restricted", "users", "Restrito", "Só pessoas com acesso"], ["public", "globe", "Público", "Qualquer pessoa com o link"]];
+  const wrap = el("div", { style: "display:grid;gap:8px" });
+  const btns = defs.map(([val, ic, name, desc]) => {
+    const b = el("button", { class: "opt" + ((i.privacy || "private") === val ? " on" : ""), onclick: async () => {
+      btns.forEach(x => x.disabled = true); ov.dataset.lock = "1";
+      const sp = el("span", { class: "spin" }); b.append(sp);
+      const w = waitPriv(i, val); // registra antes, para não perder o evento do Firebase
+      const d = await run(() => post("/api/workspace/privacy", { itemId: i.id, type: i._t, privacy: val }));
+      if (d) { await w.p; showToast("Privacidade atualizada", "success"); } else w.cancel();
+      delete ov.dataset.lock;
+      if (d) ov.remove(); else { sp.remove(); btns.forEach(x => x.disabled = false); }
+    } }, icon(ic), el("span", {}, name, el("small", {}, desc)));
+    return b;
+  });
+  wrap.append(...btns);
+  const ov = modal("Privacidade", wrap, [closeBtn({ remove: () => { if (!ov.dataset.lock) ov.remove(); } })]);
+}
+async function publicLink(i) {
+  if ((i._priv || i.privacy) !== "public") { showToast("Mude a privacidade para Público antes de gerar o link.", "error"); return; }
+  const d = await run(() => post("/api/workspace/public-share", { itemId: i.id, type: i._t }));
+  if (!d) return;
+  const inp = el("input", { class: "input", readonly: "", value: d.shareUrl || "" });
+  const cp = el("button", { class: "btn pri", onclick: async () => { try { await navigator.clipboard.writeText(inp.value); } catch { inp.select(); document.execCommand("copy"); } showToast("Link copiado", "success"); } }, ...withIcon("link", "Copiar"));
+  const ov = modal("Link público", inp, [closeBtn({ remove: () => ov.remove() }), cp]);
+}
+function shareMail(i) {
+  promptModal("Compartilhar por e-mail", "E-mail do destinatário", "", "Compartilhar", async email => {
+    await run(() => post("/api/workspace/share", { fileId: i.id, email }), "Compartilhado");
+  });
+}
+async function acceptFile(i) {
+  if (await run(() => post("/api/workspace/share/accept", { fileId: i.id }), "Arquivo aceito")) load();
+}
+async function viewFile(i, download = false) {
+  const u = await run(() => blobUrl("/api/workspace/view/" + i.id, { owner: i.ownerUid || "", type: "file" }));
+  if (!u) return;
+  if (download) { const a = el("a", { href: u, download: i.name }); document.body.append(a); a.click(); a.remove(); }
+  else window.open(u, "_blank");
+}
+
+/* ============ NOTIFICAÇÕES ============ */
+async function loadNotifs() {
+  const d = await get("/api/workspace/notifications").catch(() => null);
+  S.notifs = (d && (d.notifications || d.items)) || [];
+  const b = $("badge"); b.textContent = S.notifs.length; b.classList.toggle("hidden", !S.notifs.length);
+}
+function notifModal() {
+  const box = el("div", { style: "display:grid;gap:8px" });
+  if (!S.notifs.length) box.append(el("p", { style: "color:var(--mut)" }, "Nenhuma notificação."));
+  S.notifs.forEach(n => {
+    const row = el("div", { class: "note" }, el("span", {}, n.message || n.title || n.fileName || "Novo item compartilhado"));
+    box.append(row);
+  });
+  const ov = modal("Notificações", box, [closeBtn({ remove: () => ov.remove() })]);
+}
+
+/* ============ MENU DE CONTEXTO ============ */
+function showCtx(x, y, i) {
+  const f = i._t === "file";
+  const recv = isRecv(i);
+  const items = [
+    f && !recv && ["eye", "Visualizar", () => viewFile(i)],
+    f && !recv && ["down", "Baixar", () => viewFile(i, true)],
+    ["move", "Mover", () => moveItem(i)],
+    ["edit", "Renomear", () => rename(i)],
+    ["lock", "Privacidade", () => privacyModal(i)],
+    ["link", "Link público", () => publicLink(i)],
+    f && ["mail", "Compartilhar via e-mail", () => shareMail(i)],
+    f && ["trash", "Excluir", () => askDelete(i), "dng"]
+  ].filter(Boolean);
+  const m = $("ctx"); m.replaceChildren();
+  items.forEach(([ic, label, fn, cls]) => m.append(el("button", { class: cls || "", onclick: () => { hideCtx(); fn(); } }, icon(ic), label)));
+  m.classList.remove("hidden");
+  m.style.left = Math.min(x, innerWidth - m.offsetWidth - 8) + "px";
+  m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + "px";
+}
+const hideCtx = () => $("ctx").classList.add("hidden");
+document.addEventListener("click", hideCtx);
+document.addEventListener("keydown", e => { if (e.key === "Escape") hideCtx(); });
+
+/* ============ UPLOAD (XHR para barra de progresso) ============ */
+async function uploadFiles(list) {
+  const files = [...list]; if (!files.length) return;
+  const name = el("div", {}), bar = el("i"), cnt = el("small", { style: "color:var(--mut)" });
+  const ov = modal("Enviando arquivos", el("div", { style: "display:grid;gap:10px" }, name, el("div", { class: "pbar" }, bar), cnt), []);
+  ov.dataset.lock = "1";
+  for (let n = 0; n < files.length; n++) {
+    const f = files[n];
+    name.textContent = f.name; cnt.textContent = `Arquivo ${n + 1} de ${files.length}`; bar.style.width = "0";
+    try {
+      const fd = new FormData();
+      fd.append("tokenid", await token()); fd.append("file", f); fd.append("filename", f.name);
+      fd.append("filetype", f.type || "application/octet-stream"); fd.append("folder", S.folder);
+      await new Promise((res, rej) => {
+        const x = new XMLHttpRequest();
+        x.open("POST", API + "/api/workspace/upload");
+        x.upload.onprogress = e => { if (e.lengthComputable) bar.style.width = (e.loaded / e.total * 100) + "%"; };
+        x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch {} x.status < 300 && d.ok !== false ? res() : rej(new Error(d.error || "Falha no envio de " + f.name)); };
+        x.onerror = () => rej(new Error("Erro de rede ao enviar " + f.name));
+        x.send(fd);
+      });
+      showToast(f.name + " enviado", "success");
+    } catch (e) { showToast(e.message, "error"); }
+  }
+  ov.remove(); load();
+}
+
+/* ============ DRAG & DROP ============ */
+let dragDepth = 0;
+addEventListener("dragenter", e => { if (!S.user) return; e.preventDefault(); dragDepth++; $("dropOv").classList.remove("hidden"); });
+addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("dropOv").classList.add("hidden"); } });
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("dropOv").classList.add("hidden"); if (S.user && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
+
+/* ============ AUTH (sem login próprio: sem sessão → kloewa.ooguy.com; sair fica no AppShell) ============ */
+onAuthStateChanged(auth, u => {
+  S.user = u;
+  if (!u) { location.replace(LOGIN_URL); return; }
+  $("app").classList.remove("hidden");
+  load(); loadNotifs();
 });
 
-window.fecharModal = function(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.classList.remove('active');
-};
-
-import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-
-let auth;
-let currentToken = null;
-let pastasGlobais = [];
-let itemSelecionado = null;
-let isCarregando = false;
-
-try {
-  const firebaseApp = window.firebaseApp || (typeof firebase !== 'undefined' ? firebase.app() : null);
-  if (firebaseApp) auth = getAuth(firebaseApp);
-} catch (e) {}
-
-if (!auth) {
-  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  const cfg = { apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo", authDomain: "html-15e80.firebaseapp.com", projectId: "html-15e80", appId: "1:1068148640439:web:1ac651348e624f6be41b32" };
-  auth = getAuth(initializeApp(cfg));
-}
-
-const filesGrid = document.getElementById('filesGrid');
-
-const SVG_FOLDER = `<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
-const SVG_PDF = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>`;
-const SVG_TRASH = `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
-const SVG_LOCK = `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
-const SVG_GLOBE = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
-const SVG_USERS = `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
-
-function getPastaAtual() { 
-  return decodeURIComponent(window.location.hash.replace('#', '').replace(/\/$/, '')) || "root"; 
-}
-
-const urlParams = new URLSearchParams(window.location.search);
-const targetFileId = urlParams.get('id');
-const targetOwner = urlParams.get('owner');
-const targetType = urlParams.get('type') || 'file';
-
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    currentToken = await user.getIdToken();
-    await carregarArquivosAPI();
-    carregarNotificacoes();
-    
-    if (!window.__hashListenerAdded) {
-      window.addEventListener('hashchange', carregarArquivosAPI);
-      window.__hashListenerAdded = true;
-    }
-    
-    if (targetFileId) {
-      showToast("Salvando no Workspace...", "info");
-      try {
-        const res = await fetch(`${window.WORKER_URL}/api/workspace/add-reference`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenid: currentToken, fileId: targetFileId, ownerUid: targetOwner || 'root', itemType: targetType })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          showToast(data.mensagem, "success");
-          await carregarArquivosAPI();
-          setTimeout(() => {
-            const el = document.getElementById(`${targetType === 'folder' ? 'folder' : 'file'}-${targetFileId}`) || document.querySelector(`[data-original-id="${targetFileId}"]`);
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              el.style.border = '2px solid var(--accent)';
-              el.style.boxShadow = '0 0 15px rgba(79, 140, 255, 0.5)';
-            }
-          }, 500);
-        } else {
-          showToast("Erro: " + data.erro, "error");
-        }
-      } catch (err) { showToast("Erro de conexão.", "error"); }
-    }
-  }
-});
-
-async function carregarArquivosAPI() {
-  if (isCarregando) return;
-  isCarregando = true;
-  
-  const pasta = getPastaAtual();
-  document.getElementById('folderTitle').textContent = pasta === "root" ? "Meus Arquivos" : pasta;
-  filesGrid.innerHTML = '<div style="grid-column: 1/-1; display: flex; justify-content: center; padding: 40px;"><div class="spinner" style="width: 40px; height: 40px;"></div></div>';
-  
-  try {
-    const res = await fetch(`${window.WORKER_URL}/api/workspace/list?tokenid=${currentToken}&folder=${encodeURIComponent(pasta)}`);
-    const data = await res.json();
-    filesGrid.innerHTML = '';
-    pastasGlobais = data.folders || [];
-    
-    if (data.files.length === 0 && data.folders.length === 0) {
-      filesGrid.innerHTML = '<p style="color: var(--text-2); text-align: center; grid-column: 1/-1;">Pasta vazia.</p>';
-      return;
-    }
-    data.folders.forEach(f => renderizarPasta(f));
-    data.files.forEach(f => renderizarArquivo(f));
-  } catch (e) { 
-    filesGrid.innerHTML = '<p style="color: red; text-align: center; grid-column: 1/-1;">Erro ao carregar.</p>'; 
-  } finally {
-    isCarregando = false;
-  }
-}
-
-async function carregarNotificacoes() {
-  try {
-    const res = await fetch(`${window.WORKER_URL}/api/workspace/notifications?tokenid=${currentToken}`);
-    const data = await res.json();
-    const badge = document.getElementById('notifBadge');
-    const list = document.getElementById('notifList');
-    
-    if (data.ok && data.notifications.length > 0) {
-      const naoLidas = data.notifications.filter(n => !n.read).length;
-      if (naoLidas > 0) { badge.style.display = 'flex'; badge.textContent = naoLidas; } else { badge.style.display = 'none'; }
-      list.innerHTML = data.notifications.map(n => `<div class="notif-item"><strong>${n.title}</strong><br>${n.message}<div class="notif-time">${new Date(n.timestamp).toLocaleString('pt-BR')}</div></div>`).join('');
-    } else {
-      list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-2);">Nenhuma notificação.</div>';
-    }
-  } catch (e) {}
-}
-
-window.addEventListener("dragover", (e) => e.preventDefault());
-window.addEventListener("drop", (e) => e.preventDefault());
-
-const dropZone = document.getElementById('dropZone');
-if (dropZone) {
-  window.addEventListener('dragenter', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
-  dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); if (e.relatedTarget === null) dropZone.classList.remove('active'); });
-  dropZone.addEventListener('drop', async (e) => { 
-    e.preventDefault(); 
-    dropZone.classList.remove('active'); 
-    if (e.dataTransfer.files.length > 0) await uploadMultiplosArquivos(e.dataTransfer.files); 
-  });
-}
-
-async function uploadMultiplosArquivos(files) {
-  const spinner = document.getElementById('uploadSpinner');
-  const spinnerText = document.getElementById('uploadFileName');
-  spinner.classList.add('active');
-
-  try {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      spinnerText.textContent = `Enviando ${i + 1} de ${files.length}: ${file.name}`;
-      const formData = new FormData();
-      formData.append('tokenid', currentToken); formData.append('file', file);
-      formData.append('filename', file.name); formData.append('filetype', file.type); formData.append('folder', getPastaAtual());
-      try {
-        const res = await fetch(window.WORKER_URL + '/api/workspace/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.erro);
-        showToast(`"${file.name}" enviado com sucesso!`, "success");
-      } catch (e) { showToast(`Erro ao enviar "${file.name}": ${e.message}`, "error"); }
-    }
-  } finally {
-    spinner.classList.remove('active');
-    carregarArquivosAPI();
-  }
-}
-
-function configurarCliqueDireito(el, item) {
-  el.addEventListener('contextmenu', (e) => {
-    e.preventDefault(); 
-    e.stopPropagation();
-    itemSelecionado = item;
-    const menu = document.getElementById('contextMenu');
-    menu.style.top = `${e.pageY}px`; menu.style.left = `${e.pageX}px`; menu.classList.add('active');
-  });
-}
-
-function renderizarPasta(folder) {
-  const el = document.createElement('div');
-  el.className = 'folder-card'; el.id = `folder-${folder.name}`; el.dataset.originalId = folder.originalId || '';
-  el.ondblclick = () => { window.location.hash = `${encodeURIComponent(folder.name)}/`; };
-  configurarCliqueDireito(el, { ...folder, isFolder: true });
-  
-  let pClass = folder.privacy || 'private';
-  let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
-
-  el.innerHTML = `<div class="privacy-badge ${pClass}" title="${pClass}">${pIcon}</div><div class="icon-placeholder">${SVG_FOLDER}</div><div class="file-name">${folder.name}</div>`;
-  filesGrid.prepend(el);
-}
-
-function renderizarArquivo(file) {
-  const el = document.createElement('div');
-  el.className = 'file-card'; el.id = `file-${file.id}`; el.dataset.originalId = file.originalId || '';
-  configurarCliqueDireito(el, { ...file, isFolder: false });
-  
-  const isImg = file.type && file.type.startsWith('image/');
-  let visual = isImg ? `<img src="${file.url}" loading="lazy" style="${file.needsAccept ? 'filter: blur(4px);' : ''}">` : `<div class="icon-placeholder">${SVG_PDF}</div>`;
-  
-  let pClass = file.privacy || 'private';
-  let pIcon = pClass === 'public' ? SVG_GLOBE : (pClass === 'restricted' ? SVG_USERS : SVG_LOCK);
-
-  const overlayAccept = file.needsAccept ? `<div style="position:absolute; inset:0; background:rgba(0,0,0,0.6); display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:12px; z-index:2;"><p style="font-size:0.75rem; color:white; margin-bottom:5px;">Recebido</p><button onclick="event.stopPropagation(); aceitarCompartilhamento('${file.id}')" style="background:var(--accent); color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Aceitar</button></div>` : '';
-
-  el.innerHTML = `<div class="privacy-badge ${pClass}" title="${pClass}">${pIcon}</div><div style="position:relative;">${visual}${overlayAccept}</div><div class="file-name">${file.name}</div><button class="btn-delete-file" onclick="event.stopPropagation(); deletarItemDireto('${file.id}', '${file.ikFileId}')">${SVG_TRASH}</button>`;
-  filesGrid.prepend(el);
-}
-
-window.filtrarItens = function() {
-  const termo = document.getElementById('searchInput').value.toLowerCase();
-  document.querySelectorAll('.file-card, .folder-card').forEach(card => { 
-    card.style.display = card.querySelector('.file-name').textContent.toLowerCase().includes(termo) ? 'block' : 'none'; 
-  });
-};
-
-window.aceitarCompartilhamento = async function(fileId) {
-  try {
-    showToast("Aceitando arquivo...", "info");
-    const res = await fetch(window.WORKER_URL + '/api/workspace/share/accept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId: fileId }) });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.erro);
-    showToast("Arquivo aceito!", "success"); carregarArquivosAPI();
-  } catch (e) { showToast("Erro ao aceitar: " + e.message, "error"); }
-};
-
-window.abrirVisualizador = function() { 
-  if (itemSelecionado) window.open(`${window.VERCEL_URL}/api?action=view&id=${itemSelecionado.isFolder ? encodeURIComponent(itemSelecionado.name) : itemSelecionado.id}&token=${currentToken}&owner=${itemSelecionado.ownerUid || ''}&type=${itemSelecionado.isFolder ? 'folder' : 'file'}`, '_blank'); 
-};
-
-window.baixarArquivo = function() { 
-  if (itemSelecionado && !itemSelecionado.isFolder) window.open(`${window.VERCEL_URL}/api?action=stream&id=${itemSelecionado.id}&token=${currentToken}&download=true`, '_blank'); 
-};
-
-window.abrirModalNovaPasta = function() { 
-  document.getElementById('newFolderName').value = ''; 
-  document.getElementById('newFolderModal').classList.add('active'); 
-  document.getElementById('newFolderName').focus(); 
-};
-
-window.salvarNovaPasta = async function() { 
-  const nome = document.getElementById('newFolderName').value.trim(); 
-  if (!nome) return showToast("Digite um nome.", "error"); 
-  try { 
-    await fetch(window.WORKER_URL + '/api/workspace/folder/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, folderName: nome, parent: getPastaAtual() }) }); 
-    showToast("Pasta criada!", "success"); 
-    fecharModal('newFolderModal'); 
-    carregarArquivosAPI(); 
-  } catch (e) { showToast("Erro ao criar pasta.", "error"); } 
-};
-
-window.abrirModalRename = function() { 
-  if (!itemSelecionado) return;
-  document.getElementById('renameInput').value = itemSelecionado.name; 
-  document.getElementById('renameModal').classList.add('active'); 
-  document.getElementById('renameInput').focus(); 
-};
-
-window.salvarRename = async function() { 
-  const novo = document.getElementById('renameInput').value.trim(); 
-  if (!novo || novo === itemSelecionado.name) return fecharModal('renameModal'); 
-  try { 
-    const body = { tokenid: currentToken, id: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', newName: novo, parent: itemSelecionado.parent || getPastaAtual() }; 
-    if (!itemSelecionado.isFolder) body.folderKey = itemSelecionado.folder; 
-    await fetch(window.WORKER_URL + '/api/workspace/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); 
-    showToast("Renomeado!", "success"); 
-    fecharModal('renameModal'); 
-    carregarArquivosAPI(); 
-  } catch (e) { showToast("Erro ao renomear.", "error"); } 
-};
-
-window.abrirModalPrivacidade = function() { 
-  if (!itemSelecionado) return;
-  const p = itemSelecionado.privacy || 'private'; 
-  document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); 
-  const optEl = document.getElementById(`opt${p.charAt(0).toUpperCase() + p.slice(1)}`);
-  if (optEl) optEl.classList.add('active'); 
-  document.getElementById('privacyModal').classList.add('active'); 
-};
-
-// ✅ CORREÇÃO DO BUG DE PRIVACIDADE COM SPINNER
-window.selecionarPrivacidade = async function(novaPrivacidade) {
-  const optionEl = document.getElementById(`opt${novaPrivacidade.charAt(0).toUpperCase() + novaPrivacidade.slice(1)}`);
-  
-  // Atualiza a UI imediatamente
-  document.querySelectorAll('.privacy-option').forEach(opt => opt.classList.remove('active')); 
-  optionEl.classList.add('active');
-  
-  // Adiciona o Spinner no elemento
-  const originalHTML = optionEl.innerHTML;
-  optionEl.innerHTML = `<div class="spinner" style="width:20px;height:20px;border-width:2px;margin-right:15px;"></div> <div><h4>Atualizando...</h4><p>Aguarde a confirmação</p></div>`;
-  
-  try { 
-    const body = { tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file', privacy: novaPrivacidade }; 
-    if (!itemSelecionado.isFolder) body.folderKey = itemSelecionado.folder; 
-    
-    const res = await fetch(window.WORKER_URL + '/api/workspace/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); 
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.erro);
-
-    showToast("Privacidade atualizada!", "success"); 
-    itemSelecionado.privacy = novaPrivacidade; 
-    
-    // Fecha e recarrega
-    setTimeout(() => { fecharModal('privacyModal'); carregarArquivosAPI(); }, 500); 
-  } catch (e) { 
-    // Se der erro, volta ao estado original
-    optionEl.innerHTML = originalHTML;
-    optionEl.classList.remove('active');
-    showToast("Erro ao atualizar: " + e.message, "error"); 
-  } 
-};
-
-window.abrirModalMover = function() { 
-  if (!itemSelecionado) return;
-  const select = document.getElementById('targetFolderSelect'); 
-  select.innerHTML = '<option value="root">/ (Raiz)</option>'; 
-  pastasGlobais.forEach(p => { if (p.name !== itemSelecionado.name) select.innerHTML += `<option value="${p.name}">${p.name}</option>`; }); 
-  document.getElementById('moveModal').classList.add('active'); 
-};
-
-window.confirmarMover = async function() { 
-  const target = document.getElementById('targetFolderSelect').value; 
-  try { 
-    await fetch(window.WORKER_URL + '/api/workspace/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, itemType: itemSelecionado.isFolder ? 'folder' : 'file', targetFolderId: target }) }); 
-    showToast("Item movido!", "success"); 
-    fecharModal('moveModal'); 
-    carregarArquivosAPI(); 
-  } catch (e) { showToast("Erro ao mover.", "error"); } 
-};
-
-window.abrirModalCompartilhar = async function() { 
-  if (!itemSelecionado) return; 
-  if (itemSelecionado.privacy !== 'public') { showToast("Mude a privacidade para 'Público' primeiro!", "error"); return; } 
-  try { 
-    const res = await fetch(window.WORKER_URL + '/api/workspace/public-share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, itemId: itemSelecionado.isFolder ? itemSelecionado.name : itemSelecionado.id, type: itemSelecionado.isFolder ? 'folder' : 'file' }) }); 
-    const data = await res.json(); 
-    if (!data.ok) throw new Error(data.erro); 
-    document.getElementById('publicUrl').value = data.shareUrl; 
-    document.getElementById('shareModal').classList.add('active'); 
-  } catch (e) { showToast(e.message, "error"); } 
-};
-
-window.copiarLink = function() { 
-  const input = document.getElementById('publicUrl'); 
-  input.select(); 
-  document.execCommand("copy"); 
-  showToast("Link copiado!", "success"); 
-};
-
-window.abrirModalEmail = function() { 
-  if (!itemSelecionado) return; 
-  if (itemSelecionado.privacy !== 'private') { showToast("Mude a privacidade para 'Privado' primeiro!", "error"); return; } 
-  document.getElementById('shareEmail').value = ''; 
-  document.getElementById('shareEmailModal').classList.add('active'); 
-};
-
-window.compartilharEmail = async function() { 
-  const email = document.getElementById('shareEmail').value.trim(); 
-  if (!email) return; 
-  try { 
-    const res = await fetch(window.WORKER_URL + '/api/workspace/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId: itemSelecionado.id, email }) }); 
-    const data = await res.json(); 
-    if (!data.ok) throw new Error(data.erro); 
-    showToast("Compartilhado com sucesso!", "success"); 
-    fecharModal('shareEmailModal'); 
-  } catch (e) { showToast("Erro: " + e.message, "error"); } 
-};
-
-window.deletarItem = function() { 
-  if (itemSelecionado && !itemSelecionado.isFolder) deletarItemDireto(itemSelecionado.id, itemSelecionado.ikFileId); 
-};
-
-window.deletarItemDireto = async function(fileId, ikFileId) { 
-  if (!confirm("Tem certeza que deseja apagar este item?")) return; 
-  try { 
-    await fetch(window.WORKER_URL + '/api/workspace/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenid: currentToken, fileId, ikFileId }) }); 
-    showToast("Item apagado.", "success"); 
-    carregarArquivosAPI(); 
-  } catch (e) { showToast("Erro ao apagar.", "error"); } 
-};
-
-window.fazerUpload = function(input) { 
-  if (input.files.length > 0) uploadMultiplosArquivos(input.files); 
-  input.value = ''; 
-};
+/* ============ INICIALIZAÇÃO DA UI ============ */
+$("bNewFolder").append(...withIcon("plus", "Nova pasta"));
+$("bUpload").append(...withIcon("upload", "Upload"));
+$("bNotif").prepend(icon("bell"));
+$("searchWrap").prepend(icon("search"));
+$("bNewFolder").onclick = newFolder;
+$("bUpload").onclick = () => $("fileIn").click();
+$("bNotif").onclick = notifModal;
+$("fileIn").onchange = e => { uploadFiles(e.target.files); e.target.value = ""; };
+$("q").oninput = e => { S.q = e.target.value; render(); };
+addEventListener("hashchange", () => { if (S.user) load(); });
