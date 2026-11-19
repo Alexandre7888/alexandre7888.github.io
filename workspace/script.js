@@ -271,7 +271,7 @@ function showCtx(x, y, i) {
   const recv = isRecv(i);
   const items = [
     f && !recv && ["eye", "Visualizar", () => viewFile(i)],
-    f && !recv && ["down", "Baixar", () => viewFile(i, true)],
+    f && !recv && ["down", "Baixar", () => downloadFile(i)],
     f && !recv && ["share", "Compartilhar", () => shareNative(i)],
     !recv && ["move", "Mover", () => moveItem(i)],
     !recv && ["edit", "Renomear", () => rename(i)],
@@ -387,29 +387,57 @@ async function publicLink(i) {
   const ov = modal("Link público", inp, [closeBtn({ remove: () => ov.remove() }), cp]);
 }
 
+/* ============ COMPARTILHAR (nativo com link público) ============ */
 async function shareNative(i) {
-  try {
-    const u = await blobUrl("/api/workspace/view/" + i.id, { owner: i.ownerUid || "", type: "file" });
-    const r = await fetch(u);
-    const blob = await r.blob();
-    const file = new File([blob], i.name || "arquivo", { type: blob.type || "application/octet-stream" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: i.name || "Arquivo", text: "Compartilhado do Workspace" });
-    } else if (navigator.share) {
-      await navigator.share({ title: i.name || "Arquivo", text: "Compartilhado do Workspace", url: location.href });
-    } else {
-      showToast("Compartilhamento nativo não suportado. Link copiado.", "info");
-      try { await navigator.clipboard.writeText(location.href); } catch {}
+  if ((i._priv || i.privacy) !== "public") {
+    showToast("Mude a privacidade para Público antes de compartilhar.", "error");
+    return;
+  }
+  const d = await run(() => post("/api/workspace/public-share", { itemId: i.id, type: i._t }));
+  if (!d || !d.shareUrl) { showToast("Não foi possível gerar o link público.", "error"); return; }
+
+  const shareUrl = d.shareUrl;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: i.name || "Arquivo", text: "Compartilhado do Workspace", url: shareUrl });
+    } catch (e) {
+      if (e.name !== "AbortError") showToast("Erro ao compartilhar: " + e.message, "error");
     }
-  } catch (e) {
-    if (e.name === "AbortError") return;
-    showToast("Erro ao compartilhar: " + e.message, "error");
+  } else {
+    try { await navigator.clipboard.writeText(shareUrl); showToast("Link copiado!", "success"); }
+    catch { showToast("Compartilhamento não suportado. Link: " + shareUrl, "info"); }
   }
 }
+
 function shareMail(i) {
   promptModal("Compartilhar por e-mail", "E-mail do destinatário", "", "Compartilhar", async email => {
     await run(() => post("/api/workspace/share", { fileId: i.id, email }), "Compartilhado");
   });
+}
+
+/* ============ DOWNLOAD (workspace) ============ */
+async function downloadFile(i) {
+  try {
+    showToast("Preparando download...", "info");
+    const q = new URLSearchParams({ tokenid: await token(), owner: i.ownerUid || "", type: "file", download: "true" });
+    const r = await fetch(API + "/api/workspace/view/" + i.id + "?" + q, { headers: JSON_H });
+    if (!r.ok) {
+      if (r.status === 401) {
+        showToast("Sessão expirada. Faça login novamente.", "error");
+        setTimeout(() => location.replace(LOGIN_URL), 1500);
+        return;
+      }
+      throw new Error("Falha ao baixar (" + r.status + ")");
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = el("a", { href: url, download: i.name || "arquivo" });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    showToast("Download iniciado.", "success");
+  } catch (e) {
+    showToast("Erro ao baixar: " + e.message, "error");
+  }
 }
 
 async function acceptFile(i) {
@@ -419,10 +447,10 @@ async function acceptFile(i) {
   }
 }
 async function viewFile(i, download = false) {
+  if (download) return downloadFile(i);
   const u = await run(() => blobUrl("/api/workspace/view/" + i.id, { owner: i.ownerUid || "", type: "file" }));
   if (!u) return;
-  if (download) { const a = el("a", { href: u, download: i.name }); document.body.append(a); a.click(); a.remove(); }
-  else window.open(u, "_blank");
+  window.open(u, "_blank");
 }
 
 async function loadNotifs() {
@@ -489,9 +517,7 @@ async function receberArquivoPublico() {
     });
     if (res && res.ok) {
       showToast(res.mensagem || "Arquivo salvo no Workspace!", "success");
-      // Limpa os parâmetros da URL para não salvar de novo ao recarregar
       window.history.replaceState({}, "", location.pathname + location.hash);
-      // Recarrega a lista
       invalidateCache(S.user.uid, S.folder);
       await load();
       return true;
@@ -509,10 +535,7 @@ onAuthStateChanged(auth, async u => {
   S.user = u;
   if (!u) { location.replace(LOGIN_URL); return; }
   $("app").classList.remove("hidden");
-
-  // ⭐ Antes de carregar a lista, tenta salvar o arquivo público (se houver ?id= na URL)
   await receberArquivoPublico();
-
   load(); loadNotifs();
 });
 
