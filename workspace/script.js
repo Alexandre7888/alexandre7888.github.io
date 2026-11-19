@@ -19,39 +19,31 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
+/* ============ MOBILE DETECTION ============ */
+const isTouch = window.matchMedia("(pointer: coarse)").matches || 'ontouchstart' in window;
+
 /* ============ ESTADO ============ */
-const S = { user: null, folder: "root", files: [], folders: [], q: "", notifs: [], loaded: false, fromCache: false };
+const S = { user: null, folder: "root", files: [], folders: [], q: "", notifs: [], loaded: false };
 const $ = id => document.getElementById(id);
 
-/* ============ CACHE (localStorage) ============ */
+/* ============ CACHE ============ */
 const CACHE_PREFIX = "kloewa_ws_";
-const CACHE_TTL = 1000 * 60 * 60; // 1h
-
-function cacheKey(uid, folder) {
-  return `${CACHE_PREFIX}${uid}_${folder}`;
-}
-
+const CACHE_TTL = 1000 * 60 * 60;
+function cacheKey(uid, folder) { return `${CACHE_PREFIX}${uid}_${folder}`; }
 function saveCache(uid, folder, files, folders) {
-  try {
-    const data = { files, folders, ts: Date.now() };
-    localStorage.setItem(cacheKey(uid, folder), JSON.stringify(data));
-  } catch (e) {
-    // localStorage pode estar cheio (QuotaExceeded). Ignora.
-    console.warn("Cache não salvo:", e);
-  }
+  try { localStorage.setItem(cacheKey(uid, folder), JSON.stringify({ files, folders, ts: Date.now() })); }
+  catch (e) { console.warn("Cache não salvo:", e); }
 }
-
 function loadCache(uid, folder) {
   try {
     const raw = localStorage.getItem(cacheKey(uid, folder));
     if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (!data || !data.files || !data.folders) return null;
-    if (Date.now() - data.ts > CACHE_TTL) { localStorage.removeItem(cacheKey(uid, folder)); return null; }
-    return data;
+    const d = JSON.parse(raw);
+    if (!d || !d.files || !d.folders) return null;
+    if (Date.now() - d.ts > CACHE_TTL) { localStorage.removeItem(cacheKey(uid, folder)); return null; }
+    return d;
   } catch (e) { return null; }
 }
-
 function invalidateCache(uid, folder) {
   try { localStorage.removeItem(cacheKey(uid, folder)); } catch (e) {}
 }
@@ -76,7 +68,8 @@ const P = {
   edit: "M4 20h4L19 9l-4-4L4 16zM13 7l4 4",
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
   mail: "M3 6h18v12H3zM3 7l9 7 9-7",
-  out: "M9 4H5v16h4M16 8l4 4-4 4M20 12H9"
+  share: "M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13",
+  dots: "M12 6h.01M12 12h.01M12 18h.01"
 };
 function icon(name) {
   const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -130,7 +123,7 @@ async function run(fn, okMsg) {
   catch (e) { showToast(e instanceof TypeError ? NET_ERR : (e.message || NET_ERR), "error"); return null; }
 }
 
-/* ============ PRIVACIDADE EM TEMPO REAL ============ */
+/* ============ FIREBASE RTDB ============ */
 const fb = { files: {}, folders: {}, parent: null, key: "", unsubs: [], waiters: [] };
 const findFb = (map, i) => map[i.id] || Object.values(map).find(v => v && v.name === i.name);
 function listen() {
@@ -158,52 +151,36 @@ function waitPriv(item, val) {
   return { p, cancel: () => { fb.waiters = fb.waiters.filter(x => x !== w); } };
 }
 
-/* ============ LISTAGEM COM CACHE ============ */
+/* ============ LISTAGEM ============ */
 function currentFolder() {
   const h = decodeURIComponent(location.hash.slice(1)).replace(/\/+$/, "");
   return h || "root";
 }
 async function load() {
-  S.folder = currentFolder();
-  S.loaded = false;
-  S.fromCache = false;
-
-  // Cabeçalho
+  S.folder = currentFolder(); S.loaded = false;
   $("title").replaceChildren(icon("folder"), S.folder === "root" ? "Meu Workspace" : S.folder);
   if (S.folder !== "root") {
     const b = el("button", { class: "btn", onclick: () => { location.hash = ""; } }, ...withIcon("back", "Voltar"));
     $("title").prepend(b);
   }
 
-  // 1. TENTA O CACHE PRIMEIRO (instantâneo)
   const cached = loadCache(S.user.uid, S.folder);
   if (cached) {
-    S.files = cached.files;
-    S.folders = cached.folders;
-    S.fromCache = true;
-    S.loaded = true;
-    listen();
-    applyPriv();
-    // Mostra um aviso sutil de "atualizando..." se quiser
-    // (opcional)
+    S.files = cached.files; S.folders = cached.folders; S.loaded = true;
+    listen(); applyPriv();
   } else {
     $("grid").replaceChildren(el("div", { class: "empty" }, "Carregando..."));
   }
 
-  // 2. BUSCA NO BACKEND (fonte da verdade)
   try {
     const d = await get("/api/workspace/list", { folder: S.folder });
     if (!d) return;
-    S.files = d.files || [];
-    S.folders = d.folders || [];
-    S.fromCache = false;
+    S.files = d.files || []; S.folders = d.folders || [];
     S.loaded = true;
     saveCache(S.user.uid, S.folder, S.files, S.folders);
-    listen();
-    applyPriv();
+    listen(); applyPriv();
   } catch (e) {
-    if (!cached) showToast("Erro ao carregar. Usando cache local.", "error");
-    else console.warn("Falha no backend, mantendo cache:", e);
+    if (!cached) showToast("Erro ao carregar.", "error");
   }
 }
 
@@ -219,12 +196,10 @@ function render() {
     ...S.files.map(x => ({ ...x, _t: "file" }))
   ].filter(i => (i.name || "").toLowerCase().includes(q));
   const g = $("grid"); g.replaceChildren();
-  if (!items.length) {
-    g.append(el("div", { class: "empty" }, S.q ? "Nenhum item encontrado." : "Pasta vazia. Envie arquivos ou crie uma pasta."));
-    return;
-  }
+  if (!items.length) { g.append(el("div", { class: "empty" }, S.q ? "Nenhum item encontrado." : "Pasta vazia.")); return; }
   items.forEach(i => g.append(card(i)));
 }
+
 function card(i) {
   const thumb = el("div", { class: "thumb" });
   if (i._t === "folder") thumb.append(icon("folder"));
@@ -235,22 +210,89 @@ function card(i) {
       const im = el("img", { src: u, alt: "", class: isRecv(i) ? "blur" : "" }); thumb.replaceChildren(im);
     }).catch(() => {});
   } else thumb.append(icon(isPdf(i) ? "pdf" : "pdf"));
-  const c = el("div", { class: "card", tabindex: "0" }, thumb,
+
+  const c = el("div", { class: "card", tabindex: "0", "data-id": i.id }, thumb,
     el("div", { class: "meta" }, el("span", { class: "n", title: i.name }, i.name || ""), icon(privIcon(i._priv || i.privacy))));
+
+  // Botão de opções (visível sempre)
+  const dots = el("button", { class: "dots", "aria-label": "Opções", onclick: e => {
+    e.stopPropagation();
+    showCtx(e.clientX, e.clientY, i);
+  } }, icon("dots"));
+  c.append(dots);
+
+  // Trash para arquivos
   if (i._t === "file") {
     c.append(el("button", { class: "trash", "aria-label": "Excluir", onclick: e => { e.stopPropagation(); askDelete(i); } }, icon("trash")));
     if (isRecv(i)) c.append(el("div", { class: "accept" }, el("button", { class: "btn pri", onclick: e => { e.stopPropagation(); acceptFile(i); } }, "Aceitar")));
   }
-  c.addEventListener("click", () => open(i));
-  c.addEventListener("keydown", e => { if (e.key === "Enter") open(i); });
-  c.addEventListener("contextmenu", e => { e.preventDefault(); showCtx(e.clientX, e.clientY, i); });
+
+  // ==== Clique: comportamento depende do dispositivo ====
+  let pressTimer = null;
+  let longPressFired = false;
+
+  c.addEventListener("contextmenu", e => {
+    if (!isTouch) { e.preventDefault(); showCtx(e.clientX, e.clientY, i); }
+  });
+
+  c.addEventListener("touchstart", e => {
+    if (!isTouch) return;
+    longPressFired = false;
+    pressTimer = setTimeout(() => {
+      longPressFired = true;
+      const t = e.touches[0];
+      showCtx(t.clientX, t.clientY, i);
+    }, 500);
+  }, { passive: true });
+
+  c.addEventListener("touchend", e => {
+    if (!isTouch) return;
+    clearTimeout(pressTimer);
+    if (longPressFired) { e.preventDefault(); return; }
+    open(i);
+  });
+
+  c.addEventListener("touchmove", () => { clearTimeout(pressTimer); }, { passive: true });
+
+  // Desktop: clique abre, clique direito abre menu
+  c.addEventListener("click", e => {
+    if (isTouch) return;
+    if (e.button === 0) open(i);
+  });
+
   return c;
 }
+
 function open(i) {
   if (i._t === "folder") { location.hash = encodeURIComponent(i.name) + "/"; return; }
   if (isRecv(i)) { showToast("Aceite o arquivo para visualizar.", "info"); return; }
   viewFile(i);
 }
+
+/* ============ MENU DE CONTEXTO ============ */
+function showCtx(x, y, i) {
+  const f = i._t === "file";
+  const recv = isRecv(i);
+  const items = [
+    f && !recv && ["eye", "Visualizar", () => viewFile(i)],
+    f && !recv && ["down", "Baixar", () => viewFile(i, true)],
+    f && !recv && ["share", "Compartilhar", () => shareNative(i)],
+    !recv && ["move", "Mover", () => moveItem(i)],
+    !recv && ["edit", "Renomear", () => rename(i)],
+    !recv && ["lock", "Privacidade", () => privacyModal(i)],
+    f && ["link", "Link público", () => publicLink(i)],
+    f && ["mail", "Compartilhar por e-mail", () => shareMail(i)],
+    ["trash", i._t === "folder" ? "Excluir pasta" : "Excluir", () => askDelete(i), "dng"]
+  ].filter(Boolean);
+  const m = $("ctx"); m.replaceChildren();
+  items.forEach(([ic, label, fn, cls]) => m.append(el("button", { class: cls || "", onclick: () => { hideCtx(); fn(); } }, icon(ic), label)));
+  m.classList.remove("hidden");
+  m.style.left = Math.min(x, innerWidth - m.offsetWidth - 8) + "px";
+  m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + "px";
+}
+const hideCtx = () => $("ctx").classList.add("hidden");
+document.addEventListener("click", hideCtx);
+document.addEventListener("keydown", e => { if (e.key === "Escape") hideCtx(); });
 
 /* ============ MODAIS ============ */
 function modal(title, body, actions = []) {
@@ -298,17 +340,27 @@ function moveItem(i) {
   } }, "Mover");
   const ov = modal("Mover para", sel, [closeBtn({ remove: () => ov.remove() }), ok]);
 }
+
+/* ============ EXCLUIR (arquivo e pasta) ============ */
 function askDelete(i) {
-  if (i._t === "folder") { showToast("A exclusão de pastas não está disponível.", "info"); return; }
+  const isFolder = i._t === "folder";
+  const body = el("p", {}, isFolder
+    ? `Excluir a pasta "${i.name}" e todo o seu conteúdo? Esta ação não pode ser desfeita.`
+    : `Excluir o arquivo "${i.name}"? Esta ação não pode ser desfeita.`);
   const ok = el("button", { class: "btn pri", style: "background:var(--err);border-color:var(--err)", onclick: async () => {
     ok.disabled = true;
-    if (await run(() => post("/api/workspace/delete", { fileId: i.id, ikFileId: i.ikFileId }), "Arquivo excluído")) {
+    const payload = isFolder
+      ? { fileId: i.id, type: "folder", folderKey: S.folder }
+      : { fileId: i.id, ikFileId: i.ikFileId };
+    if (await run(() => post("/api/workspace/delete", payload), isFolder ? "Pasta excluída" : "Arquivo excluído")) {
       invalidateCache(S.user.uid, S.folder);
       ov.remove(); load();
     } else ok.disabled = false;
   } }, "Excluir");
-  const ov = modal("Excluir arquivo", el("p", {}, `Excluir "${i.name}"? Esta ação não pode ser desfeita.`), [closeBtn({ remove: () => ov.remove() }), ok]);
+  const ov = modal(isFolder ? "Excluir pasta" : "Excluir arquivo", body, [closeBtn({ remove: () => ov.remove() }), ok]);
 }
+
+/* ============ PRIVACIDADE ============ */
 function privacyModal(i) {
   const defs = [["private", "lock", "Privado", "Só você acessa"], ["restricted", "users", "Restrito", "Só pessoas com acesso"], ["public", "globe", "Público", "Qualquer pessoa com o link"]];
   const wrap = el("div", { style: "display:grid;gap:8px" });
@@ -318,11 +370,7 @@ function privacyModal(i) {
       const sp = el("span", { class: "spin" }); b.append(sp);
       const w = waitPriv(i, val);
       const d = await run(() => post("/api/workspace/privacy", { itemId: i.id, type: i._t, privacy: val }));
-      if (d) {
-        await w.p;
-        showToast("Privacidade atualizada", "success");
-        invalidateCache(S.user.uid, S.folder);
-      } else w.cancel();
+      if (d) { await w.p; showToast("Privacidade atualizada", "success"); invalidateCache(S.user.uid, S.folder); } else w.cancel();
       delete ov.dataset.lock;
       if (d) ov.remove(); else { sp.remove(); btns.forEach(x => x.disabled = false); }
     } }, icon(ic), el("span", {}, name, el("small", {}, desc)));
@@ -331,6 +379,8 @@ function privacyModal(i) {
   wrap.append(...btns);
   const ov = modal("Privacidade", wrap, [closeBtn({ remove: () => { if (!ov.dataset.lock) ov.remove(); } })]);
 }
+
+/* ============ LINK PÚBLICO ============ */
 async function publicLink(i) {
   if ((i._priv || i.privacy) !== "public") { showToast("Mude a privacidade para Público antes de gerar o link.", "error"); return; }
   const d = await run(() => post("/api/workspace/public-share", { itemId: i.id, type: i._t }));
@@ -338,17 +388,38 @@ async function publicLink(i) {
   if (!d.shareUrl) { showToast("O servidor não devolveu o link público.", "error"); return; }
   const inp = el("input", { class: "input", id: "publicUrl", readonly: "", value: d.shareUrl });
   const cp = el("button", { class: "btn pri", onclick: async () => {
-    try { await navigator.clipboard.writeText(inp.value); }
-    catch { inp.select(); document.execCommand("copy"); }
+    try { await navigator.clipboard.writeText(inp.value); } catch { inp.select(); document.execCommand("copy"); }
     showToast("Link copiado!", "success");
   } }, ...withIcon("link", "Copiar Link"));
   const ov = modal("Link público", inp, [closeBtn({ remove: () => ov.remove() }), cp]);
+}
+
+/* ============ COMPARTILHAR (nativo) ============ */
+async function shareNative(i) {
+  try {
+    const u = await blobUrl("/api/workspace/view/" + i.id, { owner: i.ownerUid || "", type: "file" });
+    const r = await fetch(u);
+    const blob = await r.blob();
+    const file = new File([blob], i.name || "arquivo", { type: blob.type || "application/octet-stream" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: i.name || "Arquivo", text: "Compartilhado do Workspace" });
+    } else if (navigator.share) {
+      await navigator.share({ title: i.name || "Arquivo", text: "Compartilhado do Workspace", url: location.href });
+    } else {
+      showToast("Compartilhamento nativo não suportado. Link copiado.", "info");
+      try { await navigator.clipboard.writeText(location.href); } catch {}
+    }
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    showToast("Erro ao compartilhar: " + e.message, "error");
+  }
 }
 function shareMail(i) {
   promptModal("Compartilhar por e-mail", "E-mail do destinatário", "", "Compartilhar", async email => {
     await run(() => post("/api/workspace/share", { fileId: i.id, email }), "Compartilhado");
   });
 }
+
 async function acceptFile(i) {
   if (await run(() => post("/api/workspace/share/accept", { fileId: i.id }), "Arquivo aceito")) {
     invalidateCache(S.user.uid, S.folder);
@@ -371,36 +442,9 @@ async function loadNotifs() {
 function notifModal() {
   const box = el("div", { style: "display:grid;gap:8px" });
   if (!S.notifs.length) box.append(el("p", { style: "color:var(--mut)" }, "Nenhuma notificação."));
-  S.notifs.forEach(n => {
-    const row = el("div", { class: "note" }, el("span", {}, n.message || n.title || n.fileName || "Novo item compartilhado"));
-    box.append(row);
-  });
+  S.notifs.forEach(n => box.append(el("div", { class: "note" }, el("span", {}, n.message || n.title || "Notificação"))));
   const ov = modal("Notificações", box, [closeBtn({ remove: () => ov.remove() })]);
 }
-
-/* ============ MENU DE CONTEXTO ============ */
-function showCtx(x, y, i) {
-  const f = i._t === "file";
-  const recv = isRecv(i);
-  const items = [
-    f && !recv && ["eye", "Visualizar", () => viewFile(i)],
-    f && !recv && ["down", "Baixar", () => viewFile(i, true)],
-    ["move", "Mover", () => moveItem(i)],
-    ["edit", "Renomear", () => rename(i)],
-    ["lock", "Privacidade", () => privacyModal(i)],
-    ["link", "Link público", () => publicLink(i)],
-    f && ["mail", "Compartilhar via e-mail", () => shareMail(i)],
-    f && ["trash", "Excluir", () => askDelete(i), "dng"]
-  ].filter(Boolean);
-  const m = $("ctx"); m.replaceChildren();
-  items.forEach(([ic, label, fn, cls]) => m.append(el("button", { class: cls || "", onclick: () => { hideCtx(); fn(); } }, icon(ic), label)));
-  m.classList.remove("hidden");
-  m.style.left = Math.min(x, innerWidth - m.offsetWidth - 8) + "px";
-  m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + "px";
-}
-const hideCtx = () => $("ctx").classList.add("hidden");
-document.addEventListener("click", hideCtx);
-document.addEventListener("keydown", e => { if (e.key === "Escape") hideCtx(); });
 
 /* ============ UPLOAD ============ */
 async function uploadFiles(list) {
@@ -419,8 +463,8 @@ async function uploadFiles(list) {
         const x = new XMLHttpRequest();
         x.open("POST", API + "/api/workspace/upload");
         x.upload.onprogress = e => { if (e.lengthComputable) bar.style.width = (e.loaded / e.total * 100) + "%"; };
-        x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch {} x.status < 300 && d.ok !== false ? res() : rej(new Error(d.error || "Falha no envio de " + f.name)); };
-        x.onerror = () => rej(new Error("Erro de rede ao enviar " + f.name));
+        x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch {} x.status < 300 && d.ok !== false ? res() : rej(new Error(d.error || "Falha no envio")); };
+        x.onerror = () => rej(new Error("Erro de rede"));
         x.send(fd);
       });
       showToast(f.name + " enviado", "success");
