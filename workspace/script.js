@@ -14,16 +14,49 @@ const firebaseConfig = {
   measurementId: "G-7E1VWN07GM"
 };
 const API = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
-const LOGIN_URL = "https://kloewa.ooguy.com/"; // sem sessão → vai para o login do site
+const LOGIN_URL = "https://kloewa.ooguy.com/";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
 /* ============ ESTADO ============ */
-const S = { user: null, folder: "root", files: [], folders: [], q: "", notifs: [], loaded: false };
+const S = { user: null, folder: "root", files: [], folders: [], q: "", notifs: [], loaded: false, fromCache: false };
 const $ = id => document.getElementById(id);
 
-/* ============ ÍCONES (SVG inline) ============ */
+/* ============ CACHE (localStorage) ============ */
+const CACHE_PREFIX = "kloewa_ws_";
+const CACHE_TTL = 1000 * 60 * 60; // 1h
+
+function cacheKey(uid, folder) {
+  return `${CACHE_PREFIX}${uid}_${folder}`;
+}
+
+function saveCache(uid, folder, files, folders) {
+  try {
+    const data = { files, folders, ts: Date.now() };
+    localStorage.setItem(cacheKey(uid, folder), JSON.stringify(data));
+  } catch (e) {
+    // localStorage pode estar cheio (QuotaExceeded). Ignora.
+    console.warn("Cache não salvo:", e);
+  }
+}
+
+function loadCache(uid, folder) {
+  try {
+    const raw = localStorage.getItem(cacheKey(uid, folder));
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !data.files || !data.folders) return null;
+    if (Date.now() - data.ts > CACHE_TTL) { localStorage.removeItem(cacheKey(uid, folder)); return null; }
+    return data;
+  } catch (e) { return null; }
+}
+
+function invalidateCache(uid, folder) {
+  try { localStorage.removeItem(cacheKey(uid, folder)); } catch (e) {}
+}
+
+/* ============ ÍCONES ============ */
 const P = {
   folder: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
   image: "M4 5h16v14H4zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM20 15l-5-5-9 9",
@@ -51,7 +84,6 @@ function icon(name) {
   const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
   p.setAttribute("d", P[name]); s.appendChild(p); return s;
 }
-/** Cria elemento com atributos/filhos */
 function el(tag, attrs = {}, ...kids) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -74,7 +106,6 @@ function showToast(msg, type = "info") {
 async function token() { return await auth.currentUser.getIdToken(true); }
 const JSON_H = { "Content-Type": "application/json" };
 const NET_ERR = "Erro de conexão. Verifique sua internet.";
-/** Lê JSON; se a resposta não for JSON, lança erro de conexão */
 async function parse(r) {
   let d; try { d = await r.json(); } catch { throw new Error(NET_ERR); }
   if (!r.ok || d.ok === false) throw new Error(d.error || d.message || "Erro " + r.status);
@@ -88,23 +119,20 @@ async function get(path, params = {}) {
   const q = new URLSearchParams({ tokenid: await token(), ...params });
   return parse(await fetch(API + path + "?" + q, { headers: JSON_H }));
 }
-/** Busca binário (view/preview) e devolve object URL */
 async function blobUrl(path, params = {}) {
   const q = new URLSearchParams({ tokenid: await token(), ...params });
   const r = await fetch(API + path + "?" + q, { headers: JSON_H });
   if (!r.ok) throw new Error("Falha ao carregar arquivo");
   return URL.createObjectURL(await r.blob());
 }
-/** Executa ação com tratamento de erro padrão */
 async function run(fn, okMsg) {
   try { const d = await fn(); if (okMsg) showToast(okMsg, "success"); return d; }
   catch (e) { showToast(e instanceof TypeError ? NET_ERR : (e.message || NET_ERR), "error"); return null; }
 }
 
-/* ============ PRIVACIDADE EM TEMPO REAL (Realtime Database) ============ */
+/* ============ PRIVACIDADE EM TEMPO REAL ============ */
 const fb = { files: {}, folders: {}, parent: null, key: "", unsubs: [], waiters: [] };
 const findFb = (map, i) => map[i.id] || Object.values(map).find(v => v && v.name === i.name);
-/** Escuta a pasta atual: raiz → workspace/{uid}/files|folders; subpasta → workspace/{uid}/folders/{pasta}/files|folders */
 function listen() {
   const key = S.user.uid + "|" + S.folder;
   if (key === fb.key) return;
@@ -114,9 +142,8 @@ function listen() {
   const watch = (path, fn) => fb.unsubs.push(onValue(ref(db, path), s => { fn(s.val()); applyPriv(); }, e => console.error("RTDB:", e)));
   watch(base + "/files", v => fb.files = v || {});
   watch(base + "/folders", v => fb.folders = v || {});
-  if (S.folder !== "root") watch(base + "/privacy", v => fb.parent = v); // privacidade da pasta pai
+  if (S.folder !== "root") watch(base + "/privacy", v => fb.parent = v);
 }
-/** Mescla privacidade do Firebase nos itens; pasta pai privada sobrepõe tudo */
 function applyPriv() {
   const lock = fb.parent === "private";
   const merge = (list, map) => list.forEach(i => { const m = findFb(map, i); if (m && m.privacy) i.privacy = m.privacy; i._priv = lock ? "private" : (i.privacy || "private"); });
@@ -124,7 +151,6 @@ function applyPriv() {
   fb.waiters = fb.waiters.filter(w => { const m = findFb(w.item._t === "folder" ? fb.folders : fb.files, w.item); if (m && m.privacy === w.val) { w.res(); return false; } return true; });
   if (S.loaded) render();
 }
-/** Promessa que resolve quando o Firebase refletir a nova privacidade (ou após 8s) */
 function waitPriv(item, val) {
   let w; const p = new Promise(res => { w = { item, val, res }; fb.waiters.push(w); setTimeout(res, 8000); });
   const m = findFb(item._t === "folder" ? fb.folders : fb.files, item);
@@ -132,23 +158,55 @@ function waitPriv(item, val) {
   return { p, cancel: () => { fb.waiters = fb.waiters.filter(x => x !== w); } };
 }
 
-/* ============ LISTAGEM ============ */
+/* ============ LISTAGEM COM CACHE ============ */
 function currentFolder() {
   const h = decodeURIComponent(location.hash.slice(1)).replace(/\/+$/, "");
   return h || "root";
 }
 async function load() {
-  S.folder = currentFolder(); S.loaded = false;
+  S.folder = currentFolder();
+  S.loaded = false;
+  S.fromCache = false;
+
+  // Cabeçalho
   $("title").replaceChildren(icon("folder"), S.folder === "root" ? "Meu Workspace" : S.folder);
   if (S.folder !== "root") {
     const b = el("button", { class: "btn", onclick: () => { location.hash = ""; } }, ...withIcon("back", "Voltar"));
     $("title").prepend(b);
   }
-  const d = await run(() => get("/api/workspace/list", { folder: S.folder }));
-  if (!d) return;
-  S.files = d.files || []; S.folders = d.folders || [];
-  S.loaded = true; listen(); applyPriv();
+
+  // 1. TENTA O CACHE PRIMEIRO (instantâneo)
+  const cached = loadCache(S.user.uid, S.folder);
+  if (cached) {
+    S.files = cached.files;
+    S.folders = cached.folders;
+    S.fromCache = true;
+    S.loaded = true;
+    listen();
+    applyPriv();
+    // Mostra um aviso sutil de "atualizando..." se quiser
+    // (opcional)
+  } else {
+    $("grid").replaceChildren(el("div", { class: "empty" }, "Carregando..."));
+  }
+
+  // 2. BUSCA NO BACKEND (fonte da verdade)
+  try {
+    const d = await get("/api/workspace/list", { folder: S.folder });
+    if (!d) return;
+    S.files = d.files || [];
+    S.folders = d.folders || [];
+    S.fromCache = false;
+    S.loaded = true;
+    saveCache(S.user.uid, S.folder, S.files, S.folders);
+    listen();
+    applyPriv();
+  } catch (e) {
+    if (!cached) showToast("Erro ao carregar. Usando cache local.", "error");
+    else console.warn("Falha no backend, mantendo cache:", e);
+  }
 }
+
 const isImg = f => /^image\//.test(f.type || f.mimeType || "") || /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name || "");
 const isPdf = f => /pdf/.test(f.type || f.mimeType || "") || /\.pdf$/i.test(f.name || "");
 const isRecv = f => f.received && !f.accepted;
@@ -204,7 +262,6 @@ function modal(title, body, actions = []) {
 }
 const closeBtn = ov => el("button", { class: "btn", onclick: () => ov.remove() }, "Cancelar");
 
-/** Modal genérico com um campo de texto */
 function promptModal(title, label, value, confirmText, onOk) {
   const inp = el("input", { class: "input", value: value || "", placeholder: label });
   let ov; const ok = el("button", { class: "btn pri", onclick: async () => { const v = inp.value.trim(); if (!v) return; ok.disabled = true; await onOk(v); ov.remove(); } }, confirmText);
@@ -214,12 +271,18 @@ function promptModal(title, label, value, confirmText, onOk) {
 }
 function newFolder() {
   promptModal("Nova pasta", "Nome da pasta", "", "Criar", async name => {
-    if (await run(() => post("/api/workspace/folder/create", { folderName: name, parent: S.folder }), "Pasta criada")) load();
+    if (await run(() => post("/api/workspace/folder/create", { folderName: name, parent: S.folder }), "Pasta criada")) {
+      invalidateCache(S.user.uid, S.folder);
+      load();
+    }
   });
 }
 function rename(i) {
   promptModal("Renomear", "Novo nome", i.name, "Salvar", async name => {
-    if (await run(() => post("/api/workspace/rename", { id: i.id, type: i._t, newName: name, parent: S.folder }), "Renomeado")) load();
+    if (await run(() => post("/api/workspace/rename", { id: i.id, type: i._t, newName: name, parent: S.folder }), "Renomeado")) {
+      invalidateCache(S.user.uid, S.folder);
+      load();
+    }
   });
 }
 function moveItem(i) {
@@ -228,7 +291,10 @@ function moveItem(i) {
   S.folders.filter(f => f.id !== i.id).forEach(f => sel.append(el("option", { value: f.id }, f.name)));
   const ok = el("button", { class: "btn pri", onclick: async () => {
     ok.disabled = true;
-    if (await run(() => post("/api/workspace/move", { itemId: i.id, itemType: i._t, targetFolderId: sel.value }), "Item movido")) { ov.remove(); load(); } else ok.disabled = false;
+    if (await run(() => post("/api/workspace/move", { itemId: i.id, itemType: i._t, targetFolderId: sel.value }), "Item movido")) {
+      invalidateCache(S.user.uid, S.folder);
+      ov.remove(); load();
+    } else ok.disabled = false;
   } }, "Mover");
   const ov = modal("Mover para", sel, [closeBtn({ remove: () => ov.remove() }), ok]);
 }
@@ -236,11 +302,13 @@ function askDelete(i) {
   if (i._t === "folder") { showToast("A exclusão de pastas não está disponível.", "info"); return; }
   const ok = el("button", { class: "btn pri", style: "background:var(--err);border-color:var(--err)", onclick: async () => {
     ok.disabled = true;
-    if (await run(() => post("/api/workspace/delete", { fileId: i.id, ikFileId: i.ikFileId }), "Arquivo excluído")) { ov.remove(); load(); } else ok.disabled = false;
+    if (await run(() => post("/api/workspace/delete", { fileId: i.id, ikFileId: i.ikFileId }), "Arquivo excluído")) {
+      invalidateCache(S.user.uid, S.folder);
+      ov.remove(); load();
+    } else ok.disabled = false;
   } }, "Excluir");
   const ov = modal("Excluir arquivo", el("p", {}, `Excluir "${i.name}"? Esta ação não pode ser desfeita.`), [closeBtn({ remove: () => ov.remove() }), ok]);
 }
-/** Privacidade: spinner no botão e modal travado até { ok: true } */
 function privacyModal(i) {
   const defs = [["private", "lock", "Privado", "Só você acessa"], ["restricted", "users", "Restrito", "Só pessoas com acesso"], ["public", "globe", "Público", "Qualquer pessoa com o link"]];
   const wrap = el("div", { style: "display:grid;gap:8px" });
@@ -248,9 +316,13 @@ function privacyModal(i) {
     const b = el("button", { class: "opt" + ((i.privacy || "private") === val ? " on" : ""), onclick: async () => {
       btns.forEach(x => x.disabled = true); ov.dataset.lock = "1";
       const sp = el("span", { class: "spin" }); b.append(sp);
-      const w = waitPriv(i, val); // registra antes, para não perder o evento do Firebase
+      const w = waitPriv(i, val);
       const d = await run(() => post("/api/workspace/privacy", { itemId: i.id, type: i._t, privacy: val }));
-      if (d) { await w.p; showToast("Privacidade atualizada", "success"); } else w.cancel();
+      if (d) {
+        await w.p;
+        showToast("Privacidade atualizada", "success");
+        invalidateCache(S.user.uid, S.folder);
+      } else w.cancel();
       delete ov.dataset.lock;
       if (d) ov.remove(); else { sp.remove(); btns.forEach(x => x.disabled = false); }
     } }, icon(ic), el("span", {}, name, el("small", {}, desc)));
@@ -259,7 +331,6 @@ function privacyModal(i) {
   wrap.append(...btns);
   const ov = modal("Privacidade", wrap, [closeBtn({ remove: () => { if (!ov.dataset.lock) ov.remove(); } })]);
 }
-/** Link público: só para itens públicos; mostra o shareUrl devolvido pelo Worker em #publicUrl */
 async function publicLink(i) {
   if ((i._priv || i.privacy) !== "public") { showToast("Mude a privacidade para Público antes de gerar o link.", "error"); return; }
   const d = await run(() => post("/api/workspace/public-share", { itemId: i.id, type: i._t }));
@@ -279,7 +350,10 @@ function shareMail(i) {
   });
 }
 async function acceptFile(i) {
-  if (await run(() => post("/api/workspace/share/accept", { fileId: i.id }), "Arquivo aceito")) load();
+  if (await run(() => post("/api/workspace/share/accept", { fileId: i.id }), "Arquivo aceito")) {
+    invalidateCache(S.user.uid, S.folder);
+    load();
+  }
 }
 async function viewFile(i, download = false) {
   const u = await run(() => blobUrl("/api/workspace/view/" + i.id, { owner: i.ownerUid || "", type: "file" }));
@@ -328,7 +402,7 @@ const hideCtx = () => $("ctx").classList.add("hidden");
 document.addEventListener("click", hideCtx);
 document.addEventListener("keydown", e => { if (e.key === "Escape") hideCtx(); });
 
-/* ============ UPLOAD (XHR para barra de progresso) ============ */
+/* ============ UPLOAD ============ */
 async function uploadFiles(list) {
   const files = [...list]; if (!files.length) return;
   const name = el("div", {}), bar = el("i"), cnt = el("small", { style: "color:var(--mut)" });
@@ -352,7 +426,9 @@ async function uploadFiles(list) {
       showToast(f.name + " enviado", "success");
     } catch (e) { showToast(e.message, "error"); }
   }
-  ov.remove(); load();
+  ov.remove();
+  invalidateCache(S.user.uid, S.folder);
+  load();
 }
 
 /* ============ DRAG & DROP ============ */
@@ -362,7 +438,7 @@ addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("
 addEventListener("dragover", e => e.preventDefault());
 addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("dropOv").classList.add("hidden"); if (S.user && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
 
-/* ============ AUTH (sem login próprio: sem sessão → kloewa.ooguy.com; sair fica no AppShell) ============ */
+/* ============ AUTH ============ */
 onAuthStateChanged(auth, u => {
   S.user = u;
   if (!u) { location.replace(LOGIN_URL); return; }
@@ -370,7 +446,7 @@ onAuthStateChanged(auth, u => {
   load(); loadNotifs();
 });
 
-/* ============ INICIALIZAÇÃO DA UI ============ */
+/* ============ INICIALIZAÇÃO ============ */
 $("bNewFolder").append(...withIcon("plus", "Nova pasta"));
 $("bUpload").append(...withIcon("upload", "Upload"));
 $("bNotif").prepend(icon("bell"));
