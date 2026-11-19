@@ -214,20 +214,17 @@ function card(i) {
   const c = el("div", { class: "card", tabindex: "0", "data-id": i.id }, thumb,
     el("div", { class: "meta" }, el("span", { class: "n", title: i.name }, i.name || ""), icon(privIcon(i._priv || i.privacy))));
 
-  // Botão de opções (visível sempre)
   const dots = el("button", { class: "dots", "aria-label": "Opções", onclick: e => {
     e.stopPropagation();
     showCtx(e.clientX, e.clientY, i);
   } }, icon("dots"));
   c.append(dots);
 
-  // Trash para arquivos
   if (i._t === "file") {
     c.append(el("button", { class: "trash", "aria-label": "Excluir", onclick: e => { e.stopPropagation(); askDelete(i); } }, icon("trash")));
     if (isRecv(i)) c.append(el("div", { class: "accept" }, el("button", { class: "btn pri", onclick: e => { e.stopPropagation(); acceptFile(i); } }, "Aceitar")));
   }
 
-  // ==== Clique: comportamento depende do dispositivo ====
   let pressTimer = null;
   let longPressFired = false;
 
@@ -254,7 +251,6 @@ function card(i) {
 
   c.addEventListener("touchmove", () => { clearTimeout(pressTimer); }, { passive: true });
 
-  // Desktop: clique abre, clique direito abre menu
   c.addEventListener("click", e => {
     if (isTouch) return;
     if (e.button === 0) open(i);
@@ -341,7 +337,6 @@ function moveItem(i) {
   const ov = modal("Mover para", sel, [closeBtn({ remove: () => ov.remove() }), ok]);
 }
 
-/* ============ EXCLUIR (arquivo e pasta) ============ */
 function askDelete(i) {
   const isFolder = i._t === "folder";
   const body = el("p", {}, isFolder
@@ -360,7 +355,6 @@ function askDelete(i) {
   const ov = modal(isFolder ? "Excluir pasta" : "Excluir arquivo", body, [closeBtn({ remove: () => ov.remove() }), ok]);
 }
 
-/* ============ PRIVACIDADE ============ */
 function privacyModal(i) {
   const defs = [["private", "lock", "Privado", "Só você acessa"], ["restricted", "users", "Restrito", "Só pessoas com acesso"], ["public", "globe", "Público", "Qualquer pessoa com o link"]];
   const wrap = el("div", { style: "display:grid;gap:8px" });
@@ -380,7 +374,6 @@ function privacyModal(i) {
   const ov = modal("Privacidade", wrap, [closeBtn({ remove: () => { if (!ov.dataset.lock) ov.remove(); } })]);
 }
 
-/* ============ LINK PÚBLICO ============ */
 async function publicLink(i) {
   if ((i._priv || i.privacy) !== "public") { showToast("Mude a privacidade para Público antes de gerar o link.", "error"); return; }
   const d = await run(() => post("/api/workspace/public-share", { itemId: i.id, type: i._t }));
@@ -394,7 +387,6 @@ async function publicLink(i) {
   const ov = modal("Link público", inp, [closeBtn({ remove: () => ov.remove() }), cp]);
 }
 
-/* ============ COMPARTILHAR (nativo) ============ */
 async function shareNative(i) {
   try {
     const u = await blobUrl("/api/workspace/view/" + i.id, { owner: i.ownerUid || "", type: "file" });
@@ -433,7 +425,6 @@ async function viewFile(i, download = false) {
   else window.open(u, "_blank");
 }
 
-/* ============ NOTIFICAÇÕES ============ */
 async function loadNotifs() {
   const d = await get("/api/workspace/notifications").catch(() => null);
   S.notifs = (d && (d.notifications || d.items)) || [];
@@ -446,7 +437,6 @@ function notifModal() {
   const ov = modal("Notificações", box, [closeBtn({ remove: () => ov.remove() })]);
 }
 
-/* ============ UPLOAD ============ */
 async function uploadFiles(list) {
   const files = [...list]; if (!files.length) return;
   const name = el("div", {}), bar = el("i"), cnt = el("small", { style: "color:var(--mut)" });
@@ -475,18 +465,54 @@ async function uploadFiles(list) {
   load();
 }
 
-/* ============ DRAG & DROP ============ */
 let dragDepth = 0;
 addEventListener("dragenter", e => { if (!S.user) return; e.preventDefault(); dragDepth++; $("dropOv").classList.remove("hidden"); });
 addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("dropOv").classList.add("hidden"); } });
 addEventListener("dragover", e => e.preventDefault());
 addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("dropOv").classList.add("hidden"); if (S.user && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
 
+/* ============ RECEBER ARQUIVO PÚBLICO PELA URL ============ */
+async function receberArquivoPublico() {
+  const params = new URLSearchParams(location.search);
+  const fileId = params.get("id");
+  const ownerUid = params.get("owner");
+  const type = params.get("type") || "file";
+
+  if (!fileId) return false;
+
+  showToast("Salvando arquivo no seu Workspace...", "info");
+  try {
+    const res = await post("/api/workspace/add-reference", {
+      fileId,
+      ownerUid: ownerUid || "root",
+      itemType: type
+    });
+    if (res && res.ok) {
+      showToast(res.mensagem || "Arquivo salvo no Workspace!", "success");
+      // Limpa os parâmetros da URL para não salvar de novo ao recarregar
+      window.history.replaceState({}, "", location.pathname + location.hash);
+      // Recarrega a lista
+      invalidateCache(S.user.uid, S.folder);
+      await load();
+      return true;
+    } else {
+      showToast(res?.erro || "Não foi possível salvar.", "error");
+    }
+  } catch (e) {
+    showToast("Erro ao salvar: " + e.message, "error");
+  }
+  return false;
+}
+
 /* ============ AUTH ============ */
-onAuthStateChanged(auth, u => {
+onAuthStateChanged(auth, async u => {
   S.user = u;
   if (!u) { location.replace(LOGIN_URL); return; }
   $("app").classList.remove("hidden");
+
+  // ⭐ Antes de carregar a lista, tenta salvar o arquivo público (se houver ?id= na URL)
+  await receberArquivoPublico();
+
   load(); loadNotifs();
 });
 
