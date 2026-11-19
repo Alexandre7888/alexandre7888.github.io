@@ -39,7 +39,7 @@ export default async function handler(req, res) {
           <div style="padding:15px 20px;background:#101626;border-bottom:1px solid #1f2a44;display:flex;justify-content:space-between;align-items:center;">
             <h3 style="margin:0;font-size:1.1rem;">Visualizador CodeHUB</h3>
             <div>
-              <a href="https://codehub.giize.com/workspace/?id=${id}&owner=${owner || ''}&type=${type || 'file'}" style="background:#4f8cff;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;">Salvar no Workspace</a>
+              <a href="https://kloewa.ooguy.com/workspace/?id=${id}&owner=${owner || ''}&type=${type || 'file'}" style="background:#4f8cff;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;">Salvar no Workspace</a>
               <a href="/api?action=stream&id=${id}&token=${token || ''}&download=true&type=${type || 'file'}" style="background:#2d3b5c;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;margin-left:10px;">Baixar</a>
             </div>
           </div>
