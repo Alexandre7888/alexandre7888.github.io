@@ -22,13 +22,13 @@ export default async function handler(req, res) {
         let list = data.files ? data.files.map(f => `<li style="margin-bottom:10px;">📄 <a href="/api?action=view&id=${f.id}&token=${token || ''}&share=${share || ''}&owner=${owner || ''}&type=file" style="color:#4f8cff;text-decoration:none;">${f.name}</a></li>`).join('') : '';
         mediaHtml = `<div style="text-align:left;width:100%;max-width:600px;"><h3>Conteúdo da Pasta</h3><ul style="list-style:none;padding:0;">${list || 'Vazia'}</ul></div>`;
       } else if (contentType.includes("image")) {
-        mediaHtml = `<img src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&type=file" style="max-width:100%;max-height:80vh;border-radius:8px;" />`;
+        mediaHtml = `<img src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&owner=${owner || ''}&type=file" style="max-width:100%;max-height:80vh;border-radius:8px;" />`;
       } else if (contentType.includes("pdf")) {
-        mediaHtml = `<iframe src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&type=file" style="width:100%;height:80vh;border:none;"></iframe>`;
+        mediaHtml = `<iframe src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&owner=${owner || ''}&type=file" style="width:100%;height:80vh;border:none;"></iframe>`;
       } else if (contentType.includes("video")) {
-        mediaHtml = `<video controls style="max-width:100%;max-height:80vh;border-radius:8px;"><source src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&type=file" type="${contentType}"></video>`;
+        mediaHtml = `<video controls style="max-width:100%;max-height:80vh;border-radius:8px;"><source src="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&owner=${owner || ''}&type=file" type="${contentType}"></video>`;
       } else {
-        mediaHtml = `<p>Formato não suportado. <a href="/api?action=stream&id=${id}&token=${token || ''}&download=true&type=file">Baixar Arquivo</a></p>`;
+        mediaHtml = `<p>Formato não suportado. <a href="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&owner=${owner || ''}&download=true&type=file">Baixar Arquivo</a></p>`;
       }
 
       const html = `
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
             <h3 style="margin:0;font-size:1.1rem;">Visualizador CodeHUB</h3>
             <div>
               <a href="https://kloewa.ooguy.com/workspace/?id=${id}&owner=${owner || ''}&type=${type || 'file'}" style="background:#4f8cff;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;">Salvar no Workspace</a>
-              <a href="/api?action=stream&id=${id}&token=${token || ''}&download=true&type=${type || 'file'}" style="background:#2d3b5c;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;margin-left:10px;">Baixar</a>
+              <a href="/api?action=stream&id=${id}&token=${token || ''}&share=${share || ''}&owner=${owner || ''}&download=true&type=${type || 'file'}" style="background:#2d3b5c;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;margin-left:10px;">Baixar</a>
             </div>
           </div>
           <div style="flex:1;display:flex;justify-content:center;align-items:center;padding:20px;">${mediaHtml}</div>
@@ -55,14 +55,26 @@ export default async function handler(req, res) {
   }
 
   if (action === 'stream') {
+    const params = new URLSearchParams();
+    if (share) params.set("share", share);
+    if (owner) params.set("owner", owner);
+    if (type) params.set("type", type);
+    if (download === 'true') params.set("download", "true");
+
     const workerUrl = share
       ? `${WORKER_URL}/api/workspace/public/${share}`
-      : `${WORKER_URL}/api/workspace/view/${id}?tokenid=${token}&type=${type || 'file'}`;
+      : `${WORKER_URL}/api/workspace/view/${id}?tokenid=${token}&type=${type || 'file'}${download === 'true' ? '&download=true' : ''}`;
+
     try {
       const response = await fetch(workerUrl);
       if (!response.ok) return res.status(response.status).send("Erro.");
-      res.setHeader("Content-Type", response.headers.get("content-type") || "application/octet-stream");
-      if (download === 'true') res.setHeader("Content-Disposition", `attachment; filename="arquivo"`);
+
+      const contentType = response.headers.get("content-type") || "application/octet-stream";
+      res.setHeader("Content-Type", contentType);
+      if (download === 'true') {
+        const fileName = (response.headers.get("content-disposition") || "").match(/filename="?([^";]+)"?/)?.[1] || "arquivo";
+        res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      }
       const buffer = await response.arrayBuffer();
       return res.send(Buffer.from(buffer));
     } catch (e) {
