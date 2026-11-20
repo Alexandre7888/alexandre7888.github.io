@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-/* ============ CONFIG ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
   authDomain: "html-15e80.firebaseapp.com",
@@ -19,20 +18,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-/* ============ MOBILE DETECTION ============ */
 const isTouch = window.matchMedia("(pointer: coarse)").matches || 'ontouchstart' in window;
-
-/* ============ ESTADO ============ */
 const S = { user: null, folder: "root", files: [], folders: [], q: "", notifs: [], loaded: false };
 const $ = id => document.getElementById(id);
 
-/* ============ CACHE ============ */
 const CACHE_PREFIX = "kloewa_ws_";
 const CACHE_TTL = 1000 * 60 * 60;
 function cacheKey(uid, folder) { return `${CACHE_PREFIX}${uid}_${folder}`; }
 function saveCache(uid, folder, files, folders) {
-  try { localStorage.setItem(cacheKey(uid, folder), JSON.stringify({ files, folders, ts: Date.now() })); }
-  catch (e) { console.warn("Cache não salvo:", e); }
+  try { localStorage.setItem(cacheKey(uid, folder), JSON.stringify({ files, folders, ts: Date.now() })); } catch (e) {}
 }
 function loadCache(uid, folder) {
   try {
@@ -44,11 +38,8 @@ function loadCache(uid, folder) {
     return d;
   } catch (e) { return null; }
 }
-function invalidateCache(uid, folder) {
-  try { localStorage.removeItem(cacheKey(uid, folder)); } catch (e) {}
-}
+function invalidateCache(uid, folder) { try { localStorage.removeItem(cacheKey(uid, folder)); } catch (e) {} }
 
-/* ============ ÍCONES ============ */
 const P = {
   folder: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
   image: "M4 5h16v14H4zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM20 15l-5-5-9 9",
@@ -89,13 +80,11 @@ function el(tag, attrs = {}, ...kids) {
 }
 const withIcon = (name, text) => [icon(name), text];
 
-/* ============ TOAST ============ */
 function showToast(msg, type = "info") {
   const t = el("div", { class: "toast " + type, role: "status" }, msg);
   $("toasts").append(t); setTimeout(() => t.remove(), 3800);
 }
 
-/* ============ API ============ */
 async function token() { return await auth.currentUser.getIdToken(true); }
 const JSON_H = { "Content-Type": "application/json" };
 const NET_ERR = "Erro de conexão. Verifique sua internet.";
@@ -115,6 +104,11 @@ async function get(path, params = {}) {
 async function blobUrl(path, params = {}) {
   const q = new URLSearchParams({ tokenid: await token(), ...params });
   const r = await fetch(API + path + "?" + q, { headers: JSON_H });
+  if (r.status === 401) {
+    showToast("Sessão expirada. Faça login novamente.", "error");
+    setTimeout(() => location.replace(LOGIN_URL), 1500);
+    throw new Error("Sessão expirada");
+  }
   if (!r.ok) throw new Error("Falha ao carregar arquivo");
   return URL.createObjectURL(await r.blob());
 }
@@ -123,7 +117,6 @@ async function run(fn, okMsg) {
   catch (e) { showToast(e instanceof TypeError ? NET_ERR : (e.message || NET_ERR), "error"); return null; }
 }
 
-/* ============ FIREBASE RTDB ============ */
 const fb = { files: {}, folders: {}, parent: null, key: "", unsubs: [], waiters: [] };
 const findFb = (map, i) => map[i.id] || Object.values(map).find(v => v && v.name === i.name);
 function listen() {
@@ -151,7 +144,6 @@ function waitPriv(item, val) {
   return { p, cancel: () => { fb.waiters = fb.waiters.filter(x => x !== w); } };
 }
 
-/* ============ LISTAGEM ============ */
 function currentFolder() {
   const h = decodeURIComponent(location.hash.slice(1)).replace(/\/+$/, "");
   return h || "root";
@@ -215,8 +207,7 @@ function card(i) {
     el("div", { class: "meta" }, el("span", { class: "n", title: i.name }, i.name || ""), icon(privIcon(i._priv || i.privacy))));
 
   const dots = el("button", { class: "dots", "aria-label": "Opções", onclick: e => {
-    e.stopPropagation();
-    showCtx(e.clientX, e.clientY, i);
+    e.stopPropagation(); showCtx(e.clientX, e.clientY, i);
   } }, icon("dots"));
   c.append(dots);
 
@@ -250,11 +241,7 @@ function card(i) {
   });
 
   c.addEventListener("touchmove", () => { clearTimeout(pressTimer); }, { passive: true });
-
-  c.addEventListener("click", e => {
-    if (isTouch) return;
-    if (e.button === 0) open(i);
-  });
+  c.addEventListener("click", e => { if (!isTouch && e.button === 0) open(i); });
 
   return c;
 }
@@ -265,7 +252,6 @@ function open(i) {
   viewFile(i);
 }
 
-/* ============ MENU DE CONTEXTO ============ */
 function showCtx(x, y, i) {
   const f = i._t === "file";
   const recv = isRecv(i);
@@ -290,7 +276,6 @@ const hideCtx = () => $("ctx").classList.add("hidden");
 document.addEventListener("click", hideCtx);
 document.addEventListener("keydown", e => { if (e.key === "Escape") hideCtx(); });
 
-/* ============ MODAIS ============ */
 function modal(title, body, actions = []) {
   const ov = el("div", { class: "ov", onmousedown: e => { if (e.target === ov && !ov.dataset.lock) ov.remove(); } });
   const m = el("div", { class: "modal", role: "dialog", "aria-label": title }, el("h3", {}, title), body, el("div", { class: "row" }, actions));
@@ -310,16 +295,14 @@ function promptModal(title, label, value, confirmText, onOk) {
 function newFolder() {
   promptModal("Nova pasta", "Nome da pasta", "", "Criar", async name => {
     if (await run(() => post("/api/workspace/folder/create", { folderName: name, parent: S.folder }), "Pasta criada")) {
-      invalidateCache(S.user.uid, S.folder);
-      load();
+      invalidateCache(S.user.uid, S.folder); load();
     }
   });
 }
 function rename(i) {
   promptModal("Renomear", "Novo nome", i.name, "Salvar", async name => {
     if (await run(() => post("/api/workspace/rename", { id: i.id, type: i._t, newName: name, parent: S.folder }), "Renomeado")) {
-      invalidateCache(S.user.uid, S.folder);
-      load();
+      invalidateCache(S.user.uid, S.folder); load();
     }
   });
 }
@@ -330,8 +313,7 @@ function moveItem(i) {
   const ok = el("button", { class: "btn pri", onclick: async () => {
     ok.disabled = true;
     if (await run(() => post("/api/workspace/move", { itemId: i.id, itemType: i._t, targetFolderId: sel.value }), "Item movido")) {
-      invalidateCache(S.user.uid, S.folder);
-      ov.remove(); load();
+      invalidateCache(S.user.uid, S.folder); ov.remove(); load();
     } else ok.disabled = false;
   } }, "Mover");
   const ov = modal("Mover para", sel, [closeBtn({ remove: () => ov.remove() }), ok]);
@@ -348,8 +330,7 @@ function askDelete(i) {
       ? { fileId: i.id, type: "folder", folderKey: S.folder }
       : { fileId: i.id, ikFileId: i.ikFileId };
     if (await run(() => post("/api/workspace/delete", payload), isFolder ? "Pasta excluída" : "Arquivo excluído")) {
-      invalidateCache(S.user.uid, S.folder);
-      ov.remove(); load();
+      invalidateCache(S.user.uid, S.folder); ov.remove(); load();
     } else ok.disabled = false;
   } }, "Excluir");
   const ov = modal(isFolder ? "Excluir pasta" : "Excluir arquivo", body, [closeBtn({ remove: () => ov.remove() }), ok]);
@@ -387,25 +368,14 @@ async function publicLink(i) {
   const ov = modal("Link público", inp, [closeBtn({ remove: () => ov.remove() }), cp]);
 }
 
-/* ============ COMPARTILHAR (nativo com link público) ============ */
 async function shareNative(i) {
-  if ((i._priv || i.privacy) !== "public") {
-    showToast("Mude a privacidade para Público antes de compartilhar.", "error");
-    return;
-  }
+  if ((i._priv || i.privacy) !== "public") { showToast("Mude a privacidade para Público antes de compartilhar.", "error"); return; }
   const d = await run(() => post("/api/workspace/public-share", { itemId: i.id, type: i._t }));
   if (!d || !d.shareUrl) { showToast("Não foi possível gerar o link público.", "error"); return; }
-
-  const shareUrl = d.shareUrl;
   if (navigator.share) {
-    try {
-      await navigator.share({ title: i.name || "Arquivo", text: "Compartilhado do Workspace", url: shareUrl });
-    } catch (e) {
-      if (e.name !== "AbortError") showToast("Erro ao compartilhar: " + e.message, "error");
-    }
+    try { await navigator.share({ title: i.name || "Arquivo", text: "Compartilhado do Workspace", url: d.shareUrl }); } catch (e) { if (e.name !== "AbortError") showToast("Erro: " + e.message, "error"); }
   } else {
-    try { await navigator.clipboard.writeText(shareUrl); showToast("Link copiado!", "success"); }
-    catch { showToast("Compartilhamento não suportado. Link: " + shareUrl, "info"); }
+    try { await navigator.clipboard.writeText(d.shareUrl); showToast("Link copiado!", "success"); } catch { showToast("Link: " + d.shareUrl, "info"); }
   }
 }
 
@@ -415,7 +385,7 @@ function shareMail(i) {
   });
 }
 
-/* ============ DOWNLOAD (workspace) ============ */
+// ============ DOWNLOAD com extensão correta ============
 async function downloadFile(i) {
   try {
     showToast("Preparando download...", "info");
@@ -429,12 +399,30 @@ async function downloadFile(i) {
       }
       throw new Error("Falha ao baixar (" + r.status + ")");
     }
+
+    // ⭐ Extrai o nome do Content-Disposition (com extensão real)
+    let fileName = i.name || "arquivo";
+    const cd = r.headers.get("Content-Disposition") || r.headers.get("content-disposition");
+    if (cd) {
+      const m1 = cd.match(/filename\*=UTF-8''([^;]+)/i);
+      const m2 = cd.match(/filename="?([^";]+)"?/i);
+      const raw = (m1 && m1[1]) || (m2 && m2[1]);
+      if (raw) { try { fileName = decodeURIComponent(raw.replace(/^"|"$/g, "")); } catch { fileName = raw; } }
+    }
+
+    // Fallback: se o nome vier sem extensão, deduz pelo Content-Type
+    if (!/\.[a-z0-9]{2,5}$/i.test(fileName)) {
+      const ct = r.headers.get("Content-Type") || "";
+      const extMap = { "image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "application/pdf": ".pdf", "video/mp4": ".mp4", "audio/mpeg": ".mp3", "application/zip": ".zip", "text/plain": ".txt" };
+      fileName += extMap[ct] || "";
+    }
+
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
-    const a = el("a", { href: url, download: i.name || "arquivo" });
+    const a = el("a", { href: url, download: fileName });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    showToast("Download iniciado.", "success");
+    showToast("Download iniciado: " + fileName, "success");
   } catch (e) {
     showToast("Erro ao baixar: " + e.message, "error");
   }
@@ -442,8 +430,7 @@ async function downloadFile(i) {
 
 async function acceptFile(i) {
   if (await run(() => post("/api/workspace/share/accept", { fileId: i.id }), "Arquivo aceito")) {
-    invalidateCache(S.user.uid, S.folder);
-    load();
+    invalidateCache(S.user.uid, S.folder); load();
   }
 }
 async function viewFile(i, download = false) {
@@ -499,38 +486,26 @@ addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("
 addEventListener("dragover", e => e.preventDefault());
 addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("dropOv").classList.add("hidden"); if (S.user && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
 
-/* ============ RECEBER ARQUIVO PÚBLICO PELA URL ============ */
 async function receberArquivoPublico() {
   const params = new URLSearchParams(location.search);
   const fileId = params.get("id");
   const ownerUid = params.get("owner");
   const type = params.get("type") || "file";
-
   if (!fileId) return false;
-
   showToast("Salvando arquivo no seu Workspace...", "info");
   try {
-    const res = await post("/api/workspace/add-reference", {
-      fileId,
-      ownerUid: ownerUid || "root",
-      itemType: type
-    });
+    const res = await post("/api/workspace/add-reference", { fileId, ownerUid: ownerUid || "root", itemType: type });
     if (res && res.ok) {
       showToast(res.mensagem || "Arquivo salvo no Workspace!", "success");
       window.history.replaceState({}, "", location.pathname + location.hash);
       invalidateCache(S.user.uid, S.folder);
       await load();
       return true;
-    } else {
-      showToast(res?.erro || "Não foi possível salvar.", "error");
-    }
-  } catch (e) {
-    showToast("Erro ao salvar: " + e.message, "error");
-  }
+    } else showToast(res?.erro || "Não foi possível salvar.", "error");
+  } catch (e) { showToast("Erro ao salvar: " + e.message, "error"); }
   return false;
 }
 
-/* ============ AUTH ============ */
 onAuthStateChanged(auth, async u => {
   S.user = u;
   if (!u) { location.replace(LOGIN_URL); return; }
@@ -539,7 +514,6 @@ onAuthStateChanged(auth, async u => {
   load(); loadNotifs();
 });
 
-/* ============ INICIALIZAÇÃO ============ */
 $("bNewFolder").append(...withIcon("plus", "Nova pasta"));
 $("bUpload").append(...withIcon("upload", "Upload"));
 $("bNotif").prepend(icon("bell"));
