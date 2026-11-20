@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kloewa · Segurança da verificação de identidade</title>
+<style>
+:root{--bg:#f8fafc;--surface:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--primary:#4f46e5;--primary-soft:#eef2ff;--ok:#059669;}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1220;--surface:#162033;--text:#f1f5f9;--muted:#94a3b8;--border:#2b3a55;--primary:#818cf8;--primary-soft:#1e2748;--ok:#34d399;}}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+body{background:var(--bg);color:var(--text);line-height:1.5;padding:0 18px 48px;}
+.wrap{max-width:560px;margin:0 auto;}
+.top{padding:20px 0 6px;font-weight:800;letter-spacing:.3px;font-size:1.1em;}
+.hero{text-align:center;padding:28px 0 8px;}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid var(--border);border-radius:999px;background:var(--primary-soft);color:var(--primary);font-weight:700;font-size:.92em;cursor:pointer;}
+.pill:hover{border-color:var(--primary);}
+.pill:focus-visible,.fechar:focus-visible{outline:3px solid var(--primary);outline-offset:2px;}
+.pill svg{width:18px;height:18px;}
+svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+h1{font-size:1.7em;line-height:1.2;margin:18px 0 10px;}
+.sub{color:var(--muted);font-size:1.02em;max-width:440px;margin:0 auto;}
+.cards{display:grid;gap:12px;margin-top:28px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;}
+.card h2{font-size:1em;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.card h2 svg{width:18px;height:18px;color:var(--ok);flex:none;}
+.card p{color:var(--muted);font-size:.93em;}
+.lista{margin-top:26px;}
+.lista h3{font-size:.95em;margin-bottom:10px;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chips span{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:.85em;}
+.nota{margin-top:22px;color:var(--muted);font-size:.85em;}
+dialog{border:none;border-radius:20px;padding:0;width:min(92vw,460px);background:var(--surface);color:var(--text);box-shadow:0 24px 60px rgba(0,0,0,.35);}
+dialog::backdrop{background:rgba(2,6,23,.65);}
+.m-corpo{padding:24px 22px 22px;}
+.m-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.m-topo span{display:inline-flex;align-items:center;gap:8px;color:var(--ok);font-weight:700;font-size:.9em;}
+.m-topo svg{width:18px;height:18px;}
+.fechar{border:none;background:transparent;color:var(--muted);font-size:1.6em;line-height:1;cursor:pointer;padding:2px 8px;border-radius:8px;}
+dialog h2{font-size:1.15em;margin-bottom:4px;}
+.proto{font-size:1.9em;font-weight:800;color:var(--primary);margin:2px 0 8px;letter-spacing:.3px;}
+dialog p{color:var(--muted);font-size:.93em;}
+dl{margin-top:14px;border-top:1px solid var(--border);}
+dl div{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.9em;}
+dt{flex:0 0 108px;font-weight:700;}
+dd{color:var(--muted);}
+.m-nota{margin-top:14px;font-size:.84em;}
+.btn{margin-top:16px;width:100%;padding:13px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-weight:700;font-size:1em;cursor:pointer;}
+@media(prefers-color-scheme:dark){.btn{color:#0b1220;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">Kloewa</div>
+
+  <main>
+    <section class="hero">
+      <button class="pill" id="abrir" type="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        Ver protocolo de criptografia
+      </button>
+      <h1>Seus dados de verificação são criptografados</h1>
+      <p class="sub">Em trânsito, com HTTPS/TLS, e em repouso, com AES-256-GCM.</p>
+    </section>
+
+    <section class="cards" aria-label="Como protegemos seus dados">
+      <article class="card">
+        <h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Em trânsito</h2>
+        <p>Tudo que sai do seu celular até o nosso servidor viaja por conexão HTTPS (TLS).</p>
+      </article>
+      <article class="card">
+        <h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Em repouso</h2>
+        <p>Antes de ir para o banco, cada dado sensível é criptografado com AES-256-GCM.</p>
+      </article>
+      <article class="card">
+        <h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Chave protegida</h2>
+        <p>A chave é aleatória, de 256 bits, e fica separada dos dados dos usuários. Nenhum usuário consegue ler a verificação de outra pessoa.</p>
+      </article>
+    </section>
+
+    <section class="lista">
+      <h3>O que é gravado criptografado</h3>
+      <div class="chips">
+        <span>Pontos do rosto</span><span>Fotos do rosto</span><span>Fotos do documento</span><span>Texto do documento</span><span>CPF</span><span>Nome</span><span>Data de nascimento</span><span>Endereço IP</span>
+      </div>
+    </section>
+
+    <p class="nota">Para conferir o rosto e o documento, o servidor abre os dados temporariamente na memória. Nessa etapa, as imagens também são processadas por serviços de leitura de documentos e de IA, por conexão criptografada.</p>
+  </main>
+</div>
+
+<dialog id="modal" aria-labelledby="m-titulo">
+  <div class="m-corpo">
+    <div class="m-topo">
+      <span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Criptografia</span>
+      <button class="fechar" id="fechar-x" type="button" aria-label="Fechar">×</button>
+    </div>
+    <h2 id="m-titulo">Protocolo de criptografia</h2>
+    <div class="proto">AES-256-GCM</div>
+    <p>É o algoritmo que protege cada dado sensível antes de ele ser guardado. É um padrão padronizado pelo NIST, usado em bancos e serviços de segurança.</p>
+    <dl>
+      <div><dt>Algoritmo</dt><dd>AES com chave de 256 bits, no modo GCM.</dd></div>
+      <div><dt>Chave</dt><dd>Gerada de forma aleatória e guardada separada dos dados.</dd></div>
+      <div><dt>IV</dt><dd>12 bytes aleatórios, novos a cada gravação.</dd></div>
+      <div><dt>Integridade</dt><dd>Etiqueta de autenticação de 128 bits. Qualquer alteração no dado é detectada.</dd></div>
+      <div><dt>Vínculo</dt><dd>Cada dado fica preso ao usuário e ao campo e não pode ser copiado para outro.</dd></div>
+      <div><dt>Em trânsito</dt><dd>HTTPS com TLS entre o aparelho e o servidor.</dd></div>
+    </dl>
+    <p class="m-nota">Só informações de resumo, como status, país e método da verificação, ficam legíveis para o sistema.</p>
+    <button class="btn" id="fechar" type="button">Entendi</button>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var modal = document.getElementById('modal');
+  var abrir = document.getElementById('abrir');
+  function fechar() { if (modal.open) modal.close(); }
+  abrir.addEventListener('click', function () { modal.showModal(); });
+  document.getElementById('fechar').addEventListener('click', fechar);
+  document.getElementById('fechar-x').addEventListener('click', fechar);
+  // clicar fora da caixa também fecha
+  modal.addEventListener('click', function (e) { if (e.target === modal) fechar(); });
+  // ao fechar, o foco volta para o botão que abriu
+  modal.addEventListener('close', function () { abrir.focus(); });
+})();
+</script>
+</body>
+</html>
