@@ -10,105 +10,79 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import {
-  getDatabase, ref, push, set, get
+  getDatabase, ref, get, set
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
 const app = initializeApp({
-  apiKey: "AIzaSyBzRLpZJDMeFASIjje4SJBfTInIEO-GKVI",
-  authDomain: "html-785e3.firebaseapp.com",
-  databaseURL: "https://html-785e3-default-rtdb.firebaseio.com",
-  projectId: "html-785e3",
-  storageBucket: "html-785e3.firebasestorage.app",
-  messagingSenderId: "389467952076",
-  appId: "1:389467952076:web:fcad8e95181b9050494369"
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
+  projectId: "SEU_PROJETO",
+  appId: "SEU_APP_ID"
 });
 
 const db = getDatabase(app);
-
 let parentOrigin = null;
-let busy = false;
 
 function send(type, data = {}) {
-  if (!parentOrigin) return;
-
-  parent.postMessage({
-    source: "kloewa-identity",
-    type,
-    ...data
-  }, parentOrigin);
-}
-
-function getBrowserData() {
-  return {
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    platform: navigator.platform,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    screen: {
-      width: screen.width,
-      height: screen.height,
-      colorDepth: screen.colorDepth
-    },
-    cores: navigator.hardwareConcurrency || null,
-    memory: navigator.deviceMemory || null,
-    touchPoints: navigator.maxTouchPoints,
-    pixelRatio: devicePixelRatio
-  };
-}
-
-async function calculateFingerprint(data) {
-  const input = new TextEncoder().encode(JSON.stringify(data));
-  const digest = await crypto.subtle.digest("SHA-256", input);
-
-  return Array.from(new Uint8Array(digest))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function initialize() {
-  if (busy) return;
-  busy = true;
-
-  try {
-    const browserData = getBrowserData();
-    const fingerprint = await calculateFingerprint(browserData);
-
-    const record = push(ref(db, "browser_diagnostics"));
-
-    await set(record, {
-      fingerprint,
-      browserData,
-      partnerOrigin: parentOrigin,
-      createdAt: Date.now()
-    });
-
-    send("KLOEWA_FINGERPRINT", {
-      fingerprint,
-      saved: true
-    });
-
-  } catch (error) {
-    console.error(error);
-    send("KLOEWA_ERROR", {
-      message: "Erro ao salvar diagnóstico no Firebase."
-    });
-  } finally {
-    busy = false;
+  if (parentOrigin) {
+    parent.postMessage({
+      source: "kloewa-identity",
+      type,
+      ...data
+    }, parentOrigin);
   }
 }
 
-window.addEventListener("message", event => {
-  if (event.source !== window.parent) return;
+function getIdentity() {
+  let id = sessionStorage.getItem("kloewa_shared_identity");
 
-  const message = event.data;
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem("kloewa_shared_identity", id);
+  }
 
-  if (!message || message.type !== "KLOEWA_INIT") return;
-  if (message.consent !== true) return;
+  return id;
+}
+
+window.addEventListener("message", async event => {
+  if (event.source !== parent) return;
+
+  const data = event.data;
+  if (!data || data.source !== "kloewa-partner") return;
+  if (data.type !== "KLOEWA_INIT") return;
+  if (data.consent !== true) return;
 
   parentOrigin = event.origin;
 
-  send("KLOEWA_READY");
-  initialize();
+  try {
+    const identity = getIdentity();
+
+    if (data.action === "save") {
+      const message = String(data.message || "").slice(0, 2000);
+
+      await set(ref(db, "shared_messages/" + identity), {
+        message,
+        updatedAt: Date.now()
+      });
+
+      send("KLOEWA_SAVED", { success: true });
+    }
+
+    if (data.action === "read") {
+      const snapshot = await get(
+        ref(db, "shared_messages/" + identity)
+      );
+
+      send("KLOEWA_MESSAGE", {
+        message: snapshot.exists() ? snapshot.val().message : null
+      });
+    }
+  } catch (error) {
+    send("KLOEWA_ERROR", {
+      message: "Não foi possível acessar a mensagem."
+    });
+  }
 });
 </script>
 </body>
