@@ -97,6 +97,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-page .spinner{width:32px;height:32px;border-width:3px;margin-bottom:14px}
 .hidden{display:none!important}
+.erro-box{background:rgba(239,68,68,.1);border:1px solid var(--danger);color:#ff8a8a;padding:16px;border-radius:10px;margin:20px 0;font-family:monospace;font-size:.85rem;word-break:break-all;}
 </style>
 </head>
 <body>
@@ -107,6 +108,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 <div id="loading" class="loading-page">
   <div class="spinner"></div>
   <p>Carregando Kloewa Ads...</p>
+  <div id="erroBoot" class="erro-box hidden"></div>
 </div>
 
 <div id="app" class="wrap hidden">
@@ -182,8 +184,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
@@ -194,9 +195,9 @@ const firebaseConfig = {
   messagingSenderId: "1068148640439",
   appId: "1:1068148640439:web:1ac651348e624f6be41b32"
 };
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getDatabase(app);
 
 const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
 const LOGIN_URL = "https://kloewa.ooguy.com/";
@@ -211,6 +212,17 @@ let currentPaymentId = null;
 let allPackages = {};
 
 const $ = id => document.getElementById(id);
+
+function showErro(msg) {
+  $("loading").classList.remove("hidden");
+  $("app").classList.add("hidden");
+  $("erroBoot").classList.remove("hidden");
+  $("erroBoot").textContent = msg;
+}
+
+window.addEventListener('error', function(e) {
+  showErro("ERRO CRÍTICO: " + e.message);
+});
 
 // ============================================================
 // DEVICE TOKEN
@@ -237,7 +249,7 @@ function showToast(msg, type = "info") {
 }
 
 // ============================================================
-// API
+// API (Tudo vai pro Worker, sem Firebase Database direto)
 // ============================================================
 async function apiPost(path, body) {
   if (!token) token = await user.getIdToken(true);
@@ -267,20 +279,26 @@ async function apiUpload(path, formData) {
 }
 
 // ============================================================
-// AUTH
+// AUTH E INICIALIZAÇÃO
 // ============================================================
 onAuthStateChanged(auth, async u => {
   user = u;
-  if (!u) { location.replace(LOGIN_URL); return; }
+  if (!u) { 
+    showErro("Você não está logado. Redirecionando para o login...");
+    setTimeout(() => { location.replace(LOGIN_URL); }, 2000); 
+    return; 
+  }
+  
   token = await u.getIdToken(true);
   $("userEmail").textContent = u.email || u.uid;
   $("loading").classList.add("hidden");
   $("app").classList.remove("hidden");
+  $("erroBoot").classList.add("hidden");
 
-  // Verifica admin
+  // Verifica admin via Worker
   try {
-    const adminSnap = await get(ref(db, `admins/${u.uid}`));
-    isAdmin = adminSnap.exists() && adminSnap.val() === true;
+    const d = await apiPost("/api/ads/check-admin", {});
+    isAdmin = d.isAdmin;
     if (isAdmin) $("tabAdmin").classList.remove("hidden");
   } catch (e) {}
 
@@ -290,19 +308,26 @@ onAuthStateChanged(auth, async u => {
 });
 
 // ============================================================
-// PACOTES
+// PACOTES (via Worker)
 // ============================================================
 async function carregarPacotes() {
-  const snap = await get(ref(db, "ads_config/packages"));
-  if (!snap.exists()) return;
-  allPackages = snap.val();
-  renderPacotes();
+  try {
+    const d = await apiGet("/api/ads/packages");
+    allPackages = d.packages || [];
+    renderPacotes();
+  } catch (e) {
+    showToast("Erro ao carregar pacotes: " + e.message, "error");
+  }
 }
+
 function renderPacotes() {
   const grid = $("packagesGrid");
   grid.innerHTML = "";
-  const arr = Object.entries(allPackages).map(([id, p]) => ({ id, ...p })).sort((a, b) => (a.position || 0) - (b.position || 0));
-  for (const pkg of arr) {
+  if (!allPackages.length) {
+    grid.innerHTML = '<p style="color:var(--text-2)">Nenhum pacote configurado.</p>';
+    return;
+  }
+  for (const pkg of allPackages) {
     const card = document.createElement("div");
     card.className = "pkg-card";
     card.innerHTML = `
@@ -354,13 +379,12 @@ async function verificarPagamentoNaUrl() {
 
   showToast("Verificando pagamento...", "info");
   try {
-    const d = await apiPost("/api/ads/verify-payment", { adPaymentId });
+    await apiPost("/api/ads/verify-payment", { adPaymentId });
     currentPaymentId = adPaymentId;
     showToast("Pagamento confirmado! Preencha os dados.", "success");
-    // Limpa URL
     window.history.replaceState({}, "", location.pathname);
-    // Avança para o passo 2
     irParaPasso(2);
+    mudarAba("new");
   } catch (e) {
     showToast("Pagamento não confirmado: " + e.message, "error");
   }
@@ -436,6 +460,7 @@ $("btnSubmitAd").onclick = async () => {
       targeting: { pages: ["home", "workspace"], devices: ["desktop", "mobile"] }
     });
     showToast(`Anúncio ${d.status === "active" ? "ativo" : "em análise"}!`, "success");
+    
     currentPaymentId = null; uploadedImageUrl = null;
     $("adTitle").value = ""; $("adDescription").value = ""; $("adTargetUrl").value = "";
     $("adCity").value = ""; $("adState").value = ""; $("adNeighborhood").value = "";
@@ -467,9 +492,7 @@ async function carregarMeusAds() {
     }
     box.className = "";
     box.innerHTML = "";
-    for (const ad of d.ads) {
-      box.appendChild(renderAdCard(ad));
-    }
+    for (const ad of d.ads) box.appendChild(renderAdCard(ad));
   } catch (e) {
     box.className = "empty";
     box.textContent = "Erro ao carregar: " + e.message;
@@ -486,9 +509,7 @@ function renderAdCard(ad) {
   const statusLabels = { active: "Ativo", pending: "Pendente", paused: "Pausado", rejected: "Rejeitado", expired: "Expirado", draft: "Rascunho" };
 
   el.innerHTML = `
-    <div class="ad-thumb">
-      ${ad.imageUrl ? `<img src="${ad.imageUrl}" alt="">` : `<div style="color:var(--text-2)">—</div>`}
-    </div>
+    <div class="ad-thumb">${ad.imageUrl ? `<img src="${ad.imageUrl}" alt="">` : `<div style="color:var(--text-2)">—</div>`}</div>
     <div class="ad-info">
       <h3>${ad.title}</h3>
       <div class="meta">${ad.type} • ${statusLabels[ad.status] || ad.status}</div>
@@ -513,26 +534,17 @@ function renderAdCard(ad) {
 }
 
 async function pauseAd(adId) {
-  try {
-    await apiPost("/api/ads/pause", { adId });
-    showToast("Pausado.", "success");
-    carregarMeusAds();
-  } catch (e) { showToast("Erro: " + e.message, "error"); }
+  try { await apiPost("/api/ads/pause", { adId }); showToast("Pausado.", "success"); carregarMeusAds(); } 
+  catch (e) { showToast("Erro: " + e.message, "error"); }
 }
 async function resumeAd(adId) {
-  try {
-    await apiPost("/api/ads/resume", { adId });
-    showToast("Retomado.", "success");
-    carregarMeusAds();
-  } catch (e) { showToast("Erro: " + e.message, "error"); }
+  try { await apiPost("/api/ads/resume", { adId }); showToast("Retomado.", "success"); carregarMeusAds(); } 
+  catch (e) { showToast("Erro: " + e.message, "error"); }
 }
 async function deleteAd(adId) {
   if (!confirm("Excluir este anúncio?")) return;
-  try {
-    await apiPost("/api/ads/delete", { adId });
-    showToast("Excluído.", "success");
-    carregarMeusAds();
-  } catch (e) { showToast("Erro: " + e.message, "error"); }
+  try { await apiPost("/api/ads/delete", { adId }); showToast("Excluído.", "success"); carregarMeusAds(); } 
+  catch (e) { showToast("Erro: " + e.message, "error"); }
 }
 
 // ============================================================
@@ -575,19 +587,13 @@ async function carregarPendentes() {
   }
 }
 async function approveAd(adId) {
-  try {
-    await apiPost("/api/ads/approve", { adId });
-    showToast("Aprovado!", "success");
-    carregarPendentes();
-  } catch (e) { showToast("Erro: " + e.message, "error"); }
+  try { await apiPost("/api/ads/approve", { adId }); showToast("Aprovado!", "success"); carregarPendentes(); } 
+  catch (e) { showToast("Erro: " + e.message, "error"); }
 }
 async function rejectAd(adId) {
   const motivo = prompt("Motivo da rejeição:") || "Rejeitado pelo administrador";
-  try {
-    await apiPost("/api/ads/reject", { adId, motivo });
-    showToast("Rejeitado.", "success");
-    carregarPendentes();
-  } catch (e) { showToast("Erro: " + e.message, "error"); }
+  try { await apiPost("/api/ads/reject", { adId, motivo }); showToast("Rejeitado.", "success"); carregarPendentes(); } 
+  catch (e) { showToast("Erro: " + e.message, "error"); }
 }
 
 // ============================================================
