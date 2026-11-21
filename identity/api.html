@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kloewa Identity</title>
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  background: white;
+}
+</style>
+</head>
+<body>
+
+<script>
+(() => {
+  const STORAGE_KEY = "kloewa_ads_visitor_id";
+
+  let parentOrigin = null;
+
+  function send(type, data = {}) {
+    if (!parentOrigin) return;
+
+    window.parent.postMessage({
+      source: "kloewa-ads",
+      type,
+      ...data
+    }, parentOrigin);
+  }
+
+  window.addEventListener("message", event => {
+    if (event.source !== window.parent) return;
+
+    const message = event.data;
+
+    if (!message ||
+        message.type !== "KLOEWA_INIT" ||
+        message.consent !== true) return;
+
+    // Aceita somente uma origem configurada.
+    if (message.origin !== event.origin) return;
+
+    parentOrigin = event.origin;
+
+    let id = localStorage.getItem(STORAGE_KEY);
+    let created = false;
+
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(STORAGE_KEY, id);
+      created = true;
+    }
+
+    send("KLOEWA_ID", {
+      id,
+      created
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
