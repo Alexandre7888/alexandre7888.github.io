@@ -6,60 +6,126 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kloewa Identity</title>
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  background: white;
-}
+html,body{margin:0;padding:0;background:white;font-family:Arial}
 </style>
 </head>
 <body>
 
-<script>
-(() => {
-  const STORAGE_KEY = "kloewa_ads_visitor_id";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  get,
+  set
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-  let parentOrigin = null;
+const firebaseConfig = {
+  apiKey: "AIzaSyBzRLpZJDMeFASIjje4SJBfTInIEO-GKVI",
+  authDomain: "html-785e3.firebaseapp.com",
+  databaseURL: "https://html-785e3-default-rtdb.firebaseio.com",
+  projectId: "html-785e3",
+  storageBucket: "html-785e3.firebasestorage.app",
+  messagingSenderId: "389467952076",
+  appId: "1:389467952076:web:fcad8e95181b9050494369",
+  measurementId: "G-KEPDBKP6MJ"
+};
 
-  function send(type, data = {}) {
-    if (!parentOrigin) return;
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-    window.parent.postMessage({
-      source: "kloewa-ads",
-      type,
-      ...data
-    }, parentOrigin);
-  }
+const STORAGE_KEY = "kloewa_identity_key";
 
-  window.addEventListener("message", event => {
-    if (event.source !== window.parent) return;
+let parentOrigin = null;
 
-    const message = event.data;
+function send(type, data = {}) {
+  if (!parentOrigin) return;
 
-    if (!message ||
-        message.type !== "KLOEWA_INIT" ||
-        message.consent !== true) return;
+  window.parent.postMessage({
+    source: "kloewa-identity",
+    type,
+    ...data
+  }, parentOrigin);
+}
 
-    // Aceita somente uma origem configurada.
-    if (message.origin !== event.origin) return;
+window.addEventListener("message", async event => {
+  if (event.source !== window.parent) return;
 
-    parentOrigin = event.origin;
+  const message = event.data;
 
-    let id = localStorage.getItem(STORAGE_KEY);
-    let created = false;
+  if (!message || typeof message !== "object") return;
+  if (message.consent !== true) return;
+  if (message.type !== "KLOEWA_INIT") return;
 
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(STORAGE_KEY, id);
-      created = true;
+  // A origem é obtida da mensagem real do navegador.
+  parentOrigin = event.origin;
+
+  try {
+    let identityKey = localStorage.getItem(STORAGE_KEY);
+
+    if (!identityKey) {
+      identityKey = crypto.randomUUID();
+      localStorage.setItem(STORAGE_KEY, identityKey);
     }
 
-    send("KLOEWA_ID", {
-      id,
-      created
+    const identityRef = ref(db, "identities/" + identityKey);
+    const snapshot = await get(identityRef);
+
+    send("KLOEWA_READY", {
+      exists: snapshot.exists(),
+      identityKey
     });
-  });
-})();
+
+  } catch (error) {
+    send("KLOEWA_ERROR", {
+      message: "Não foi possível consultar a identidade."
+    });
+  }
+});
+
+window.addEventListener("message", async event => {
+  if (event.source !== window.parent) return;
+  if (event.origin !== parentOrigin || !parentOrigin) return;
+
+  const message = event.data;
+
+  if (!message || message.consent !== true) return;
+
+  try {
+    const identityKey = localStorage.getItem(STORAGE_KEY);
+    if (!identityKey) throw new Error("Identidade indisponível.");
+
+    const identityRef = ref(db, "identities/" + identityKey);
+
+    if (message.type === "KLOEWA_SAVE") {
+      if (typeof message.text !== "string") return;
+      if (message.text.length > 300) return;
+
+      await set(identityRef, {
+        text: message.text,
+        updatedAt: Date.now()
+      });
+
+      send("KLOEWA_SAVED", { success: true });
+    }
+
+    if (message.type === "KLOEWA_GET") {
+      const snapshot = await get(identityRef);
+
+      send("KLOEWA_RESULT", {
+        exists: snapshot.exists(),
+        text: snapshot.exists()
+          ? snapshot.val().text || ""
+          : null
+      });
+    }
+
+  } catch (error) {
+    send("KLOEWA_ERROR", {
+      message: "Não foi possível concluir a operação."
+    });
+  }
+});
 </script>
 
 </body>
