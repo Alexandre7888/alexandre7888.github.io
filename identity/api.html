@@ -6,17 +6,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kloewa Identity</title>
 <style>
-html,body{margin:0;padding:0;background:white;font-family:Arial}
+html,body {
+  margin: 0;
+  padding: 0;
+  background: white;
+}
 </style>
 </head>
 <body>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+
 import {
   getDatabase,
   ref,
-  get,
+  push,
   set
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
@@ -34,97 +40,94 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const STORAGE_KEY = "kloewa_identity_key";
-
 let parentOrigin = null;
+let busy = false;
 
 function send(type, data = {}) {
   if (!parentOrigin) return;
 
   window.parent.postMessage({
-    source: "kloewa-identity",
+    source: "kloewa-ads",
     type,
     ...data
   }, parentOrigin);
 }
 
-window.addEventListener("message", async event => {
+async function hashFingerprint(data) {
+  const encoded = new TextEncoder().encode(
+    JSON.stringify(data)
+  );
+
+  const hash = await crypto.subtle.digest("SHA-256", encoded);
+
+  return Array.from(new Uint8Array(hash))
+    .map(byte => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function getBrowserData() {
+  return {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    languages: navigator.languages,
+    platform: navigator.platform,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    screen: {
+      width: screen.width,
+      height: screen.height,
+      colorDepth: screen.colorDepth
+    },
+    hardwareConcurrency: navigator.hardwareConcurrency || null,
+    deviceMemory: navigator.deviceMemory || null,
+    touchPoints: navigator.maxTouchPoints,
+    pixelRatio: devicePixelRatio
+  };
+}
+
+async function processIdentity() {
+  if (busy) return;
+  busy = true;
+
+  try {
+    const browserData = getBrowserData();
+    const fingerprint = await hashFingerprint(browserData);
+
+    const record = push(ref(db, "browser_diagnostics"));
+
+    await set(record, {
+      fingerprint,
+      browserData,
+      createdAt: Date.now(),
+      partnerOrigin: parentOrigin
+    });
+
+    send("KLOEWA_FINGERPRINT", {
+      fingerprint,
+      browserData,
+      saved: true
+    });
+
+  } catch (error) {
+    send("KLOEWA_ERROR", {
+      message: "Não foi possível processar os dados."
+    });
+  } finally {
+    busy = false;
+  }
+}
+
+window.addEventListener("message", event => {
   if (event.source !== window.parent) return;
 
   const message = event.data;
 
-  if (!message || typeof message !== "object") return;
+  if (!message || message.type !== "KLOEWA_INIT") return;
   if (message.consent !== true) return;
-  if (message.type !== "KLOEWA_INIT") return;
 
-  // A origem é obtida da mensagem real do navegador.
   parentOrigin = event.origin;
 
-  try {
-    let identityKey = localStorage.getItem(STORAGE_KEY);
-
-    if (!identityKey) {
-      identityKey = crypto.randomUUID();
-      localStorage.setItem(STORAGE_KEY, identityKey);
-    }
-
-    const identityRef = ref(db, "identities/" + identityKey);
-    const snapshot = await get(identityRef);
-
-    send("KLOEWA_READY", {
-      exists: snapshot.exists(),
-      identityKey
-    });
-
-  } catch (error) {
-    send("KLOEWA_ERROR", {
-      message: "Não foi possível consultar a identidade."
-    });
-  }
-});
-
-window.addEventListener("message", async event => {
-  if (event.source !== window.parent) return;
-  if (event.origin !== parentOrigin || !parentOrigin) return;
-
-  const message = event.data;
-
-  if (!message || message.consent !== true) return;
-
-  try {
-    const identityKey = localStorage.getItem(STORAGE_KEY);
-    if (!identityKey) throw new Error("Identidade indisponível.");
-
-    const identityRef = ref(db, "identities/" + identityKey);
-
-    if (message.type === "KLOEWA_SAVE") {
-      if (typeof message.text !== "string") return;
-      if (message.text.length > 300) return;
-
-      await set(identityRef, {
-        text: message.text,
-        updatedAt: Date.now()
-      });
-
-      send("KLOEWA_SAVED", { success: true });
-    }
-
-    if (message.type === "KLOEWA_GET") {
-      const snapshot = await get(identityRef);
-
-      send("KLOEWA_RESULT", {
-        exists: snapshot.exists(),
-        text: snapshot.exists()
-          ? snapshot.val().text || ""
-          : null
-      });
-    }
-
-  } catch (error) {
-    send("KLOEWA_ERROR", {
-      message: "Não foi possível concluir a operação."
-    });
-  }
+  send("KLOEWA_READY");
+  processIdentity();
 });
 </script>
 
