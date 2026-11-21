@@ -5,28 +5,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kloewa Identity</title>
-<style>
-html,body {
-  margin: 0;
-  padding: 0;
-  background: white;
-}
-</style>
 </head>
 <body>
-
 <script type="module">
 import { initializeApp }
 from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 
 import {
-  getDatabase,
-  ref,
-  push,
-  set
+  getDatabase, ref, push, set
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-const firebaseConfig = {
+const app = initializeApp({
   apiKey: "AIzaSyBzRLpZJDMeFASIjje4SJBfTInIEO-GKVI",
   authDomain: "html-785e3.firebaseapp.com",
   databaseURL: "https://html-785e3-default-rtdb.firebaseio.com",
@@ -35,41 +24,26 @@ const firebaseConfig = {
   messagingSenderId: "389467952076",
   appId: "1:389467952076:web:fcad8e95181b9050494369",
   measurementId: "G-KEPDBKP6MJ"
-};
+});
 
-const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
 let parentOrigin = null;
-let busy = false;
+let processing = false;
 
 function send(type, data = {}) {
   if (!parentOrigin) return;
 
-  window.parent.postMessage({
+  parent.postMessage({
     source: "kloewa-ads",
     type,
     ...data
   }, parentOrigin);
 }
 
-async function hashFingerprint(data) {
-  const encoded = new TextEncoder().encode(
-    JSON.stringify(data)
-  );
-
-  const hash = await crypto.subtle.digest("SHA-256", encoded);
-
-  return Array.from(new Uint8Array(hash))
-    .map(byte => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 function getBrowserData() {
   return {
     userAgent: navigator.userAgent,
     language: navigator.language,
-    languages: navigator.languages,
     platform: navigator.platform,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     screen: {
@@ -84,40 +58,52 @@ function getBrowserData() {
   };
 }
 
-async function processIdentity() {
-  if (busy) return;
-  busy = true;
+async function fingerprint(data) {
+  const bytes = new TextEncoder().encode(JSON.stringify(data));
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+
+  return Array.from(new Uint8Array(hash))
+    .map(x => x.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function initializeIdentity() {
+  if (processing) return;
+  processing = true;
 
   try {
     const browserData = getBrowserData();
-    const fingerprint = await hashFingerprint(browserData);
+    const hash = await fingerprint(browserData);
 
     const record = push(ref(db, "browser_diagnostics"));
 
     await set(record, {
-      fingerprint,
+      fingerprint: hash,
       browserData,
-      createdAt: Date.now(),
-      partnerOrigin: parentOrigin
+      partnerOrigin: parentOrigin,
+      createdAt: Date.now()
     });
 
     send("KLOEWA_FINGERPRINT", {
-      fingerprint,
-      browserData,
+      fingerprint: hash,
       saved: true
     });
 
   } catch (error) {
+    console.error("Kloewa:", error);
+
     send("KLOEWA_ERROR", {
-      message: "Não foi possível processar os dados."
+      message: error.code === "PERMISSION_DENIED"
+        ? "Firebase recusou a gravação. Verifique as regras."
+        : "Erro ao processar: " + error.message
     });
   } finally {
-    busy = false;
+    processing = false;
   }
 }
 
 window.addEventListener("message", event => {
-  if (event.source !== window.parent) return;
+  if (event.source !== parent) return;
 
   const message = event.data;
 
@@ -127,9 +113,9 @@ window.addEventListener("message", event => {
   parentOrigin = event.origin;
 
   send("KLOEWA_READY");
-  processIdentity();
+
+  initializeIdentity();
 });
 </script>
-
 </body>
 </html>
