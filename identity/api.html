@@ -3,16 +3,14 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kloewa Identity</title>
 </head>
 <body>
-<script type="module">
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import {
-  getDatabase, ref, push, set
+  getDatabase, ref, get, set
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
 const app = initializeApp({
@@ -22,100 +20,115 @@ const app = initializeApp({
   projectId: "html-785e3",
   storageBucket: "html-785e3.firebasestorage.app",
   messagingSenderId: "389467952076",
-  appId: "1:389467952076:web:fcad8e95181b9050494369",
-  measurementId: "G-KEPDBKP6MJ"
+  appId: "1:389467952076:web:fcad8e95181b9050494369"
 });
 
 const db = getDatabase(app);
+const ALLOWED_ORIGINS = new Set([
+  "https://SEU-DOMINIO-PARCEIRO.com",
+  "https://OUTRO-DOMINIO-PARCEIRO.com"
+]);
+
 let parentOrigin = null;
-let processing = false;
+let identityToken = null;
 
 function send(type, data = {}) {
   if (!parentOrigin) return;
-
   parent.postMessage({
-    source: "kloewa-ads",
+    source: "kloewa-identity",
     type,
     ...data
   }, parentOrigin);
 }
 
-function getBrowserData() {
+function browserData() {
   return {
     userAgent: navigator.userAgent,
     language: navigator.language,
     platform: navigator.platform,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    screen: {
-      width: screen.width,
-      height: screen.height,
-      colorDepth: screen.colorDepth
-    },
-    hardwareConcurrency: navigator.hardwareConcurrency || null,
-    deviceMemory: navigator.deviceMemory || null,
-    touchPoints: navigator.maxTouchPoints,
-    pixelRatio: devicePixelRatio
+    screen: `${screen.width}x${screen.height}`
   };
 }
 
-async function fingerprint(data) {
-  const bytes = new TextEncoder().encode(JSON.stringify(data));
+async function fingerprint() {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify(browserData())
+  );
   const hash = await crypto.subtle.digest("SHA-256", bytes);
-
   return Array.from(new Uint8Array(hash))
     .map(x => x.toString(16).padStart(2, "0"))
     .join("");
 }
 
-async function initializeIdentity() {
-  if (processing) return;
-  processing = true;
-
-  try {
-    const browserData = getBrowserData();
-    const hash = await fingerprint(browserData);
-
-    const record = push(ref(db, "browser_diagnostics"));
-
-    await set(record, {
-      fingerprint: hash,
-      browserData,
-      partnerOrigin: parentOrigin,
-      createdAt: Date.now()
-    });
-
-    send("KLOEWA_FINGERPRINT", {
-      fingerprint: hash,
-      saved: true
-    });
-
-  } catch (error) {
-    console.error("Kloewa:", error);
-
-    send("KLOEWA_ERROR", {
-      message: error.code === "PERMISSION_DENIED"
-        ? "Firebase recusou a gravação. Verifique as regras."
-        : "Erro ao processar: " + error.message
-    });
-  } finally {
-    processing = false;
-  }
-}
-
-window.addEventListener("message", event => {
+window.addEventListener("message", async event => {
   if (event.source !== parent) return;
 
-  const message = event.data;
+  const m = event.data;
+  if (!m || typeof m !== "object") return;
 
-  if (!message || message.type !== "KLOEWA_INIT") return;
-  if (message.consent !== true) return;
+  if (m.type === "KLOEWA_INIT") {
+    if (m.consent !== true) return;
+    if (!ALLOWED_ORIGINS.has(event.origin)) return;
 
-  parentOrigin = event.origin;
+    parentOrigin = event.origin;
 
-  send("KLOEWA_READY");
+    send("KLOEWA_READY");
 
-  initializeIdentity();
+    try {
+      const fp = await fingerprint();
+      send("KLOEWA_FINGERPRINT", { fingerprint: fp });
+
+      // A identidade é um código compartilhado autorizado,
+      // fornecido pelo visitante, não um fingerprint.
+    } catch {
+      send("KLOEWA_ERROR", { message: "Erro ao analisar navegador." });
+    }
+    return;
+  }
+
+  if (event.origin !== parentOrigin || !parentOrigin) return;
+  if (m.consent !== true) return;
+
+  if (m.type === "KLOEWA_USE_TOKEN") {
+    if (typeof m.token !== "string" ||
+        !/^[a-f0-9-]{20,80}$/i.test(m.token)) return;
+
+    identityToken = m.token;
+    send("KLOEWA_IDENTITY_READY");
+  }
+
+  if (!identityToken) return;
+
+  const record = ref(db, "shared_identities/" + identityToken);
+
+  try {
+    if (m.type === "KLOEWA_SAVE") {
+      if (typeof m.text !== "string" || m.text.length > 300) return;
+
+      await set(record, {
+        text: m.text,
+        updatedAt: Date.now()
+      });
+
+      send("KLOEWA_SAVED");
+    }
+
+    if (m.type === "KLOEWA_GET") {
+      const snapshot = await get(record);
+
+      send("KLOEWA_RESULT", {
+        exists: snapshot.exists(),
+        text: snapshot.exists() ? snapshot.val().text : null
+      });
+    }
+  } catch {
+    send("KLOEWA_ERROR", {
+      message: "Erro ao acessar Firebase. Verifique a autenticação e as regras."
+    });
+  }
 });
 </script>
+
 </body>
 </html>
