@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kloewa Ads</title>
+<link rel="icon" type="image/png" href="https://api.kloewa.ooguy.com/assets/icon.png">
+<script src="https://api.kloewa.ooguy.com/app-shell.js" defer></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-1:#0a0e1a;--bg-2:#05070f;--surface:#101626;--surface-2:#151c30;
+  --border:#1f2a44;--border-strong:#2d3b5c;--text:#e8eef8;--text-2:#8fa0bd;
+  --accent:#4f8cff;--accent-2:#7aa8ff;--accent-glow:rgba(79,140,255,.35);
+  --danger:#ef4444;--success:#22c55e;--warning:#f59e0b;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:radial-gradient(circle at 30% 20%,var(--bg-1),var(--bg-2));color:var(--text);min-height:100vh;padding:20px;overflow-x:hidden}
+.wrap{max-width:920px;margin:0 auto;padding-bottom:100px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.header h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
+.header h1 svg{width:26px;height:26px;stroke:var(--accent);fill:none;stroke-width:2}
+.tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:10px 18px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;font-weight:600;font-size:.85rem;display:flex;align-items:center;gap:8px;transition:.2s}
+.tab:hover{border-color:var(--accent);color:var(--accent-2)}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 20px var(--accent-glow)}
+.tab svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.btn{padding:11px 18px;border:none;border-radius:10px;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 6px 20px var(--accent-glow)}
+.btn-primary:hover{transform:translateY(-1px)}
+.btn-outline{background:transparent;border:1.5px solid var(--border-strong);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent-2)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+.card h2{font-size:1.05rem;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card h2 svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2}
+.empty{text-align:center;padding:40px 20px;color:var(--text-2)}
+.ad-card{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;display:flex;gap:14px;align-items:flex-start}
+.ad-thumb{width:80px;height:80px;border-radius:10px;background:var(--bg-1);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ad-thumb img{width:100%;height:100%;object-fit:cover}
+.ad-info{flex:1;min-width:0}
+.ad-info h3{font-size:.95rem;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ad-info .meta{font-size:.75rem;color:var(--text-2);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ad-stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.78rem}
+.ad-stats span{display:flex;align-items:center;gap:4px;color:var(--text-2)}
+.ad-stats strong{color:var(--text)}
+.ad-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.ad-actions .btn{padding:8px 12px;font-size:.75rem}
+.badge-status{padding:3px 10px;border-radius:6px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.badge-status.active{background:rgba(34,197,94,.15);color:#6ee7a0}
+.badge-status.pending{background:rgba(245,158,11,.15);color:#fbbf24}
+.badge-status.paused{background:rgba(143,160,189,.15);color:#8fa0bd}
+.badge-status.rejected{background:rgba(239,68,68,.15);color:#ff8a8a}
+.badge-status.expired{background:rgba(143,160,189,.15);color:#6b7a8f}
+.badge-status.draft{background:rgba(79,140,255,.15);color:var(--accent-2)}
+.steps{display:flex;gap:8px;margin-bottom:24px}
+.step{flex:1;padding:10px;text-align:center;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);font-size:.8rem;font-weight:600;color:var(--text-2);display:flex;align-items:center;justify-content:center;gap:6px}
+.step.active{background:rgba(79,140,255,.1);border-color:var(--accent);color:var(--accent-2)}
+.step.done{background:rgba(34,197,94,.1);border-color:var(--success);color:#6ee7a0}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--bg-1);display:inline-flex;align-items:center;justify-content:center;font-size:.72rem}
+.step.active .step-num{background:var(--accent);color:#fff}
+.step.done .step-num{background:var(--success);color:#fff}
+.wizard-body{display:none}
+.wizard-body.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.pkg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.pkg-card{background:var(--surface-2);border:2px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:.2s;position:relative}
+.pkg-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.pkg-card.selected{border-color:var(--accent);background:rgba(79,140,255,.08)}
+.pkg-card h3{font-size:1.1rem;margin-bottom:6px}
+.pkg-card .price{font-size:1.6rem;font-weight:700;color:var(--accent);margin-bottom:10px}
+.pkg-card .price small{font-size:.75rem;color:var(--text-2);font-weight:400}
+.pkg-card ul{list-style:none;font-size:.8rem;color:var(--text-2);display:flex;flex-direction:column;gap:6px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.8rem;color:var(--text-2);margin-bottom:6px;font-weight:600}
+.form-control{width:100%;padding:11px 14px;background:var(--bg-1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:.9rem;font-family:inherit;outline:none;transition:.2s}
+.form-control:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,140,255,.15)}
+textarea.form-control{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:600px){.form-row{grid-template-columns:1fr}}
+.upload-box{border:2px dashed var(--border-strong);border-radius:12px;padding:30px;text-align:center;cursor:pointer;transition:.2s}
+.upload-box:hover{border-color:var(--accent);background:rgba(79,140,255,.05)}
+.upload-box svg{width:40px;height:40px;stroke:var(--text-2);fill:none;stroke-width:1.5;margin-bottom:10px}
+.upload-box p{color:var(--text-2);font-size:.85rem}
+.upload-box.has-file{padding:0;border-style:solid;border-color:var(--success)}
+.upload-box.has-file img{width:100%;border-radius:10px;display:block}
+.wizard-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:10px}
+.toast{background:var(--surface);color:var(--text);padding:12px 20px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);border-left:4px solid var(--accent);font-size:.88rem;opacity:0;transform:translateY(20px);transition:.3s;max-width:340px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{border-left-color:var(--success)}
+.toast.error{border-left-color:var(--danger)}
+.loading-page{padding:60px 20px;text-align:center;color:var(--text-2)}
+.spinner{width:20px;height:20px;border:2.5px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-page .spinner{width:32px;height:32px;border-width:3px;margin-bottom:14px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- IFRAME OCULTO DE IDENTIDADE -->
+<iframe id="identityIframe" src="https://api.kloewa.ooguy.com/identity/api.html" style="display:none;width:0;height:0;border:0;position:absolute;left:-9999px" aria-hidden="true"></iframe>
+
+<div id="loading" class="loading-page">
+  <div class="spinner"></div>
+  <p>Carregando Kloewa Ads...</p>
+</div>
+
+<div id="app" class="wrap hidden">
+  <div class="header">
+    <h1>
+      <svg viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-7-8-3z"/></svg>
+      Kloewa Ads
+    </h1>
+    <div style="display:flex;gap:8px">
+      <span id="userEmail" style="color:var(--text-2);font-size:.85rem">—</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="list">Meus Anúncios</div>
+    <div class="tab" data-tab="new">Criar Anúncio</div>
+    <div class="tab hidden" data-tab="admin" id="tabAdmin">Admin</div>
+  </div>
+
+  <div id="tabContent-list" class="tab-content">
+    <div id="adsList" class="empty">Carregando...</div>
+  </div>
+
+  <div id="tabContent-new" class="tab-content hidden">
+    <div class="card">
+      <div class="steps">
+        <div class="step active" data-step="1"><span class="step-num">1</span>Pacote</div>
+        <div class="step" data-step="2"><span class="step-num">2</span>Criativo</div>
+        <div class="step" data-step="3"><span class="step-num">3</span>Local</div>
+      </div>
+      <div class="wizard-body active" data-step="1">
+        <h2>Escolha um pacote</h2>
+        <div id="packagesGrid" class="pkg-grid"></div>
+        <div class="wizard-actions">
+          <button class="btn btn-primary" id="btnPayPackage" disabled>Pagar pacote</button>
+        </div>
+      </div>
+      <div class="wizard-body" data-step="2">
+        <h2>Dados do anúncio</h2>
+        <div class="form-group"><label>Título</label><input type="text" id="adTitle" class="form-control" maxlength="120"></div>
+        <div class="form-group"><label>Descrição</label><textarea id="adDescription" class="form-control" maxlength="500"></textarea></div>
+        <div class="form-group"><label>URL de destino</label><input type="url" id="adTargetUrl" class="form-control" placeholder="https://..."></div>
+        <div class="form-group">
+          <label>Imagem</label>
+          <div class="upload-box" id="uploadBox"><p>Clique para enviar</p><input type="file" id="adFileInput" accept="image/*" style="display:none"></div>
+        </div>
+        <div class="wizard-actions">
+          <button class="btn btn-outline" id="btnBackToPackages">Voltar</button>
+          <button class="btn btn-primary" id="btnNextToLocation">Continuar</button>
+        </div>
+      </div>
+      <div class="wizard-body" data-step="3">
+        <h2>Segmentação</h2>
+        <div class="form-row">
+          <div class="form-group"><label>Cidade</label><input type="text" id="adCity" class="form-control"></div>
+          <div class="form-group"><label>Estado</label><input type="text" id="adState" class="form-control" maxlength="2"></div>
+        </div>
+        <div class="form-group"><label>Bairro</label><input type="text" id="adNeighborhood" class="form-control"></div>
+        <div class="wizard-actions">
+          <button class="btn btn-outline" id="btnBackToCreative">Voltar</button>
+          <button class="btn btn-primary" id="btnSubmitAd">Enviar para aprovação</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabContent-admin" class="tab-content hidden">
+    <div class="card"><h2>Anúncios pendentes</h2><div id="adminList" class="empty">Carregando...</div></div>
+  </div>
+</div>
+
+<div id="toasts" class="toast-container"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDon4WbCbe4kCkUq-OdLBRhzhMaUObbAfo",
+  authDomain: "html-15e80.firebaseapp.com",
+  databaseURL: "https://html-15e80-default-rtdb.firebaseio.com",
+  projectId: "html-15e80",
+  storageBucket: "html-15e80.firebasestorage.app",
+  messagingSenderId: "1068148640439",
+  appId: "1:1068148640439:web:1ac651348e624f6be41b32"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const WORKER = "https://proud-flower-677b.braatzjunioralexandre5.workers.dev";
+const LOGIN_URL = "https://kloewa.ooguy.com/";
+const DEVICE_TOKEN_KEY = "kloewa_device_token";
+
+let user = null;
+let token = null;
+let isAdmin = false;
+let selectedPackage = null;
+let uploadedImageUrl = null;
+let currentPaymentId = null;
+let allPackages = {};
+
+const $ = id => document.getElementById(id);
+
+// ============================================================
+// DEVICE TOKEN
+// ============================================================
+function getDeviceToken() {
+  let tok = localStorage.getItem(DEVICE_TOKEN_KEY);
+  if (!tok) {
+    tok = "dev_" + crypto.randomUUID();
+    localStorage.setItem(DEVICE_TOKEN_KEY, tok);
+  }
+  return tok;
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, type = "info") {
+  const t = document.createElement("div");
+  t.className = "toast " + type;
+  t.textContent = msg;
+  $("toasts").appendChild(t);
+  setTimeout(() => t.classList.add("show"), 10);
+  setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+// ============================================================
+// API
+// ============================================================
+async function apiPost(path, body) {
+  if (!token) token = await user.getIdToken(true);
+  const r = await fetch(WORKER + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tokenid: token, ...body })
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.ok === false) throw new Error(data.erro || "Erro na requisição");
+  return data;
+}
+
+async function apiGet(path) {
+  const r = await fetch(WORKER + path);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.ok === false) throw new Error(data.erro || "Erro");
+  return data;
+}
+
+async function apiUpload(path, formData) {
+  formData.append("tokenid", token || await user.getIdToken(true));
+  const r = await fetch(WORKER + path, { method: "POST", body: formData });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.ok === false) throw new Error(data.erro || "Erro no upload");
+  return data;
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+onAuthStateChanged(auth, async u => {
+  user = u;
+  if (!u) { location.replace(LOGIN_URL); return; }
+  token = await u.getIdToken(true);
+  $("userEmail").textContent = u.email || u.uid;
+  $("loading").classList.add("hidden");
+  $("app").classList.remove("hidden");
+
+  // Verifica admin
+  try {
+    const adminSnap = await get(ref(db, `admins/${u.uid}`));
+    isAdmin = adminSnap.exists() && adminSnap.val() === true;
+    if (isAdmin) $("tabAdmin").classList.remove("hidden");
+  } catch (e) {}
+
+  await carregarPacotes();
+  await carregarMeusAds();
+  await verificarPagamentoNaUrl();
+});
+
+// ============================================================
+// PACOTES
+// ============================================================
+async function carregarPacotes() {
+  const snap = await get(ref(db, "ads_config/packages"));
+  if (!snap.exists()) return;
+  allPackages = snap.val();
+  renderPacotes();
+}
+function renderPacotes() {
+  const grid = $("packagesGrid");
+  grid.innerHTML = "";
+  const arr = Object.entries(allPackages).map(([id, p]) => ({ id, ...p })).sort((a, b) => (a.position || 0) - (b.position || 0));
+  for (const pkg of arr) {
+    const card = document.createElement("div");
+    card.className = "pkg-card";
+    card.innerHTML = `
+      <h3>${pkg.name}</h3>
+      <div class="price">R$ ${(pkg.price / 100).toFixed(2).replace(".", ",")}</div>
+      <ul>
+        <li>${pkg.durationDays} dias no ar</li>
+        <li>${pkg.maxImpressions.toLocaleString("pt-BR")} impressões</li>
+        <li>${pkg.maxClicks.toLocaleString("pt-BR")} cliques</li>
+        <li>Formatos: ${pkg.formats.join(", ")}</li>
+      </ul>
+    `;
+    card.onclick = () => {
+      selectedPackage = pkg;
+      document.querySelectorAll(".pkg-card").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      $("btnPayPackage").disabled = false;
+    };
+    grid.appendChild(card);
+  }
+}
+
+// ============================================================
+// PAGAR PACOTE
+// ============================================================
+$("btnPayPackage").onclick = async () => {
+  if (!selectedPackage) return;
+  const btn = $("btnPayPackage");
+  btn.disabled = true;
+  btn.textContent = "Abrindo checkout...";
+  try {
+    const d = await apiPost("/api/ads/create-payment", { packageId: selectedPackage.id });
+    window.location.href = d.checkoutUrl;
+  } catch (e) {
+    showToast("Erro: " + e.message, "error");
+    btn.disabled = false;
+    btn.textContent = "Pagar pacote";
+  }
+};
+
+// ============================================================
+// VERIFICAR PAGAMENTO NA URL
+// ============================================================
+async function verificarPagamentoNaUrl() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("payment") !== "success") return;
+  const adPaymentId = params.get("ad_payment");
+  if (!adPaymentId) return;
+
+  showToast("Verificando pagamento...", "info");
+  try {
+    const d = await apiPost("/api/ads/verify-payment", { adPaymentId });
+    currentPaymentId = adPaymentId;
+    showToast("Pagamento confirmado! Preencha os dados.", "success");
+    // Limpa URL
+    window.history.replaceState({}, "", location.pathname);
+    // Avança para o passo 2
+    irParaPasso(2);
+  } catch (e) {
+    showToast("Pagamento não confirmado: " + e.message, "error");
+  }
+}
+
+// ============================================================
+// NAVEGAÇÃO DO WIZARD
+// ============================================================
+function irParaPasso(step) {
+  document.querySelectorAll(".step").forEach(s => {
+    const n = parseInt(s.dataset.step, 10);
+    s.classList.remove("active", "done");
+    if (n < step) s.classList.add("done");
+    else if (n === step) s.classList.add("active");
+  });
+  document.querySelectorAll(".wizard-body").forEach(w => {
+    w.classList.toggle("active", parseInt(w.dataset.step, 10) === step);
+  });
+}
+
+$("btnBackToPackages").onclick = () => irParaPasso(1);
+$("btnNextToLocation").onclick = () => {
+  if (!$("adTitle").value.trim() || !$("adTargetUrl").value.trim()) {
+    showToast("Preencha título e URL.", "error"); return;
+  }
+  irParaPasso(3);
+};
+$("btnBackToCreative").onclick = () => irParaPasso(2);
+
+// ============================================================
+// UPLOAD DE IMAGEM
+// ============================================================
+$("uploadBox").onclick = () => $("adFileInput").click();
+$("adFileInput").onchange = async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $("uploadBox").textContent = "Enviando...";
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("tipo", "banner");
+    const d = await apiUpload("/api/ads/upload-image", fd);
+    uploadedImageUrl = d.url;
+    $("uploadBox").classList.add("has-file");
+    $("uploadBox").innerHTML = `<img src="${uploadedImageUrl}" alt="preview">`;
+    showToast("Imagem enviada!", "success");
+  } catch (e) {
+    showToast("Erro: " + e.message, "error");
+    $("uploadBox").textContent = "Clique para enviar";
+  }
+};
+
+// ============================================================
+// SUBMETER ANÚNCIO
+// ============================================================
+$("btnSubmitAd").onclick = async () => {
+  if (!currentPaymentId) { showToast("Pagamento não confirmado.", "error"); return; }
+  const btn = $("btnSubmitAd");
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+  try {
+    const d = await apiPost("/api/ads/create", {
+      adPaymentId: currentPaymentId,
+      type: "banner",
+      title: $("adTitle").value.trim(),
+      description: $("adDescription").value.trim(),
+      imageUrl: uploadedImageUrl || "",
+      targetUrl: $("adTargetUrl").value.trim(),
+      city: $("adCity").value.trim(),
+      state: $("adState").value.trim(),
+      neighborhood: $("adNeighborhood").value.trim(),
+      deviceToken: getDeviceToken(),
+      targeting: { pages: ["home", "workspace"], devices: ["desktop", "mobile"] }
+    });
+    showToast(`Anúncio ${d.status === "active" ? "ativo" : "em análise"}!`, "success");
+    currentPaymentId = null; uploadedImageUrl = null;
+    $("adTitle").value = ""; $("adDescription").value = ""; $("adTargetUrl").value = "";
+    $("adCity").value = ""; $("adState").value = ""; $("adNeighborhood").value = "";
+    $("uploadBox").classList.remove("has-file");
+    $("uploadBox").innerHTML = '<p>Clique para enviar</p><input type="file" id="adFileInput" accept="image/*" style="display:none">';
+    irParaPasso(1);
+    mudarAba("list");
+    await carregarMeusAds();
+  } catch (e) {
+    showToast("Erro: " + e.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Enviar para aprovação";
+  }
+};
+
+// ============================================================
+// LISTAR MEUS ANÚNCIOS
+// ============================================================
+async function carregarMeusAds() {
+  const box = $("adsList");
+  box.innerHTML = '<div class="loading-page"><div class="spinner"></div></div>';
+  try {
+    const d = await apiPost("/api/ads/list", {});
+    if (!d.ads || !d.ads.length) {
+      box.className = "empty";
+      box.textContent = "Nenhum anúncio criado.";
+      return;
+    }
+    box.className = "";
+    box.innerHTML = "";
+    for (const ad of d.ads) {
+      box.appendChild(renderAdCard(ad));
+    }
+  } catch (e) {
+    box.className = "empty";
+    box.textContent = "Erro ao carregar: " + e.message;
+  }
+}
+
+function renderAdCard(ad) {
+  const el = document.createElement("div");
+  el.className = "ad-card";
+  const ctr = ad.metrics && ad.metrics.impressions > 0
+    ? ((ad.metrics.clicks / ad.metrics.impressions) * 100).toFixed(2) + "%"
+    : "—";
+  const dias = ad.endDate ? Math.max(0, Math.ceil((ad.endDate - Date.now()) / 86400000)) : "—";
+  const statusLabels = { active: "Ativo", pending: "Pendente", paused: "Pausado", rejected: "Rejeitado", expired: "Expirado", draft: "Rascunho" };
+
+  el.innerHTML = `
+    <div class="ad-thumb">
+      ${ad.imageUrl ? `<img src="${ad.imageUrl}" alt="">` : `<div style="color:var(--text-2)">—</div>`}
+    </div>
+    <div class="ad-info">
+      <h3>${ad.title}</h3>
+      <div class="meta">${ad.type} • ${statusLabels[ad.status] || ad.status}</div>
+      <span class="badge-status ${ad.status}">${statusLabels[ad.status] || ad.status}</span>
+      <div class="ad-stats">
+        <span>👁 <strong>${ad.metrics?.impressions || 0}</strong> impressões</span>
+        <span>🖱 <strong>${ad.metrics?.clicks || 0}</strong> cliques</span>
+        <span>📊 CTR: <strong>${ctr}</strong></span>
+        <span>⏳ ${dias} dias</span>
+      </div>
+    </div>
+    <div class="ad-actions">
+      ${ad.status === "active" ? `<button class="btn btn-outline" data-pause="${ad.id}">Pausar</button>` : ""}
+      ${ad.status === "paused" ? `<button class="btn btn-primary" data-resume="${ad.id}">Retomar</button>` : ""}
+      ${["draft","pending","rejected","expired"].includes(ad.status) ? `<button class="btn btn-danger" data-delete="${ad.id}">Excluir</button>` : ""}
+    </div>
+  `;
+  el.querySelectorAll("[data-pause]").forEach(b => b.onclick = () => pauseAd(b.dataset.pause));
+  el.querySelectorAll("[data-resume]").forEach(b => b.onclick = () => resumeAd(b.dataset.resume));
+  el.querySelectorAll("[data-delete]").forEach(b => b.onclick = () => deleteAd(b.dataset.delete));
+  return el;
+}
+
+async function pauseAd(adId) {
+  try {
+    await apiPost("/api/ads/pause", { adId });
+    showToast("Pausado.", "success");
+    carregarMeusAds();
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+}
+async function resumeAd(adId) {
+  try {
+    await apiPost("/api/ads/resume", { adId });
+    showToast("Retomado.", "success");
+    carregarMeusAds();
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+}
+async function deleteAd(adId) {
+  if (!confirm("Excluir este anúncio?")) return;
+  try {
+    await apiPost("/api/ads/delete", { adId });
+    showToast("Excluído.", "success");
+    carregarMeusAds();
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+}
+
+// ============================================================
+// ADMIN
+// ============================================================
+async function carregarPendentes() {
+  const box = $("adminList");
+  box.innerHTML = '<div class="loading-page"><div class="spinner"></div></div>';
+  try {
+    const d = await apiPost("/api/ads/pending", {});
+    if (!d.ads || !d.ads.length) {
+      box.className = "empty";
+      box.textContent = "Nenhum anúncio pendente.";
+      return;
+    }
+    box.className = "";
+    box.innerHTML = "";
+    for (const ad of d.ads) {
+      const el = document.createElement("div");
+      el.className = "ad-card";
+      el.innerHTML = `
+        <div class="ad-thumb">${ad.imageUrl ? `<img src="${ad.imageUrl}">` : "—"}</div>
+        <div class="ad-info">
+          <h3>${ad.title}</h3>
+          <div class="meta">${ad.ownerEmail} • ${ad.type}</div>
+          <div style="font-size:.75rem;color:var(--warning)">IA: ${ad.ia?.motivo || "—"}</div>
+        </div>
+        <div class="ad-actions">
+          <button class="btn btn-success" data-approve="${ad.id}">Aprovar</button>
+          <button class="btn btn-danger" data-reject="${ad.id}">Rejeitar</button>
+        </div>
+      `;
+      el.querySelector("[data-approve]").onclick = () => approveAd(ad.id);
+      el.querySelector("[data-reject]").onclick = () => rejectAd(ad.id);
+      box.appendChild(el);
+    }
+  } catch (e) {
+    box.className = "empty";
+    box.textContent = "Erro: " + e.message;
+  }
+}
+async function approveAd(adId) {
+  try {
+    await apiPost("/api/ads/approve", { adId });
+    showToast("Aprovado!", "success");
+    carregarPendentes();
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+}
+async function rejectAd(adId) {
+  const motivo = prompt("Motivo da rejeição:") || "Rejeitado pelo administrador";
+  try {
+    await apiPost("/api/ads/reject", { adId, motivo });
+    showToast("Rejeitado.", "success");
+    carregarPendentes();
+  } catch (e) { showToast("Erro: " + e.message, "error"); }
+}
+
+// ============================================================
+// NAVEGAÇÃO ENTRE ABAS
+// ============================================================
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.onclick = () => {
+    if (tab.classList.contains("hidden")) return;
+    mudarAba(tab.dataset.tab);
+  };
+});
+function mudarAba(nome) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === nome));
+  ["list", "new", "admin"].forEach(n => {
+    $("tabContent-" + n).classList.toggle("hidden", n !== nome);
+  });
+  if (nome === "list") carregarMeusAds();
+  if (nome === "admin") carregarPendentes();
+}
+</script>
+
+<script>
+  if (typeof AppShell !== "undefined") {
+    try { new AppShell().mount(); } catch (e) { console.error("Erro no AppShell:", e); }
+  }
+</script>
+</body>
+</html>
