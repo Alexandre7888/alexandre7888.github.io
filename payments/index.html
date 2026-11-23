@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -32,7 +31,7 @@
 
 <body>
 
-  <div id="status">Verificando autenticação...</div>
+  <div id="status">Carregando...</div>
 
   <iframe
     id="checkout-frame"
@@ -71,6 +70,17 @@
     const params = new URLSearchParams(location.search);
     const assinaturaId = params.get("id");
 
+    function temHashTeste() {
+      const h = String(location.hash || "").toLowerCase();
+      return h === "#teste" || h === "#test" || h.includes("teste");
+    }
+
+    function aplicarHashNoIframe() {
+      if (!iframe.src || iframe.src === "about:blank") return;
+      const baseSrc = iframe.src.split("#")[0];
+      iframe.src = temHashTeste() ? `${baseSrc}#teste` : baseSrc;
+    }
+
     if (!assinaturaId) {
       status.textContent = "ID da assinatura não informado na URL.";
       throw new Error("ID da assinatura ausente.");
@@ -78,36 +88,32 @@
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        status.textContent = "Você precisa entrar na sua conta para continuar.";
+        status.style.display = "none";
         iframe.style.display = "none";
         return;
       }
 
       try {
-        status.textContent = "Gerando token de autenticação...";
-
-        // Gera/renova o Firebase ID Token
         const tokenId = await user.getIdToken(true);
 
-        // Monta a URL com o ID da assinatura e o token
         const checkoutUrl = new URL(WORKER_URL);
-
         checkoutUrl.searchParams.set("id", assinaturaId);
         checkoutUrl.searchParams.set("tokenid", tokenId);
 
-        console.log("UID autenticado:", user.uid);
-        console.log("ID da assinatura:", assinaturaId);
+        if (temHashTeste()) {
+          checkoutUrl.hash = "#teste";
+        }
 
         iframe.src = checkoutUrl.toString();
 
         status.style.display = "none";
         iframe.style.display = "block";
-
       } catch (error) {
         console.error("Erro ao preparar checkout:", error);
-        status.textContent = "Não foi possível autenticar para abrir o checkout.";
       }
     });
+
+    window.addEventListener("hashchange", aplicarHashNoIframe);
 
     window.addEventListener("message", (event) => {
       if (event.origin !== new URL(WORKER_URL).origin) return;
